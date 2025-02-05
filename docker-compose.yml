@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - postgres-network
+      - app-network
 
   mini_io:
     container_name: minio
@@ -35,15 +35,58 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
+
+  gitea:
+    image: docker.io/gitea/gitea:1.23.1
+    container_name: gitea
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=pg:5432
+      - GITEA__database__NAME=postgres
+      - GITEA__database__USER=postgres
+      - GITEA__database__PASSWD=postgres
+      # Storage configuration
+      - GITEA__storage__STORAGE_TYPE=minio
+      - GITEA__storage__PROVIDER=minio
+      - GITEA__storage__PATH=/data/gitea/attachments
+      - GITEA__storage__MINIO_ENDPOINT=minio:9000
+      - GITEA__storage__MINIO_ACCESS_KEY_ID=minioadmin
+      - GITEA__storage__MINIO_SECRET_ACCESS_KEY=minioadmin123
+      - GITEA__storage__MINIO_BUCKET=gitea-lfs
+      - GITEA__storage__MINIO_LOCATION=us-east-1
+      - GITEA__storage__MINIO_USE_SSL=false
+      - GITEA__storage__MINIO_INSECURE_SKIP_VERIFY=true
+      - GITEA__storage__SERVE_DIRECT=false
+      - GITEA__storage__MINIO_BUCKET_LOOKUP_TYPE=path
+    networks:
+      - app-network
+    volumes:
+      - gitea_data:/data
+      - etc_timezone:/etc/timezone:ro
+      - etc_localtime:/etc/localtime:ro
+    ports:
+      - "4002:3000"
+      - "222:22"
+    depends_on:
+      - pg
+      - mini_io
 
 volumes:
   pg_data:
     driver: local
   minio_data:
     driver: local
+  gitea_data:
+    driver: local
+  etc_timezone:
+    driver: local
+  etc_localtime:
+    driver: local
 
 networks:
-  postgres-network:
+  app-network:
     driver: bridge
-  minio_data:
-    driver: local

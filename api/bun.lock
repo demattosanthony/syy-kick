@@ -18,6 +18,7 @@
         "cors": "^2.8.5",
         "drizzle-orm": "^0.39.1",
         "express": "^4.21.2",
+        "gitea-js": "^1.23.0",
         "jsonwebtoken": "^9.0.2",
         "passport": "^0.7.0",
         "passport-google-oauth20": "^2.0.0",
@@ -261,6 +262,8 @@
     "get-proto": ["get-proto@1.0.1", "", { "dependencies": { "dunder-proto": "^1.0.1", "es-object-atoms": "^1.0.0" } }, "sha512-sTSfBjoXBp89JvIKIefqw7U2CCebsc74kiY6awiGogKtoSGbgjYE/G/+l9sF3MWFPNc9IcoOC4ODfKHfxFmp0g=="],
 
     "get-tsconfig": ["get-tsconfig@4.10.0", "", { "dependencies": { "resolve-pkg-maps": "^1.0.0" } }, "sha512-kGzZ3LWWQcGIAmg6iWvXn0ei6WDtV26wzHRMwDSzmAbcXrTEXxHy6IehI6/4eT6VRKyMP1eF1VqwrVUmE/LR7A=="],
+
+    "gitea-js": ["gitea-js@1.23.0", "", {}, "sha512-f4+UPoWgDetZeZ+Awo5iI1nVdO5bjxA8+2QCeLo3oYWUYxKyzLfXgbW1EPD635wb8hLgS0DRBu5XhtiuYKEeUA=="],
 
     "gopd": ["gopd@1.2.0", "", {}, "sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg=="],
 
