@@ -26,6 +26,11 @@ docker exec minio mc mb local/gitea-lfs --ignore-existing
 docker exec minio mc anonymous set download local/gitea-lfs
 echo "MinIO buckets created!"
 
+# Create Gitea admin account
+echo "Creating Gitea admin account..."
+docker exec --user 1000 gitea gitea admin user create --admin --username admin --password adminpassword --email admin@example.com
+echo "Gitea admin account created!"
+
 trap "echo 'Stopping all processes'; kill $SERVER_PID $NEXTJS_APP_PID 2>/dev/null; docker compose down" EXIT INT TERM
 
 # Run the Express API
