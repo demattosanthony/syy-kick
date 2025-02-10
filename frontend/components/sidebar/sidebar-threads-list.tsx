@@ -13,7 +13,7 @@ import { useDeleteThreadMutation, useThreadsQuery } from "@/queries/queries";
 import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import { SidebarItem } from "./sidebar-thread-item";
+import { SidebarItem } from "./sidebar-item";
 import { useParams } from "next/navigation";
 
 interface ThreadsListProps {

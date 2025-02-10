@@ -11,6 +11,7 @@ export function useMeQuery() {
   return useQuery({
     queryKey: ["me"],
     queryFn: () => api.auth.me(),
+    refetchOnWindowFocus: false,
   });
 }
 

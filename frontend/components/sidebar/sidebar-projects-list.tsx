@@ -13,7 +13,7 @@ import { useDeleteProjectMutation, useProjectsQuery } from "@/queries/queries";
 import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import { SidebarItem } from "./sidebar-thread-item";
+import { SidebarItem } from "./sidebar-item";
 
 interface ProjectsListProps {
   user: User;
