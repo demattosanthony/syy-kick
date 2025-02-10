@@ -28,22 +28,24 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import { User } from "@/types/user";
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 import { useAtom } from "jotai";
-import { pricingPlanDialogOpenAtom } from "./PricingDialog";
+import { pricingPlanDialogOpenAtom } from "../PricingDialog";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import { useWorkspace } from "./workspace-context";
 
 export function NavUser({ user }: { user: User }) {
   const [, setShowPricingPlanDialog] = useAtom(pricingPlanDialogOpenAtom);
   const { isMobile } = useSidebar();
   const { logOut } = useAuth();
   const { setTheme } = useTheme();
+  const { activeWorkspace } = useWorkspace();
 
   const handleBillingPortal = async () => {
     try {
       //   setIsLoading(true);
-      const url = await api.createPortalSession();
+      const url = await api.payments.createPortalSession();
 
       // Redirect to Stripe Portal
       window.location.href = url;
@@ -105,9 +107,7 @@ export function NavUser({ user }: { user: User }) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
 
-            {user.organizationMembers && user.organizationMembers.length > 0 ? (
-              <></>
-            ) : (
+            {activeWorkspace?.type === "personal" && (
               <>
                 {user.subscriptionStatus !== "active" ? (
                   <DropdownMenuGroup>

@@ -181,3 +181,7 @@ dist
 *.pub
 *.key
 digital_ocean_key
+
+# Db backups
+*.dump
+pg-backups/

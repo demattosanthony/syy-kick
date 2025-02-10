@@ -1,21 +1,25 @@
-"use server";
+"use client";
 
-import { getThread } from "@/app/actions";
-import ChatThread from "@/components/chat/ChatThread";
+import ChatThread from "@/components/chat/chat-thread";
+import { useThreadQuery } from "@/queries/queries";
+import { useParams, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 
-export default async function ThreadsPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ threadId: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const isNew = (await searchParams).new === "true";
-  const threadId = (await params).threadId;
+export default function ThreadsPage() {
+  const searchParams = useSearchParams();
+  const params = useParams<{ threadId: string }>();
+  const isNew = searchParams.get("new") === "true";
+  const threadId = params.threadId;
 
-  const initalMessages = isNew
-    ? []
-    : (await getThread(threadId))?.messages.map((message) => ({
+  const { data: thread } = useThreadQuery(threadId, isNew);
+
+  const initalMessages = useMemo(() => {
+    if (isNew) return [];
+
+    if (!thread) return [];
+
+    return (
+      thread?.messages?.map((message) => ({
         content: message.content?.text || "",
         role: message.role as "user" | "assistant",
         id: message.id,
@@ -32,7 +36,9 @@ export default async function ThreadsPage({
                 },
               ]
             : [],
-      })) ?? [];
+      })) ?? []
+    );
+  }, [isNew, thread]);
 
   return <ChatThread initalMessages={initalMessages} />;
 }

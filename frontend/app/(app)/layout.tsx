@@ -1,4 +1,4 @@
-import { AppSidebar } from "@/components/AppSidebar";
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { DragAndDropProvider } from "@/components/DragDropProvider";
 import Header from "@/components/Header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -12,7 +12,7 @@ export default async function MainAppLayout({
 }) {
   const user = await me();
   const cookieStore = await cookies();
-  const defaultOpen = cookieStore.get("sidebar:state")?.value === "true";
+  const defaultOpen = cookieStore.get("sidebar:state")?.value !== "false";
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
@@ -21,7 +21,7 @@ export default async function MainAppLayout({
       <SidebarInset>
         <div className="h-full w-full flex flex-col max-h-[-webkit-fill-available] relative">
           <DragAndDropProvider>
-            <Header />
+            <Header user={user} />
 
             {children}
           </DragAndDropProvider>

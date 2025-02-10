@@ -51,7 +51,11 @@ export function LoginOverlay() {
 
         <CardContent className="flex flex-col items-center">
           <Button className="font-semibold w-full" onClick={handleGoogleLogin}>
-            <img src="/google.svg" alt="google" className="h-5 w-5 mr-1" />
+            <img
+              src="/logos/google.svg"
+              alt="google"
+              className="h-5 w-5 mr-1"
+            />
             Continue with Google
           </Button>
         </CardContent>

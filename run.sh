@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Check to make sure docker is running
+if ! docker info > /dev/null 2>&1; then
+  echo "Docker is not running. Please start Docker and try again."
+  exit 1
+fi
+
 # Start docker and wait for containers to be ready
 docker compose up -d
 echo "Waiting for postgres to be ready..."

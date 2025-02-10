@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AIOrbScene from "@/components/AiOrbScene";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -85,7 +86,13 @@ export default function LoginPage() {
               onClick={handleGoogleLogin}
               variant={"outline"}
             >
-              <img src="/google.svg" alt="google" className="h-5 w-5 mr-1" />
+              <Image
+                src="/logos/google.svg"
+                alt="google"
+                width={20}
+                height={20}
+                className="mr-1"
+              />
               Continue with Google
             </Button>
             <Button

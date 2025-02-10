@@ -22,6 +22,7 @@ import ChatInputForm, {
   ChatInputFormRef,
 } from "@/components/chat/ChatInputForm";
 import { initalInputAtom } from "@/atoms/chat";
+import { useWorkspace } from "@/components/sidebar/workspace-context";
 
 export default function Home() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function Home() {
   );
 
   const { data: user } = useMeQuery();
+  const { activeWorkspace } = useWorkspace();
 
   const chatInputRef = useRef<ChatInputFormRef>(null);
 
@@ -43,18 +45,17 @@ export default function Home() {
   const handleSubmit = async () => {
     // Require login
     if (!user) {
-      toast.error("You must be logged in to create a thread.", {
-        action: {
-          label: "Close",
-          onClick: () => {},
-        },
-      });
+      router.push("/login");
       return;
     }
 
     try {
       // Create thread in background
-      const { id: threadId } = await api.createThread();
+      const { id: threadId } = await api.threads.createThread(
+        activeWorkspace?.type === "organization"
+          ? activeWorkspace.id
+          : undefined
+      );
       router.prefetch(`/threads/${threadId}?new=true`);
       router.push(`/threads/${threadId}?new=true`);
     } catch (error: unknown) {
@@ -79,7 +80,10 @@ export default function Home() {
       {user &&
         user?.subscriptionStatus !== "active" &&
         showPricingDialog &&
-        user.organizationMembers?.length === 0 && <PricingDialog />}
+        !(
+          activeWorkspace?.type === "organization" &&
+          activeWorkspace.subscriptionStatus === "active"
+        ) && <PricingDialog />}
 
       <div className="w-full flex flex-1 items-center justify-center">
         <div className="flex flex-col h-[80%] md:h-[65%] items-center w-full ">

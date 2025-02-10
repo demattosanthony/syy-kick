@@ -221,23 +221,23 @@ export function getModelImage(provider: string) {
 export function getModelIconPath(provider: string) {
   switch (provider) {
     case "openai":
-      return "/openai.ico";
+      return "/logos/openai.ico";
     case "anthropic":
-      return "/anthropic.ico";
+      return "/logos/anthropic.ico";
     case "perplexity":
-      return "/perplexity.ico";
+      return "/logos/perplexity.ico";
     case "google":
-      return "/google.svg";
+      return "/logos/google.svg";
     case "xai":
-      return "/xai.svg";
+      return "/logos/xai.svg";
     case "mistral":
-      return "/mistral.svg";
+      return "/logos/mistral.svg";
     case "groq":
-      return "/meta.svg";
+      return "/logos/meta.svg";
     case "meta":
-      return "/meta.svg";
+      return "/logos/meta.svg";
     case "deepseek":
-      return "/deepseek.ico";
+      return "/logos/deepseek.ico";
     default:
       return null;
   }

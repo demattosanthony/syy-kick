@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAtom } from "jotai";
 import { messagesAtom } from "@/atoms/chat";
@@ -13,6 +13,7 @@ export default function HeaderActions({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [, setMessages] = useAtom(messagesAtom);
 
   // Add useEffect for keyboard shortcut
@@ -31,6 +32,9 @@ export default function HeaderActions({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [router]);
+
+  // Don't render on settings page
+  if (pathname === "/settings") return null;
 
   return (
     <div className="flex">

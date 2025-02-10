@@ -24,6 +24,7 @@ import { useEffect } from "react";
 // Components
 import ChatInputForm from "@/components/chat/ChatInputForm";
 import ChatMessagesList from "@/components/chat/MessagesList";
+import { useWorkspace } from "../sidebar/workspace-context";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -46,6 +47,8 @@ export default function ThreadPage({
   const [temperature] = useAtom(temperatureAtom);
   const [instructions] = useAtom(instructionsAtom);
 
+  const { activeWorkspace } = useWorkspace();
+
   const {
     input,
     setInput,
@@ -55,7 +58,11 @@ export default function ThreadPage({
     isLoading,
     stop,
   } = useChat({
-    api: `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference`,
+    api: `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference${
+      activeWorkspace?.type === "organization"
+        ? `?organizationId=${activeWorkspace.id}`
+        : ""
+    }`,
     credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,
@@ -75,11 +82,12 @@ export default function ThreadPage({
     if (uploads.length > 0) {
       const attachments: ExtendedAttachment[] = await Promise.all(
         uploads.map(async (upload) => {
-          const { url, file_metadata, viewUrl } = await api.getPresignedUrl(
-            upload.file.name,
-            upload.file.type,
-            upload.file.size
-          );
+          const { url, file_metadata, viewUrl } =
+            await api.uploads.getPresignedUrl(
+              upload.file.name,
+              upload.file.type,
+              upload.file.size
+            );
 
           // upload directly to storage
           await fetch(url, {
@@ -128,7 +136,7 @@ export default function ThreadPage({
 
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["threads"] }); // Needed so the app sidebar shows the new thread
-      }, 1000);
+      }, 2000);
 
       return;
     }

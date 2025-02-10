@@ -18,6 +18,7 @@ export const CONFIG = {
     "gopal24krishna@gmail.com",
     "ben.montalbano12@gmail.com",
     "adi.mechie@gmail.com",
+    "quentinnippert@gmail.com",
   ],
   __prod__: process.env.NODE_ENV === "production",
 };

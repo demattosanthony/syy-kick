@@ -74,6 +74,21 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
   return {
+    o1: {
+      model: openai("o1"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      supportsSystemMessages: true,
+      provider: "openai",
+      supportedMimeTypes: [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ],
+      description:
+        "o1 is a versatile model from OpenAI, capable of handling a wide range of tasks with good performance. It supports tool use, streaming, system messages, and image inputs, making it a solid all-around choice.",
+    },
     "o3-mini": {
       model: openai("o3-mini"),
       supportsToolUse: true,
@@ -89,21 +104,6 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       //   ],
       description:
         "o3-mini is a smaller, more efficient version of o3, designed for faster responses and lower resource usage. It's suitable for tasks where speed and cost-effectiveness are priorities, while still offering good performance and supporting tool use, streaming, system messages, and image inputs.",
-    },
-    o1: {
-      model: openai("o1"),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      supportsSystemMessages: true,
-      provider: "openai",
-      supportedMimeTypes: [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-      ],
-      description:
-        "o1 is a versatile model from OpenAI, capable of handling a wide range of tasks with good performance. It supports tool use, streaming, system messages, and image inputs, making it a solid all-around choice.",
     },
     "gpt-4o": {
       model: openai("gpt-4o"),
@@ -360,7 +360,10 @@ export const perplexityModels = (
 
   return {
     "sonar-reasoning": {
-      model: perplexity("sonar-reasoning"),
+      model: wrapLanguageModel({
+        model: perplexity("sonar-reasoning"),
+        middleware: extractReasoningMiddleware({ tagName: "think" }),
+      }),
       supportsToolUse: false,
       supportsStreaming: true,
       provider: "perplexity",

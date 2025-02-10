@@ -10,17 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { getModelIconPath } from "../ModelSelector";
 import { Skeleton } from "../ui/skeleton";
 
-interface ThreadsListProps {
-  initialThreads: Thread[];
-}
-
-export default function ThreadsList({ initialThreads }: ThreadsListProps) {
+export default function ThreadsList() {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useThreadsQuery(search, initialThreads);
+    useThreadsQuery(search);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -42,11 +38,11 @@ export default function ThreadsList({ initialThreads }: ThreadsListProps) {
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const threads = data?.pages.flatMap((page) => page.threads) ?? initialThreads;
+  const threads = data?.pages.flatMap((page) => page.threads);
 
   return (
     <ScrollArea className="h-[calc(100vh-175px)] px-2">
-      {threads.map((thread, i) => (
+      {threads?.map((thread, i) => (
         <ThreadItem key={i} thread={thread} />
       ))}
 

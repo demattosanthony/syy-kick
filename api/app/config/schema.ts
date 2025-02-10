@@ -22,7 +22,7 @@ const SUBSCRIPTION_STATUS = [
   "trialing",
   "unpaid",
 ] as const;
-const SUBSCRIPTION_PLAN = ["basic"] as const;
+const SUBSCRIPTION_PLAN = ["free", "pro", "teams", "enterprise"] as const;
 const IDENTITY_PROVIDER = ["google", "saml"] as const;
 
 // Custom type for bytea columns (pgcrypto extension)
@@ -36,12 +36,17 @@ export const bytea = customType<{
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 255 }).notNull(),
-  slug: varchar("slug", { length: 255 }).unique().notNull(), // for subdomains or URLs
+  name: varchar("name", { length: 255 }),
+  slug: varchar("slug", { length: 255 }).unique(), // for subdomains or URLs
   domain: varchar("domain", { length: 255 }), // for email matching & auto-assignment
   logo: varchar("logo", { length: 255 }), // file key for s3
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).unique(),
+  subscriptionStatus: text("subscription_status", {
+    enum: SUBSCRIPTION_STATUS,
+  }).default("incomplete"),
+  seats: integer("seats").default(0),
 });
 
 export const organizationMembers = pgTable("organization_members", {
@@ -55,6 +60,15 @@ export const organizationMembers = pgTable("organization_members", {
   role: text("role", { enum: ["owner", "member"] }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const organizationInvites = pgTable("organization_invites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id").references(() => organizations.id, {
+    onDelete: "cascade",
+  }),
+  token: text("token").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const samlConfigs = pgTable("saml_configs", {
@@ -89,8 +103,10 @@ export const users = pgTable("users", {
   subscriptionStatus: text("subscription_status", {
     enum: SUBSCRIPTION_STATUS,
   }).default("incomplete"),
-  subscriptionPlan: text("subscription_plan", { enum: SUBSCRIPTION_PLAN }),
-  systemRole: text("system_role", { enum: ["super_admin"] }), // identify super admins
+  subscriptionPlan: text("subscription_plan", {
+    enum: SUBSCRIPTION_PLAN,
+  }).default("free"),
+  systemRole: text("system_role", { enum: ["super_admin"] }), // identify system super admins
 });
 
 // Threads table with user association
@@ -102,6 +118,9 @@ export const threads = pgTable("threads", {
   title: varchar("title", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id, {
+    onDelete: "cascade",
+  }),
 });
 
 // Messages table with user association
@@ -147,6 +166,10 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
     fields: [threads.userId],
     references: [users.id],
   }),
+  organization: one(organizations, {
+    fields: [threads.organizationId],
+    references: [organizations.id],
+  }),
   messages: many(messages),
 }));
 
@@ -172,19 +195,10 @@ export const organizationsRelations = relations(
   organizations,
   ({ many, one }) => ({
     members: many(organizationMembers),
-    samlConfig: one(samlConfigs, {
-      fields: [organizations.id],
-      references: [samlConfigs.organizationId],
-    }),
+    threads: many(threads),
+    samlConfig: one(samlConfigs),
   })
 );
-
-export const samlConfigsRelations = relations(samlConfigs, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [samlConfigs.organizationId],
-    references: [organizations.id],
-  }),
-}));
 
 export const organizationMembersRelations = relations(
   organizationMembers,
@@ -199,6 +213,23 @@ export const organizationMembersRelations = relations(
     }),
   })
 );
+
+export const organizationInvitesRelations = relations(
+  organizationInvites,
+  ({ one }) => ({
+    organization: one(organizations, {
+      fields: [organizationInvites.organizationId],
+      references: [organizations.id],
+    }),
+  })
+);
+
+export const samlConfigsRelations = relations(samlConfigs, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [samlConfigs.organizationId],
+    references: [organizations.id],
+  }),
+}));
 
 // Types
 type BaseContentPart = {

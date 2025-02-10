@@ -7,27 +7,14 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import api from "@/lib/api";
 import { useAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { useState } from "react";
-
-const PRICING_PLANS = {
-  BASIC: {
-    name: "Pro Plan",
-    price: "$10",
-    features: [
-      "Chat with all the top AI models",
-      "Upload images and PDFs",
-      "Unlimited messages",
-      "Priority support",
-      "Custom integrations",
-    ],
-    lookup_key: "yo-pro-plan",
-  },
-} as const;
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { PRICING_PLANS } from "@/lib/pricing";
 
 export const pricingPlanDialogOpenAtom = atomWithStorage(
   "pricingPlanDialogOpen",
@@ -35,68 +22,95 @@ export const pricingPlanDialogOpenAtom = atomWithStorage(
 );
 
 export function PricingDialog() {
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
+    {}
+  );
   const [open, setOpen] = useAtom(pricingPlanDialogOpenAtom);
 
   const handleSubscribe = async (lookupKey: string) => {
     try {
-      setIsLoading(true);
-      const url = await api.createCheckoutSession(lookupKey);
-
-      // Redirect to Stripe Checkout
-      window.location.href = url;
+      setLoadingStates((prev) => ({ ...prev, [lookupKey]: true }));
+      if (lookupKey === "yo-pro-plan") {
+        const url = await api.payments.createCheckoutSession(lookupKey);
+        window.location.href = url;
+      } else if (lookupKey === "yo-teams-plan") {
+        router.push("/onboarding/orgs");
+      }
     } catch (error) {
       console.error("Error:", error);
     } finally {
-      setIsLoading(false);
+      setLoadingStates((prev) => ({ ...prev, [lookupKey]: false }));
+      setOpen(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">View Pricing</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Upgrade to Pro</DialogTitle>
-          <DialogDescription>
-            You are currently on the free plan. Upgrade to access these
-            features.
+      <DialogContent className="sm:max-w-[800px]">
+        <DialogHeader className="text-center">
+          <DialogTitle className="text-2xl font-bold">
+            Choose a Plan
+          </DialogTitle>
+          <DialogDescription className="text-lg">
+            Select the plan that best fits your needs
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4 bg-card">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {Object.entries(PRICING_PLANS).map(([key, plan]) => (
-            <div key={key} className="rounded-lg border p-4 transition-colors">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold">{plan.name}</h3>
-                <span className="text-xl font-bold">{plan.price}/mo</span>
+            <div
+              key={key}
+              className="rounded-xl border p-6 flex flex-col hover:border-primary/50 hover:shadow-lg transition-all duration-200"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold">{plan.name}</h3>
+                <div className="text-right gap-1 flex items-end">
+                  <span className="text-3xl font-bold">{plan.price}</span>
+                  {plan.priceDetail && (
+                    <span className="text-sm text-muted-foreground pb-1.5">
+                      {plan.priceDetail}
+                    </span>
+                  )}
+                </div>
               </div>
-              <ul className="space-y-2 mb-4">
+              <ul className="space-y-3 flex-grow">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-center">
                     <svg
-                      className="w-4 h-4 mr-2 text-green-500"
+                      className="w-5 h-5 mr-3 text-primary"
                       fill="none"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth="2"
+                      strokeWidth="2.5"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
                       <path d="M5 13l4 4L19 7"></path>
                     </svg>
-                    {feature}
+                    <span className="text-sm">{feature}</span>
                   </li>
                 ))}
               </ul>
-              <Button
-                className="w-full mt-2"
-                onClick={() => handleSubscribe(plan.lookup_key)}
-                disabled={isLoading}
-              >
-                {isLoading ? "Loading..." : `Upgrade to Pro Plan`}
-              </Button>
+              {plan.lookup_key && (
+                <Button
+                  className="w-full mt-6 py-6 text-lg font-semibold"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleSubscribe(plan.lookup_key!);
+                  }}
+                  disabled={loadingStates[plan.lookup_key]}
+                  variant={key === "PRO" ? "default" : "secondary"}
+                >
+                  {loadingStates[plan.lookup_key] ? (
+                    <Loader2 className="animate-spin" />
+                  ) : key === "PRO" ? (
+                    "Get Pro"
+                  ) : (
+                    "Create Team"
+                  )}
+                </Button>
+              )}
             </div>
           ))}
         </div>

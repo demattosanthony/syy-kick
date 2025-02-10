@@ -54,6 +54,8 @@ const SuccessPageContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session_id = searchParams.get("session_id");
+  const organization_id = searchParams.get("organization_id");
+
   const [status, setStatus] = useState<Status>("processing");
 
   useEffect(() => {
@@ -65,14 +67,16 @@ const SuccessPageContent = () => {
       }
 
       try {
-        const response = await api.syncAfterSuccess(session_id);
-        if (response.ok) {
-          setStatus("success");
-          setTimeout(() => router.push("/"), 1500);
-        } else {
-          setStatus("error");
-          setTimeout(() => router.push("/"), 2000);
-        }
+        await api.payments.syncAfterSuccess(
+          session_id,
+          organization_id || undefined
+        );
+
+        setStatus("success");
+        const redirectUrl = organization_id
+          ? `settings?tab=organization&orgId=${organization_id}`
+          : "/";
+        setTimeout(() => router.push(redirectUrl), 1500);
       } catch (error) {
         console.error("Error syncing data:", error);
         setStatus("error");
@@ -81,7 +85,7 @@ const SuccessPageContent = () => {
     };
 
     syncData();
-  }, [session_id, router]);
+  }, [session_id, router, organization_id]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">

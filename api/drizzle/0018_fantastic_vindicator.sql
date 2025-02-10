@@ -1,0 +1,1 @@
+ALTER TABLE "organizations" ADD COLUMN "seats" integer DEFAULT 0;

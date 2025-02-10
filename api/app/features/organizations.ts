@@ -3,12 +3,16 @@ import { eq, sql } from "drizzle-orm";
 import z from "zod";
 import db from "../config/db";
 import {
+  organizationInvites,
   organizationMembers,
   organizations,
   samlConfigs,
-  users,
 } from "../config/schema";
 import s3 from "../config/s3";
+import { DbUser } from "../createAuthToken";
+import { randomBytes } from "crypto";
+import stripe from "../config/stripe";
+import { isOrgOwner } from "../middleware";
 
 // Core Types
 type Role = "owner" | "member";
@@ -25,8 +29,7 @@ const schemas = {
     name: z.string().min(1),
     domain: z.string().optional(),
     logo: z.string().optional(),
-    ownerEmail: z.string().email().optional(),
-    ownerName: z.string().optional(),
+    seats: z.number().optional(),
     saml: z
       .object({
         entryPoint: z.string().url().optional(),
@@ -90,50 +93,32 @@ const ops = {
     };
   },
 
-  async create(data: z.infer<typeof schemas.org>) {
+  async create(data: z.infer<typeof schemas.org>, user: DbUser) {
     const slug = data.domain?.split(".")[0].toLowerCase();
     if (
-      await db.query.organizations.findFirst({
+      data.domain &&
+      (await db.query.organizations.findFirst({
         where: eq(organizations.slug, slug!),
-      })
+      }))
     ) {
       throw new Error("Organization already exists");
     }
 
     return db.transaction(async (tx) => {
-      const [org] = await tx
-        .insert(organizations)
-        .values({
-          name: data.name,
-          slug: slug!,
-          domain: data.domain,
-          logo: data.logo,
-        })
-        .returning();
+      const values = {
+        name: data.name,
+        ...(data.domain && { domain: data.domain, slug }),
+        ...(data.logo && { logo: data.logo }),
+        ...(data.seats && { seats: data.seats }),
+      };
 
-      if (data.ownerEmail) {
-        const owner =
-          (await tx.query.users.findFirst({
-            where: eq(users.email, data.ownerEmail),
-          })) ||
-          (await tx
-            .insert(users)
-            .values({
-              email: data.ownerEmail,
-              name: data.ownerName || data.ownerEmail.split("@")[0],
-              identityProvider: "saml",
-            })
-            .returning()
-            .then(([user]) => user));
+      const [org] = await tx.insert(organizations).values(values).returning();
 
-        if (!owner) throw new Error("Failed to create or find owner");
-
-        await tx.insert(organizationMembers).values({
-          organizationId: org.id,
-          userId: owner.id,
-          role: "owner" as Role,
-        });
-      }
+      await tx.insert(organizationMembers).values({
+        organizationId: org.id,
+        userId: user.id,
+        role: "owner" as Role,
+      });
 
       if (data.saml) {
         await ops.updateSaml(org.id, data.saml);
@@ -212,11 +197,18 @@ const ops = {
   async getById(id: string) {
     const org = await db.query.organizations.findFirst({
       where: eq(organizations.id, id),
-      with: { samlConfig: true },
+      with: { samlConfig: true, members: true },
     });
     if (!org) throw new Error("Organization not found");
+
+    // Generate presigned URL for the logo
+    const logoUrl = org.logo
+      ? s3.file(org.logo).presign({ expiresIn: 3600, method: "GET" })
+      : null;
+
     return {
       ...org,
+      logoUrl,
       samlConfig: org.samlConfig ? await ops.decryptSaml(org.samlConfig) : null,
     };
   },
@@ -229,10 +221,59 @@ const ops = {
       await tx.delete(organizations).where(eq(organizations.id, id));
     });
   },
+
+  async listMembers(orgId: string) {
+    return db.query.organizationMembers.findMany({
+      where: eq(organizationMembers.organizationId, orgId),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            email: true,
+            name: true,
+            profilePicture: true,
+          },
+        },
+      },
+    });
+  },
+
+  async removeMember(orgId: string, userId: string) {
+    return db
+      .delete(organizationMembers)
+      .where(sql`organization_id = ${orgId} AND user_id = ${userId}`);
+  },
+
+  async getInviteLink(orgId: string) {
+    const invite = await db.query.organizationInvites.findFirst({
+      where: eq(organizationInvites.organizationId, orgId),
+    });
+
+    return invite ? invite.token : await ops.generateInviteLink(orgId);
+  },
+
+  async generateInviteLink(orgId: string) {
+    // Delete any existing invite
+    await db
+      .delete(organizationInvites)
+      .where(eq(organizationInvites.organizationId, orgId));
+
+    const token = randomBytes(16).toString("hex");
+    await db.insert(organizationInvites).values({
+      organizationId: orgId,
+      token,
+    });
+
+    return token;
+  },
 };
 
 // Request Handlers
 const handle = {
+  async get(req: Request, res: Response) {
+    res.json(await ops.getById(req.params.id));
+  },
+
   async list(req: Request, res: Response) {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -241,7 +282,7 @@ const handle = {
 
   async create(req: Request, res: Response) {
     const data = schemas.org.parse(req.body);
-    res.json(await ops.create(data));
+    res.json(await ops.create(data, req.dbUser!));
   },
 
   async update(req: Request, res: Response) {
@@ -253,11 +294,107 @@ const handle = {
     await ops.delete(req.params.id);
     res.json({ success: true });
   },
+
+  async listMembers(req: Request, res: Response) {
+    const members = await ops.listMembers(req.params.id);
+    res.json(members);
+  },
+
+  async getInvite(req: Request, res: Response) {
+    const token = await ops.getInviteLink(req.params.id);
+    res.json({ token });
+  },
+
+  async removeMember(req: Request, res: Response) {
+    await ops.removeMember(req.params.id, req.params.userId);
+    res.json({ success: true });
+  },
+
+  async resetInvite(req: Request, res: Response) {
+    const token = await ops.generateInviteLink(req.params.id);
+    res.json({ token });
+  },
+
+  async validateSeatUpdate(req: Request, res: Response) {
+    const { seats } = req.body;
+    const orgId = req.params.id;
+
+    const org = await db.query.organizations.findFirst({
+      where: eq(organizations.id, orgId),
+      with: { members: true },
+    });
+
+    if (!org) {
+      res.status(404).json({ error: "Organization not found" });
+      return;
+    }
+
+    // Don't allow reducing seats below current member count
+    if (seats < (org.members?.length || 0)) {
+      res.status(400).json({
+        error: "Cannot reduce seats below current member count",
+      });
+      return;
+    }
+
+    res.json({ success: true });
+  },
+
+  async updateSeats(req: Request, res: Response) {
+    try {
+      const { seats } = req.body;
+      const orgId = req.params.id;
+
+      const org = await db.query.organizations.findFirst({
+        where: eq(organizations.id, orgId),
+        columns: {
+          stripeCustomerId: true,
+        },
+      });
+
+      // If there's a Stripe customer, update their subscription
+      if (org?.stripeCustomerId) {
+        const subscription = await stripe.subscriptions.list({
+          customer: org.stripeCustomerId,
+          limit: 1,
+        });
+
+        if (subscription.data.length) {
+          await stripe.subscriptions.update(subscription.data[0].id, {
+            items: [
+              {
+                quantity: seats,
+                id: subscription.data[0].items.data[0].id,
+              },
+            ],
+          });
+        }
+      }
+
+      // Update seats in database regardless of subscription status
+      await db
+        .update(organizations)
+        .set({ seats, updatedAt: new Date() })
+        .where(eq(organizations.id, orgId));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating seats:", error);
+      res.status(500).json({ error: "Failed to update seats" });
+    }
+  },
 };
 
 // Router
 export default Router()
-  .get("", handle.list)
+  .get("", isOrgOwner, handle.list)
   .post("", handle.create)
-  .put("/:id", handle.update)
-  .delete("/:id", handle.delete);
+  .get("/:id", isOrgOwner, handle.get)
+  .put("/:id", isOrgOwner, handle.update)
+  .delete("/:id", isOrgOwner, handle.delete)
+  .get("/:id/members", isOrgOwner, handle.listMembers)
+  .delete("/:id/members/:userId", isOrgOwner, handle.removeMember)
+  .get("/:id/invite", isOrgOwner, handle.getInvite)
+  .post("/:id/invite/reset", isOrgOwner, handle.resetInvite)
+  .post("/:id/seats/validate", isOrgOwner, handle.validateSeatUpdate)
+  .put("/:id/seats", isOrgOwner, handle.updateSeats);

@@ -19,6 +19,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import AdminSettings from "@/components/settings/admin-settings";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useWorkspace } from "@/components/sidebar/workspace-context";
+import { OrganizationSettings } from "@/components/organizations/org-settings";
 
 export default function UserSettings() {
   const { data: user } = useMeQuery();
@@ -26,11 +28,16 @@ export default function UserSettings() {
   const [mounted, setMounted] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { activeWorkspace } = useWorkspace();
 
   const isSuperAdmin = user?.systemRole === "super_admin";
   const isOrgOwner = useMemo(() => {
-    return user?.organizationMembers?.some((member) => member.role === "owner");
-  }, [user]);
+    if (activeWorkspace?.type !== "organization") return false;
+    return user?.organizationMembers?.some(
+      (member) =>
+        member.role === "owner" && member.organization.id === activeWorkspace.id
+    );
+  }, [user, activeWorkspace]);
 
   const [temperature, setTemperature] = useAtom(temperatureAtom);
   const [, setInputValue] = useState(temperature.toFixed(2));
@@ -63,9 +70,13 @@ export default function UserSettings() {
   }, []);
 
   return (
-    <div className="max-w-2xl mx-auto py-20 px-6 w-full">
-      <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
-        <div className="flex items-center justify-between mb-8">
+    <div className="max-w-3xl mx-auto pt-[58px] md:pt-20 px-6 w-full h-screen flex flex-col">
+      <Tabs
+        value={tab}
+        onValueChange={handleTabChange}
+        className="w-full h-full flex flex-col"
+      >
+        <div className="flex items-center justify-between mb-8 flex-shrink-0">
           <h1 className="text-xl font-semibold">Settings</h1>
           <TabsList className="bg-transparent p-0 h-9 gap-6">
             <TabsTrigger
@@ -74,14 +85,14 @@ export default function UserSettings() {
             >
               Account
             </TabsTrigger>
-            {isSuperAdmin && (
+            {/* {isSuperAdmin && (
               <TabsTrigger
                 value="admin"
                 className="bg-transparent px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-9"
               >
                 Admin
               </TabsTrigger>
-            )}
+            )} */}
 
             {isOrgOwner && (
               <TabsTrigger
@@ -95,7 +106,10 @@ export default function UserSettings() {
         </div>
 
         {/* Profile Picture Section */}
-        <TabsContent value="account" className="h-full">
+        <TabsContent
+          value="account"
+          className="h-full overflow-y-auto overflow-visible"
+        >
           <div className="space-y-6 h-full">
             <section>
               <div className="flex items-center justify-between">
@@ -210,18 +224,10 @@ export default function UserSettings() {
           </TabsContent>
         )}
 
-        <TabsContent value="organization">
-          <div className="space-y-6">
-            <section>
-              <div className="space-y-1">
-                <h2 className="text-base font-medium">Organization Settings</h2>
-                <p className="text-sm text-muted-foreground">
-                  Manage your organization preferences and details.
-                </p>
-              </div>
-              {/* Add your organization settings content here */}
-            </section>
-          </div>
+        <TabsContent value="organization" className="h-full overflow-y-auto">
+          {activeWorkspace && activeWorkspace.type === "organization" && (
+            <OrganizationSettings orgId={activeWorkspace?.id} />
+          )}
         </TabsContent>
       </Tabs>
     </div>

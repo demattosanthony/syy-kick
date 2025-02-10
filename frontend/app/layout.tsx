@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import ReactQueryProvider from "./providers";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+import { WorkspaceProvider } from "@/components/sidebar/workspace-context";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -131,8 +132,10 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <JotaiProvider>
-              <Toaster />
-              {children}
+              <WorkspaceProvider>
+                <Toaster />
+                {children}
+              </WorkspaceProvider>
             </JotaiProvider>
           </ThemeProvider>
         </ReactQueryProvider>
