@@ -9,19 +9,28 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { useThreadsQuery } from "@/queries/queries";
+import { useDeleteThreadMutation, useThreadsQuery } from "@/queries/queries";
 import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import { ThreadItem } from "./sidebar-thread-item";
+import { SidebarItem } from "./sidebar-thread-item";
+import { useParams } from "next/navigation";
 
 interface ThreadsListProps {
   user: User;
 }
 
 export function ThreadsList({ user }: ThreadsListProps) {
+  const params = useParams();
+  const currentThreadId = params?.threadId;
   const { data, isLoading } = useThreadsQuery();
   const threads = data?.pages[0]?.threads ?? [];
+
+  const deleteThreadMutation = useDeleteThreadMutation();
+
+  const handleThreadDelete = async (id: string) => {
+    await deleteThreadMutation.mutateAsync(id);
+  };
 
   if (threads.length === 0) {
     return null;
@@ -42,7 +51,17 @@ export function ThreadsList({ user }: ThreadsListProps) {
               ))
             : threads.map(
                 (thread) =>
-                  thread.title && <ThreadItem key={thread.id} thread={thread} />
+                  thread.title && (
+                    <SidebarItem
+                      key={thread.id}
+                      id={thread.id}
+                      title={thread.title}
+                      href={`/threads/${thread.id}`}
+                      currentId={currentThreadId as string}
+                      onDelete={handleThreadDelete}
+                      itemType="thread"
+                    />
+                  )
               )}
 
           {user && (

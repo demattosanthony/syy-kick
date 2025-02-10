@@ -12,6 +12,7 @@ import modelRoutes from "./features/models";
 import threadRoutes from "./features/threads";
 import paymentRoutes, { webhook } from "./features/payments";
 import organizationRoutes from "./features/organizations";
+import projectRoutes from "./features/projects";
 
 export default Router()
   .use("/auth", authRoutes)
@@ -64,6 +65,7 @@ export default Router()
     })
   )
   .use("/organizations", auth, organizationRoutes)
+  .use("/projects", auth, projectRoutes)
   .post(
     "/presigned-url",
     auth,

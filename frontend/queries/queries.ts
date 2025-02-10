@@ -230,3 +230,24 @@ export function useUpdateOrganizationSeatsMutation() {
     },
   });
 }
+
+export function useProjectsQuery() {
+  return useQuery({
+    queryKey: ["projects"],
+    queryFn: () => api.projects.listProjects(),
+  });
+}
+
+export function useCreateProjectMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      description: string;
+      organizationId?: string;
+    }) => api.projects.createProject(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}

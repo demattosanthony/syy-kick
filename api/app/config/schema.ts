@@ -109,6 +109,24 @@ export const users = pgTable("users", {
   systemRole: text("system_role", { enum: ["super_admin"] }), // identify system super admins
 });
 
+export const projects = pgTable("projects", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  giteaRepoId: integer("gitea_repo_id").notNull(), // Gitea's internal repo ID
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  visibility: text("visibility", { enum: ["private", "public"] })
+    .default("private")
+    .notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id, {
+    onDelete: "cascade",
+  }),
+  userId: uuid("user_id").references(() => users.id, {
+    onDelete: "cascade",
+  }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Threads table with user association
 export const threads = pgTable("threads", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -159,6 +177,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   threads: many(threads),
   messages: many(messages),
   organizationMembers: many(organizationMembers),
+  projects: many(projects),
 }));
 
 export const threadsRelations = relations(threads, ({ one, many }) => ({
@@ -228,6 +247,17 @@ export const samlConfigsRelations = relations(samlConfigs, ({ one }) => ({
   organization: one(organizations, {
     fields: [samlConfigs.organizationId],
     references: [organizations.id],
+  }),
+}));
+
+export const projectsRelations = relations(projects, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [projects.organizationId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [projects.userId],
+    references: [users.id],
   }),
 }));
 

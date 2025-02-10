@@ -1,6 +1,5 @@
 "use client";
 
-import { useDeleteThreadMutation } from "@/queries/queries";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,14 +14,32 @@ import {
 import { DropdownMenuItem } from "../ui/dropdown-menu";
 import { Trash } from "lucide-react";
 
-interface DeleteThreadAlertDialogProps {
-  threadId: string;
+interface DeleteAlertDialogProps {
+  id: string;
+  type: "thread" | "project";
+  onDelete: (id: string) => void;
+  title?: string;
+  description?: string;
 }
 
-export function DeleteThreadAlertDialog({
-  threadId,
-}: DeleteThreadAlertDialogProps) {
-  const deleteThread = useDeleteThreadMutation();
+export function DeleteAlertDialog({
+  id,
+  type,
+  onDelete,
+  title,
+  description,
+}: DeleteAlertDialogProps) {
+  const defaultTitles = {
+    thread: "Delete Thread",
+    project: "Delete Project",
+  };
+
+  const defaultDescriptions = {
+    thread:
+      "Are you sure you want to delete this thread and all its messages? This action cannot be undone.",
+    project:
+      "Are you sure you want to delete this project and all its contents? This action cannot be undone.",
+  };
 
   return (
     <AlertDialog>
@@ -37,16 +54,15 @@ export function DeleteThreadAlertDialog({
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Thread</AlertDialogTitle>
+          <AlertDialogTitle>{title || defaultTitles[type]}</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete this thread and all its messages?
-            This action cannot be undone.
+            {description || defaultDescriptions[type]}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={() => deleteThread.mutate(threadId)}
+            onClick={() => onDelete(id)}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             Delete

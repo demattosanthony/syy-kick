@@ -1,5 +1,6 @@
 import { Thread } from "@/types/chat";
 import { Model } from "@/types/model";
+import { Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
 
 /**
@@ -412,16 +413,34 @@ class ThreadApi extends ApiRequest {
 }
 
 /**
+ * Projects API Module
+ */
+class ProjectsApi extends ApiRequest {
+  async createProject(data: {
+    name: string;
+    description: string;
+    organizationId?: string;
+  }): Promise<Project> {
+    return await this.request("/projects", "POST", data);
+  }
+
+  async listProjects(organizationId?: string): Promise<Project[]> {
+    return await this.request(`/projects`);
+  }
+}
+
+/**
  *  Centralized ApiClient class that uses the modules
  */
 class ApiClient {
+  public baseUrl: string;
   auth: AuthApi;
   organizations: OrganizationApi;
   payments: PaymentApi;
   models: ModelApi;
   uploads: UploadApi;
   threads: ThreadApi;
-  public baseUrl: string;
+  projects: ProjectsApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -431,6 +450,7 @@ class ApiClient {
     this.models = new ModelApi(baseUrl);
     this.uploads = new UploadApi(baseUrl);
     this.threads = new ThreadApi(baseUrl);
+    this.projects = new ProjectsApi(baseUrl);
   }
 }
 

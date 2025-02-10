@@ -21,6 +21,8 @@ import { WorkSpaceSwitcher } from "./workspace-switcher";
 import { NewThreadButton } from "./new-thread-button";
 import { ThreadsList } from "./sidebar-threads-list";
 import { ThreadsLink } from "./threads-link";
+import { SidebarProjectsList } from "./sidebar-projects-list";
+import { ProjectsButton } from "./projects-button";
 
 export function AppSidebar({
   user,
@@ -46,16 +48,23 @@ export function AppSidebar({
               <SidebarMenuItem>
                 <NewThreadButton />
               </SidebarMenuItem>
+
               <SidebarMenuItem>
                 <ThreadsLink />
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <ProjectsButton />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {(state === "expanded" || isMobile) && (
-          <ThreadsList user={user} /> // Use the extracted component
+          <SidebarProjectsList user={user} />
         )}
+
+        {(state === "expanded" || isMobile) && <ThreadsList user={user} />}
       </SidebarContent>
 
       <SidebarFooter className="mb-4 md:mb-0">
