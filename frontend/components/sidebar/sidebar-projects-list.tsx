@@ -9,7 +9,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { useProjectsQuery } from "@/queries/queries";
+import { useDeleteProjectMutation, useProjectsQuery } from "@/queries/queries";
 import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
@@ -21,6 +21,12 @@ interface ProjectsListProps {
 
 export function SidebarProjectsList({ user }: ProjectsListProps) {
   const { data: projects, isLoading } = useProjectsQuery();
+
+  const deleteProjectMutatio = useDeleteProjectMutation();
+
+  const handleDeleteProject = async (id: string) => {
+    await deleteProjectMutatio.mutateAsync(id);
+  };
 
   if (projects?.length === 0 || !projects) {
     return null;
@@ -46,7 +52,7 @@ export function SidebarProjectsList({ user }: ProjectsListProps) {
                   title={project.name}
                   href={`/projects/${project.id}`}
                   //   currentId={currentThreadId as string}
-                  //   onDelete={handleThreadDelete}
+                  onDelete={handleDeleteProject}
                   itemType="project"
                 />
               ))}

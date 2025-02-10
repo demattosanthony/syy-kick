@@ -427,6 +427,10 @@ class ProjectsApi extends ApiRequest {
   async listProjects(organizationId?: string): Promise<Project[]> {
     return await this.request(`/projects`);
   }
+
+  async deleteProject(projectId: string): Promise<{ success: boolean }> {
+    return await this.request(`/projects/${projectId}`, "DELETE");
+  }
 }
 
 /**

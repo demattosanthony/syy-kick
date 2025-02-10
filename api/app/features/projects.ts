@@ -18,6 +18,16 @@ const schemas = {
     }),
 };
 
+function toGitSafeName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, "-") // Replace spaces with dashes
+    .replace(/[^a-z0-9-._]/g, "") // Remove special chars except dash, dot, underscore
+    .replace(/^[-._]+|[-._]+$/g, "") // Remove leading/trailing dash, dot, underscore
+    .replace(/\.+/g, ".") // Replace multiple dots with single dot
+    .replace(/\.git$/i, "-git"); // Replace .git suffix
+}
+
 async function createProject(data: z.infer<typeof schemas.createProject>) {
   // Check organization exists if organizationId is provided
   if (data.organizationId) {
@@ -42,7 +52,7 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
   // Create the git repo
   const response = await gitea.user.createCurrentUserRepo({
     default_branch: "main",
-    name: data.name,
+    name: toGitSafeName(data.name),
     private: true,
     description: data.description,
     auto_init: true,
@@ -67,6 +77,21 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
     .then((res) => res[0]);
 
   return newProject;
+}
+
+async function deleteProject(projectId: string) {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  });
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  // Delete the git repo
+  await gitea.repos.repoDelete("admin", toGitSafeName(project.name));
+
+  await db.delete(projects).where(eq(projects.id, projectId));
 }
 
 async function listProjects(params: {
@@ -107,8 +132,15 @@ const handlers = {
     });
     res.json(projects);
   },
+
+  deleteProject: async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    await deleteProject(projectId);
+    res.json({ success: true });
+  },
 };
 
 export default Router()
   .post("/", handlers.createProject)
-  .get("/", handlers.listProjects);
+  .get("/", handlers.listProjects)
+  .delete("/:projectId", handlers.deleteProject);
