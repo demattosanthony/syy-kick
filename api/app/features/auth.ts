@@ -72,7 +72,7 @@ const checkOrgCapacity = async (orgId: string) => {
 
 // Request handlers that use ops
 const handlers = {
-  googleCallback: async (req: Request, res: Response) => {
+  oauthCallback: async (req: Request, res: Response) => {
     const user = req.user as DbUser;
     const state = req.query.state as string | undefined;
 
@@ -150,12 +150,6 @@ const handlers = {
   },
 };
 
-// Auth configs
-const googleAuthConfig = {
-  session: false,
-  failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
-};
-
 const optionalAuth = async (req: any, res: any, next: any) => {
   try {
     const { id, rid } = req.cookies;
@@ -173,6 +167,12 @@ const optionalAuth = async (req: any, res: any, next: any) => {
   }
 };
 
+// Auth configs
+const authConfig = {
+  session: false,
+  failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
+};
+
 // Router
 export default Router()
   .get("/google", (req, res) => {
@@ -184,8 +184,20 @@ export default Router()
   })
   .get(
     "/google/callback",
-    myPassport.authenticate("google", googleAuthConfig),
-    handlers.googleCallback
+    myPassport.authenticate("google", authConfig),
+    handlers.oauthCallback
+  )
+  .get("/microsoft", (req, res) => {
+    myPassport.authenticate("microsoft", {
+      session: false,
+      failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
+      state: req.query.state as string,
+    })(req, res);
+  })
+  .get(
+    "/microsoft/callback",
+    myPassport.authenticate("microsoft", authConfig),
+    handlers.oauthCallback
   )
   .get("/saml/:slug", authenticateSaml)
   .post("/saml/:slug/callback", authenticateSaml, handlers.samlCallback)

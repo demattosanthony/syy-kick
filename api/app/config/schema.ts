@@ -23,7 +23,7 @@ const SUBSCRIPTION_STATUS = [
   "unpaid",
 ] as const;
 const SUBSCRIPTION_PLAN = ["free", "pro", "teams", "enterprise"] as const;
-const IDENTITY_PROVIDER = ["google", "saml"] as const;
+const IDENTITY_PROVIDER = ["google", "saml", "microsoft"] as const;
 
 // Custom type for bytea columns (pgcrypto extension)
 export const bytea = customType<{
@@ -92,6 +92,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
   googleId: varchar("google_id", { length: 255 }).unique(),
+  microsoftId: varchar("microsoft_id", { length: 255 }).unique(),
   identityProvider: text("identity_provider", {
     enum: IDENTITY_PROVIDER,
   }).default("google"),

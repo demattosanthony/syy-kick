@@ -12,7 +12,7 @@ import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { handleGoogleLogin, handleSSOLogin } = useAuth();
+  const { handleGoogleLogin, handleSSOLogin, handleMicrosoftLogin } = useAuth();
 
   const [ssoSelected, setSsoSelected] = React.useState(false);
   const [workEmail, setWorkEmail] = React.useState("");
@@ -94,6 +94,20 @@ export default function LoginPage() {
                 className="mr-1"
               />
               Continue with Google
+            </Button>
+            <Button
+              className="font-semibold w-[320px] flex justify-start h-[50px]"
+              onClick={handleMicrosoftLogin}
+              variant={"outline"}
+            >
+              <Image
+                src="/logos/msft.svg"
+                alt="msft"
+                width={20}
+                height={20}
+                className="mr-1"
+              />
+              Continue with Microsoft
             </Button>
             <Button
               className="font-semibold w-[320px] flex justify-start h-[50px]"
