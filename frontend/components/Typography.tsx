@@ -2,7 +2,7 @@ import React from "react";
 
 export function TypographyH1({ children }: { children: React.ReactNode }) {
   return (
-    <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl mb-2">
+    <h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-5xl mb-2">
       {children}
     </h1>
   );
@@ -10,7 +10,7 @@ export function TypographyH1({ children }: { children: React.ReactNode }) {
 
 export function TypographyH2({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight mb-2">
+    <h2 className="scroll-m-20 border-b pb-2 text-2xl font-semibold tracking-tight mb-2">
       {children}
     </h2>
   );
@@ -18,7 +18,7 @@ export function TypographyH2({ children }: { children: React.ReactNode }) {
 
 export function TypographyH3({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight mb-2">
+    <h3 className="scroll-m-20 text-xl font-semibold tracking-tight mb-2">
       {children}
     </h3>
   );
@@ -26,14 +26,16 @@ export function TypographyH3({ children }: { children: React.ReactNode }) {
 
 export function TypographyH4({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="scroll-m-20 text-xl font-semibold tracking-tight mb-2">
+    <h4 className="scroll-m-20 text-lg font-semibold tracking-tight mb-2">
       {children}
     </h4>
   );
 }
 
 export function TypographyP({ children }: { children: React.ReactNode }) {
-  return <p className="leading-7 [&:not(:first-child)]">{children}</p>;
+  return (
+    <p className="leading-7 text-base [&:not(:first-child)]">{children}</p>
+  );
 }
 
 export function TypographyBlockquote({
@@ -41,7 +43,7 @@ export function TypographyBlockquote({
   ...props
 }: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) {
   return (
-    <blockquote className="mt-6 border-l-2 pl-6 italic" {...props}>
+    <blockquote className="mt-6 border-l-2 pl-6 italic text-base" {...props}>
       {children}
     </blockquote>
   );
@@ -53,21 +55,27 @@ export function TypographyTable({
 }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
     <div className="my-4 w-full overflow-x-auto" {...props}>
-      <table className="w-full border-collapse">{children}</table>
+      <table className="w-full border-collapse text-base">{children}</table>
     </div>
   );
 }
 
 export function TypographyTh({ children }: { children: React.ReactNode }) {
-  return <th className="border px-4 py-2 text-left font-bold">{children}</th>;
+  return (
+    <th className="border px-4 py-2 text-left font-bold text-base">
+      {children}
+    </th>
+  );
 }
 
 export function TypographyTd({ children }: { children: React.ReactNode }) {
-  return <td className="border px-4 py-2 text-left">{children}</td>;
+  return <td className="border px-4 py-2 text-left text-base">{children}</td>;
 }
 
 export function TypographyTr({ children }: { children: React.ReactNode }) {
-  return <tr className="m-0 border-t p-0 even:bg-muted">{children}</tr>;
+  return (
+    <tr className="m-0 border-t p-0 even:bg-muted text-base">{children}</tr>
+  );
 }
 
 export function TypographyList({
@@ -78,11 +86,27 @@ export function TypographyList({
   const childrenArray = React.Children.toArray(children);
 
   return (
-    <ul className="my-2 ml-6 list-disc [&>li]:mt-2" {...props}>
+    <ul className="my-2 ml-6 list-disc [&>li]:mt-2 text-base" {...props}>
       {childrenArray.map((child, index) => (
         <React.Fragment key={index}>{child}</React.Fragment>
       ))}
     </ul>
+  );
+}
+
+export function TypographyOrderedList({
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLOListElement>) {
+  // Ensure children is always an array
+  const childrenArray = React.Children.toArray(children);
+
+  return (
+    <ol className="my-2 ml-6 list-decimal [&>li]:mt-2 text-base" {...props}>
+      {childrenArray.map((child, index) => (
+        <React.Fragment key={index}>{child}</React.Fragment>
+      ))}
+    </ol>
   );
 }
 
@@ -119,5 +143,5 @@ export function TypographyMuted({ children }: { children: React.ReactNode }) {
 }
 
 export function TypographyLi({ children }: { children: React.ReactNode }) {
-  return <li>{children}</li>;
+  return <li className="text-base">{children}</li>;
 }
