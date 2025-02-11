@@ -5,8 +5,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import AIOrbScene from "@/components/AiOrbScene";
 import { useOrgFromInviteToken } from "@/queries/queries";
+import Rhombicuboctahedron from "../rhombicuboctahedron";
 
 export default function JoinOrgHandler({ token }: { token: string }) {
   const { handleJoinOrg } = useAuth();
@@ -81,7 +81,7 @@ export default function JoinOrgHandler({ token }: { token: string }) {
             className="h-[75px] w-[75px] object-contain"
           />
         ) : (
-          <AIOrbScene height="75px" width="75px" isAnimating={true} />
+          <Rhombicuboctahedron size={155} />
         )}
 
         <div className="flex flex-col items-center w-[400px] gap-2">

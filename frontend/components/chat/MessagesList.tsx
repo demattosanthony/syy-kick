@@ -62,37 +62,39 @@ const MessageBubble = (
 import { Message } from "ai/react";
 import MarkdownViewer from "../MarkdownViewer";
 import { ThinkingDropdown } from "./ThinkingDropdown";
-import AIOrbScene from "../AiOrbScene";
 
 const AssistantMessage = (
   { message }: { message: Message } // Removed React.memo
-) => (
-  <div className="mb-4 flex flex-col justify-start">
-    <div className="flex gap-2">
-      <div className="flex-shrink-0 mt-[1px] mr-[2px]">
-        <AIOrbScene width="24px" height="24px" isAnimating={true} />
-      </div>
+) => {
+  return (
+    <div className="mb-4 flex flex-col justify-start">
+      <div className="flex gap-1">
+        <div className=" mr-[1px] w-[32px] h-[32px]">
+          <Rhombicuboctahedron size={32} />
+        </div>
 
-      <div
-        className="
-          max-w-full
-          md:max-w-[750px]
-          overflow-hidden
-          bg-background
-          break-words
-        "
-      >
-        {message.reasoning && (
-          <ThinkingDropdown>
-            <MarkdownViewer content={message.reasoning || ""} />
-          </ThinkingDropdown>
-        )}
+        <div
+          className="
+            max-w-full
+            md:max-w-[750px]
+            overflow-hidden
+            bg-background
+            break-words
+            mt-[1px]
+          "
+        >
+          {message.reasoning && (
+            <ThinkingDropdown>
+              <MarkdownViewer content={message.reasoning || ""} />
+            </ThinkingDropdown>
+          )}
 
-        <MarkdownViewer content={message.content || ""} />
+          <MarkdownViewer content={message.content || ""} />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 import ChatAttachment from "./ChatAttachment";
 
@@ -126,21 +128,24 @@ const UserMessage = ({ message }: { message: Message }) => {
   );
 };
 
-import { useEffect } from "react"; // Import useRef and useCallback
+import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
+import Rhombicuboctahedron from "../rhombicuboctahedron";
 
-const LoadingMessage = React.memo(() => (
-  <div className="flex gap-2 items-start mb-4">
-    <div className="flex-shrink-0 mt-1">
-      <AIOrbScene width="24px" height="24px" isAnimating={true} />
+const LoadingMessage = React.memo(() => {
+  return (
+    <div className="flex gap-2 items-start mb-4">
+      <div className="flex-shrink-0 mt-1 w-[24px] h-[24px]">
+        <Rhombicuboctahedron size={24} animate={true} />
+      </div>
+      <div className="flex items-center gap-1 text-muted-foreground mt-3">
+        <span className="animate-bounce">•</span>
+        <span className="animate-bounce delay-100">•</span>
+        <span className="animate-bounce delay-200">•</span>
+      </div>
     </div>
-    <div className="flex items-center gap-1 text-muted-foreground mt-3">
-      <span className="animate-bounce">•</span>
-      <span className="animate-bounce delay-100">•</span>
-      <span className="animate-bounce delay-200">•</span>
-    </div>
-  </div>
-));
+  );
+});
 LoadingMessage.displayName = "LoadingMessage";
 
 // Memo helps to prevent unnecessary re-renders. Fixes issue when lots of messages and user types in chat input form is laggy

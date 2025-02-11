@@ -38,7 +38,7 @@ export default function ThreadSearch() {
       <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4" />
       <Input
         type="search"
-        placeholder="Search conversations..."
+        placeholder="Search..."
         className="w-full pl-9 py-2 border-none bg-accent"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
