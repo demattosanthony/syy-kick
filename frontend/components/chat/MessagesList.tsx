@@ -71,7 +71,7 @@ const AssistantMessage = (
   return (
     <div className="mb-4 flex flex-col justify-start">
       <div className="flex gap-1">
-        <div className=" mr-[1px]">
+        <div className=" mr-[1px] w-[32px] h-[32px]">
           <STLViewer file={stlFile} size={32} />
         </div>
 
@@ -138,7 +138,7 @@ const LoadingMessage = React.memo(() => {
   const stlFile = useStlLoader();
   return (
     <div className="flex gap-2 items-start mb-4">
-      <div className="flex-shrink-0 mt-1">
+      <div className="flex-shrink-0 mt-1 w-[24px] h-[24px]">
         <STLViewer file={stlFile} size={24} />
       </div>
       <div className="flex items-center gap-1 text-muted-foreground mt-3">
