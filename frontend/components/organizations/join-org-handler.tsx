@@ -6,15 +6,13 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useOrgFromInviteToken } from "@/queries/queries";
-import { useStlLoader } from "@/app/(app)/page";
-import STLViewer from "../stl-viewer";
+import Rhombicuboctahedron from "../rhombicuboctahedron";
 
 export default function JoinOrgHandler({ token }: { token: string }) {
   const { handleJoinOrg } = useAuth();
   const router = useRouter();
   const [, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const stlFile = useStlLoader();
 
   // Query to fetch org details from the invite token
   const {
@@ -83,9 +81,7 @@ export default function JoinOrgHandler({ token }: { token: string }) {
             className="h-[75px] w-[75px] object-contain"
           />
         ) : (
-          <div className="flex-shrink-0">
-            <STLViewer file={stlFile} size={155} />
-          </div>
+          <Rhombicuboctahedron size={155} />
         )}
 
         <div className="flex flex-col items-center w-[400px] gap-2">

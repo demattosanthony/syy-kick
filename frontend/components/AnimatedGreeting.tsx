@@ -64,7 +64,7 @@ export function AnimatedGreeting({ name }: AnimatedGreetingProps) {
           </motion.span>
         </AnimatePresence>
       </h3>
-      <div className="text-lg md:text-xl font-normal text-center tracking-wide overflow-hidden">
+      <div className="text-lg font-normal text-center tracking-wide overflow-hidden">
         <AnimatePresence>
           <motion.span
             style={{

@@ -66,13 +66,11 @@ import { ThinkingDropdown } from "./ThinkingDropdown";
 const AssistantMessage = (
   { message }: { message: Message } // Removed React.memo
 ) => {
-  const stlFile = useStlLoader(); // Add the hook from page.tsx
-
   return (
     <div className="mb-4 flex flex-col justify-start">
       <div className="flex gap-1">
         <div className=" mr-[1px] w-[32px] h-[32px]">
-          <STLViewer file={stlFile} size={32} />
+          <Rhombicuboctahedron size={32} />
         </div>
 
         <div
@@ -82,6 +80,7 @@ const AssistantMessage = (
             overflow-hidden
             bg-background
             break-words
+            mt-[1px]
           "
         >
           {message.reasoning && (
@@ -129,17 +128,15 @@ const UserMessage = ({ message }: { message: Message }) => {
   );
 };
 
-import { useEffect } from "react"; // Import useRef and useCallback
+import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
-import { useStlLoader } from "@/app/(app)/page";
-import STLViewer from "../stl-viewer";
+import Rhombicuboctahedron from "../rhombicuboctahedron";
 
 const LoadingMessage = React.memo(() => {
-  const stlFile = useStlLoader();
   return (
     <div className="flex gap-2 items-start mb-4">
       <div className="flex-shrink-0 mt-1 w-[24px] h-[24px]">
-        <STLViewer file={stlFile} size={24} />
+        <Rhombicuboctahedron size={24} animate={true} />
       </div>
       <div className="flex items-center gap-1 text-muted-foreground mt-3">
         <span className="animate-bounce">•</span>

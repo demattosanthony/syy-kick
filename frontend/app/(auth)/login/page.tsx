@@ -8,8 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { useStlLoader } from "@/app/(app)/page";
-import STLViewer from "@/components/stl-viewer";
+import Rhombicuboctahedron from "@/components/rhombicuboctahedron";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,8 +47,6 @@ export default function LoginPage() {
     }
   };
 
-  const stlFile = useStlLoader();
-
   return (
     <div className="min-h-screen flex flex-col items-center px-4 py-12 h-full">
       <div className="absolute top-1 left-1">
@@ -71,9 +68,7 @@ export default function LoginPage() {
       <main className="flex flex-col gap-8 items-center w-full justify-center h-[75%]">
         {/** Title and description */}
         <div className="flex flex-col items-center w-[400px] gap-2">
-          <div className="flex-shrink-0">
-            <STLViewer file={stlFile} size={155} />
-          </div>
+          <Rhombicuboctahedron size={125} animate={false} />
 
           <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">
             Yo! Let&apos;s get started

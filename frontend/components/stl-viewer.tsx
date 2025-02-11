@@ -9,9 +9,11 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 export default function STLViewer({
   file,
   size,
+  animate = true,
 }: {
   file: File | null;
   size: number;
+  animate?: boolean;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export default function STLViewer({
       controls.rotateSpeed = 0.8;
       controls.zoomSpeed = 0.8;
       controls.enableZoom = false;
-      controls.autoRotate = true;
+      controls.autoRotate = animate;
       controls.autoRotateSpeed = 1.0;
 
       const loader = new STLLoader();
@@ -117,12 +119,12 @@ export default function STLViewer({
 
       reader.readAsArrayBuffer(file);
 
-      const animate = () => {
-        requestAnimationFrame(animate);
+      const animateFrame = () => {
+        requestAnimationFrame(animateFrame);
         controls.update();
         renderer.render(scene, camera);
       };
-      animate();
+      animateFrame();
 
       window.addEventListener("resize", handleResize);
     } catch (error) {
@@ -139,7 +141,7 @@ export default function STLViewer({
         controls.dispose();
       }
     };
-  }, [file, resolvedTheme]);
+  }, [file, resolvedTheme, animate]);
 
   return (
     <div className="flex relative h-full w-full">

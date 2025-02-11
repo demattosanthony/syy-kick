@@ -9,8 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import api from "@/lib/api";
 import { Label } from "../ui/label";
 import { PRICING_PLANS } from "@/lib/pricing";
-import { useStlLoader } from "@/app/(app)/page";
-import STLViewer from "../stl-viewer";
 
 interface CreateOrgFormProps {
   onComplete?: (org: { id: string; seats: number }) => void;
@@ -114,8 +112,6 @@ export function CreateOrgForm({
     }
   };
 
-  const stlFile = useStlLoader();
-
   return (
     <main className="flex flex-col gap-6 items-center w-full">
       {showBackButton && (
@@ -127,9 +123,7 @@ export function CreateOrgForm({
       )}
 
       <div className="flex flex-col items-center">
-        <div className="flex-shrink-0">
-          <STLViewer file={stlFile} size={125} />
-        </div>
+        {/* <Rhombicuboctahedron size={85} animate={false} /> */}
 
         <div className="flex flex-col items-center w-[400px] gap-2 mt-4">
           <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">

@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import { useAtom } from "jotai";
 import { useMeQuery } from "@/queries/queries";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 
 // Components
 import ConversationStarters from "@/components/ConversationStarters";
@@ -22,26 +22,7 @@ import ChatInputForm, {
 } from "@/components/chat/ChatInputForm";
 import { initalInputAtom } from "@/atoms/chat";
 import { useWorkspace } from "@/components/sidebar/workspace-context";
-import STLViewer from "@/components/stl-viewer";
-
-export function useStlLoader() {
-  const [stlFile, setStlFile] = useState<File | null>(null);
-
-  function loadFile() {
-    const path = "/Rhombicuboctahedron.stl";
-    fetch(path)
-      .then((response) => response.blob())
-      .then((blob) => {
-        setStlFile(new File([blob], "Rhombicuboctahedron.stl"));
-      });
-  }
-
-  useEffect(() => {
-    loadFile();
-  }, []);
-
-  return stlFile;
-}
+import Rhombicuboctahedron from "@/components/rhombicuboctahedron";
 
 export default function Home() {
   const router = useRouter();
@@ -92,8 +73,6 @@ export default function Home() {
     }
   };
 
-  const stlFile = useStlLoader();
-
   return (
     <>
       <InstallPrompt />
@@ -107,9 +86,9 @@ export default function Home() {
         ) && <PricingDialog />}
 
       <div className="w-full flex flex-1 items-center justify-center">
-        <div className="flex flex-col h-[65%] md:h-[50%] items-center w-full ">
+        <div className="flex flex-col h-[65%] md:h-[55%] items-center w-full ">
           <div className="mb-2 w-[155px] flex items-center justify-center">
-            {stlFile && <STLViewer file={stlFile} size={155} />}
+            <Rhombicuboctahedron size={155} />
           </div>
 
           <div className="flex flex-col gap-6">
