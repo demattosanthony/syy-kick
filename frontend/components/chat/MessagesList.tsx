@@ -62,7 +62,6 @@ const MessageBubble = (
 import { Message } from "ai/react";
 import MarkdownViewer from "../MarkdownViewer";
 import { ThinkingDropdown } from "./ThinkingDropdown";
-import AIOrbScene from "../AiOrbScene";
 
 const AssistantMessage = (
   { message }: { message: Message } // Removed React.memo
@@ -135,18 +134,21 @@ import { MessageRole } from "@/types/chat";
 import { useStlLoader } from "@/app/(app)/page";
 import STLViewer from "../stl-viewer";
 
-const LoadingMessage = React.memo(() => (
-  <div className="flex gap-2 items-start mb-4">
-    <div className="flex-shrink-0 mt-1">
-      <AIOrbScene width="24px" height="24px" isAnimating={true} />
+const LoadingMessage = React.memo(() => {
+  const stlFile = useStlLoader();
+  return (
+    <div className="flex gap-2 items-start mb-4">
+      <div className="flex-shrink-0 mt-1">
+        <STLViewer file={stlFile} size={24} />
+      </div>
+      <div className="flex items-center gap-1 text-muted-foreground mt-3">
+        <span className="animate-bounce">•</span>
+        <span className="animate-bounce delay-100">•</span>
+        <span className="animate-bounce delay-200">•</span>
+      </div>
     </div>
-    <div className="flex items-center gap-1 text-muted-foreground mt-3">
-      <span className="animate-bounce">•</span>
-      <span className="animate-bounce delay-100">•</span>
-      <span className="animate-bounce delay-200">•</span>
-    </div>
-  </div>
-));
+  );
+});
 LoadingMessage.displayName = "LoadingMessage";
 
 // Memo helps to prevent unnecessary re-renders. Fixes issue when lots of messages and user types in chat input form is laggy

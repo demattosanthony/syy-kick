@@ -7,7 +7,6 @@ import { ArrowLeft, ArrowRight, Camera, Minus, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import api from "@/lib/api";
-import AIOrbScene from "@/components/AiOrbScene";
 import { Label } from "../ui/label";
 import { PRICING_PLANS } from "@/lib/pricing";
 import { useStlLoader } from "@/app/(app)/page";

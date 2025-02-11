@@ -20,14 +20,14 @@ export function AnimatedGreeting({ name }: AnimatedGreetingProps) {
   };
 
   const greetingText = name ? `${getGreeting()}, ${name}` : getGreeting();
-  const assistText = "How can I assist you today?";
+  const assistText = "What's your next challenge?";
 
   useEffect(() => {
     setIsAnimated(true);
   }, [setIsAnimated]);
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col gal-1 items-center">
       <h3
         className="scroll-m-20 text-3xl md:text-5xl font-medium text-center tracking-wide overflow-hidden"
         aria-label={greetingText}

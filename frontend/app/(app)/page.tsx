@@ -108,11 +108,11 @@ export default function Home() {
 
       <div className="w-full flex flex-1 items-center justify-center">
         <div className="flex flex-col h-[65%] md:h-[50%] items-center w-full ">
-          <div className="mb-4 w-[150px] flex items-center justify-center">
+          <div className="mb-2 w-[150px] flex items-center justify-center">
             {stlFile && <STLViewer file={stlFile} size={150} />}
           </div>
 
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-6">
             <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
 
             <ConversationStarters

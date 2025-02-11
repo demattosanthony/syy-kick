@@ -7,7 +7,6 @@ import { ArrowLeft, ArrowRight, Key } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import AIOrbScene from "@/components/AiOrbScene";
 import Image from "next/image";
 import { useStlLoader } from "@/app/(app)/page";
 import STLViewer from "@/components/stl-viewer";
@@ -70,8 +69,6 @@ export default function LoginPage() {
       </div>
 
       <main className="flex flex-col gap-8 items-center w-full justify-center h-[75%]">
-        {/* <AIOrbScene height="75px" width="75px" isAnimating={true} /> */}
-
         {/** Title and description */}
         <div className="flex flex-col items-center w-[400px] gap-2">
           <div className="flex-shrink-0">
