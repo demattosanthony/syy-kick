@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Yo",
     short_name: "Yo",
-    description: "Your AI",
+    description: "Yo",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
@@ -12,13 +12,8 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     icons: [
       {
-        src: "/YO_192.png",
-        sizes: "192x192",
-        type: "image/png",
-      },
-      {
-        src: "/YO_512.png",
-        sizes: "512x512",
+        src: "/app-icon-180.png",
+        sizes: "180x180",
         type: "image/png",
       },
     ],

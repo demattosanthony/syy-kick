@@ -7,7 +7,6 @@ import { ArrowLeft, ArrowRight, Camera, Minus, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import api from "@/lib/api";
-import AIOrbScene from "@/components/AiOrbScene";
 import { Label } from "../ui/label";
 import { PRICING_PLANS } from "@/lib/pricing";
 
@@ -124,7 +123,7 @@ export function CreateOrgForm({
       )}
 
       <div className="flex flex-col items-center">
-        <AIOrbScene height="75px" width="75px" isAnimating />
+        {/* <Rhombicuboctahedron size={85} animate={false} /> */}
 
         <div className="flex flex-col items-center w-[400px] gap-2 mt-4">
           <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">

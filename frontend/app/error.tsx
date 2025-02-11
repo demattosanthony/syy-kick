@@ -1,13 +1,13 @@
 "use client";
 
-import AIOrbScene from "@/components/AiOrbScene";
 import { Button } from "@/components/ui/button";
+import Rhombicuboctahedron from "@/components/rhombicuboctahedron";
 
 export default function ErrorPage() {
   return (
     <div className="h-[90%] flex items-center justify-center p-4">
       <div className="text-center space-y-4 items-center flex flex-col">
-        <AIOrbScene width="75px" height="75px" />
+        <Rhombicuboctahedron size={125} />
         <h1 className="text-4xl font-bold text-primary">
           Site Under Construction
         </h1>
