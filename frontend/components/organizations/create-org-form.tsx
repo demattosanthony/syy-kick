@@ -10,6 +10,8 @@ import api from "@/lib/api";
 import AIOrbScene from "@/components/AiOrbScene";
 import { Label } from "../ui/label";
 import { PRICING_PLANS } from "@/lib/pricing";
+import { useStlLoader } from "@/app/(app)/page";
+import STLViewer from "../stl-viewer";
 
 interface CreateOrgFormProps {
   onComplete?: (org: { id: string; seats: number }) => void;
@@ -113,6 +115,8 @@ export function CreateOrgForm({
     }
   };
 
+  const stlFile = useStlLoader();
+
   return (
     <main className="flex flex-col gap-6 items-center w-full">
       {showBackButton && (
@@ -124,7 +128,9 @@ export function CreateOrgForm({
       )}
 
       <div className="flex flex-col items-center">
-        <AIOrbScene height="75px" width="75px" isAnimating />
+        <div className="flex-shrink-0">
+          <STLViewer file={stlFile} size={125} />
+        </div>
 
         <div className="flex flex-col items-center w-[400px] gap-2 mt-4">
           <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">

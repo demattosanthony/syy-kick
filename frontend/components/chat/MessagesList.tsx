@@ -66,33 +66,37 @@ import AIOrbScene from "../AiOrbScene";
 
 const AssistantMessage = (
   { message }: { message: Message } // Removed React.memo
-) => (
-  <div className="mb-4 flex flex-col justify-start">
-    <div className="flex gap-2">
-      <div className="flex-shrink-0 mt-[1px] mr-[2px]">
-        <AIOrbScene width="24px" height="24px" isAnimating={true} />
-      </div>
+) => {
+  const stlFile = useStlLoader(); // Add the hook from page.tsx
 
-      <div
-        className="
-          max-w-full
-          md:max-w-[750px]
-          overflow-hidden
-          bg-background
-          break-words
-        "
-      >
-        {message.reasoning && (
-          <ThinkingDropdown>
-            <MarkdownViewer content={message.reasoning || ""} />
-          </ThinkingDropdown>
-        )}
+  return (
+    <div className="mb-4 flex flex-col justify-start">
+      <div className="flex gap-1">
+        <div className=" mr-[1px]">
+          <STLViewer file={stlFile} size={32} />
+        </div>
 
-        <MarkdownViewer content={message.content || ""} />
+        <div
+          className="
+            max-w-full
+            md:max-w-[750px]
+            overflow-hidden
+            bg-background
+            break-words
+          "
+        >
+          {message.reasoning && (
+            <ThinkingDropdown>
+              <MarkdownViewer content={message.reasoning || ""} />
+            </ThinkingDropdown>
+          )}
+
+          <MarkdownViewer content={message.content || ""} />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 import ChatAttachment from "./ChatAttachment";
 
@@ -128,6 +132,8 @@ const UserMessage = ({ message }: { message: Message }) => {
 
 import { useEffect } from "react"; // Import useRef and useCallback
 import { MessageRole } from "@/types/chat";
+import { useStlLoader } from "@/app/(app)/page";
+import STLViewer from "../stl-viewer";
 
 const LoadingMessage = React.memo(() => (
   <div className="flex gap-2 items-start mb-4">
