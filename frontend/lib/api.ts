@@ -15,7 +15,7 @@ class ApiRequest {
 
   protected async request<T>(
     endpoint: string,
-    method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
+    method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" = "GET",
     body?: unknown,
     headers?: HeadersInit
   ): Promise<T> {
@@ -508,6 +508,16 @@ class ProjectsApi extends ApiRequest {
       `/projects/${projectId}/files?path=${path}`,
       "DELETE"
     );
+  }
+
+  async updateProject(
+    projectId: string,
+    data: {
+      name?: string;
+      description?: string;
+    }
+  ): Promise<Project> {
+    return await this.request(`/projects/${projectId}`, "PATCH", data);
   }
 }
 

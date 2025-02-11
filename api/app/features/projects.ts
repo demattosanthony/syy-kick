@@ -20,6 +20,11 @@ const schemas = {
     .refine((data) => data.organizationId || data.userId, {
       message: "Either organizationId or userId must be provided",
     }),
+
+  updateProject: z.object({
+    name: z.string().min(1).max(255).optional(),
+    description: z.string().max(255).optional(),
+  }),
 };
 
 function toGitSafeName(name: string): string {
@@ -256,6 +261,37 @@ async function deleteProjectContent(projectId: string, path: string) {
   return true;
 }
 
+async function updateProject(
+  projectId: string,
+  data: z.infer<typeof schemas.updateProject>
+) {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  });
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  const updatedProject = await db
+    .update(projects)
+    .set({
+      name: data.name || project.name,
+      description: data.description ?? project.description,
+    })
+    .where(eq(projects.id, projectId))
+    .returning()
+    .then((res) => res[0]);
+
+  // Update git repo
+  await gitea.repos.repoEdit("admin", toGitSafeName(project.name), {
+    name: toGitSafeName(updatedProject.name),
+    description: updatedProject.description ?? undefined,
+  });
+
+  return updatedProject;
+}
+
 const handlers = {
   createProject: async (req: Request, res: Response) => {
     const data = {
@@ -321,11 +357,19 @@ const handlers = {
     await deleteProjectContent(projectId, decodeURIComponent(path as string));
     res.json({ success: true });
   },
+
+  updateProject: async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const validatedData = schemas.updateProject.parse(req.body);
+    const project = await updateProject(projectId, validatedData);
+    res.json(project);
+  },
 };
 
 export default Router()
   .post("/", handlers.createProject)
   .get("/", handlers.listProjects)
+  .patch("/:projectId", handlers.updateProject)
   .get("/:projectId", handlers.getProject)
   .delete("/:projectId", handlers.deleteProject)
   .post("/:projectId/files", upload.single("file"), handlers.uploadFile)

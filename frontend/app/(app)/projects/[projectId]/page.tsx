@@ -11,11 +11,13 @@ import { useParams } from "next/navigation";
 import {
   useProjectFilesQuery,
   useProjectQuery,
+  useUpdateProjectMutation,
   useUploadFileMutation,
 } from "@/queries/queries";
 import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectFileExplorer from "@/components/projects/project-file-explorer";
+import { InlineEdit } from "@/components/inline-edit";
 
 export default function ProjectPage() {
   const { projectId } = useParams();
@@ -71,6 +73,15 @@ export default function ProjectPage() {
     }
   };
 
+  const updateProject = useUpdateProjectMutation();
+
+  const handleUpdateName = async (newName: string) => {
+    await updateProject.mutateAsync({
+      projectId: projectId as string,
+      data: { name: newName },
+    });
+  };
+
   return (
     <div className="flex flex-col items-center max-w-3xl w-full">
       {/* Project Header */}
@@ -83,7 +94,12 @@ export default function ProjectPage() {
                 <AvatarFallback>{project?.name[0]}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col gap-1">
-                <h1 className="text-2xl font-bold">{project?.name}</h1>
+                <h1 className="text-2xl font-bold">
+                  <InlineEdit
+                    value={project?.name || ""}
+                    onSave={handleUpdateName}
+                  />
+                </h1>
                 <span className="text-sm text-muted-foreground">
                   {project?.description}
                 </span>

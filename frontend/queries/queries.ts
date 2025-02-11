@@ -314,3 +314,23 @@ export function useDeleteProjectContentMutation() {
     },
   });
 }
+
+export function useUpdateProjectMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      data,
+    }: {
+      projectId: string;
+      data: { name?: string; description?: string };
+    }) => api.projects.updateProject(projectId, data),
+    onSuccess: (_, { projectId }) => {
+      // Invalidate the specific project query
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      // Invalidate the projects list
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
