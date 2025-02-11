@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, FolderClosed, FileUp } from "lucide-react";
+import { Plus, FolderClosed, FileUp, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { useParams } from "next/navigation";
 import {
+  useProjectFileQuery,
   useProjectFilesQuery,
   useProjectQuery,
   useUpdateProjectMutation,
@@ -19,6 +20,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectFileExplorer from "@/components/projects/project-file-explorer";
 import { InlineEdit } from "@/components/inline-edit";
 import { Card, CardContent } from "@/components/ui/card";
+import { ReadmeSection } from "@/components/projects/readme-section";
+import { Input } from "@/components/ui/input";
 
 export default function ProjectPage() {
   const { projectId } = useParams();
@@ -84,49 +87,58 @@ export default function ProjectPage() {
     });
   };
 
+  const { data: readmeFile } = useProjectFileQuery(
+    projectId as string,
+    "README.md"
+  );
+
   return (
     <div className="flex flex-col items-center max-w-3xl w-full">
       {/* Project Header */}
-      <header className="border-b w-full">
+      <div className="border-b w-full">
         <div className="container py-6 px-6 flex items-center justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Avatar>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-3 flex-1">
+              <Avatar className="h-8 w-8">
                 <AvatarImage src={logo} />
                 <AvatarFallback>{project?.name[0]}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col gap-1">
-                <h1 className="text-2xl font-bold">
+                <h2 className="text-2xl font-bold">
                   {project?.name}
                   {/* <InlineEdit
                     value={project?.name || ""}
                     onSave={handleUpdateName}
                   /> */}
-                </h1>
+                </h2>
                 <span className="text-sm text-muted-foreground">
                   {project?.description}
                 </span>
               </div>
             </div>
-          </div>
 
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex-1 flex items-center gap-2">
+            <div className="flex gap-2">
+              <Input placeholder="Search files" className="w-60" />
+
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4" />
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className="px-2 gap-1"
+                  >
+                    <Plus className="h-3 w-3" />
                     Add file
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-48 p-2">
+                <PopoverContent className="w-48 p-1">
                   <div className="flex flex-col gap-1">
                     <Button
                       variant="ghost"
                       className="w-full justify-start gap-2 text-sm"
                     >
                       <label className="flex items-center gap-2 cursor-pointer w-full">
-                        <FolderClosed className="h-4 w-4" />
+                        <FolderClosed className="h-5 w-5 fill-blue-400 text-blue-400" />
                         <input
                           type="file"
                           webkitdirectory=""
@@ -146,11 +158,11 @@ export default function ProjectPage() {
                       />
                       <Button
                         variant="ghost"
-                        className="w-full justify-start gap-2 text-sm"
+                        className="w-full justify-start gap-2 text-sm cursor-pointer"
                         asChild
                       >
                         <span>
-                          <FileUp className="h-4 w-4" />
+                          <File className="h-4 w-4 text-muted-foreground" />
                           Upload files
                         </span>
                       </Button>
@@ -161,9 +173,9 @@ export default function ProjectPage() {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      <Card className="w-full mt-4 shadow-none">
+      <Card className="w-full mt-4 shadow-none mb-4">
         <CardContent className="p-2">
           <ProjectFileExplorer
             contents={projectContents || []}
@@ -172,6 +184,8 @@ export default function ProjectPage() {
           />
         </CardContent>
       </Card>
+
+      <ReadmeSection content={readmeFile?.content || ""} />
 
       {/* <div className="w-full flex items-center justify-center mx-auto p-6 pb-8 md:pb-4 md:p-2">
         <ChatInputForm

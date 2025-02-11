@@ -79,8 +79,6 @@ function FileExplorerItem({
 
   const deleteProjectContentMutation = useDeleteProjectContentMutation();
 
-  if (item.name === "README.md") return null;
-
   const getFileIcon = (filename: string) => {
     const ext = filename.split(".").pop()?.toLowerCase();
     switch (ext) {

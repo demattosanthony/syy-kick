@@ -334,3 +334,10 @@ export function useUpdateProjectMutation() {
     },
   });
 }
+
+export function useProjectFileQuery(projectId: string, path: string) {
+  return useQuery({
+    queryKey: ["project-file", projectId, path],
+    queryFn: () => api.projects.getFileContent(projectId, path),
+  });
+}
