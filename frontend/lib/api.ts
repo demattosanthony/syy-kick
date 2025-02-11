@@ -519,6 +519,23 @@ class ProjectsApi extends ApiRequest {
   ): Promise<Project> {
     return await this.request(`/projects/${projectId}`, "PATCH", data);
   }
+
+  async getFileContent(projectId: string, path: string): Promise<FileResponse> {
+    return await this.request(
+      `/projects/${projectId}/files/content?path=${path}`
+    );
+  }
+}
+
+export interface FileResponse {
+  name: string;
+  path: string;
+  size: number;
+  type: "text" | "pdf" | "image" | "binary";
+  sha: string;
+  content?: string;
+  viewUrl?: string;
+  downloadUrl?: string;
 }
 
 /**

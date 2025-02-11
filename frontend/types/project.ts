@@ -17,5 +17,6 @@ export interface ProjectContent {
   name: string;
   path: string;
   sha: string;
+  lastModified: string;
   type: "file" | "dir";
 }

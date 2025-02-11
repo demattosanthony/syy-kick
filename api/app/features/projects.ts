@@ -208,7 +208,48 @@ async function getProjectFiles(projectId: string, path: string = "") {
 
     // gitea.repos.repoGetContents()
 
-    return contents.data;
+    // If the path points to a directory, iterate over each file.
+    if (Array.isArray(contents.data)) {
+      // Parallelize metadata fetching using Promise.all.
+      const filesWithMetadata = await Promise.all(
+        contents.data.map(async (file: any) => {
+          // Fetch the commit history for this file, limiting to the latest commit.
+          const commitResponse = await gitea.repos.repoGetAllCommits(
+            "admin",
+            repoName,
+            {
+              path: file.path,
+              page: 1,
+              limit: 1,
+            }
+          );
+          if (commitResponse.data && commitResponse.data.length > 0) {
+            // Assuming the commit object contains committer info with a date.
+            file.lastModified = commitResponse.data[0].commit?.committer?.date;
+          }
+          return file;
+        })
+      );
+      return filesWithMetadata;
+    } else {
+      // It's a single file. Fetch its commit metadata.
+      const commitResponse = await gitea.repos.repoGetAllCommits(
+        "admin",
+        repoName,
+        {
+          path: contents.data.path,
+          page: 1,
+          limit: 1,
+        }
+      );
+      if (commitResponse.data && commitResponse.data.length > 0) {
+        if (commitResponse.data && commitResponse.data.length > 0) {
+          (contents.data as any).lastModified =
+            commitResponse.data[0].commit?.committer?.date;
+        }
+      }
+      return contents.data;
+    }
   } catch (error) {
     throw new Error("Failed to fetch repository contents");
   }
@@ -292,6 +333,93 @@ async function updateProject(
   return updatedProject;
 }
 
+// Helper to determine file type
+function getFileType(filename: string): "text" | "pdf" | "image" | "binary" {
+  const extension = filename.toLowerCase().split(".").pop();
+
+  const textExtensions = [
+    "txt",
+    "md",
+    "js",
+    "ts",
+    "json",
+    "yaml",
+    "yml",
+    "css",
+    "html",
+    "sh",
+  ];
+  const imageExtensions = ["jpg", "jpeg", "png", "gif", "svg", "webp"];
+
+  if (textExtensions.includes(extension!)) return "text";
+  if (extension === "pdf") return "pdf";
+  if (imageExtensions.includes(extension!)) return "image";
+  return "binary";
+}
+
+async function getFileContent(projectId: string, path: string) {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  });
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  const repoName = toGitSafeName(project.name);
+
+  const response = await gitea.repos.repoGetContents("admin", repoName, path, {
+    ref: "main",
+  });
+
+  if (Array.isArray(response.data)) {
+    throw new Error("Path points to a directory, not a file");
+  }
+
+  if (!response.data.name) {
+    throw new Error("File name is missing");
+  }
+
+  const fileType = getFileType(response.data.name);
+
+  // Base response structure
+  const baseResponse = {
+    name: response.data.name,
+    path: response.data.path,
+    size: response.data.size,
+    type: fileType,
+    sha: response.data.sha,
+  };
+
+  console.log(`base response: ${baseResponse}`);
+
+  // For text files
+  if (fileType === "text" && response.data.content) {
+    return {
+      ...baseResponse,
+      content: Buffer.from(response.data.content, "base64").toString("utf-8"),
+    };
+  }
+
+  // For PDFs and images, return a temporary URL
+  if (fileType === "pdf" || fileType === "image") {
+    return {
+      ...baseResponse,
+      viewUrl: `http://localhost:4000/projects/${projectId}/files/view?path=${encodeURIComponent(
+        path
+      )}`,
+    };
+  }
+
+  // For other binary files, return a download URL
+  return {
+    ...baseResponse,
+    downloadUrl: `/api/projects/${projectId}/files/download?path=${encodeURIComponent(
+      path
+    )}`,
+  };
+}
+
 const handlers = {
   createProject: async (req: Request, res: Response) => {
     const data = {
@@ -364,6 +492,85 @@ const handlers = {
     const project = await updateProject(projectId, validatedData);
     res.json(project);
   },
+
+  getFile: async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const { path } = req.query;
+    const file = await getFileContent(
+      projectId,
+      decodeURIComponent(path as string)
+    );
+    res.json(file);
+  },
+
+  viewFile: async function viewFile(req: Request, res: Response) {
+    const { projectId } = req.params;
+    const { path } = req.query;
+
+    if (!path || typeof path !== "string") {
+      throw new Error("Path is required");
+    }
+
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
+    });
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    const repoName = toGitSafeName(project.name);
+    const fileType = getFileType(path);
+    const fileName = path.split("/").pop() || "file";
+
+    const giteaToken = process.env.GITEA_API_KEY;
+    if (!giteaToken) {
+      throw new Error("GITEA_TOKEN is not set");
+    }
+
+    // Append the token in the query string so Gitea considers the user as signed in.
+    const url = `http://localhost:4002/api/v1/repos/admin/${repoName}/raw/${encodeURIComponent(
+      path
+    )}?ref=main&token=${giteaToken}`;
+
+    const response = await fetch(url, {
+      headers: {
+        Accept: "*/*",
+      },
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(
+        "Error fetching file:",
+        response.status,
+        response.statusText,
+        errText
+      );
+      throw new Error("Failed to fetch file");
+    }
+
+    // Copy all headers from the response
+    for (const [key, value] of response.headers) {
+      res.setHeader(key, value);
+    }
+
+    // Override Content headers based on file type.
+    if (fileType === "pdf") {
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    } else if (fileType === "image") {
+      res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+    } else {
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}"`
+      );
+    }
+
+    // Pipe the response body to the client using Node's stream converter
+    const { Readable } = require("stream");
+    Readable.fromWeb(response.body).pipe(res);
+  },
 };
 
 export default Router()
@@ -374,4 +581,6 @@ export default Router()
   .delete("/:projectId", handlers.deleteProject)
   .post("/:projectId/files", upload.single("file"), handlers.uploadFile)
   .get("/:projectId/files", handlers.getFiles)
-  .delete("/:projectId/files", handlers.deleteContents);
+  .delete("/:projectId/files", handlers.deleteContents)
+  .get("/:projectId/files/content", handlers.getFile)
+  .get("/:projectId/files/view", handlers.viewFile);

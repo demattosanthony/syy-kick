@@ -18,13 +18,15 @@ import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectFileExplorer from "@/components/projects/project-file-explorer";
 import { InlineEdit } from "@/components/inline-edit";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function ProjectPage() {
   const { projectId } = useParams();
 
   const { data: project } = useProjectQuery(projectId as string);
 
-  const { data: projectContents } = useProjectFilesQuery(projectId as string);
+  const { data: projectContents, isLoading: projectContentsIsLoading } =
+    useProjectFilesQuery(projectId as string);
 
   const uploadMutation = useUploadFileMutation();
 
@@ -95,10 +97,11 @@ export default function ProjectPage() {
               </Avatar>
               <div className="flex flex-col gap-1">
                 <h1 className="text-2xl font-bold">
-                  <InlineEdit
+                  {project?.name}
+                  {/* <InlineEdit
                     value={project?.name || ""}
                     onSave={handleUpdateName}
-                  />
+                  /> */}
                 </h1>
                 <span className="text-sm text-muted-foreground">
                   {project?.description}
@@ -160,12 +163,15 @@ export default function ProjectPage() {
         </div>
       </header>
 
-      <div className="border rounded-lg w-[80%] mt-4 ">
-        <ProjectFileExplorer
-          contents={projectContents || []}
-          projectId={project?.id || ""}
-        />
-      </div>
+      <Card className="w-full mt-4 shadow-none">
+        <CardContent className="p-2">
+          <ProjectFileExplorer
+            contents={projectContents || []}
+            projectId={project?.id || ""}
+            isLoading={projectContentsIsLoading}
+          />
+        </CardContent>
+      </Card>
 
       {/* <div className="w-full flex items-center justify-center mx-auto p-6 pb-8 md:pb-4 md:p-2">
         <ChatInputForm
