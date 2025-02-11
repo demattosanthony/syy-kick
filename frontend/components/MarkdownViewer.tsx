@@ -17,6 +17,7 @@ import {
   TypographyList,
   TypographyLi,
   TypographyInlineCode,
+  TypographyOrderedList,
 } from "./Typography";
 import { Check, Copy } from "lucide-react";
 import { Button } from "./ui/button";
@@ -107,7 +108,9 @@ const MarkdownViewer: React.FC<{ content: string }> = ({ content }) => {
           th: ({ children }) => <TypographyTh>{children}</TypographyTh>,
           td: ({ children }) => <TypographyTd>{children}</TypographyTd>,
           ul: ({ children }) => <TypographyList>{children}</TypographyList>,
-          ol: ({ children }) => <TypographyList>{children}</TypographyList>,
+          ol: ({ children }) => (
+            <TypographyOrderedList>{children}</TypographyOrderedList>
+          ),
           li: ({ children }) => <TypographyLi>{children}</TypographyLi>,
           code: ({ className, children }) => (
             <CodeBlock className={className}>{children}</CodeBlock>

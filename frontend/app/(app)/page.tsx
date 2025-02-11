@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 import { useRef } from "react";
 
 // Components
-import AIOrbScene from "@/components/AiOrbScene";
 import ConversationStarters from "@/components/ConversationStarters";
 import {
   PricingDialog,
@@ -23,6 +22,7 @@ import ChatInputForm, {
 } from "@/components/chat/ChatInputForm";
 import { initalInputAtom } from "@/atoms/chat";
 import { useWorkspace } from "@/components/sidebar/workspace-context";
+import Rhombicuboctahedron from "@/components/rhombicuboctahedron";
 
 export default function Home() {
   const router = useRouter();
@@ -86,12 +86,12 @@ export default function Home() {
         ) && <PricingDialog />}
 
       <div className="w-full flex flex-1 items-center justify-center">
-        <div className="flex flex-col h-[80%] md:h-[65%] items-center w-full ">
-          <div className="mb-6 w-[400px] flex items-center justify-center">
-            <AIOrbScene />
+        <div className="flex flex-col h-[65%] md:h-[55%] items-center w-full ">
+          <div className="mb-2 w-[155px] flex items-center justify-center">
+            <Rhombicuboctahedron size={155} />
           </div>
 
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-6">
             <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
 
             <ConversationStarters
