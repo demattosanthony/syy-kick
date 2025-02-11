@@ -44,7 +44,7 @@ export default function Header({ user }: { user: User | null }) {
 
           <HeaderActions>
             <div className="order-1 md:order-none">
-              <ModelSelector />
+              {/* <ModelSelector /> */}
             </div>
           </HeaderActions>
         </div>

@@ -135,8 +135,8 @@ import Rhombicuboctahedron from "../rhombicuboctahedron";
 const LoadingMessage = React.memo(() => {
   return (
     <div className="flex gap-2 items-start mb-4">
-      <div className="flex-shrink-0 mt-1 w-[24px] h-[24px]">
-        <Rhombicuboctahedron size={24} animate={true} />
+      <div className="flex-shrink-0 mt-1 w-[32px] h-[32px]">
+        <Rhombicuboctahedron size={32} animate={true} />
       </div>
       <div className="flex items-center gap-1 text-muted-foreground mt-3">
         <span className="animate-bounce">•</span>

@@ -22,6 +22,7 @@ import { InlineEdit } from "@/components/inline-edit";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReadmeSection } from "@/components/projects/readme-section";
 import { Input } from "@/components/ui/input";
+import ChatInputForm from "@/components/chat/ChatInputForm";
 
 export default function ProjectPage() {
   const { projectId } = useParams();
@@ -232,6 +233,15 @@ export default function ProjectPage() {
           </div>
         </div>
       </div> */}
+
+      <div className="w-full flex items-center justify-center mx-auto p-6 pb-8 md:pb-4 md:p-2 absolute bottom-0 left-0 right-0">
+        <ChatInputForm
+          input={""}
+          setInput={() => {}}
+          handleInputChange={() => {}}
+          onSubmit={() => {}}
+        />
+      </div>
     </div>
   );
 }
