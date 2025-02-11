@@ -21,7 +21,7 @@ export default function JoinOrgHandler({ token }: { token: string }) {
     error: fetchOrgError,
   } = useOrgFromInviteToken(token);
 
-  const handleJoin = async () => {
+  const handleJoin = async (provider: "google" | "microsoft") => {
     setIsLoading(true);
     setError("");
 
@@ -29,7 +29,7 @@ export default function JoinOrgHandler({ token }: { token: string }) {
       const result = await handleJoinOrg(token);
       if (result.requiresAuth) {
         // Redirect to Google login with invite token as state parameter
-        window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google?state=${token}`;
+        window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/${provider}?state=${token}`;
         return;
       }
       if (result.insufficientSeats) {
@@ -102,7 +102,7 @@ export default function JoinOrgHandler({ token }: { token: string }) {
         <div className="flex flex-col gap-4">
           <Button
             className="font-semibold w-[320px] flex justify-start h-[50px]"
-            onClick={handleJoin}
+            onClick={() => handleJoin("google")}
             variant="outline"
           >
             <img
@@ -111,6 +111,14 @@ export default function JoinOrgHandler({ token }: { token: string }) {
               className="h-5 w-5 mr-1"
             />
             Continue with Google
+          </Button>
+          <Button
+            className="font-semibold w-[320px] flex justify-start h-[50px]"
+            onClick={() => handleJoin("microsoft")}
+            variant="outline"
+          >
+            <img src="/logos/msft.svg" alt="msft" className="h-5 w-5 mr-1" />
+            Continue with Microsoft
           </Button>
         </div>
       </main>

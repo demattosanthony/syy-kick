@@ -134,6 +134,13 @@
       "when": 1739043512390,
       "tag": "0018_fantastic_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1739214671478,
+      "tag": "0019_futuristic_shocker",
+      "breakpoints": true
     }
   ]
 }

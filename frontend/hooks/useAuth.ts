@@ -29,6 +29,13 @@ export const useAuth = () => {
     `);
   };
 
+  const handleMicrosoftLogin = () => {
+    router.push(`${
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+    }/auth/microsoft 
+    `);
+  };
+
   const handleSSOLogin = (slug: string) => {
     router.push(`${
       process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
@@ -103,5 +110,11 @@ export const useAuth = () => {
     }
   }, [queryClient]);
 
-  return { logOut, handleGoogleLogin, handleSSOLogin, handleJoinOrg };
+  return {
+    logOut,
+    handleGoogleLogin,
+    handleSSOLogin,
+    handleJoinOrg,
+    handleMicrosoftLogin,
+  };
 };
