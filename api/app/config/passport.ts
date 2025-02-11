@@ -1,10 +1,87 @@
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as MicrosoftStrategy } from "passport-microsoft";
 import { Strategy as SamlStrategy, VerifiedCallback } from "passport-saml";
 import passport from "passport";
 import db from "./db";
 import { eq, sql } from "drizzle-orm";
 import { organizationMembers, organizations, users } from "./schema";
-import { NextFunction, Response, Request } from "express";
+import s3 from "./s3";
+import { NextFunction, Request, Response } from "express";
+
+async function findOrCreateUser(
+  profile: any,
+  provider: "google" | "microsoft",
+  providerIdKey: "googleId" | "microsoftId",
+  additionalUserProps: any = {}
+) {
+  let user = await db.query.users.findFirst({
+    where: eq(users[providerIdKey], profile.id),
+  });
+
+  if (!user) {
+    let email, name;
+
+    if (provider === "microsoft") {
+      email = profile.emails?.[0]?.value || profile._json?.mail;
+      name =
+        profile.displayName ||
+        `${profile._json?.givenName} ${profile._json?.surname}`.trim();
+    } else {
+      // Google profile handling
+      const { email: googleEmail, name: googleName } = profile._json || profile;
+      email = googleEmail;
+      name = googleName;
+    }
+
+    if (!email || !name) {
+      console.error("Missing fields - email:", email, "name:", name);
+      throw new Error(
+        `Missing required fields (email: ${!!email}, name: ${!!name})`
+      );
+    }
+
+    [user] = await db
+      .insert(users)
+      .values({
+        ...additionalUserProps,
+        [providerIdKey]: profile.id,
+        identityProvider: provider,
+        email,
+        name,
+      })
+      .returning();
+  } else if (additionalUserProps.profilePicture) {
+    [user] = await db
+      .update(users)
+      .set({ profilePicture: additionalUserProps.profilePicture })
+      .where(eq(users.id, user.id))
+      .returning();
+  }
+  return user;
+}
+
+async function fetchMicrosoftProfilePicture(
+  accessToken: string,
+  profileId: string
+): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/me/photo/$value`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!response.ok) return null;
+    const buffer = await response.arrayBuffer();
+    await s3.write(`profile-pictures/${profileId}.jpg`, buffer, {
+      acl: "public-read",
+    });
+    return s3.presign(`profile-pictures/${profileId}.jpg`, {
+      acl: "public-read",
+    });
+  } catch (err) {
+    console.error("Error fetching Microsoft profile picture", err);
+    return null;
+  }
+}
 
 export function configurePassport() {
   passport.use(
@@ -17,49 +94,60 @@ export function configurePassport() {
         scope: ["profile", "email"],
       },
       async (_accessToken, _refreshToken, profile, done) => {
-        // if (!WHITELIST_EMAILS.includes(profile._json.email || "")) {
-        //   return done(null, false, { message: "Email not authorized" });
-        // }
-
-        // 1. grab id
-        const googleId = profile.id;
-
-        // 2. check if user exists
-        let user = await db.query.users.findFirst({
-          where: eq(users.googleId, googleId),
-        });
-
-        const profilePictureUrl = profile.photos?.[0]?.value;
-
-        // 3. create user if not exists
-        if (!user) {
-          const name = profile._json.name;
-          const email = profile._json.email;
-
-          if (!email || !name) {
-            return done(new Error("Missing required fields"));
-          }
-
-          [user] = await db
-            .insert(users)
-            .values({
-              googleId,
-              profilePicture: profilePictureUrl,
-              email,
-              name,
-            })
-            .returning();
-        } else {
-          // Update existing user's profile picture
-          [user] = await db
-            .update(users)
-            .set({ profilePicture: profilePictureUrl })
-            .where(eq(users.id, user.id))
-            .returning();
+        try {
+          const profilePictureUrl = profile.photos?.[0]?.value;
+          const user = await findOrCreateUser(profile, "google", "googleId", {
+            profilePicture: profilePictureUrl,
+          });
+          done(null, user);
+        } catch (error) {
+          done(error as Error);
         }
+      }
+    )
+  );
 
-        // 4. return user
-        done(null, user);
+  passport.use(
+    "microsoft",
+    new MicrosoftStrategy(
+      {
+        clientID: process.env.MICROSOFT_CLIENT_ID!,
+        clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
+        callbackURL: process.env.MICROSOFT_CALLBACK_URL!,
+        scope: [
+          "user.read",
+          "profile",
+          "email",
+          "openid",
+          "user.read.all",
+          "profilephoto.read.all",
+        ],
+        tenant: "common",
+        authorizationURL:
+          "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+        tokenURL: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      },
+      async (
+        accessToken: string,
+        _: string,
+        profile: any,
+        done: VerifiedCallback
+      ) => {
+        try {
+          const profilePictureUrl = await fetchMicrosoftProfilePicture(
+            accessToken,
+            profile.id
+          );
+          const user = await findOrCreateUser(
+            profile,
+            "microsoft",
+            "microsoftId",
+            { profilePicture: profilePictureUrl }
+          );
+          done(null, user);
+        } catch (error) {
+          done(error as Error);
+        }
       }
     )
   );

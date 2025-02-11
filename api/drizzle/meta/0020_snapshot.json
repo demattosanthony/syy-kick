@@ -1,6 +1,7 @@
+
 {
-  "id": "2d44da23-adce-4642-96ce-bf8949953e19",
-  "prevId": "39450f7e-ad7b-427d-84f3-ed135d0e765d",
+  "id": "49f82dfc-1c9a-4993-9655-52947b61119c",
+  "prevId": "2d44da23-adce-4642-96ce-bf8949953e19",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -325,6 +326,104 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.projects": {
+      "name": "projects",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "gitea_repo_id": {
+          "name": "gitea_repo_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'private'"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "projects_organization_id_organizations_id_fk": {
+          "name": "projects_organization_id_organizations_id_fk",
+          "tableFrom": "projects",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "projects_user_id_users_id_fk": {
+          "name": "projects_user_id_users_id_fk",
+          "tableFrom": "projects",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.saml_configs": {
       "name": "saml_configs",
       "schema": "",
@@ -589,12 +688,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "microsoft_id": {
-          "name": "microsoft_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "identity_provider": {
           "name": "identity_provider",
           "type": "text",
@@ -672,13 +765,6 @@
           "nullsNotDistinct": false,
           "columns": [
             "google_id"
-          ]
-        },
-        "users_microsoft_id_unique": {
-          "name": "users_microsoft_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "microsoft_id"
           ]
         },
         "users_stripe_customer_id_unique": {

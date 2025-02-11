@@ -138,8 +138,22 @@
     {
       "idx": 19,
       "version": "7",
+      "when": 1739214671478,
+      "tag": "0019_futuristic_shocker",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
       "when": 1739221515449,
-      "tag": "0019_perpetual_invisible_woman",
+      "tag": "0020_perpetual_invisible_woman",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1739293920843,
+      "tag": "0021_bitter_madrox",
       "breakpoints": true
     }
   ]
