@@ -19,8 +19,27 @@ async function findOrCreateUser(
   });
 
   if (!user) {
-    const { email, name } = profile._json || profile;
-    if (!email || !name) throw new Error("Missing required fields");
+    let email, name;
+
+    if (provider === "microsoft") {
+      email = profile.emails?.[0]?.value || profile._json?.mail;
+      name =
+        profile.displayName ||
+        `${profile._json?.givenName} ${profile._json?.surname}`.trim();
+    } else {
+      // Google profile handling
+      const { email: googleEmail, name: googleName } = profile._json || profile;
+      email = googleEmail;
+      name = googleName;
+    }
+
+    if (!email || !name) {
+      console.error("Missing fields - email:", email, "name:", name);
+      throw new Error(
+        `Missing required fields (email: ${!!email}, name: ${!!name})`
+      );
+    }
+
     [user] = await db
       .insert(users)
       .values({
