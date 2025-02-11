@@ -278,3 +278,28 @@ export function useProjectQuery(projectId: string) {
     queryFn: () => api.projects.getProject(projectId),
   });
 }
+
+export function useUploadFileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      file,
+      path,
+    }: {
+      projectId: string;
+      file: File;
+      path?: string;
+    }) => api.projects.uploadFile(projectId, file, path),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ["project-files", projectId] });
+    },
+  });
+}
+
+export function useProjectFilesQuery(projectId: string, path?: string) {
+  return useQuery({
+    queryKey: ["project-files", projectId, path],
+    queryFn: () => api.projects.getFiles(projectId, path),
+  });
+}

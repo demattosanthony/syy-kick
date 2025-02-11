@@ -5,6 +5,9 @@ import { organizations, projects, users } from "../config/schema";
 import gitea from "../config/gitea";
 import e, { Router, Request, Response } from "express";
 import s3 from "../config/s3";
+import multer from "multer";
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const schemas = {
   createProject: z
@@ -80,6 +83,31 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
   return newProject;
 }
 
+async function uploadFileToProject(
+  projectId: string,
+  filePath: string,
+  content: string,
+  message: string = "Add file via API"
+) {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  });
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  const repoName = toGitSafeName(project.name);
+
+  // Create or update file in repository
+  await gitea.repos.repoCreateFile("admin", repoName, filePath, {
+    content: content,
+    message: message,
+  });
+
+  return true;
+}
+
 async function deleteProject(projectId: string) {
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
@@ -152,6 +180,35 @@ async function getProject(projectId: string) {
   return project;
 }
 
+async function getProjectFiles(projectId: string, path: string = "") {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  });
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  const repoName = toGitSafeName(project.name);
+
+  try {
+    const contents = await gitea.repos.repoGetContents(
+      "admin",
+      repoName,
+      path,
+      {
+        ref: "main",
+      }
+    );
+
+    // gitea.repos.repoGetContents()
+
+    return contents.data;
+  } catch (error) {
+    throw new Error("Failed to fetch repository contents");
+  }
+}
+
 const handlers = {
   createProject: async (req: Request, res: Response) => {
     const data = {
@@ -185,10 +242,37 @@ const handlers = {
     await deleteProject(projectId);
     res.json({ success: true });
   },
+
+  uploadFile: async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const { path } = req.query;
+
+    if (!req.file) {
+      throw new Error("No file provided");
+    }
+
+    await uploadFileToProject(
+      projectId,
+      (path as string) || req.file.originalname,
+      req.file.buffer.toString("base64"),
+      `Upload ${req.file.originalname}`
+    );
+
+    res.json({ success: true });
+  },
+
+  getFiles: async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const { path } = req.query;
+    const files = await getProjectFiles(projectId, path as string);
+    res.json(files);
+  },
 };
 
 export default Router()
   .post("/", handlers.createProject)
   .get("/", handlers.listProjects)
   .get("/:projectId", handlers.getProject)
-  .delete("/:projectId", handlers.deleteProject);
+  .delete("/:projectId", handlers.deleteProject)
+  .post("/:projectId/files", upload.single("file"), handlers.uploadFile)
+  .get("/:projectId/files", handlers.getFiles);

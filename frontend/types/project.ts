@@ -12,3 +12,10 @@ export interface Project {
   organization?: Organization;
   user?: User;
 }
+
+export interface ProjectContent {
+  name: string;
+  path: string;
+  sha: string;
+  type: "file" | "dir";
+}

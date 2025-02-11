@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Upload, FileText } from "lucide-react";
+import { Plus, FolderClosed, FileUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -8,16 +8,25 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useParams } from "next/navigation";
-import { useProjectQuery } from "@/queries/queries";
+import {
+  useProjectFilesQuery,
+  useProjectQuery,
+  useUploadFileMutation,
+} from "@/queries/queries";
 import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ProjectFileExplorer from "@/components/projects/project-file-explorer";
 
 export default function ProjectPage() {
   const { projectId } = useParams();
 
   const { data: project } = useProjectQuery(projectId as string);
 
-  console.log(project);
+  const { data: projectContents } = useProjectFilesQuery(projectId as string);
+
+  const uploadMutation = useUploadFileMutation();
+
+  console.log(projectContents);
 
   const logo = useMemo(() => {
     // if theres an org then use its logo url, else the users profile picture
@@ -28,12 +37,46 @@ export default function ProjectPage() {
     return project?.user?.profilePicture;
   }, [project]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      for (const file of files) {
+        await uploadMutation.mutateAsync({
+          projectId: projectId as string,
+          file,
+          path: file.name,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to upload files:", error);
+    }
+  };
+
+  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      for (const file of files) {
+        await uploadMutation.mutateAsync({
+          projectId: projectId as string,
+          file,
+          path: file.webkitRelativePath,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to upload folder:", error);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center max-w-3xl w-full">
       {/* Project Header */}
       <header className="border-b w-full">
-        <div className="container py-6 px-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="container py-6 px-6 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Avatar>
                 <AvatarImage src={logo} />
@@ -47,6 +90,7 @@ export default function ProjectPage() {
               </div>
             </div>
           </div>
+
           <div className="flex flex-wrap gap-4 items-center">
             <div className="flex-1 flex items-center gap-2">
               <Popover>
@@ -61,23 +105,37 @@ export default function ProjectPage() {
                     <Button
                       variant="ghost"
                       className="w-full justify-start gap-2 text-sm"
-                      onClick={() => {
-                        // Handle create new file
-                      }}
                     >
-                      <FileText className="h-4 w-4" />
-                      Create new file
+                      <label className="flex items-center gap-2 cursor-pointer w-full">
+                        <FolderClosed className="h-4 w-4" />
+                        <input
+                          type="file"
+                          webkitdirectory=""
+                          multiple
+                          className="hidden"
+                          onChange={handleFolderUpload}
+                        />
+                        Upload folder
+                      </label>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-2 text-sm"
-                      onClick={() => {
-                        // Handle upload files
-                      }}
-                    >
-                      <Upload className="h-4 w-4" />
-                      Upload files
-                    </Button>
+                    <label>
+                      <input
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={handleFileUpload}
+                      />
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-2 text-sm"
+                        asChild
+                      >
+                        <span>
+                          <FileUp className="h-4 w-4" />
+                          Upload files
+                        </span>
+                      </Button>
+                    </label>
                   </div>
                 </PopoverContent>
               </Popover>
@@ -85,6 +143,22 @@ export default function ProjectPage() {
           </div>
         </div>
       </header>
+
+      <div className="border rounded-lg w-[80%] mt-4 ">
+        <ProjectFileExplorer
+          contents={projectContents || []}
+          projectId={project?.id || ""}
+        />
+      </div>
+
+      {/* <div className="w-full flex items-center justify-center mx-auto p-6 pb-8 md:pb-4 md:p-2">
+        <ChatInputForm
+          input=""
+          setInput={() => {}}
+          onSubmit={() => {}}
+          handleInputChange={() => {}}
+        />
+      </div> */}
 
       {/* <div className="container py-6 px-6">
         <div className="grid lg:grid-cols-[1fr,300px] gap-6">

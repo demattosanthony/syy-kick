@@ -1,6 +1,6 @@
 import { Thread } from "@/types/chat";
 import { Model } from "@/types/model";
-import { Project } from "@/types/project";
+import { Project, ProjectContent } from "@/types/project";
 import { Organization, User } from "@/types/user";
 
 /**
@@ -47,6 +47,27 @@ class ApiRequest {
     }
 
     return response.json() as Promise<T>; // Explicitly cast for better type safety
+  }
+
+  protected async uploadFormData<T>(
+    endpoint: string,
+    formData: FormData
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        `Upload failed with status ${response.status}`
+      );
+    }
+
+    return response.json();
   }
 }
 
@@ -444,6 +465,37 @@ class ProjectsApi extends ApiRequest {
 
   async deleteProject(projectId: string): Promise<{ success: boolean }> {
     return await this.request(`/projects/${projectId}`, "DELETE");
+  }
+
+  async uploadFile(
+    projectId: string,
+    file: File,
+    path?: string
+  ): Promise<{ success: boolean }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const queryParams = new URLSearchParams();
+    if (path) queryParams.append("path", path);
+
+    return this.uploadFormData(
+      `/projects/${projectId}/files${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
+      }`,
+      formData
+    );
+  }
+
+  async getFiles(projectId: string, path?: string): Promise<ProjectContent[]> {
+    const queryParams = new URLSearchParams();
+    if (path) {
+      queryParams.append("path", path);
+    }
+    return await this.request(
+      `/projects/${projectId}/files${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
+      }`
+    );
   }
 }
 
