@@ -15,6 +15,7 @@ import Link from "next/link";
 import { Button } from "../ui/button";
 import { SidebarItem } from "./sidebar-item";
 import { useParams } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 
 interface ThreadsListProps {
   user: User;
@@ -38,7 +39,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
 
   return (
     <SidebarGroup key={"Recents"}>
-      <SidebarGroupLabel>{"Recents"}</SidebarGroupLabel>
+      <SidebarGroupLabel>{"Recent Chats"}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {isLoading

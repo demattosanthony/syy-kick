@@ -94,7 +94,7 @@ function ThreadItem({ thread }: { thread: Thread }) {
                 ? model
                 : "AI Assistant"}
             </p>
-            <p className="text-sm text-muted-foreground line-clamp-2 max-w-[calc(100vw-8rem)] md:max-w-full">
+            <p className="text-sm text-muted-foreground line-clamp-2 max-w-[calc(100vw-8rem)] md:max-w-[calc(100vw-8rem)]">
               {lastMessage.content.text}
             </p>
             <time className="text-xs text-muted-foreground">

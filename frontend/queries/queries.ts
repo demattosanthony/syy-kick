@@ -232,15 +232,24 @@ export function useUpdateOrganizationSeatsMutation() {
   });
 }
 
-export function useProjectsQuery() {
+export function useProjectsQuery({ search }: { search?: string } = {}) {
+  const { activeWorkspace } = useWorkspace();
+
   return useQuery({
-    queryKey: ["projects"],
-    queryFn: () => api.projects.listProjects(),
+    queryKey: ["projects", search, activeWorkspace?.id],
+    queryFn: () =>
+      api.projects.listProjects(
+        activeWorkspace?.type === "organization"
+          ? activeWorkspace.id
+          : undefined,
+        search
+      ),
   });
 }
 
 export function useCreateProjectMutation() {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (data: {
       name: string;
@@ -260,5 +269,12 @@ export function useDeleteProjectMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
+  });
+}
+
+export function useProjectQuery(projectId: string) {
+  return useQuery({
+    queryKey: ["project", projectId],
+    queryFn: () => api.projects.getProject(projectId),
   });
 }

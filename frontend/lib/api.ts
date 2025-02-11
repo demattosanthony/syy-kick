@@ -424,8 +424,22 @@ class ProjectsApi extends ApiRequest {
     return await this.request("/projects", "POST", data);
   }
 
-  async listProjects(organizationId?: string): Promise<Project[]> {
-    return await this.request(`/projects`);
+  async getProject(projectId: string): Promise<Project> {
+    return await this.request(`/projects/${projectId}`);
+  }
+
+  async listProjects(
+    organizationId?: string,
+    search?: string
+  ): Promise<Project[]> {
+    const queryParams = new URLSearchParams();
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
+    if (search) {
+      queryParams.append("search", search);
+    }
+    return await this.request(`/projects?${queryParams.toString()}`);
   }
 
   async deleteProject(projectId: string): Promise<{ success: boolean }> {

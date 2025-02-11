@@ -20,12 +20,14 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { useCreateProjectMutation } from "@/queries/queries";
 import { useState } from "react";
+import { useWorkspace } from "./workspace-context";
 
 export function ProjectsButton() {
   const router = useRouter();
   const { state, toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
   const pathname = usePathname();
+  const { activeWorkspace } = useWorkspace();
   const isProjectsPage = pathname === "/projects";
 
   const [open, setOpen] = useState(false);
@@ -42,6 +44,10 @@ export function ProjectsButton() {
       await createProjectMutation.mutateAsync({
         name: formData.name,
         description: formData.description,
+        organizationId:
+          activeWorkspace?.type === "organization"
+            ? activeWorkspace.id
+            : undefined,
       });
       setFormData({ name: "", description: "" });
       setOpen(false);

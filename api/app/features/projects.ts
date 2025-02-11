@@ -1,9 +1,10 @@
 import z from "zod";
 import db from "../config/db";
-import { eq } from "drizzle-orm";
+import { and, eq, ilike, like } from "drizzle-orm";
 import { organizations, projects, users } from "../config/schema";
 import gitea from "../config/gitea";
-import { Router, Request, Response } from "express";
+import e, { Router, Request, Response } from "express";
+import s3 from "../config/s3";
 
 const schemas = {
   createProject: z
@@ -97,20 +98,58 @@ async function deleteProject(projectId: string) {
 async function listProjects(params: {
   organizationId?: string;
   userId?: string;
+  search?: string;
 }) {
   if (!params.organizationId && !params.userId) {
     throw new Error("Either organizationId or userId must be provided");
   }
 
-  const whereClause = params.organizationId
-    ? eq(projects.organizationId, params.organizationId as string)
-    : eq(projects.userId, params.userId as string);
+  let conditions = [];
+
+  console.log(params);
+
+  if (params.organizationId) {
+    conditions.push(eq(projects.organizationId, params.organizationId));
+  } else if (params.userId) {
+    conditions.push(eq(projects.userId, params.userId));
+  }
+
+  if (params.search) {
+    conditions.push(ilike(projects.name, `%${params.search}%`));
+  }
 
   const projs = await db.query.projects.findMany({
-    where: whereClause,
+    where: and(...conditions),
+    orderBy: (projects, { desc }) => [desc(projects.createdAt)],
   });
 
   return projs;
+}
+
+async function getProject(projectId: string) {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+    with: {
+      organization: true,
+      user: true,
+    },
+  });
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  // Add logo URL if organization exists and has a logo
+  if (project.organization?.logo) {
+    (project.organization as any).logoUrl = await s3.presign(
+      project.organization.logo,
+      {
+        expiresIn: 60 * 60, // 1 hour
+      }
+    );
+  }
+
+  return project;
 }
 
 const handlers = {
@@ -124,13 +163,21 @@ const handlers = {
     const project = await createProject(validatedData);
     res.json(project);
   },
+
   listProjects: async (req: Request, res: Response) => {
-    const { organizationId } = req.params;
+    const { search, organizationId } = req.query;
     const projects = await listProjects({
-      organizationId,
+      organizationId: organizationId as string | undefined,
       userId: req.dbUser?.id,
+      search: search as string,
     });
     res.json(projects);
+  },
+
+  getProject: async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const project = await getProject(projectId);
+    res.json(project || {});
   },
 
   deleteProject: async (req: Request, res: Response) => {
@@ -143,4 +190,5 @@ const handlers = {
 export default Router()
   .post("/", handlers.createProject)
   .get("/", handlers.listProjects)
+  .get("/:projectId", handlers.getProject)
   .delete("/:projectId", handlers.deleteProject);

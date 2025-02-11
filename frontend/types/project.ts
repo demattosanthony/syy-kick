@@ -1,3 +1,5 @@
+import { Organization, User } from "./user";
+
 export interface Project {
   id: string;
   name: string;
@@ -7,4 +9,6 @@ export interface Project {
   visibility: "private" | "public";
   createdAt: string;
   updatedAt: string;
+  organization?: Organization;
+  user?: User;
 }
