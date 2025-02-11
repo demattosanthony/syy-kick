@@ -497,6 +497,18 @@ class ProjectsApi extends ApiRequest {
       }`
     );
   }
+
+  async deleteContents(
+    projectId: string,
+    path: string
+  ): Promise<{
+    success: boolean;
+  }> {
+    return await this.request(
+      `/projects/${projectId}/files?path=${path}`,
+      "DELETE"
+    );
+  }
 }
 
 /**

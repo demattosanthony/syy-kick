@@ -303,3 +303,14 @@ export function useProjectFilesQuery(projectId: string, path?: string) {
     queryFn: () => api.projects.getFiles(projectId, path),
   });
 }
+
+export function useDeleteProjectContentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, path }: { projectId: string; path: string }) =>
+      api.projects.deleteContents(projectId, path),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ["project-files", projectId] });
+    },
+  });
+}

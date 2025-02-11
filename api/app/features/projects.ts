@@ -209,6 +209,53 @@ async function getProjectFiles(projectId: string, path: string = "") {
   }
 }
 
+async function deleteProjectContent(projectId: string, path: string) {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  });
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  const repoName = toGitSafeName(project.name);
+
+  console.log(`Getting file info for ${path}`);
+
+  // First get the file to obtain its SHA
+  const fileInfo = await gitea.repos.repoGetContents("admin", repoName, path, {
+    ref: "main",
+  });
+
+  //   console.log(fileInfo.data);
+
+  if (Array.isArray(fileInfo.data)) {
+    // This is a directory - delete all files in it
+    for (const file of fileInfo.data) {
+      await gitea.repos.repoDeleteFile("admin", repoName, file.path, {
+        message: "Delete file via API",
+        branch: "main",
+        sha: file.sha,
+      });
+    }
+  } else {
+    // Single file - get its SHA
+    const fileSha = Array.isArray(fileInfo.data) ? null : fileInfo.data.sha;
+
+    if (!fileSha) {
+      throw new Error("Could not get file SHA");
+    }
+
+    await gitea.repos.repoDeleteFile("admin", repoName, path, {
+      message: "Delete file via API",
+      branch: "main",
+      sha: fileSha,
+    });
+  }
+
+  return true;
+}
+
 const handlers = {
   createProject: async (req: Request, res: Response) => {
     const data = {
@@ -267,6 +314,13 @@ const handlers = {
     const files = await getProjectFiles(projectId, path as string);
     res.json(files);
   },
+
+  deleteContents: async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const { path } = req.query;
+    await deleteProjectContent(projectId, decodeURIComponent(path as string));
+    res.json({ success: true });
+  },
 };
 
 export default Router()
@@ -275,4 +329,5 @@ export default Router()
   .get("/:projectId", handlers.getProject)
   .delete("/:projectId", handlers.deleteProject)
   .post("/:projectId/files", upload.single("file"), handlers.uploadFile)
-  .get("/:projectId/files", handlers.getFiles);
+  .get("/:projectId/files", handlers.getFiles)
+  .delete("/:projectId/files", handlers.deleteContents);
