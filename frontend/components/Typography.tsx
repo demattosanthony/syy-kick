@@ -2,7 +2,7 @@ import React from "react";
 
 export function TypographyH1({ children }: { children: React.ReactNode }) {
   return (
-    <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl my-2">
+    <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl mb-2">
       {children}
     </h1>
   );
@@ -10,7 +10,7 @@ export function TypographyH1({ children }: { children: React.ReactNode }) {
 
 export function TypographyH2({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight my-2">
+    <h2 className="scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight mb-2">
       {children}
     </h2>
   );
@@ -18,7 +18,7 @@ export function TypographyH2({ children }: { children: React.ReactNode }) {
 
 export function TypographyH3({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight mt-2">
+    <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight mb-2">
       {children}
     </h3>
   );
@@ -26,7 +26,7 @@ export function TypographyH3({ children }: { children: React.ReactNode }) {
 
 export function TypographyH4({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="scroll-m-20 text-xl font-semibold tracking-tight mt-2">
+    <h4 className="scroll-m-20 text-xl font-semibold tracking-tight mb-2">
       {children}
     </h4>
   );

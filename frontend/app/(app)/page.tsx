@@ -108,8 +108,8 @@ export default function Home() {
 
       <div className="w-full flex flex-1 items-center justify-center">
         <div className="flex flex-col h-[65%] md:h-[50%] items-center w-full ">
-          <div className="mb-2 w-[150px] flex items-center justify-center">
-            {stlFile && <STLViewer file={stlFile} size={150} />}
+          <div className="mb-2 w-[155px] flex items-center justify-center">
+            {stlFile && <STLViewer file={stlFile} size={155} />}
           </div>
 
           <div className="flex flex-col gap-6">
