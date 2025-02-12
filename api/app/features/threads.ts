@@ -65,9 +65,13 @@ const ops = {
     for (const item of content) {
       const messageId = crypto.randomUUID();
 
-      const embedding = await embeddingModel.doEmbed({
-        values: ["type" in item && item.type === "text" ? item.text : ""],
-      });
+      let embedding = null;
+      if ("type" in item && item.type === "text") {
+        const embeddingResult = await embeddingModel.doEmbed({
+          values: [item.text],
+        });
+        embedding = embeddingResult.embeddings[0];
+      }
 
       await db.insert(messages).values({
         userId,
@@ -75,7 +79,7 @@ const ops = {
         threadId: threadId,
         role: role as "system" | "user" | "assistant" | "tool", // Type assertion for role
         content: item,
-        embedding: embedding.embeddings[0],
+        embedding,
         createdAt: new Date(),
       });
     }
