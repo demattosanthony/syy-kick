@@ -18,7 +18,7 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
     case "application/pdf":
       return (
         <div className="h-full w-full overflow-hidden">
-          <PdfViewer content={file.s3Url || ""} />
+          <PdfViewer content={file.s3Url || ""} fileName={file.name} />
         </div>
       );
     case "image/jpeg":

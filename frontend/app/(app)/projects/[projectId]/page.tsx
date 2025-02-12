@@ -6,7 +6,6 @@ import {
   useProjectFilesQuery,
   useProjectQuery,
   useUpdateProjectMutation,
-  useUploadFileMutation,
 } from "@/queries/queries";
 import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,8 +28,6 @@ export default function ProjectPage({ initalProjectFiles }: ProjectPageProps) {
   const { data: projectContents, isLoading: projectContentsIsLoading } =
     useProjectFilesQuery(projectId as string);
 
-  const uploadMutation = useUploadFileMutation();
-
   console.log(projectContents);
 
   const logo = useMemo(() => {
@@ -43,13 +40,6 @@ export default function ProjectPage({ initalProjectFiles }: ProjectPageProps) {
   }, [project]);
 
   const updateProject = useUpdateProjectMutation();
-
-  const handleUpdateName = async (newName: string) => {
-    await updateProject.mutateAsync({
-      projectId: projectId as string,
-      data: { name: newName },
-    });
-  };
 
   const { data: readmeFile } = useProjectFileQuery(
     projectId as string,
