@@ -12,6 +12,7 @@ import { PdfThumbnail } from "../pdf-thumbnail";
 import { Card } from "../ui/card";
 import ModelSelector from "../ModelSelector";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatInputFormProps {
   onSubmit: (e: React.FormEvent) => void;
@@ -40,6 +41,7 @@ function ChatInputForm(
   }: ChatInputFormProps,
   ref: React.ForwardedRef<ChatInputFormRef>
 ) {
+  const isMobile = useIsMobile();
   const [isMounted, setIsMounted] = useState(false);
   const [selectedModel] = useAtom(modelAtom);
   const [focused, setFocused] = useState(true);
@@ -128,7 +130,7 @@ function ChatInputForm(
     <Card
       className={cn(
         "relative flex flex-col h-auto min-h-[105px] max-h-[450px] w-full mx-auto max-w-[750px] p-0 ",
-        focused ? "shadow-md" : "shadow-none"
+        focused && !isMobile ? "shadow-md" : "shadow-none"
       )}
     >
       <form

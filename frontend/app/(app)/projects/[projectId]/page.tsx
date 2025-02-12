@@ -94,10 +94,10 @@ export default function ProjectPage() {
   );
 
   return (
-    <div className="flex flex-col items-center max-w-3xl w-full">
+    <div className="flex flex-col items-center max-w-3xl w-full overflow-y-auto h-screen relative">
       {/* Project Header */}
       <div className="border-b w-full">
-        <div className="container py-6 px-6 flex items-center justify-between">
+        <div className="container pb-6 px-6 flex items-center justify-between">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3 flex-1">
               <Avatar className="h-8 w-8">
@@ -176,26 +176,19 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      <Card className="w-full mt-4 shadow-none mb-4">
-        <CardContent className="p-2">
-          <ProjectFileExplorer
-            contents={projectContents || []}
-            projectId={project?.id || ""}
-            isLoading={projectContentsIsLoading}
-          />
-        </CardContent>
-      </Card>
+      <div className="flex-1 min-h-0 overflow-y-auto w-full px-4 pb-56">
+        <Card className="w-full mt-4 shadow-none mb-4">
+          <CardContent className="p-2">
+            <ProjectFileExplorer
+              contents={projectContents || []}
+              projectId={project?.id || ""}
+              isLoading={projectContentsIsLoading}
+            />
+          </CardContent>
+        </Card>
 
-      <ReadmeSection content={readmeFile?.content || ""} />
-
-      {/* <div className="w-full flex items-center justify-center mx-auto p-6 pb-8 md:pb-4 md:p-2">
-        <ChatInputForm
-          input=""
-          setInput={() => {}}
-          onSubmit={() => {}}
-          handleInputChange={() => {}}
-        />
-      </div> */}
+        <ReadmeSection content={readmeFile?.content || ""} />
+      </div>
 
       {/* <div className="container py-6 px-6">
         <div className="grid lg:grid-cols-[1fr,300px] gap-6">
@@ -234,7 +227,7 @@ export default function ProjectPage() {
         </div>
       </div> */}
 
-      <div className="w-full flex items-center justify-center mx-auto p-6 pb-8 md:pb-4 md:p-2 absolute bottom-0 left-0 right-0">
+      <div className="absolute bottom-16 left-0 right-0 p-6 pb-8 md:pb-4 md:p-2 bg-background">
         <ChatInputForm
           input={""}
           setInput={() => {}}
