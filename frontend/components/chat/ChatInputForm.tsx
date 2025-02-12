@@ -172,7 +172,7 @@ function ChatInputForm(
           </div>
         )}
 
-        <div className="flex flex-col w-full pt-3">
+        <div className="flex flex-col w-full pt-4">
           <Textarea
             placeholder={placeholder}
             onChange={handleInputChange}

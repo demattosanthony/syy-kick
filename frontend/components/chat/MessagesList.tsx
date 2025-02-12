@@ -70,7 +70,7 @@ const AssistantMessage = (
     <div className="mb-4 flex flex-col justify-start">
       <div className="flex gap-1">
         <div className=" mr-[1px] w-[32px] h-[32px]">
-          <Rhombicuboctahedron size={32} />
+          <Rhombicuboctahedron size={32} animate={false} />
         </div>
 
         <div
@@ -136,7 +136,7 @@ const LoadingMessage = React.memo(() => {
   return (
     <div className="flex gap-2 items-start mb-4">
       <div className="flex-shrink-0 mt-1 w-[32px] h-[32px]">
-        <Rhombicuboctahedron size={32} animate={true} />
+        <Rhombicuboctahedron size={32} animate={false} />
       </div>
       <div className="flex items-center gap-1 text-muted-foreground mt-3">
         <span className="animate-bounce">•</span>
