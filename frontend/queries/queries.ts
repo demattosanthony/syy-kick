@@ -290,7 +290,7 @@ export function useUploadFileMutation() {
       projectId: string;
       file: File;
       path?: string;
-    }) => api.projects.uploadFile(projectId, file, path),
+    }) => api.projects.uploadFileToProject(projectId, file, path),
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: ["project-files", projectId] });
     },

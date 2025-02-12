@@ -35,7 +35,7 @@ export function ProjectFileExplorer({
     );
   }
 
-  if (!contents || contents.length === 1) {
+  if (!contents || contents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
         <Folder className="h-12 w-12 mb-4 fill-blue-400 text-blue-400" />
@@ -105,7 +105,7 @@ function FileExplorerItem({
   return (
     <div>
       <div
-        className="group flex items-center justify-between p-2 hover:bg-muted/50 cursor-pointer"
+        className="group flex items-center justify-between p-2 hover:bg-muted/50 cursor-pointer rounded"
         style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
         onClick={async () => {
           if (item.type === "dir") {
@@ -118,6 +118,10 @@ function FileExplorerItem({
             projectId,
             item.path
           );
+
+          if (fileRes.s3Url) {
+            window.open(fileRes.s3Url, "_blank");
+          }
           //   setSelectedFile(fileRes);
         }}
       >
@@ -152,7 +156,7 @@ function FileExplorerItem({
         </div>
 
         <Popover>
-          <PopoverTrigger asChild>
+          <PopoverTrigger>
             <MoreHorizontal className="h-4 w-4 opacity-0 group-hover:opacity-100 hover:text-accent-foreground" />
           </PopoverTrigger>
           <PopoverContent className="w-40 p-0">
@@ -160,6 +164,7 @@ function FileExplorerItem({
               variant="ghost"
               className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 deleteProjectContentMutation.mutate({
                   projectId,
@@ -211,7 +216,7 @@ export function FileViewer({ file }: { file: FileResponse }) {
     case "pdf":
       return (
         <iframe
-          src={file.viewUrl}
+          src={file.s3Url}
           width="100%"
           height="800px"
           frameBorder="0"
@@ -221,14 +226,14 @@ export function FileViewer({ file }: { file: FileResponse }) {
 
     case "image":
       return (
-        <img src={file.viewUrl} alt={file.name} style={{ maxWidth: "100%" }} />
+        <img src={file.s3Url} alt={file.name} style={{ maxWidth: "100%" }} />
       );
 
     default:
       return (
         <div className="download-prompt">
           <p>This file type cannot be previewed.</p>
-          <a href={file.downloadUrl} className="download-button">
+          <a href={file.s3Url} className="download-button">
             Download {file.name}
           </a>
         </div>

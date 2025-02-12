@@ -439,7 +439,7 @@ class ThreadApi extends ApiRequest {
 class ProjectsApi extends ApiRequest {
   async createProject(data: {
     name: string;
-    description: string;
+    description?: string;
     organizationId?: string;
   }): Promise<Project> {
     return await this.request("/projects", "POST", data);
@@ -505,7 +505,7 @@ class ProjectsApi extends ApiRequest {
     success: boolean;
   }> {
     return await this.request(
-      `/projects/${projectId}/files?path=${path}`,
+      `/projects/${projectId}/files?path=${encodeURIComponent(path)}`,
       "DELETE"
     );
   }
@@ -520,22 +520,126 @@ class ProjectsApi extends ApiRequest {
     return await this.request(`/projects/${projectId}`, "PATCH", data);
   }
 
+  /**
+   * Fetches file metadata and content. The server response can include:
+   * - isLfsPointer + s3Url (for large/binary files in S3),
+   * - content (for text files),
+   * - base64Content (for small/binary files directly in Gitea).
+   */
   async getFileContent(projectId: string, path: string): Promise<FileResponse> {
+    // URL-encode path to ensure proper handling of spaces, etc.
+    const encodedPath = encodeURIComponent(path);
     return await this.request(
-      `/projects/${projectId}/files/content?path=${path}`
+      `/projects/${projectId}/files/content?path=${encodedPath}`
     );
+  }
+
+  // Helper function to calculate SHA256 of a file
+  private async calculateSha256(file: File): Promise<string> {
+    // Use Web Crypto API for better performance than pure JS implementations
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+
+    // Convert hash to hex string
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  async uploadFileToProject(projectId: string, file: File, path?: string) {
+    // Calculate SHA256 hash first
+    const sha256 = await this.calculateSha256(file);
+
+    // 1) Ask server if this file triggers LFS
+    const presignResp = await fetch(
+      `${this.baseUrl}/projects/${projectId}/files/presign-lfs`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          filename: file.name,
+          mimeType: file.type,
+          size: file.size,
+          sha256, // Include the hash in the request
+        }),
+      }
+    ).then((r) => r.json());
+
+    if (!presignResp.isLfs) {
+      // LFS not needed -> do the old route with multipart form
+      const formData = new FormData();
+      formData.append("file", file);
+      if (path) formData.append("path", path);
+      await fetch(`${this.baseUrl}/projects/${projectId}/files`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      return;
+    }
+
+    // 2) For LFS:
+    // Verify the returned fileKey matches our calculated SHA256
+    if (presignResp.fileKey !== sha256) {
+      throw new Error("SHA256 mismatch with server response");
+    }
+
+    // Upload direct to S3 using the returned presigned URL
+    await fetch(presignResp.presignedUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type,
+        "Content-Length": file.size.toString(),
+      },
+      body: file,
+    });
+
+    // 3) Finalize (commit pointer in Gitea)
+    await fetch(`${this.baseUrl}/projects/${projectId}/files/finalize-lfs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        fileKey: sha256, // Use SHA256 as the fileKey
+        filePath: path || file.name,
+        size: file.size,
+        mimeType: file.type,
+        sha256, // Include hash for verification
+      }),
+    });
   }
 }
 
+/**
+ * FileResponse shape matches what the server now sends back.
+ */
 export interface FileResponse {
   name: string;
   path: string;
   size: number;
   type: "text" | "pdf" | "image" | "binary";
   sha: string;
+
+  /**
+   * True if this file is actually an LFS pointer and large content lives in S3.
+   */
+  isLfsPointer?: boolean;
+
+  /**
+   * For normal text-based files, server returns raw text here.
+   */
   content?: string;
-  viewUrl?: string;
-  downloadUrl?: string;
+
+  /**
+   * For non-text but small files, server returns base64-encoded content directly.
+   */
+  base64Content?: string;
+
+  /**
+   * For LFS-pointer files, server returns a presigned S3 URL here.
+   */
+  s3Url?: string;
 }
 
 /**

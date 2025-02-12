@@ -1,11 +1,13 @@
 import z from "zod";
 import db from "../config/db";
-import { and, eq, ilike, like } from "drizzle-orm";
+import { and, eq, ilike } from "drizzle-orm";
 import { organizations, projects, users } from "../config/schema";
 import gitea from "../config/gitea";
-import e, { Router, Request, Response } from "express";
+import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
 import multer from "multer";
+import crypto from "crypto";
+import { shouldUseLfs } from "../utils/lfs-utils";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -88,29 +90,92 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
   return newProject;
 }
 
+/**
+ * For smaller / text-based files, we commit directly via base64 content to Gitea.
+ */
+async function createFileInGitea(
+  owner: string,
+  repoName: string,
+  filePath: string,
+  fileBuffer: Buffer,
+  message: string
+) {
+  const base64Content = fileBuffer.toString("base64");
+  await gitea.repos.repoCreateFile(owner, repoName, filePath, {
+    content: base64Content,
+    message,
+  });
+}
+/**
+ * Re-usable function to create a pointer file in Gitea referencing an already-uploaded S3 object.
+ */
+async function createLfsPointerFile(
+  owner: string,
+  repoName: string,
+  filePath: string,
+  s3Key: string,
+  fileSize: number,
+  message: string
+) {
+  // 1. The pointer file expects the "oid sha256" of the file contents.
+  //    Since the server didn't directly receive the file, you can:
+  //      - either trust a client-provided hash (not recommended for real security),
+  //      - or HEAD the object from S3, stream it and compute the SHA256 (costly for huge files).
+  //    For simplicity, we do the latter but be mindful it might require a big stream for large files.
+  //    Alternatively, you can rely on the client to pass the sha256 (and do your own checks if needed).
+
+  // This is a naive approach: reading entire object.
+  // For enormous files you may need a more streaming-based approach:
+  const s3Object = await s3.file(s3Key).bytes();
+  const sha256 = crypto.createHash("sha256").update(s3Object).digest("hex");
+
+  // 2. Create pointer content
+  const pointerContent = `version https://git-lfs.github.com/spec/v1
+oid sha256:${sha256}
+size ${fileSize}
+`;
+
+  // 3. Base64-encode pointer
+  const base64Pointer = Buffer.from(pointerContent, "utf-8").toString("base64");
+
+  // 4. Commit pointer file to Gitea
+  await gitea.repos.repoCreateFile(owner, repoName, filePath, {
+    content: base64Pointer,
+    message,
+  });
+}
+
+/**
+ * We'll keep the existing logic that picks LFS or normal commit,
+ * but now we only do the direct buffer approach for small files.
+ */
 async function uploadFileToProject(
   projectId: string,
   filePath: string,
-  content: string,
+  fileBuffer: Buffer, // Only used if not LFS
   message: string = "Add file via API"
 ) {
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
   });
-
   if (!project) {
     throw new Error("Project not found");
   }
 
+  const repoOwner = "admin"; // or however you manage your Gitea user
   const repoName = toGitSafeName(project.name);
 
-  // Create or update file in repository
-  await gitea.repos.repoCreateFile("admin", repoName, filePath, {
-    content: content,
-    message: message,
-  });
+  // If it’s forced LFS or beyond threshold => throw or handle it:
+  if (shouldUseLfs(filePath, fileBuffer.length)) {
+    // You could either throw an Error telling the client to use presign-lfs,
+    // or simply do the old approach of uploading to S3 from here (not recommended).
+    throw new Error(
+      "File too large or forced for LFS. Please use the LFS presigned upload flow."
+    );
+  }
 
-  return true;
+  // Otherwise, commit file to Gitea as normal (base64)
+  await createFileInGitea(repoOwner, repoName, filePath, fileBuffer, message);
 }
 
 async function deleteProject(projectId: string) {
@@ -138,8 +203,6 @@ async function listProjects(params: {
   }
 
   let conditions = [];
-
-  console.log(params);
 
   if (params.organizationId) {
     conditions.push(eq(projects.organizationId, params.organizationId));
@@ -172,7 +235,7 @@ async function getProject(projectId: string) {
     throw new Error("Project not found");
   }
 
-  // Add logo URL if organization exists and has a logo
+  // Add logo presigned URL if organization has a logo
   if (project.organization?.logo) {
     (project.organization as any).logoUrl = await s3.presign(
       project.organization.logo,
@@ -189,7 +252,6 @@ async function getProjectFiles(projectId: string, path: string = "") {
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
   });
-
   if (!project) {
     throw new Error("Project not found");
   }
@@ -206,14 +268,10 @@ async function getProjectFiles(projectId: string, path: string = "") {
       }
     );
 
-    // gitea.repos.repoGetContents()
-
-    // If the path points to a directory, iterate over each file.
+    // If directory, fetch commit metadata for each item
     if (Array.isArray(contents.data)) {
-      // Parallelize metadata fetching using Promise.all.
       const filesWithMetadata = await Promise.all(
         contents.data.map(async (file: any) => {
-          // Fetch the commit history for this file, limiting to the latest commit.
           const commitResponse = await gitea.repos.repoGetAllCommits(
             "admin",
             repoName,
@@ -224,7 +282,6 @@ async function getProjectFiles(projectId: string, path: string = "") {
             }
           );
           if (commitResponse.data && commitResponse.data.length > 0) {
-            // Assuming the commit object contains committer info with a date.
             file.lastModified = commitResponse.data[0].commit?.committer?.date;
           }
           return file;
@@ -232,7 +289,7 @@ async function getProjectFiles(projectId: string, path: string = "") {
       );
       return filesWithMetadata;
     } else {
-      // It's a single file. Fetch its commit metadata.
+      // Single file => fetch commit metadata
       const commitResponse = await gitea.repos.repoGetAllCommits(
         "admin",
         repoName,
@@ -243,10 +300,8 @@ async function getProjectFiles(projectId: string, path: string = "") {
         }
       );
       if (commitResponse.data && commitResponse.data.length > 0) {
-        if (commitResponse.data && commitResponse.data.length > 0) {
-          (contents.data as any).lastModified =
-            commitResponse.data[0].commit?.committer?.date;
-        }
+        (contents.data as any).lastModified =
+          commitResponse.data[0].commit?.committer?.date;
       }
       return contents.data;
     }
@@ -259,24 +314,19 @@ async function deleteProjectContent(projectId: string, path: string) {
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
   });
-
   if (!project) {
     throw new Error("Project not found");
   }
 
   const repoName = toGitSafeName(project.name);
 
-  console.log(`Getting file info for ${path}`);
-
-  // First get the file to obtain its SHA
+  // First get the file/directory to obtain its SHA(s)
   const fileInfo = await gitea.repos.repoGetContents("admin", repoName, path, {
     ref: "main",
   });
 
-  //   console.log(fileInfo.data);
-
   if (Array.isArray(fileInfo.data)) {
-    // This is a directory - delete all files in it
+    // Directory => delete all children
     for (const file of fileInfo.data) {
       await gitea.repos.repoDeleteFile("admin", repoName, file.path, {
         message: "Delete file via API",
@@ -285,13 +335,11 @@ async function deleteProjectContent(projectId: string, path: string) {
       });
     }
   } else {
-    // Single file - get its SHA
-    const fileSha = Array.isArray(fileInfo.data) ? null : fileInfo.data.sha;
-
+    // Single file
+    const fileSha = fileInfo.data.sha;
     if (!fileSha) {
       throw new Error("Could not get file SHA");
     }
-
     await gitea.repos.repoDeleteFile("admin", repoName, path, {
       message: "Delete file via API",
       branch: "main",
@@ -309,7 +357,6 @@ async function updateProject(
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
   });
-
   if (!project) {
     throw new Error("Project not found");
   }
@@ -324,7 +371,7 @@ async function updateProject(
     .returning()
     .then((res) => res[0]);
 
-  // Update git repo
+  // Update the Gitea repo info (e.g. name, description)
   await gitea.repos.repoEdit("admin", toGitSafeName(project.name), {
     name: toGitSafeName(updatedProject.name),
     description: updatedProject.description ?? undefined,
@@ -333,7 +380,6 @@ async function updateProject(
   return updatedProject;
 }
 
-// Helper to determine file type
 function getFileType(filename: string): "text" | "pdf" | "image" | "binary" {
   const extension = filename.toLowerCase().split(".").pop();
 
@@ -351,23 +397,25 @@ function getFileType(filename: string): "text" | "pdf" | "image" | "binary" {
   ];
   const imageExtensions = ["jpg", "jpeg", "png", "gif", "svg", "webp"];
 
-  if (textExtensions.includes(extension!)) return "text";
+  if (extension && textExtensions.includes(extension)) return "text";
   if (extension === "pdf") return "pdf";
-  if (imageExtensions.includes(extension!)) return "image";
+  if (extension && imageExtensions.includes(extension)) return "image";
   return "binary";
 }
 
+/**
+ * If the file content is an LFS pointer, return the S3 presigned url;
+ * otherwise, return direct content (decoded for text, or base64 for binary).
+ */
 async function getFileContent(projectId: string, path: string) {
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
   });
-
   if (!project) {
     throw new Error("Project not found");
   }
 
   const repoName = toGitSafeName(project.name);
-
   const response = await gitea.repos.repoGetContents("admin", repoName, path, {
     ref: "main",
   });
@@ -375,14 +423,12 @@ async function getFileContent(projectId: string, path: string) {
   if (Array.isArray(response.data)) {
     throw new Error("Path points to a directory, not a file");
   }
-
   if (!response.data.name) {
     throw new Error("File name is missing");
   }
 
+  // Basic metadata
   const fileType = getFileType(response.data.name);
-
-  // Base response structure
   const baseResponse = {
     name: response.data.name,
     path: response.data.path,
@@ -391,32 +437,43 @@ async function getFileContent(projectId: string, path: string) {
     sha: response.data.sha,
   };
 
-  console.log(`base response: ${baseResponse}`);
+  // Decode the Gitea base64 content
+  const decoded = Buffer.from(response.data.content || "", "base64").toString(
+    "utf-8"
+  );
 
-  // For text files
-  if (fileType === "text" && response.data.content) {
+  // Check if it's an LFS pointer file
+  if (decoded.startsWith("version https://git-lfs.github.com/spec/v1")) {
+    // Parse the sha256 from the pointer
+    const match = decoded.match(/oid sha256:([0-9a-f]+)/i);
+    if (!match) {
+      // It's an LFS pointer but no recognized OID
+      return { ...baseResponse, error: "Invalid LFS pointer" };
+    }
+
+    const oid = match[1];
+    const presignedUrl = s3.presign(oid, { expiresIn: 60 * 60 }); // 1hr
+
     return {
       ...baseResponse,
-      content: Buffer.from(response.data.content, "base64").toString("utf-8"),
+      isLfsPointer: true,
+      s3Url: presignedUrl,
     };
   }
 
-  // For PDFs and images, return a temporary URL
-  if (fileType === "pdf" || fileType === "image") {
+  // Otherwise, it's a normal file stored in Gitea
+  if (fileType === "text") {
+    // Return actual text content
     return {
       ...baseResponse,
-      viewUrl: `http://localhost:4000/projects/${projectId}/files/view?path=${encodeURIComponent(
-        path
-      )}`,
+      content: decoded, // plain text
     };
   }
 
-  // For other binary files, return a download URL
+  // For non-text, just return the original base64 string
   return {
     ...baseResponse,
-    downloadUrl: `/api/projects/${projectId}/files/download?path=${encodeURIComponent(
-      path
-    )}`,
+    base64Content: response.data.content,
   };
 }
 
@@ -434,12 +491,12 @@ const handlers = {
 
   listProjects: async (req: Request, res: Response) => {
     const { search, organizationId } = req.query;
-    const projects = await listProjects({
+    const projectsList = await listProjects({
       organizationId: organizationId as string | undefined,
       userId: req.dbUser?.id,
       search: search as string,
     });
-    res.json(projects);
+    res.json(projectsList);
   },
 
   getProject: async (req: Request, res: Response) => {
@@ -454,6 +511,10 @@ const handlers = {
     res.json({ success: true });
   },
 
+  /**
+   * Upload a single file to a project.
+   * If large/binary => S3 + pointer commit. Otherwise => direct base64 commit.
+   */
   uploadFile: async (req: Request, res: Response) => {
     const { projectId } = req.params;
     const { path } = req.query;
@@ -462,10 +523,13 @@ const handlers = {
       throw new Error("No file provided");
     }
 
+    const uploadPath = (path as string) || req.file.originalname;
+
+    // Attempt to directly upload (will throw if LFS is needed)
     await uploadFileToProject(
       projectId,
-      (path as string) || req.file.originalname,
-      req.file.buffer.toString("base64"),
+      uploadPath,
+      req.file.buffer,
       `Upload ${req.file.originalname}`
     );
 
@@ -493,6 +557,10 @@ const handlers = {
     res.json(project);
   },
 
+  /**
+   * Get file metadata + content. If it's an LFS pointer, return a presigned S3 URL.
+   * Otherwise, return the actual file (text or base64).
+   */
   getFile: async (req: Request, res: Response) => {
     const { projectId } = req.params;
     const { path } = req.query;
@@ -503,12 +571,57 @@ const handlers = {
     res.json(file);
   },
 
-  viewFile: async function viewFile(req: Request, res: Response) {
+  /**
+   * Step 1 for LFS: client asks for a presigned URL if the file is big or forced by extension.
+   */
+  presignLfs: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const { path } = req.query;
+    const { filename, mimeType, size, sha256 } = req.body;
 
-    if (!path || typeof path !== "string") {
-      throw new Error("Path is required");
+    if (!shouldUseLfs(filename, size)) {
+      res.json({ isLfs: false });
+      return;
+    }
+
+    // Use the SHA256 as the S3 key directly
+    const fileKey = sha256; // No need for uploads/timestamp prefix since SHA256 is unique
+
+    const putUrl = s3.presign(fileKey, {
+      expiresIn: 3600,
+      method: "PUT",
+      type: mimeType,
+    });
+
+    const viewUrl = s3.file(fileKey).presign({
+      expiresIn: 3600,
+      method: "GET",
+    });
+
+    res.json({
+      isLfs: true,
+      presignedUrl: putUrl,
+      viewUrl,
+      fileKey,
+      file_metadata: {
+        filename,
+        mimeType,
+        size,
+        sha256, // Include this so we can verify it later
+      },
+    });
+    return;
+  },
+
+  /**
+   * Step 2 for LFS: after the client has PUT the file to S3, finalize by creating the pointer in Gitea.
+   */
+  finalizeLfs: async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const { fileKey, filePath, size, sha256 } = req.body;
+
+    // Verify the provided SHA256 matches the fileKey (they should be the same)
+    if (fileKey !== sha256) {
+      throw new Error("SHA256 mismatch");
     }
 
     const project = await db.query.projects.findFirst({
@@ -518,58 +631,28 @@ const handlers = {
       throw new Error("Project not found");
     }
 
-    const repoName = toGitSafeName(project.name);
-    const fileType = getFileType(path);
-    const fileName = path.split("/").pop() || "file";
+    // Create pointer file using the SHA256 directly - no need to read file from S3
+    const pointerContent = `version https://git-lfs.github.com/spec/v1
+oid sha256:${sha256}
+size ${size}
+`;
 
-    const giteaToken = process.env.GITEA_API_KEY;
-    if (!giteaToken) {
-      throw new Error("GITEA_TOKEN is not set");
-    }
+    const base64Pointer = Buffer.from(pointerContent, "utf-8").toString(
+      "base64"
+    );
 
-    // Append the token in the query string so Gitea considers the user as signed in.
-    const url = `http://localhost:4002/api/v1/repos/admin/${repoName}/raw/${encodeURIComponent(
-      path
-    )}?ref=main&token=${giteaToken}`;
+    await gitea.repos.repoCreateFile(
+      "admin",
+      toGitSafeName(project.name),
+      filePath,
+      {
+        content: base64Pointer,
+        message: `LFS upload of ${filePath}`,
+      }
+    );
 
-    const response = await fetch(url, {
-      headers: {
-        Accept: "*/*",
-      },
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(
-        "Error fetching file:",
-        response.status,
-        response.statusText,
-        errText
-      );
-      throw new Error("Failed to fetch file");
-    }
-
-    // Copy all headers from the response
-    for (const [key, value] of response.headers) {
-      res.setHeader(key, value);
-    }
-
-    // Override Content headers based on file type.
-    if (fileType === "pdf") {
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
-    } else if (fileType === "image") {
-      res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
-    } else {
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${fileName}"`
-      );
-    }
-
-    // Pipe the response body to the client using Node's stream converter
-    const { Readable } = require("stream");
-    Readable.fromWeb(response.body).pipe(res);
+    res.json({ success: true });
+    return;
   },
 };
 
@@ -580,7 +663,8 @@ export default Router()
   .get("/:projectId", handlers.getProject)
   .delete("/:projectId", handlers.deleteProject)
   .post("/:projectId/files", upload.single("file"), handlers.uploadFile)
+  .post("/:projectId/files/presign-lfs", handlers.presignLfs)
+  .post("/:projectId/files/finalize-lfs", handlers.finalizeLfs)
   .get("/:projectId/files", handlers.getFiles)
   .delete("/:projectId/files", handlers.deleteContents)
-  .get("/:projectId/files/content", handlers.getFile)
-  .get("/:projectId/files/view", handlers.viewFile);
+  .get("/:projectId/files/content", handlers.getFile);
