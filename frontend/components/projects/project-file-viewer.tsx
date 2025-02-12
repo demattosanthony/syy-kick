@@ -38,7 +38,7 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
       );
     case "text/markdown":
       return (
-        <div className="h-full w-full p-6">
+        <div className="h-full w-full p-8">
           <MarkdownViewer content={file.content || ""} />
         </div>
       );
