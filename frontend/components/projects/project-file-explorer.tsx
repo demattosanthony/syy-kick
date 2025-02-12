@@ -18,7 +18,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
-import { getRelativeTimeString } from "@/lib/utils";
+import { cn, getRelativeTimeString } from "@/lib/utils";
 import { ProjectContent, FileResponse } from "@/types/project";
 
 interface ProjectFileExplorerProps {
@@ -98,6 +98,9 @@ function FileExplorerItem({
   initialPathChain = [],
 }: FileExplorerItemProps) {
   const router = useRouter();
+  const pathname = window.location.pathname;
+  const isSelected =
+    variant === "compact" && pathname.endsWith(`/main/${item.path}`);
 
   // If there is a chain and this item’s name matches the first element,
   // then mark it as open by default.
@@ -181,7 +184,10 @@ function FileExplorerItem({
   return (
     <div>
       <div
-        className="group flex items-center justify-between p-2 hover:bg-muted/50 cursor-pointer rounded"
+        className={cn(
+          "group flex items-center justify-between p-2 cursor-pointer rounded",
+          isSelected ? "bg-muted/50" : "hover:bg-muted/50"
+        )}
         style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
         onClick={handleRowClick}
       >

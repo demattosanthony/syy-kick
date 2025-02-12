@@ -4,6 +4,7 @@ import { FileResponse } from "@/types/project";
 import MarkdownViewer from "../MarkdownViewer";
 import PdfViewer from "../pdf-viewer";
 import ReactPlayer from "react-player";
+import { ArrowDown, File, FileDown } from "lucide-react";
 
 export default function ProjectFileViewer({ file }: { file: FileResponse }) {
   // Helper function to get the correct source URL
@@ -11,7 +12,7 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
     if (file.base64Content) {
       return `data:${file.type};base64,${file.base64Content}`;
     }
-    return file.s3Url;
+    return file.s3Url || "";
   };
 
   switch (file.type) {
@@ -31,13 +32,13 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
           <img
             src={getFileSource()}
             alt={file.name}
-            style={{ maxWidth: "100%" }}
+            className="max-h-full max-w-full object-contain"
           />
         </div>
       );
     case "text/markdown":
       return (
-        <div className="h-full w-full">
+        <div className="h-full w-full p-6">
           <MarkdownViewer content={file.content || ""} />
         </div>
       );
@@ -98,13 +99,12 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
     case "video/x-ms-wmv":
     case "video/webm":
       return (
-        <div className="flex flex-1 w-full rounded-lg overflow-hidden flex-col items-center justify-center relative">
+        <div className="flex flex-1 w-full ">
           <ReactPlayer
             url={getFileSource()}
             width={"auto"}
             height={"100%"}
             style={{
-              zIndex: 10,
               overflow: "hidden",
               position: "relative",
             }}
@@ -114,10 +114,35 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
       );
     default:
       return (
-        <div className="h-full w-full flex items-center justify-center">
-          <div className="download-prompt">
-            <p>This file type cannot be previewed.</p>
-            <a href={file.s3Url} className="download-button">
+        <div className="h-full w-full flex items-center justify-center ">
+          <div className="text-center max-w-md">
+            <div className="mb-4">
+              <File className="h-12 w-12 text-gray-400 mx-auto" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Preview Not Available Yet
+            </h3>
+            <p className="text-gray-600 mb-6">
+              This file type cannot be previewed in the browser, but you can
+              download it to view it locally.
+            </p>
+            <a
+              href={getFileSource()}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              download={file.name}
+              onClick={(e) => {
+                if (file.base64Content) {
+                  e.preventDefault();
+                  const link = document.createElement("a");
+                  link.href = getFileSource();
+                  link.download = file.name;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }
+              }}
+            >
+              <ArrowDown className="h-4 w-4 mr-2" />
               Download {file.name}
             </a>
           </div>
