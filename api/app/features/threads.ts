@@ -2,12 +2,12 @@ import z from "zod";
 import s3 from "../config/s3";
 import { ContentPart, messages, threads } from "../config/schema";
 import db from "../config/db";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, cosineDistance, desc, eq, gt, sql } from "drizzle-orm";
 import { Request, Response, Router } from "express";
 import { CoreMessage, generateObject, Message, streamText } from "ai";
 import { CONFIG } from "../config/constants";
 import { handle, generateThreadTitle } from "../utils";
-import { MODELS } from "./models";
+import { embeddingModel, MODELS } from "./models";
 
 // Input validation
 const schemas = {
@@ -64,12 +64,18 @@ const ops = {
   ) {
     for (const item of content) {
       const messageId = crypto.randomUUID();
+
+      const embedding = await embeddingModel.doEmbed({
+        values: ["type" in item && item.type === "text" ? item.text : ""],
+      });
+
       await db.insert(messages).values({
         userId,
         id: messageId,
         threadId: threadId,
         role: role as "system" | "user" | "assistant" | "tool", // Type assertion for role
         content: item,
+        embedding: embedding.embeddings[0],
         createdAt: new Date(),
       });
     }
@@ -197,15 +203,7 @@ ${conversationText}`,
       const LIMIT = 10;
       const offset = (page - 1) * LIMIT;
 
-      let baseQuery = db
-        .select({
-          id: threads.id,
-          created_at: threads.createdAt,
-          updated_at: threads.updatedAt,
-        })
-        .from(threads)
-        .leftJoin(messages, eq(threads.id, messages.threadId));
-
+      let baseQuery;
       const conditions = [eq(threads.userId, userId)];
 
       // Add organization condition
@@ -216,23 +214,45 @@ ${conversationText}`,
       }
 
       if (search.length > 0) {
-        conditions.push(
-          sql`CASE 
-            WHEN jsonb_typeof(${messages.content}) = 'object' 
-            THEN (${messages.content}->>'text')::text ILIKE ${
-            "%" + search + "%"
-          }
-            ELSE ${messages.content}::text ILIKE ${"%" + search + "%"}
-          END`
-        );
+        const searchEmbedding = await embeddingModel.doEmbed({
+          values: [search],
+        });
+
+        const similarity = sql<number>`1 - (${cosineDistance(
+          messages.embedding,
+          searchEmbedding.embeddings[0]
+        )})`;
+
+        baseQuery = db
+          .select({
+            id: threads.id,
+            created_at: threads.createdAt,
+            updated_at: threads.updatedAt,
+            max_similarity: sql<number>`MAX(${similarity})`.as(
+              "max_similarity"
+            ),
+          })
+          .from(threads)
+          .leftJoin(messages, eq(threads.id, messages.threadId))
+          .where(and(...conditions))
+          .groupBy(threads.id, threads.createdAt, threads.updatedAt)
+          .having(sql`MAX(${similarity}) > 0.5`)
+          .orderBy(desc(sql`max_similarity`));
+      } else {
+        baseQuery = db
+          .select({
+            id: threads.id,
+            created_at: threads.createdAt,
+            updated_at: threads.updatedAt,
+          })
+          .from(threads)
+          .leftJoin(messages, eq(threads.id, messages.threadId))
+          .where(and(...conditions))
+          .groupBy(threads.id, threads.createdAt, threads.updatedAt)
+          .orderBy(desc(threads.createdAt));
       }
 
-      const matchingThreads = await baseQuery
-        .where(and(...conditions))
-        .groupBy(threads.id, threads.createdAt, threads.updatedAt)
-        .orderBy(desc(threads.createdAt))
-        .limit(LIMIT)
-        .offset(offset);
+      const matchingThreads = await baseQuery.limit(LIMIT).offset(offset);
 
       const completeThreads = await db.query.threads.findMany({
         where: (threads, { and, eq, inArray }) =>
@@ -437,6 +457,10 @@ It is currently: ${new Date().toLocaleString("en-US", {
 
       // Handle client abort or end of response
       req.on("close", async () => {
+        const aiResponseEmbedding = await embeddingModel.doEmbed({
+          values: [aiResponse],
+        });
+
         await db.insert(messages).values({
           userId: req.dbUser!.id,
           id: crypto.randomUUID(),
@@ -446,6 +470,7 @@ It is currently: ${new Date().toLocaleString("en-US", {
           reasoning: reasoning,
           createdAt: new Date(),
           model: model,
+          embedding: aiResponseEmbedding.embeddings[0],
           provider: modelConfig.provider,
         });
 

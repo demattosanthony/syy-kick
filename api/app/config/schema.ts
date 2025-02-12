@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  index,
   integer,
   jsonb,
   pgTable,
@@ -7,6 +8,7 @@ import {
   timestamp,
   uuid,
   varchar,
+  vector,
 } from "drizzle-orm/pg-core";
 import { customType } from "drizzle-orm/pg-core";
 
@@ -125,21 +127,31 @@ export const threads = pgTable("threads", {
 });
 
 // Messages table with user association
-export const messages = pgTable("messages", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  threadId: uuid("thread_id")
-    .notNull()
-    .references(() => threads.id, { onDelete: "cascade" }),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  role: text("role", { enum: MESSAGE_ROLES }).notNull(),
-  content: jsonb("content").notNull(),
-  reasoning: text("reasoning"),
-  model: text("model"),
-  provider: text("provider"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => threads.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: MESSAGE_ROLES }).notNull(),
+    content: jsonb("content").notNull(),
+    reasoning: text("reasoning"),
+    model: text("model"),
+    provider: text("provider"),
+    embedding: vector("embedding", { dimensions: 1536 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("embeddingIndex").using(
+      "hnsw",
+      table.embedding.op("vector_cosine_ops")
+    ),
+  ]
+);
 
 // Tool calls table
 export const toolCalls = pgTable("tool_calls", {

@@ -401,6 +401,10 @@ export const MODELS: Record<string, ModelConfig> = {
   ...perplexityModels(process.env.PPLX_API_KEY),
 };
 
+export const embeddingModel = openai.embedding("text-embedding-3-large", {
+  dimensions: 1536,
+});
+
 const ops = {
   listModels: () => {
     return Object.entries(MODELS).map(([modelName, config]) => ({
