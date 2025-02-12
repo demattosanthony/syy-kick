@@ -145,6 +145,20 @@
     {
       "idx": 20,
       "version": "7",
+      "when": 1739324145209,
+      "tag": "0020_shiny_the_hood",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1739324222564,
+      "tag": "0021_shocking_vampiro",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
       "when": 1739221515449,
       "tag": "0020_perpetual_invisible_woman",
       "breakpoints": true

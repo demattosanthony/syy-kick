@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, FolderClosed, FileUp, File } from "lucide-react";
+import { Plus, FolderClosed, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -18,7 +18,6 @@ import {
 import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectFileExplorer from "@/components/projects/project-file-explorer";
-import { InlineEdit } from "@/components/inline-edit";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReadmeSection } from "@/components/projects/readme-section";
 import { Input } from "@/components/ui/input";
@@ -105,13 +104,7 @@ export default function ProjectPage() {
                 <AvatarFallback>{project?.name[0]}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col gap-1">
-                <h2 className="text-2xl font-bold">
-                  {project?.name}
-                  {/* <InlineEdit
-                    value={project?.name || ""}
-                    onSave={handleUpdateName}
-                  /> */}
-                </h2>
+                <h2 className="text-2xl font-bold">{project?.name}</h2>
                 <span className="text-sm text-muted-foreground">
                   {project?.description}
                 </span>
@@ -142,6 +135,7 @@ export default function ProjectPage() {
                         <FolderClosed className="h-5 w-5 fill-blue-400 text-blue-400" />
                         <input
                           type="file"
+                          // @ts-ignore
                           webkitdirectory=""
                           multiple
                           className="hidden"
@@ -176,7 +170,7 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto w-full px-4 pb-20">
+      <div className="flex-1 min-h-0 overflow-y-auto w-full px-4 pb-40">
         <Card className="w-full mt-4 shadow-none mb-4">
           <CardContent className="p-2">
             <ProjectFileExplorer
