@@ -8,6 +8,7 @@ import {
   ChevronDown,
   MoreHorizontal,
   Trash2,
+  FolderOpen,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -87,7 +88,6 @@ interface FileExplorerItemProps {
   depth?: number;
   projectId: string;
   variant: "compact" | "detailed";
-  /** For auto-expansion: the chain of folder names to auto-open at this level */
   initialPathChain?: string[];
 }
 
@@ -193,7 +193,11 @@ function FileExplorerItem({
                   )}
                 </div>
               )}
-              <Folder className="h-5 w-5 text-blue-400 fill-blue-400" />
+              {variant === "compact" && isOpen ? (
+                <FolderOpen className="h-5 w-5 text-blue-400 " />
+              ) : (
+                <Folder className="h-5 w-5 text-blue-400 fill-blue-400" />
+              )}
             </div>
           ) : (
             <span className="w-4">

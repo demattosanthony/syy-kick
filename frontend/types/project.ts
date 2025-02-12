@@ -26,7 +26,7 @@ export interface FileResponse {
   name: string;
   path: string;
   size: number;
-  type: "text" | "pdf" | "image" | "binary";
+  type: string;
   sha: string;
 
   /**

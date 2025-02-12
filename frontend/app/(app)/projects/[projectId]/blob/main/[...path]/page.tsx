@@ -1,6 +1,7 @@
 "use client";
 
 import ProjectFileExplorer from "@/components/projects/project-file-explorer";
+import ProjectFileViewer from "@/components/projects/project-file-viewer";
 import { Card, CardContent } from "@/components/ui/card";
 import { useProjectFileQuery, useProjectFilesQuery } from "@/queries/queries";
 import { useParams } from "next/navigation";
@@ -21,7 +22,7 @@ export default function Page() {
     useProjectFileQuery(projectId, currentPath);
 
   return (
-    <div className="h-screen w-full flex gap-2">
+    <div className="h-full w-full flex gap-2 ">
       {/* Left Navigation: full tree with auto-opened folders */}
       <div className="w-80 h-full flex flex-col border-r border-t">
         <ProjectFileExplorer
@@ -35,7 +36,9 @@ export default function Page() {
 
       {/* Right Navigation: current folder contents */}
       <Card className="flex-1 h-full">
-        <CardContent className="p-2">{fileContent?.type}</CardContent>
+        <CardContent className="p-2 flex flex-1 h-full">
+          {fileContent && <ProjectFileViewer file={fileContent} />}
+        </CardContent>
       </Card>
     </div>
   );

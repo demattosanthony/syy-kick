@@ -19,7 +19,7 @@ export const PdfThumbnail = ({
       // Initialize worker first
       const pdfjs = await import("pdfjs-dist");
 
-      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
       try {
         // Load the PDF
         const loadingTask = pdfjsLib.getDocument(url);
