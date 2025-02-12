@@ -3,6 +3,7 @@
 import { FileResponse } from "@/types/project";
 import MarkdownViewer from "../MarkdownViewer";
 import PdfViewer from "../pdf-viewer";
+import ReactPlayer from "react-player";
 
 export default function ProjectFileViewer({ file }: { file: FileResponse }) {
   // Helper function to get the correct source URL
@@ -88,6 +89,27 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
       return (
         <div className="h-full w-full">
           <pre className="code-viewer">{file.content}</pre>
+        </div>
+      );
+    case "video/mp4":
+    case "video/quicktime":
+    case "video/x-msvideo":
+    case "video/x-flv":
+    case "video/x-ms-wmv":
+    case "video/webm":
+      return (
+        <div className="flex flex-1 w-full rounded-lg overflow-hidden flex-col items-center justify-center relative">
+          <ReactPlayer
+            url={getFileSource()}
+            width={"auto"}
+            height={"100%"}
+            style={{
+              zIndex: 10,
+              overflow: "hidden",
+              position: "relative",
+            }}
+            controls
+          />
         </div>
       );
     default:

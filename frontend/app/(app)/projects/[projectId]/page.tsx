@@ -1,12 +1,5 @@
 "use client";
 
-import { Plus, FolderClosed, File } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useParams } from "next/navigation";
 import {
   useProjectFileQuery,
@@ -20,9 +13,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectFileExplorer from "@/components/projects/project-file-explorer";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReadmeSection } from "@/components/projects/readme-section";
-import { Input } from "@/components/ui/input";
 import ChatInputForm from "@/components/chat/ChatInputForm";
 import { ProjectContent } from "@/types/project";
+import { ProjectAddFileButton } from "@/components/projects/project-add-file-button";
 
 interface ProjectPageProps {
   initalProjectFiles: ProjectContent[];
@@ -48,40 +41,6 @@ export default function ProjectPage({ initalProjectFiles }: ProjectPageProps) {
 
     return project?.user?.profilePicture;
   }, [project]);
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    try {
-      for (const file of files) {
-        await uploadMutation.mutateAsync({
-          projectId: projectId as string,
-          file,
-          path: file.name,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to upload files:", error);
-    }
-  };
-
-  const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    try {
-      for (const file of files) {
-        await uploadMutation.mutateAsync({
-          projectId: projectId as string,
-          file,
-          path: file.webkitRelativePath,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to upload folder:", error);
-    }
-  };
 
   const updateProject = useUpdateProjectMutation();
 
@@ -117,53 +76,7 @@ export default function ProjectPage({ initalProjectFiles }: ProjectPageProps) {
             </div>
 
             <div className="flex gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="ghost" size="default" className="px-2 gap-1">
-                    <Plus className="h-3 w-3" />
-                    Add file
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-1">
-                  <div className="flex flex-col gap-1">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-2 text-sm"
-                    >
-                      <label className="flex items-center gap-2 cursor-pointer w-full">
-                        <FolderClosed className="h-5 w-5 fill-blue-400 text-blue-400" />
-                        <input
-                          type="file"
-                          // @ts-ignore
-                          webkitdirectory=""
-                          multiple
-                          className="hidden"
-                          onChange={handleFolderUpload}
-                        />
-                        Upload folder
-                      </label>
-                    </Button>
-                    <label>
-                      <input
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={handleFileUpload}
-                      />
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start gap-2 text-sm cursor-pointer"
-                        asChild
-                      >
-                        <span>
-                          <File className="h-4 w-4 text-muted-foreground" />
-                          Upload files
-                        </span>
-                      </Button>
-                    </label>
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <ProjectAddFileButton projectId={projectId as string} />
             </div>
           </div>
         </div>

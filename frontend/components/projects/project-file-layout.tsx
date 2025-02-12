@@ -5,6 +5,7 @@ import ProjectNavBreadcrumbs from "@/components/projects/project-nav-breadcrumbs
 import { Card, CardContent } from "@/components/ui/card";
 import { useProjectFilesQuery, useProjectQuery } from "@/queries/queries";
 import { ReactNode } from "react";
+import { ProjectAddFileButton } from "./project-add-file-button";
 
 interface ProjectFileLayoutProps {
   projectId: string;
@@ -23,8 +24,10 @@ export default function ProjectFileLayout({
 
   return (
     <div className="h-full w-full flex flex-col pt-6">
-      <div className="ml-4 mb-2">
+      <div className="mx-4 mb-2 flex items-center justify-between">
         {project && <ProjectNavBreadcrumbs project={project} />}
+
+        {project && <ProjectAddFileButton projectId={projectId} />}
       </div>
 
       <div className="flex gap-2 flex-1 pb-2 mx-2 max-h-[calc(100vh-62px)]">

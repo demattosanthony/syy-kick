@@ -18,7 +18,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
-import api from "@/lib/api";
 import { getRelativeTimeString } from "@/lib/utils";
 import { ProjectContent, FileResponse } from "@/types/project";
 
@@ -218,7 +217,7 @@ function FileExplorerItem({
 
         {variant === "detailed" && (
           <div className="flex items-center gap-2">
-            <small className="text-sm font-medium leading-none text-muted-foreground ml-4 pr-2">
+            <small className="text-sm font-medium leading-none text-muted-foreground">
               {getRelativeTimeString(item.lastModified)}
             </small>
             <Popover>
