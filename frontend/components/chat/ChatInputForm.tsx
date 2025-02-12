@@ -129,7 +129,7 @@ function ChatInputForm(
   return (
     <Card
       className={cn(
-        "relative flex flex-col h-auto min-h-[105px] max-h-[450px] w-full mx-auto max-w-[750px] p-0 ",
+        "relative flex flex-col h-auto min-h-[105px] max-h-[450px] w-full mx-auto max-w-[750px] p-0 rounded-lg",
         focused && !isMobile ? "shadow-md" : "shadow-none"
       )}
     >
@@ -172,7 +172,7 @@ function ChatInputForm(
           </div>
         )}
 
-        <div className="flex flex-col w-full pt-1">
+        <div className="flex flex-col w-full pt-3">
           <Textarea
             placeholder={placeholder}
             onChange={handleInputChange}
@@ -184,13 +184,12 @@ function ChatInputForm(
             autoFocus
             disabled={isGenerating}
             style={{
-              height: "48px",
-              minHeight: "48px",
+              height: "40px",
+              minHeight: "40px",
               paddingTop: 0,
               paddingBottom: 0,
-              lineHeight: "48px",
             }}
-            className="resize-none !min-h-[48px] !py-0 w-full text-lg rounded-xl border-none focus:ring-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:font-medium"
+            className="resize-none !min-h-[40px] !py-0 w-full text-lg rounded-xl border-none focus:ring-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:font-medium"
           />
 
           <div className="w-full flex justify-between items-center px-1 h-12">

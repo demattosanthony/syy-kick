@@ -176,7 +176,7 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto w-full px-4 pb-56">
+      <div className="flex-1 min-h-0 overflow-y-auto w-full px-4 pb-20">
         <Card className="w-full mt-4 shadow-none mb-4">
           <CardContent className="p-2">
             <ProjectFileExplorer
@@ -188,6 +188,15 @@ export default function ProjectPage() {
         </Card>
 
         <ReadmeSection content={readmeFile?.content || ""} />
+
+        <div className=" bg-background w-full mt-4">
+          <ChatInputForm
+            input={""}
+            setInput={() => {}}
+            handleInputChange={() => {}}
+            onSubmit={() => {}}
+          />
+        </div>
       </div>
 
       {/* <div className="container py-6 px-6">
@@ -226,15 +235,6 @@ export default function ProjectPage() {
           </div>
         </div>
       </div> */}
-
-      <div className="absolute bottom-16 left-0 right-0 p-6 pb-8 md:pb-4 md:p-2 bg-background">
-        <ChatInputForm
-          input={""}
-          setInput={() => {}}
-          handleInputChange={() => {}}
-          onSubmit={() => {}}
-        />
-      </div>
     </div>
   );
 }
