@@ -98,7 +98,7 @@ export default function ProjectPage({ initalProjectFiles }: ProjectPageProps) {
   );
 
   return (
-    <div className="flex flex-col items-center max-w-3xl w-full overflow-y-auto h-screen pt-12">
+    <div className="flex flex-col items-center max-w-3xl w-full overflow-y-auto h-screen mt-16">
       {/* Project Header */}
       <div className="border-b w-full">
         <div className="container pb-4 pt-1 px-6 flex items-center justify-between">

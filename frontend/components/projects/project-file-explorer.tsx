@@ -161,7 +161,12 @@ function FileExplorerItem({
 
   // Clicking the row navigates to the detailed view.
   const handleRowClick = async () => {
+    console.log("Clicked", item);
     if (item.type === "dir") {
+      if (variant === "compact") {
+        // Toggle expansion for folders in compact mode
+        setIsOpen(!isOpen);
+      }
       router.push(`/projects/${projectId}/tree/main/${item.path}`);
     } else {
       router.push(`/projects/${projectId}/blob/main/${item.path}`);
@@ -200,7 +205,7 @@ function FileExplorerItem({
               )}
             </div>
           ) : (
-            <span className="w-4">
+            <span className={`${variant === "compact" ? "ml-[20px]" : ""} w-4`}>
               {getFileIcon(item.name) || (
                 <File className="h-4 w-4 text-muted-foreground" />
               )}

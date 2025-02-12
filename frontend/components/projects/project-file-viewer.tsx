@@ -40,9 +40,45 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
           <MarkdownViewer content={file.content || ""} />
         </div>
       );
+    case "text/csv":
+      const rows = file.content?.split("\n") || [];
+      const headerRow = rows[0];
+      const bodyRows = rows.slice(1);
+
+      return (
+        <div className="h-full w-full overflow-auto whitespace-nowrap">
+          <table className="min-w-full table-fixed border-collapse">
+            <thead>
+              <tr className="bg-gray-100 font-semibold">
+                {headerRow?.split(",").map((cell, cellIndex) => (
+                  <td
+                    key={cellIndex}
+                    className="px-4 py-2 border overflow-hidden text-ellipsis"
+                  >
+                    {cell.trim()}
+                  </td>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {bodyRows.map((row, rowIndex) => (
+                <tr key={rowIndex} className="border-t">
+                  {row.split(",").map((cell, cellIndex) => (
+                    <td
+                      key={cellIndex}
+                      className="px-4 py-2 border overflow-hidden text-ellipsis"
+                    >
+                      {cell.trim()}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
     case "text/plain":
     case "application/json":
-    case "text/csv":
     case "text/javascript":
     case "text/typescript":
     case "text/css":
