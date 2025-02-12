@@ -59,9 +59,6 @@ export default function ProjectPage({ initalProjectFiles }: ProjectPageProps) {
               </Avatar>
               <div className="flex flex-col gap-1">
                 <h2 className="text-2xl font-bold">{project?.name}</h2>
-                <span className="text-sm text-muted-foreground">
-                  {project?.description}
-                </span>
               </div>
             </div>
 

@@ -185,7 +185,7 @@ function FileExplorerItem({
         style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
         onClick={handleRowClick}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-w-full">
           {item.type === "dir" ? (
             <div className="flex items-center gap-1">
               {variant === "compact" && (
@@ -210,7 +210,7 @@ function FileExplorerItem({
               )}
             </span>
           )}
-          <span className="text-sm hover:underline hover:text-blue-500">
+          <span className="text-sm hover:underline hover:text-blue-500 truncate ">
             {item.name}
           </span>
         </div>

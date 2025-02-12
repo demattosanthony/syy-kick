@@ -31,14 +31,15 @@ export default function ProjectNavBreadcrumbs({
         </BreadcrumbItem>
         {pathArray.map((segment, index) => {
           const isLastItem = index === pathArray.length - 1;
+          const decodedSegment = decodeURIComponent(segment);
           return (
-            <Fragment key={segment}>
+            <Fragment key={decodedSegment}>
               <BreadcrumbSeparator>
                 <Slash />
               </BreadcrumbSeparator>
-              <BreadcrumbItem key={segment}>
+              <BreadcrumbItem key={decodedSegment}>
                 {isLastItem ? (
-                  <span className="font-bold">{segment}</span>
+                  <span className="font-bold">{decodedSegment}</span>
                 ) : (
                   <BreadcrumbLink
                     href={`/projects/${project.id}/tree/main/${pathArray
@@ -46,7 +47,7 @@ export default function ProjectNavBreadcrumbs({
                       .join("/")}`}
                     className="hover:text-blue-500 hover:underline"
                   >
-                    {segment}
+                    {decodedSegment}
                   </BreadcrumbLink>
                 )}
               </BreadcrumbItem>

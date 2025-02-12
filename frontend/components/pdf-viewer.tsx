@@ -137,7 +137,6 @@ function PdfViewer({
               fileUrl={content}
               theme={resolvedTheme === "dark" ? "dark" : "light"}
               plugins={[zoomPluginInstance, searchPluginInstance]}
-              renderLoader={() => <div>Loading...</div>}
             />
           </div>
         </Worker>
