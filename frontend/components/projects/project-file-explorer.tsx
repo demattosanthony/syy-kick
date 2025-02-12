@@ -282,7 +282,7 @@ function FileExplorerSkeleton({ depth = 0 }: { depth?: number }) {
       className="flex items-center gap-2 p-2"
       style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
     >
-      <Skeleton className="h-6 w-5" />
+      <Skeleton className="h-6 w-6" />
       <Skeleton className="h-4 w-[165px]" />
     </div>
   );

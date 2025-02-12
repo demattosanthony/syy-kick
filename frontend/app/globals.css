@@ -133,3 +133,33 @@
     user-select: text;
   }
 }
+
+.rpv-core__viewer {
+  box-shadow: none !important;
+}
+
+.rpv-core__viewer-page,
+.rpv-core__page-layer,
+.rpv-core__canvas-layer,
+.rpv-core__text-layer,
+.rpv-core__page-wrapper,
+.rpv-core__inner-page,
+.rpv-core__annotation-layer,
+.rpv-core__page-container {
+  box-shadow: none !important;
+  margin: 0;
+  border: none !important;
+  padding: 0 !important;
+  outline: none !important;
+}
+
+.dark .rpv-core__viewer-page,
+.dark .rpv-core__page-layer,
+.dark .rpv-core__canvas-layer,
+.dark .rpv-core__text-layer,
+.dark .rpv-core__page-wrapper,
+.dark .rpv-core__inner-page,
+.dark .rpv-core__annotation-layer,
+.dark .rpv-core__page-container {
+  background-color: hsl(var(--card));
+}

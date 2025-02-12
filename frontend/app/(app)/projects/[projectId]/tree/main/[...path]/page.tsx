@@ -24,31 +24,38 @@ export default function Page() {
     useProjectFilesQuery(projectId, currentPath);
 
   return (
-    <div className="h-screen w-full flex gap-2">
-      {/* Left Navigation: full tree with auto-opened folders */}
-      <div className="w-80 h-full flex flex-col border-r border-t">
-        <ProjectFileExplorer
-          contents={fullProjectContents || []}
-          projectId={projectId}
-          isLoading={fullProjectContentsIsLoading}
-          variant="compact"
-          initialOpenPathChain={pathArray}
-        />
+    <div className="h-full w-full flex flex-col pt-6">
+      <div className="ml-4 mb-2">
+        {project && <ProjectNavBreadcrumbs project={project} />}
       </div>
 
-      <div className="flex-1 h-full flex flex-col">
-        {project && <ProjectNavBreadcrumbs project={project} />}
-
-        <Card className="flex-1 h-full">
-          <CardContent className="p-2">
+      <div className="flex gap-2 flex-1 pb-2 mx-2 max-h-[calc(100vh-100px)]">
+        {/* Left Navigation: full tree with auto-opened folders */}
+        <Card className="w-80 h-full flex flex-col ">
+          <CardContent className="p-2 px-0 overflow-y-auto">
             <ProjectFileExplorer
-              contents={currentFolderContents || []}
+              contents={fullProjectContents || []}
               projectId={projectId}
-              isLoading={currentFolderIsLoading}
-              variant="detailed"
+              isLoading={fullProjectContentsIsLoading}
+              variant="compact"
+              initialOpenPathChain={pathArray}
             />
           </CardContent>
         </Card>
+
+        {/* Right Navigation: current folder contents */}
+        <div className="flex-1 h-full overflow-y-auto">
+          <Card className=" max-h-full">
+            <CardContent className="p-2">
+              <ProjectFileExplorer
+                contents={currentFolderContents || []}
+                projectId={projectId}
+                isLoading={currentFolderIsLoading}
+                variant="detailed"
+              />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

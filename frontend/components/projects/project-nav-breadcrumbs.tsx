@@ -22,7 +22,10 @@ export default function ProjectNavBreadcrumbs({
     <Breadcrumb className="mb-2">
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbLink href={`/projects/${project.id}`}>
+          <BreadcrumbLink
+            href={`/projects/${project.id}`}
+            className="hover:text-blue-500 hover:underline"
+          >
             {project?.name}
           </BreadcrumbLink>
         </BreadcrumbItem>
@@ -35,12 +38,13 @@ export default function ProjectNavBreadcrumbs({
               </BreadcrumbSeparator>
               <BreadcrumbItem key={segment}>
                 {isLastItem ? (
-                  <span>{segment}</span>
+                  <span className="font-bold">{segment}</span>
                 ) : (
                   <BreadcrumbLink
                     href={`/projects/${project.id}/tree/main/${pathArray
                       .slice(0, index + 1)
                       .join("/")}`}
+                    className="hover:text-blue-500 hover:underline"
                   >
                     {segment}
                   </BreadcrumbLink>

@@ -21,7 +21,7 @@ export default async function MainAppLayout({
       <SidebarInset>
         <div className="h-full w-full flex flex-col max-h-[-webkit-fill-available] relative">
           <DragAndDropProvider>
-            <Header user={user} />
+            {!user && <Header user={user} />}
 
             {children}
           </DragAndDropProvider>

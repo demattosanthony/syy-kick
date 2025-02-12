@@ -8,11 +8,13 @@ import { Viewer, Worker } from "@react-pdf-viewer/core";
 // import { useEffect } from "react";
 
 import "@react-pdf-viewer/core/lib/styles/index.css";
+import { useTheme } from "next-themes";
 // import "@react-pdf-viewer/zoom/lib/styles/index.css";
 
 // import "@react-pdf-viewer/page-navigation/lib/styles/index.css";
 
 export default function PdfViewer({ content }: { content: string }) {
+  const { resolvedTheme } = useTheme();
   //   const zoomPluginInstance = zoomPlugin({ enableShortcuts: true });
   //   const pageNavigationPluginInstance = pageNavigationPlugin();
   //   const setPdfPlugins = useStorageStore((state) => state.setPdfPlugins);
@@ -30,7 +32,10 @@ export default function PdfViewer({ content }: { content: string }) {
       {content && (
         <Worker workerUrl="/pdf.worker.min.js">
           <div className="absolute inset-0">
-            <Viewer fileUrl={content} />
+            <Viewer
+              fileUrl={content}
+              theme={resolvedTheme === "dark" ? "dark" : "light"}
+            />
           </div>
         </Worker>
       )}

@@ -25,31 +25,36 @@ export default function Page() {
   // RIGHT: Fetch only the contents of the current folder.
   // If pathArray is empty then we fetch the root contents.
   const currentPath = pathArray.length ? pathArray.join("/") : "";
-  const { data: fileContent, isLoading: currentFolderIsLoading } =
-    useProjectFileQuery(projectId, currentPath);
+  const { data: fileContent } = useProjectFileQuery(projectId, currentPath);
 
   return (
-    <div className="h-full w-full flex gap-2 ">
-      {/* Left Navigation: full tree with auto-opened folders */}
-      <div className="w-80 h-full flex flex-col border-r border-t">
-        <ProjectFileExplorer
-          contents={fullProjectContents || []}
-          projectId={projectId}
-          isLoading={fullProjectContentsIsLoading}
-          variant="compact"
-          initialOpenPathChain={pathArray}
-        />
+    <div className="h-full w-full flex flex-col pt-6">
+      <div className="ml-4 mb-2">
+        {project && <ProjectNavBreadcrumbs project={project} />}
       </div>
 
-      {/* Right Navigation: current folder contents */}
-      <div className="flex-1 h-full flex flex-col">
-        {project && <ProjectNavBreadcrumbs project={project} />}
-
-        <Card className="flex-1 h-full">
-          <CardContent className="p-2 flex flex-col h-full">
-            {fileContent && <ProjectFileViewer file={fileContent} />}
+      <div className="flex gap-2 flex-1 pb-2 mx-2 ">
+        {/* Left Navigation: full tree with auto-opened folders */}
+        <Card className="w-80 h-full flex flex-col ">
+          <CardContent className="p-2 px-0 overflow-y-auto">
+            <ProjectFileExplorer
+              contents={fullProjectContents || []}
+              projectId={projectId}
+              isLoading={fullProjectContentsIsLoading}
+              variant="compact"
+              initialOpenPathChain={pathArray}
+            />
           </CardContent>
         </Card>
+
+        {/* Right Navigation: current folder contents */}
+        <div className="flex-1 h-full overflow-y-auto">
+          <Card className="h-full overflow-y-auto">
+            <CardContent className="flex flex-col h-full p-0">
+              {fileContent && <ProjectFileViewer file={fileContent} />}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

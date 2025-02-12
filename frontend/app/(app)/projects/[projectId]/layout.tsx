@@ -4,7 +4,7 @@ export default async function ProjectPageLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background flex items-center flex-col pt-16 relative">
+    <div className="min-h-screen bg-background flex items-center flex-col relative">
       {children}
     </div>
   );
