@@ -51,9 +51,16 @@ export function ProjectFileExplorer({
     return <FileViewer file={selectedFile} />;
   }
 
+  // Sort contents to put README.md last
+  const sortedContents = [...contents].sort((a, b) => {
+    if (a.name.toLowerCase() === "readme.md") return 1;
+    if (b.name.toLowerCase() === "readme.md") return -1;
+    return 0;
+  });
+
   return (
     <div className="divide-y">
-      {contents.map((item) => (
+      {sortedContents.map((item) => (
         <FileExplorerItem key={item.name} item={item} projectId={projectId} />
       ))}
     </div>
@@ -83,20 +90,38 @@ function FileExplorerItem({
     const ext = filename.split(".").pop()?.toLowerCase();
     switch (ext) {
       case "ifc":
-        return "📐";
+        return "🏛️"; // Building/architecture file
       case "pdf":
-        return "📄";
+        return "📑"; // Document
       case "xlsx":
       case "xls":
-        return "📊";
+        return "📊"; // Spreadsheet/charts
       case "ttl":
-        return "🔗";
+        return "🔄"; // Turtle/RDF file
       case "dwg":
-        return "✏️";
+        return "📏"; // CAD drawing
       case "rvt":
-        return "🏗️";
-      case "md":
-        return "📝";
+        return "🏢"; // Revit/BIM file
+      case "json":
+        return "🔧"; // Config/data file
+      case "html":
+        return "🌐"; // Web page
+      case "png":
+      case "jpg":
+      case "jpeg":
+      case "gif":
+        return "🖼️"; // Images
+      case "mp4":
+      case "mov":
+      case "avi":
+        return "🎥"; // Videos
+      case "mp3":
+      case "wav":
+        return "🎵"; // Audio
+      case "zip":
+      case "rar":
+      case "7z":
+        return "📦"; // Archives
       default:
         return null;
     }

@@ -2,7 +2,7 @@ import React from "react";
 
 export function TypographyH1({ children }: { children: React.ReactNode }) {
   return (
-    <h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-5xl mb-2">
+    <h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-5xl">
       {children}
     </h1>
   );
@@ -10,7 +10,7 @@ export function TypographyH1({ children }: { children: React.ReactNode }) {
 
 export function TypographyH2({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="scroll-m-20 border-b pb-2 text-2xl font-semibold tracking-tight mb-2">
+    <h2 className="scroll-m-20 border-b pb-2 text-2xl font-semibold tracking-tight">
       {children}
     </h2>
   );
@@ -18,7 +18,7 @@ export function TypographyH2({ children }: { children: React.ReactNode }) {
 
 export function TypographyH3({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="scroll-m-20 text-xl font-semibold tracking-tight mb-2">
+    <h3 className="scroll-m-20 text-xl font-semibold tracking-tight">
       {children}
     </h3>
   );
@@ -26,7 +26,7 @@ export function TypographyH3({ children }: { children: React.ReactNode }) {
 
 export function TypographyH4({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="scroll-m-20 text-lg font-semibold tracking-tight mb-2">
+    <h4 className="scroll-m-20 text-lg font-semibold tracking-tight">
       {children}
     </h4>
   );
@@ -86,7 +86,7 @@ export function TypographyList({
   const childrenArray = React.Children.toArray(children);
 
   return (
-    <ul className="my-2 ml-6 list-disc [&>li]:mt-2 text-base" {...props}>
+    <ul className="mb-2 ml-6 list-disc [&>li]:mt-2 text-base" {...props}>
       {childrenArray.map((child, index) => (
         <React.Fragment key={index}>{child}</React.Fragment>
       ))}

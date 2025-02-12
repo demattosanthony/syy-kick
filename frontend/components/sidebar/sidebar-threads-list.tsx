@@ -25,7 +25,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
   const params = useParams();
   const currentThreadId = params?.threadId;
   const { data, isLoading } = useThreadsQuery();
-  const threads = data?.pages[0]?.threads ?? [];
+  const threads = (data?.pages[0]?.threads ?? []).slice(-6);
 
   const deleteThreadMutation = useDeleteThreadMutation();
 

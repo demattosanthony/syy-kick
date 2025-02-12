@@ -95,8 +95,8 @@ export default function ProjectPage() {
   return (
     <div className="flex flex-col items-center max-w-3xl w-full overflow-y-auto h-screen">
       {/* Project Header */}
-      <div className="border-b w-full ">
-        <div className="container pb-6 px-6 flex items-center justify-between">
+      <div className="border-b w-full">
+        <div className="container pb-4 pt-1 px-6 flex items-center justify-between">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3 flex-1">
               <Avatar className="h-8 w-8">
@@ -112,7 +112,7 @@ export default function ProjectPage() {
             </div>
 
             <div className="flex gap-2">
-              <Input placeholder="Search files" className="w-60" />
+              <Input placeholder="Search files" className="w-60 z-40" />
 
               <Popover>
                 <PopoverTrigger asChild>
@@ -184,14 +184,16 @@ export default function ProjectPage() {
         <ReadmeSection content={readmeFile?.content || ""} />
       </div>
 
-      <div className="absolute bottom-2 inset-x-0 w-full flex items-center justify-center transition-all duration-300 ease-in-out hover:bottom-20">
-        <div className="w-full max-w-3xl px-4">
-          <ChatInputForm
-            input={""}
-            setInput={() => {}}
-            handleInputChange={() => {}}
-            onSubmit={() => {}}
-          />
+      <div className="absolute bottom-2 inset-x-0 w-full group">
+        <div className="w-full flex items-center justify-center transition-all duration-300 ease-in-out group-hover:translate-y-[-4.5rem]">
+          <div className="w-full max-w-3xl px-4">
+            <ChatInputForm
+              input={""}
+              setInput={() => {}}
+              handleInputChange={() => {}}
+              onSubmit={() => {}}
+            />
+          </div>
         </div>
       </div>
     </div>

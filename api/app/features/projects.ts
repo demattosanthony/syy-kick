@@ -6,7 +6,6 @@ import gitea from "../config/gitea";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
 import multer from "multer";
-import crypto from "crypto";
 import { shouldUseLfs } from "../utils/lfs-utils";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -103,44 +102,6 @@ async function createFileInGitea(
   const base64Content = fileBuffer.toString("base64");
   await gitea.repos.repoCreateFile(owner, repoName, filePath, {
     content: base64Content,
-    message,
-  });
-}
-/**
- * Re-usable function to create a pointer file in Gitea referencing an already-uploaded S3 object.
- */
-async function createLfsPointerFile(
-  owner: string,
-  repoName: string,
-  filePath: string,
-  s3Key: string,
-  fileSize: number,
-  message: string
-) {
-  // 1. The pointer file expects the "oid sha256" of the file contents.
-  //    Since the server didn't directly receive the file, you can:
-  //      - either trust a client-provided hash (not recommended for real security),
-  //      - or HEAD the object from S3, stream it and compute the SHA256 (costly for huge files).
-  //    For simplicity, we do the latter but be mindful it might require a big stream for large files.
-  //    Alternatively, you can rely on the client to pass the sha256 (and do your own checks if needed).
-
-  // This is a naive approach: reading entire object.
-  // For enormous files you may need a more streaming-based approach:
-  const s3Object = await s3.file(s3Key).bytes();
-  const sha256 = crypto.createHash("sha256").update(s3Object).digest("hex");
-
-  // 2. Create pointer content
-  const pointerContent = `version https://git-lfs.github.com/spec/v1
-oid sha256:${sha256}
-size ${fileSize}
-`;
-
-  // 3. Base64-encode pointer
-  const base64Pointer = Buffer.from(pointerContent, "utf-8").toString("base64");
-
-  // 4. Commit pointer file to Gitea
-  await gitea.repos.repoCreateFile(owner, repoName, filePath, {
-    content: base64Pointer,
     message,
   });
 }
