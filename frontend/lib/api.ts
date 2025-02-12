@@ -1,6 +1,6 @@
 import { Thread } from "@/types/chat";
 import { Model } from "@/types/model";
-import { Project, ProjectContent } from "@/types/project";
+import { FileResponse, Project, ProjectContent } from "@/types/project";
 import { Organization, User } from "@/types/user";
 
 /**
@@ -467,25 +467,6 @@ class ProjectsApi extends ApiRequest {
     return await this.request(`/projects/${projectId}`, "DELETE");
   }
 
-  async uploadFile(
-    projectId: string,
-    file: File,
-    path?: string
-  ): Promise<{ success: boolean }> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const queryParams = new URLSearchParams();
-    if (path) queryParams.append("path", path);
-
-    return this.uploadFormData(
-      `/projects/${projectId}/files${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
-      }`,
-      formData
-    );
-  }
-
   async getFiles(projectId: string, path?: string): Promise<ProjectContent[]> {
     const queryParams = new URLSearchParams();
     if (path) {
@@ -579,12 +560,6 @@ class ProjectsApi extends ApiRequest {
       return;
     }
 
-    // 2) For LFS:
-    // Verify the returned fileKey matches our calculated SHA256
-    if (presignResp.fileKey !== sha256) {
-      throw new Error("SHA256 mismatch with server response");
-    }
-
     // Upload direct to S3 using the returned presigned URL
     await fetch(presignResp.presignedUrl, {
       method: "PUT",
@@ -601,7 +576,7 @@ class ProjectsApi extends ApiRequest {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({
-        fileKey: sha256, // Use SHA256 as the fileKey
+        fileKey: presignResp.fileKey,
         filePath: path || file.name,
         size: file.size,
         mimeType: file.type,
@@ -609,37 +584,6 @@ class ProjectsApi extends ApiRequest {
       }),
     });
   }
-}
-
-/**
- * FileResponse shape matches what the server now sends back.
- */
-export interface FileResponse {
-  name: string;
-  path: string;
-  size: number;
-  type: "text" | "pdf" | "image" | "binary";
-  sha: string;
-
-  /**
-   * True if this file is actually an LFS pointer and large content lives in S3.
-   */
-  isLfsPointer?: boolean;
-
-  /**
-   * For normal text-based files, server returns raw text here.
-   */
-  content?: string;
-
-  /**
-   * For non-text but small files, server returns base64-encoded content directly.
-   */
-  base64Content?: string;
-
-  /**
-   * For LFS-pointer files, server returns a presigned S3 URL here.
-   */
-  s3Url?: string;
 }
 
 /**

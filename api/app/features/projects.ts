@@ -388,7 +388,6 @@ async function getFileContent(projectId: string, path: string) {
     throw new Error("File name is missing");
   }
 
-  // Basic metadata
   const fileType = getFileType(response.data.name);
   const baseResponse = {
     name: response.data.name,
@@ -398,22 +397,25 @@ async function getFileContent(projectId: string, path: string) {
     sha: response.data.sha,
   };
 
-  // Decode the Gitea base64 content
   const decoded = Buffer.from(response.data.content || "", "base64").toString(
     "utf-8"
   );
 
-  // Check if it's an LFS pointer file
+  // Check if it's an LFS pointer file.
   if (decoded.startsWith("version https://git-lfs.github.com/spec/v1")) {
-    // Parse the sha256 from the pointer
-    const match = decoded.match(/oid sha256:([0-9a-f]+)/i);
-    if (!match) {
-      // It's an LFS pointer but no recognized OID
+    // Extract the oid.
+    const oidMatch = decoded.match(/oid sha256:([0-9a-f]+)/i);
+    if (!oidMatch) {
       return { ...baseResponse, error: "Invalid LFS pointer" };
     }
-
-    const oid = match[1];
-    const presignedUrl = s3.presign(oid, { expiresIn: 60 * 60 }); // 1hr
+    // Default to using the oid.
+    let s3FileKey = oidMatch[1];
+    // But if the pointer file includes a "file" line, use that.
+    const fileKeyMatch = decoded.match(/file\s+([^\s]+)/);
+    if (fileKeyMatch) {
+      s3FileKey = fileKeyMatch[1];
+    }
+    const presignedUrl = s3.presign(s3FileKey, { expiresIn: 60 * 60 }); // 1 hour
 
     return {
       ...baseResponse,
@@ -422,16 +424,14 @@ async function getFileContent(projectId: string, path: string) {
     };
   }
 
-  // Otherwise, it's a normal file stored in Gitea
+  // For non-LFS files.
   if (fileType === "text") {
-    // Return actual text content
     return {
       ...baseResponse,
-      content: decoded, // plain text
+      content: decoded,
     };
   }
 
-  // For non-text, just return the original base64 string
   return {
     ...baseResponse,
     base64Content: response.data.content,
@@ -544,33 +544,28 @@ const handlers = {
       return;
     }
 
-    // Use the SHA256 as the S3 key directly
-    const fileKey = sha256; // No need for uploads/timestamp prefix since SHA256 is unique
+    // Create a "clean" S3 key from the project and file name.
+    // (You could add a timestamp or version suffix if needed to avoid accidental overwrites.)
+    const safeFilename = toGitSafeName(filename);
+    const s3FileKey = `files/${projectId}/${safeFilename}`;
 
-    const putUrl = s3.presign(fileKey, {
+    const putUrl = s3.presign(s3FileKey, {
       expiresIn: 3600,
       method: "PUT",
       type: mimeType,
     });
 
-    const viewUrl = s3.file(fileKey).presign({
-      expiresIn: 3600,
-      method: "GET",
-    });
-
     res.json({
       isLfs: true,
       presignedUrl: putUrl,
-      viewUrl,
-      fileKey,
+      fileKey: s3FileKey, // Return the clean key for later use.
       file_metadata: {
         filename,
         mimeType,
         size,
-        sha256, // Include this so we can verify it later
+        sha256,
       },
     });
-    return;
   },
 
   /**
@@ -580,9 +575,9 @@ const handlers = {
     const { projectId } = req.params;
     const { fileKey, filePath, size, sha256 } = req.body;
 
-    // Verify the provided SHA256 matches the fileKey (they should be the same)
-    if (fileKey !== sha256) {
-      throw new Error("SHA256 mismatch");
+    // Optionally validate that fileKey follows your naming scheme.
+    if (!fileKey || !fileKey.startsWith(`files/${projectId}/`)) {
+      throw new Error("Invalid fileKey format");
     }
 
     const project = await db.query.projects.findFirst({
@@ -592,10 +587,11 @@ const handlers = {
       throw new Error("Project not found");
     }
 
-    // Create pointer file using the SHA256 directly - no need to read file from S3
+    // Create an extended pointer file that includes the S3 file key.
     const pointerContent = `version https://git-lfs.github.com/spec/v1
 oid sha256:${sha256}
 size ${size}
+file ${fileKey}
 `;
 
     const base64Pointer = Buffer.from(pointerContent, "utf-8").toString(
@@ -613,7 +609,6 @@ size ${size}
     );
 
     res.json({ success: true });
-    return;
   },
 };
 

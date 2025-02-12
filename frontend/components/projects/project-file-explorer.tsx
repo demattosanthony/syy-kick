@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { File, Folder, MoreHorizontal, Trash2 } from "lucide-react";
-import { ProjectContent } from "@/types/project";
+import { FileResponse, ProjectContent } from "@/types/project";
 import {
   useDeleteProjectContentMutation,
   useProjectFilesQuery,
@@ -8,11 +8,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
-import api, { FileResponse } from "@/lib/api";
-import { atom, useAtom } from "jotai";
+import api from "@/lib/api";
 import { getRelativeTimeString } from "@/lib/utils";
-
-const selectedFileAtom = atom<FileResponse | null>(null);
 
 export function ProjectFileExplorer({
   contents,
@@ -23,8 +20,6 @@ export function ProjectFileExplorer({
   projectId: string;
   isLoading: boolean;
 }) {
-  const [selectedFile, setSelectedFile] = useAtom(selectedFileAtom);
-
   if (isLoading) {
     return (
       <div className="divide-y">
@@ -45,10 +40,6 @@ export function ProjectFileExplorer({
         </p>
       </div>
     );
-  }
-
-  if (selectedFile) {
-    return <FileViewer file={selectedFile} />;
   }
 
   // Sort contents to put README.md last
@@ -81,8 +72,6 @@ function FileExplorerItem({
     projectId,
     item.type === "dir" && isOpen ? item.path : undefined
   );
-
-  const [, setSelectedFile] = useAtom(selectedFileAtom);
 
   const deleteProjectContentMutation = useDeleteProjectContentMutation();
 
@@ -181,8 +170,17 @@ function FileExplorerItem({
         </div>
 
         <Popover>
-          <PopoverTrigger>
-            <MoreHorizontal className="h-4 w-4 opacity-0 group-hover:opacity-100 hover:text-accent-foreground" />
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 hover:text-accent-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
           </PopoverTrigger>
           <PopoverContent className="w-40 p-0">
             <Button
