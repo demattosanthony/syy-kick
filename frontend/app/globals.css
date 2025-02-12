@@ -5,7 +5,7 @@
 @layer base {
   :root {
     /* Pure white to soft grey backgrounds */
-    --background: 0 0% 100%;
+    --background: 0 0% 99%;
     --foreground: 0 0% 15%;
     /* Slightly whiter for cards to stand out */
     --card: 0 0% 100%;

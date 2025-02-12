@@ -94,9 +94,9 @@ export default function ProjectPage() {
   );
 
   return (
-    <div className="flex flex-col items-center max-w-3xl w-full overflow-y-auto h-screen relative">
+    <div className="flex flex-col items-center max-w-3xl w-full overflow-y-auto h-screen">
       {/* Project Header */}
-      <div className="border-b w-full">
+      <div className="border-b w-full ">
         <div className="container pb-6 px-6 flex items-center justify-between">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3 flex-1">
@@ -188,8 +188,10 @@ export default function ProjectPage() {
         </Card>
 
         <ReadmeSection content={readmeFile?.content || ""} />
+      </div>
 
-        <div className=" bg-background w-full mt-4">
+      <div className="absolute bottom-2 inset-x-0 w-full flex items-center justify-center transition-all duration-300 ease-in-out hover:bottom-20">
+        <div className="w-full max-w-3xl px-4">
           <ChatInputForm
             input={""}
             setInput={() => {}}
@@ -198,43 +200,6 @@ export default function ProjectPage() {
           />
         </div>
       </div>
-
-      {/* <div className="container py-6 px-6">
-        <div className="grid lg:grid-cols-[1fr,300px] gap-6">
-          <div className="space-y-6">
-            <div className="border rounded-lg">
-              <div className="p-3 flex items-center justify-between border-b bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 rounded-full bg-muted" />
-                  <div>
-                    <span className="font-medium">Sarah Chen</span>
-                    <span className="text-muted-foreground mx-2">
-                      Updated structural calculations for floor system
-                    </span>
-                    <span className="font-mono text-sm text-muted-foreground">
-                      3206e05
-                    </span>
-                  </div>
-                </div>
-                <Link href={`/projects/1/commits`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground"
-                  >
-                    yesterday
-                  </Button>
-                </Link>
-              </div>
-              <ProjectFileExplorer />
-            </div>
-            <ReadmeSection />
-          </div>
-          <div className="hidden lg:block">
-            <ProjectSidebar />
-          </div>
-        </div>
-      </div> */}
     </div>
   );
 }
