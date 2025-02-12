@@ -1,5 +1,6 @@
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import api from "@/lib/api";
+import { ProjectContent } from "@/types/project";
 import {
   useInfiniteQuery,
   useMutation,
@@ -297,9 +298,14 @@ export function useUploadFileMutation() {
   });
 }
 
-export function useProjectFilesQuery(projectId: string, path?: string) {
+export function useProjectFilesQuery(
+  projectId: string,
+  path?: string,
+  initalContent?: ProjectContent[]
+) {
   return useQuery({
     queryKey: ["project-files", projectId, path],
+    initialData: initalContent,
     queryFn: () => api.projects.getFiles(projectId, path),
   });
 }

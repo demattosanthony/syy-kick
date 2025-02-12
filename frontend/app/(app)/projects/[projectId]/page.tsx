@@ -22,8 +22,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ReadmeSection } from "@/components/projects/readme-section";
 import { Input } from "@/components/ui/input";
 import ChatInputForm from "@/components/chat/ChatInputForm";
+import { ProjectContent } from "@/types/project";
 
-export default function ProjectPage() {
+interface ProjectPageProps {
+  initalProjectFiles: ProjectContent[];
+}
+
+export default function ProjectPage({ initalProjectFiles }: ProjectPageProps) {
   const { projectId } = useParams();
 
   const { data: project } = useProjectQuery(projectId as string);
@@ -112,15 +117,9 @@ export default function ProjectPage() {
             </div>
 
             <div className="flex gap-2">
-              <Input placeholder="Search files" className="w-60 z-40" />
-
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="default"
-                    className="px-2 gap-1"
-                  >
+                  <Button variant="ghost" size="default" className="px-2 gap-1">
                     <Plus className="h-3 w-3" />
                     Add file
                   </Button>
@@ -181,7 +180,7 @@ export default function ProjectPage() {
           </CardContent>
         </Card>
 
-        <ReadmeSection content={readmeFile?.content || ""} />
+        {readmeFile && <ReadmeSection content={readmeFile?.content || ""} />}
       </div>
 
       <div className="absolute bottom-2 inset-x-0 w-full group">

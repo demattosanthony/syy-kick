@@ -7,6 +7,7 @@ import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
 import multer from "multer";
 import { shouldUseLfs } from "../utils/lfs-utils";
+import { getFileMimeType } from "../utils";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -248,7 +249,31 @@ async function getProjectFiles(projectId: string, path: string = "") {
           return file;
         })
       );
-      return filesWithMetadata;
+
+      // GitHub-style sorting
+      return filesWithMetadata.sort((a, b) => {
+        // First sort by type (directories first)
+        if (a.type !== b.type) {
+          return a.type === "dir" ? -1 : 1;
+        }
+
+        // Then sort by name (case-insensitive)
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+
+        // Handle dotfiles (files/folders starting with .) - they come first
+        const isDotFileA = nameA.startsWith(".");
+        const isDotFileB = nameB.startsWith(".");
+        if (isDotFileA !== isDotFileB) {
+          return isDotFileA ? -1 : 1;
+        }
+
+        // Natural sort for numbers (e.g., "file2" comes before "file10")
+        return nameA.localeCompare(nameB, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      });
     } else {
       // Single file => fetch commit metadata
       const commitResponse = await gitea.repos.repoGetAllCommits(
@@ -341,28 +366,28 @@ async function updateProject(
   return updatedProject;
 }
 
-function getFileType(filename: string): "text" | "pdf" | "image" | "binary" {
-  const extension = filename.toLowerCase().split(".").pop();
+// function getFileType(filename: string): "text" | "pdf" | "image" | "binary" {
+//   const extension = filename.toLowerCase().split(".").pop();
 
-  const textExtensions = [
-    "txt",
-    "md",
-    "js",
-    "ts",
-    "json",
-    "yaml",
-    "yml",
-    "css",
-    "html",
-    "sh",
-  ];
-  const imageExtensions = ["jpg", "jpeg", "png", "gif", "svg", "webp"];
+//   const textExtensions = [
+//     "txt",
+//     "md",
+//     "js",
+//     "ts",
+//     "json",
+//     "yaml",
+//     "yml",
+//     "css",
+//     "html",
+//     "sh",
+//   ];
+//   const imageExtensions = ["jpg", "jpeg", "png", "gif", "svg", "webp"];
 
-  if (extension && textExtensions.includes(extension)) return "text";
-  if (extension === "pdf") return "pdf";
-  if (extension && imageExtensions.includes(extension)) return "image";
-  return "binary";
-}
+//   if (extension && textExtensions.includes(extension)) return "text";
+//   if (extension === "pdf") return "pdf";
+//   if (extension && imageExtensions.includes(extension)) return "image";
+//   return "binary";
+// }
 
 /**
  * If the file content is an LFS pointer, return the S3 presigned url;
@@ -388,7 +413,7 @@ async function getFileContent(projectId: string, path: string) {
     throw new Error("File name is missing");
   }
 
-  const fileType = getFileType(response.data.name);
+  const fileType = getFileMimeType(response.data.name);
   const baseResponse = {
     name: response.data.name,
     path: response.data.path,
@@ -425,7 +450,7 @@ async function getFileContent(projectId: string, path: string) {
   }
 
   // For non-LFS files.
-  if (fileType === "text") {
+  if (fileType.startsWith("text")) {
     return {
       ...baseResponse,
       content: decoded,
@@ -478,13 +503,21 @@ const handlers = {
    */
   uploadFile: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const { path } = req.query;
+
+    // For multi-part form data, Multer places text fields on req.body
+    // so read from there first, then fall back to query (if you still need it).
+    let uploadPath = req.body.path;
+    if (!uploadPath) {
+      uploadPath = req.query.path as string;
+    }
 
     if (!req.file) {
       throw new Error("No file provided");
     }
 
-    const uploadPath = (path as string) || req.file.originalname;
+    if (!req.file) {
+      throw new Error("No file provided");
+    }
 
     // Attempt to directly upload (will throw if LFS is needed)
     await uploadFileToProject(

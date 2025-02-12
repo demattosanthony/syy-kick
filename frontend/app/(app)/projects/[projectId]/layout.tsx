@@ -1,4 +1,4 @@
-export default function ProjectPageLayout({
+export default async function ProjectPageLayout({
   children,
 }: {
   children: React.ReactNode;

@@ -1,25 +1,43 @@
+"use client";
+
 import React, { useState } from "react";
-import { File, Folder, MoreHorizontal, Trash2 } from "lucide-react";
-import { FileResponse, ProjectContent } from "@/types/project";
 import {
-  useDeleteProjectContentMutation,
+  File,
+  Folder,
+  ChevronRight,
+  ChevronDown,
+  MoreHorizontal,
+  Trash2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
   useProjectFilesQuery,
+  useDeleteProjectContentMutation,
 } from "@/queries/queries";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import api from "@/lib/api";
 import { getRelativeTimeString } from "@/lib/utils";
+import { ProjectContent, FileResponse } from "@/types/project";
 
-export function ProjectFileExplorer({
-  contents,
-  projectId,
-  isLoading,
-}: {
+interface ProjectFileExplorerProps {
   contents: ProjectContent[];
   projectId: string;
   isLoading: boolean;
-}) {
+  /** "detailed" shows file details/actions; "compact" is a simplified version */
+  variant?: "compact" | "detailed";
+  /** For auto-expanding folders in the left nav (e.g. ["folder1", "subfolder2"]) */
+  initialOpenPathChain?: string[];
+}
+
+export default function ProjectFileExplorer({
+  contents,
+  projectId,
+  isLoading,
+  variant = "detailed",
+  initialOpenPathChain,
+}: ProjectFileExplorerProps) {
   if (isLoading) {
     return (
       <div className="divide-y">
@@ -42,7 +60,7 @@ export function ProjectFileExplorer({
     );
   }
 
-  // Sort contents to put README.md last
+  // Sort contents so that README.md appears last.
   const sortedContents = [...contents].sort((a, b) => {
     if (a.name.toLowerCase() === "readme.md") return 1;
     if (b.name.toLowerCase() === "readme.md") return -1;
@@ -52,25 +70,50 @@ export function ProjectFileExplorer({
   return (
     <div className="divide-y">
       {sortedContents.map((item) => (
-        <FileExplorerItem key={item.name} item={item} projectId={projectId} />
+        <FileExplorerItem
+          key={item.path}
+          item={item}
+          projectId={projectId}
+          variant={variant}
+          initialPathChain={initialOpenPathChain}
+        />
       ))}
     </div>
   );
+}
+
+interface FileExplorerItemProps {
+  item: ProjectContent;
+  depth?: number;
+  projectId: string;
+  variant: "compact" | "detailed";
+  /** For auto-expansion: the chain of folder names to auto-open at this level */
+  initialPathChain?: string[];
 }
 
 function FileExplorerItem({
   item,
   depth = 0,
   projectId,
-}: {
-  item: ProjectContent;
-  depth?: number;
-  projectId: string;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
+  variant,
+  initialPathChain = [],
+}: FileExplorerItemProps) {
+  const router = useRouter();
+
+  // If there is a chain and this item’s name matches the first element,
+  // then mark it as open by default.
+  const shouldAutoOpen =
+    item.type === "dir" &&
+    initialPathChain.length > 0 &&
+    initialPathChain[0] === item.name;
+  const [isOpen, setIsOpen] = useState(shouldAutoOpen);
+
+  // In "compact" mode, we load children only when the folder is open.
   const { data: childContents } = useProjectFilesQuery(
     projectId,
-    item.type === "dir" && isOpen ? item.path : undefined
+    variant === "compact" && item.type === "dir" && isOpen
+      ? item.path
+      : undefined
   );
 
   const deleteProjectContentMutation = useDeleteProjectContentMutation();
@@ -116,103 +159,115 @@ function FileExplorerItem({
     }
   };
 
+  // Clicking the row navigates to the detailed view.
+  const handleRowClick = async () => {
+    if (item.type === "dir") {
+      router.push(`/projects/${projectId}/tree/main/${item.path}`);
+    } else {
+      router.push(`/projects/${projectId}/blob/main/${item.path}`);
+    }
+  };
+
+  // In compact mode, clicking the arrow toggles inline expansion.
+  const toggleExpansion = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(!isOpen);
+  };
+
   return (
     <div>
       <div
         className="group flex items-center justify-between p-2 hover:bg-muted/50 cursor-pointer rounded"
         style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
-        onClick={async () => {
-          if (item.type === "dir") {
-            setIsOpen(!isOpen);
-            return;
-          }
-
-          // Open file
-          const fileRes = await api.projects.getFileContent(
-            projectId,
-            item.path
-          );
-
-          if (fileRes.s3Url) {
-            window.open(fileRes.s3Url, "_blank");
-          }
-          //   setSelectedFile(fileRes);
-        }}
+        onClick={handleRowClick}
       >
-        <div className="flex items-center justify-between flex-1">
-          <div className="flex items-center gap-2">
-            {item.type === "dir" ? (
-              <>
-                {/* {isOpen ? (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                )} */}
-                <Folder className="h-5 w-5 text-blue-400 fill-blue-400" />
-              </>
-            ) : (
-              <>
-                <span className="w-4">
-                  {getFileIcon(item.name) || (
-                    <File className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2">
+          {item.type === "dir" ? (
+            <div className="flex items-center gap-1">
+              {variant === "compact" && (
+                <div onClick={toggleExpansion}>
+                  {isOpen ? (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   )}
-                </span>
-              </>
-            )}
-            <span className="text-sm hover:underline hover:text-blue-500">
-              {item.name}
+                </div>
+              )}
+              <Folder className="h-5 w-5 text-blue-400 fill-blue-400" />
+            </div>
+          ) : (
+            <span className="w-4">
+              {getFileIcon(item.name) || (
+                <File className="h-4 w-4 text-muted-foreground" />
+              )}
             </span>
+          )}
+          <span className="text-sm hover:underline hover:text-blue-500">
+            {item.name}
+          </span>
+        </div>
+
+        {variant === "detailed" && (
+          <div className="flex items-center gap-2">
+            <small className="text-sm font-medium leading-none text-muted-foreground ml-4 pr-2">
+              {getRelativeTimeString(item.lastModified)}
+            </small>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 hover:text-accent-foreground"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-40 p-0">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    deleteProjectContentMutation.mutate({
+                      projectId,
+                      path: item.path,
+                    });
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              </PopoverContent>
+            </Popover>
           </div>
-
-          <small className="text-sm font-medium leading-none text-muted-foreground ml-4 pr-2">
-            {getRelativeTimeString(item.lastModified)}
-          </small>
-        </div>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 hover:text-accent-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-40 p-0">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                deleteProjectContentMutation.mutate({
-                  projectId,
-                  path: item.path,
-                });
-              }}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
-          </PopoverContent>
-        </Popover>
+        )}
       </div>
-      {isOpen && item.type === "dir" && childContents && (
-        <div className="divide-y">
-          {childContents.map((child) => (
-            <FileExplorerItem
-              key={child.path}
-              item={child}
-              depth={depth + 1}
-              projectId={projectId}
-            />
-          ))}
-        </div>
-      )}
+
+      {/* In compact mode, render children inline if this folder is expanded */}
+      {variant === "compact" &&
+        item.type === "dir" &&
+        isOpen &&
+        childContents && (
+          <div className="divide-y">
+            {childContents.map((child) => (
+              <FileExplorerItem
+                key={child.path}
+                item={child}
+                depth={depth + 1}
+                projectId={projectId}
+                variant={variant}
+                // Pass down the remaining chain if this folder was auto-opened.
+                initialPathChain={
+                  shouldAutoOpen && initialPathChain.length > 0
+                    ? initialPathChain.slice(1)
+                    : []
+                }
+              />
+            ))}
+          </div>
+        )}
     </div>
   );
 }
@@ -223,19 +278,17 @@ function FileExplorerSkeleton({ depth = 0 }: { depth?: number }) {
       className="flex items-center gap-2 p-2"
       style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
     >
-      <Skeleton className="h-5 w-5" />
-      <Skeleton className="h-4 w-[100px]" />
+      <Skeleton className="h-6 w-5" />
+      <Skeleton className="h-4 w-[165px]" />
     </div>
   );
 }
 
-export default ProjectFileExplorer;
-
+/** (Optional) FileViewer remains unchanged */
 export function FileViewer({ file }: { file: FileResponse }) {
   switch (file.type) {
     case "text":
       return <pre className="code-viewer">{file.content}</pre>;
-
     case "pdf":
       return (
         <iframe
@@ -246,12 +299,10 @@ export function FileViewer({ file }: { file: FileResponse }) {
           title={file.name}
         ></iframe>
       );
-
     case "image":
       return (
         <img src={file.s3Url} alt={file.name} style={{ maxWidth: "100%" }} />
       );
-
     default:
       return (
         <div className="download-prompt">
