@@ -7,7 +7,8 @@ import { Request, Response, Router } from "express";
 import { CoreMessage, generateObject, Message, streamText } from "ai";
 import { CONFIG } from "../config/constants";
 import { handle, generateThreadTitle } from "../utils";
-import { embeddingModel, MODELS } from "./models";
+import { MODELS } from "./models";
+import { getEmbeddings } from "../config/jina";
 
 // Input validation
 const schemas = {
@@ -66,11 +67,38 @@ const ops = {
       const messageId = crypto.randomUUID();
 
       let embedding = null;
-      if ("type" in item && item.type === "text") {
-        const embeddingResult = await embeddingModel.doEmbed({
-          values: [item.text],
-        });
-        embedding = embeddingResult.embeddings[0];
+      try {
+        if ("type" in item) {
+          if (item.type === "text") {
+            const embeddingResult = await getEmbeddings({
+              input: [
+                {
+                  text: item.text,
+                },
+              ],
+              model: "jina-clip-v2",
+              task: "retrieval.query",
+            });
+            embedding = embeddingResult.data[0].embedding;
+          } else if (item.type === "image") {
+            const metadata = s3.file(item.file_metadata.file_key);
+            const imageData = CONFIG.__prod__
+              ? metadata.presign({ expiresIn: 60 * 20 })
+              : Buffer.from(
+                  new Uint8Array(await metadata.arrayBuffer())
+                ).toString("base64");
+
+            const embeddingResult = await getEmbeddings({
+              input: [{ image: imageData }],
+              model: "jina-clip-v2",
+              task: "retrieval.query",
+            });
+            embedding = embeddingResult.data[0].embedding;
+            console.log("Image embedding:", embedding);
+          }
+        }
+      } catch (error) {
+        console.error("Error embedding message", error);
       }
 
       await db.insert(messages).values({
@@ -218,13 +246,19 @@ ${conversationText}`,
       }
 
       if (search.length > 0) {
-        const searchEmbedding = await embeddingModel.doEmbed({
-          values: [search],
+        const searchEmbedding = await getEmbeddings({
+          input: [
+            {
+              text: search,
+            },
+          ],
+          model: "jina-clip-v2",
+          task: "retrieval.query",
         });
 
         const similarity = sql<number>`1 - (${cosineDistance(
           messages.embedding,
-          searchEmbedding.embeddings[0]
+          searchEmbedding.data[0].embedding
         )})`;
 
         baseQuery = db
@@ -427,9 +461,7 @@ ${conversationText}`,
 
       // Build system message
       let yoSystemMessage = `<assistant_instructions>
-Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it’s creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand. 
-
-Keep your responses short and sweet. The most simple and concise answer is usually best. This allows you and the person your chatting with go back and forth and iterate quickly. Think of this like text messaging chat, or a quick email response. Unless the siutaiton calls for it, avoid long-winded explanations. Also you nice formatting to help make your responses easy to read, and also shorter and simpler. A table can sometimes explain a lot for example.
+Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it’s creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand. \
 </assistant_instructions>
     
 <current_date>
@@ -463,8 +495,14 @@ It is currently: ${new Date().toLocaleString("en-US", {
 
       // Handle client abort or end of response
       req.on("close", async () => {
-        const aiResponseEmbedding = await embeddingModel.doEmbed({
-          values: [aiResponse],
+        const aiResponseEmbedding = await getEmbeddings({
+          input: [
+            {
+              text: aiResponse,
+            },
+          ],
+          task: "retrieval.query",
+          model: "jina-clip-v2",
         });
 
         await db.insert(messages).values({
@@ -476,7 +514,7 @@ It is currently: ${new Date().toLocaleString("en-US", {
           reasoning: reasoning,
           createdAt: new Date(),
           model: model,
-          embedding: aiResponseEmbedding.embeddings[0],
+          embedding: aiResponseEmbedding.data[0].embedding,
           provider: modelConfig.provider,
         });
 

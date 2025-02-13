@@ -33,7 +33,7 @@ export default function ProjectPage({ initialProjectFiles }: ProjectPageProps) {
   const logo = project?.organization?.logoUrl ?? project?.user?.profilePicture;
 
   return (
-    <div className="h-screen w-full flex justify-center overflow-y-auto mt-16">
+    <div className="h-screen w-full flex justify-center overflow-y-auto pt-12">
       <div className="flex flex-col items-center max-w-3xl w-full flex-1">
         {/* Project Header */}
         <header className="border-b w-full">
@@ -68,7 +68,7 @@ export default function ProjectPage({ initialProjectFiles }: ProjectPageProps) {
           {readmeFile && <ReadmeSection content={readmeFile.content || ""} />}
         </main>
 
-        <footer className="absolute bottom-2 inset-x-0 w-full group">
+        <footer className="absolute -bottom-14 inset-x-0 w-full group">
           <div className="w-full flex items-center justify-center transition-all duration-300 ease-in-out group-hover:translate-y-[-4.5rem]">
             <div className="w-full max-w-3xl px-4">
               <ChatInputForm

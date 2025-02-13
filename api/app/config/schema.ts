@@ -160,7 +160,7 @@ export const messages = pgTable(
     reasoning: text("reasoning"),
     model: text("model"),
     provider: text("provider"),
-    embedding: vector("embedding", { dimensions: 1536 }),
+    embedding: vector("embedding", { dimensions: 1024 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [

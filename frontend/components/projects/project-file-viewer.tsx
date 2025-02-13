@@ -32,7 +32,7 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
           <img
             src={getFileSource()}
             alt={file.name}
-            className="max-h-full max-w-full object-contain"
+            className="max-h-full max-w-[95%] object-contain"
           />
         </div>
       );
