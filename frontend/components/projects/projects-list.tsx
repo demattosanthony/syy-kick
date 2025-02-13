@@ -22,9 +22,13 @@ export default function ProjectsList() {
 
   return (
     <ScrollArea className="h-[calc(100vh-175px)] px-2">
-      {projects?.map((project, i) => (
-        <ProjectItem key={i} project={project} />
-      ))}
+      {projects?.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-muted-foreground">No projects found</p>
+        </div>
+      ) : (
+        projects?.map((project, i) => <ProjectItem key={i} project={project} />)
+      )}
 
       <div ref={scrollRef} className="h-10">
         {isLoading && (

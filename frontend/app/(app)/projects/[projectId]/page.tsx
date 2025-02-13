@@ -29,6 +29,8 @@ export default function ProjectPage({ initialProjectFiles }: ProjectPageProps) {
     useProjectFilesQuery(pid);
   const { data: readmeFile } = useProjectFileQuery(pid, "README.md");
 
+  console.log("project", project);
+
   // Use nullish coalescing for a simple fallback
   const logo = project?.organization?.logoUrl ?? project?.user?.profilePicture;
 

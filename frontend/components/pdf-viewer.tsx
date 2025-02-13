@@ -59,7 +59,9 @@ function PdfViewer({
   };
 
   // Instantiate plugins
-  const zoomPluginInstance = zoomPlugin({ enableShortcuts: true });
+  const zoomPluginInstance = zoomPlugin({
+    enableShortcuts: true,
+  });
   const searchPluginInstance = searchPlugin();
 
   // Update the search when the debounced value changes
@@ -137,6 +139,7 @@ function PdfViewer({
               fileUrl={content}
               theme={resolvedTheme === "dark" ? "dark" : "light"}
               plugins={[zoomPluginInstance, searchPluginInstance]}
+              defaultScale={1}
             />
           </div>
         </Worker>

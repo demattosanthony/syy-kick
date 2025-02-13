@@ -73,6 +73,7 @@ export default function ThreadPage({
         model: model.name,
         temperature: temperature,
         instructions,
+        // projectId: "f31e7729-6ad3-49c4-98f3-3565a4904a72",
       };
     },
   });
