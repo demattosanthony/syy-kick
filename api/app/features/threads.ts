@@ -4,11 +4,11 @@ import { ContentPart, messages, threads } from "../config/schema";
 import db from "../config/db";
 import { and, cosineDistance, desc, eq, gt, sql } from "drizzle-orm";
 import { Request, Response, Router } from "express";
-import { CoreMessage, generateObject, Message, streamText } from "ai";
+import { CoreMessage, generateObject, Message, streamText, tool } from "ai";
 import { CONFIG } from "../config/constants";
 import { handle, generateThreadTitle } from "../utils";
-import { MODELS } from "./models";
-import { getEmbeddings } from "../config/jina";
+import { embeddingModel, MODELS } from "./models";
+import { getFileContent, getProjectFiles } from "./projects";
 
 // Input validation
 const schemas = {
@@ -17,6 +17,7 @@ const schemas = {
     maxTokens: z.number().optional(),
     temperature: z.number().optional(),
     instructions: z.string().optional(),
+    proejctId: z.string().optional(),
   }),
 };
 
@@ -70,31 +71,10 @@ const ops = {
       try {
         if ("type" in item) {
           if (item.type === "text") {
-            const embeddingResult = await getEmbeddings({
-              input: [
-                {
-                  text: item.text,
-                },
-              ],
-              model: "jina-clip-v2",
-              task: "retrieval.query",
+            const embeddingResult = await embeddingModel.doEmbed({
+              values: [item.text],
             });
-            embedding = embeddingResult.data[0].embedding;
-          } else if (item.type === "image") {
-            const metadata = s3.file(item.file_metadata.file_key);
-            const imageData = CONFIG.__prod__
-              ? metadata.presign({ expiresIn: 60 * 20 })
-              : Buffer.from(
-                  new Uint8Array(await metadata.arrayBuffer())
-                ).toString("base64");
-
-            const embeddingResult = await getEmbeddings({
-              input: [{ image: imageData }],
-              model: "jina-clip-v2",
-              task: "retrieval.query",
-            });
-            embedding = embeddingResult.data[0].embedding;
-            console.log("Image embedding:", embedding);
+            embedding = embeddingResult.embeddings[0];
           }
         }
       } catch (error) {
@@ -246,19 +226,13 @@ ${conversationText}`,
       }
 
       if (search.length > 0) {
-        const searchEmbedding = await getEmbeddings({
-          input: [
-            {
-              text: search,
-            },
-          ],
-          model: "jina-clip-v2",
-          task: "retrieval.query",
+        const searchEmbedding = await embeddingModel.doEmbed({
+          values: [search],
         });
 
         const similarity = sql<number>`1 - (${cosineDistance(
           messages.embedding,
-          searchEmbedding.data[0].embedding
+          searchEmbedding.embeddings[0]
         )})`;
 
         baseQuery = db
@@ -317,246 +291,362 @@ ${conversationText}`,
     },
 
     inference: async (req: Request, res: Response) => {
-      const { threadId } = req.params;
-      const { organizationId } = req.query;
-      const { model, maxTokens, temperature, instructions } = req.body;
-      const message = req.body.message as Message & {
-        experimental_attachments?: ExtendedAttachment[]; // Use ExtendedAttachment instead of Attachment
-      };
-
-      // Set headers for SSE
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Accel-Buffering", "no"); // Disable Nginx buffering
-      res.setHeader("Transfer-Encoding", "chunked");
-      res.flushHeaders(); // send headers to establish SSE connection
-
-      const thread = await ops.threads.getThread(
-        threadId,
-        organizationId as string | undefined
-      );
-
-      if (!thread) {
-        res.status(404).json({ error: "Thread not found" });
-        return;
-      }
-
-      // Add user message to thread
-      let contentParts: ContentPart[] = [];
-      if (message.experimental_attachments) {
-        message.experimental_attachments.forEach(
-          (attachment: ExtendedAttachment) => {
-            contentParts.push({
-              type: attachment.contentType?.includes("image")
-                ? "image"
-                : "file",
-              [attachment.contentType?.includes("image") ? "image" : "file"]:
-                attachment.url,
-              file_metadata: {
-                filename: attachment.name || "",
-                mime_type: attachment.contentType || "",
-                file_key: attachment.file_key || "",
-              },
-            });
-          }
-        );
-      }
-
-      // Add text message
-      contentParts.push({
-        type: "text",
-        text: message.content,
-      });
-
-      // add the message to the thread
-      await ops.createMessage(req.dbUser!.id, threadId, "user", contentParts);
-
-      // Get and filter messages
-      const rawMessages = await db.query.messages.findMany({
-        where: eq(messages.threadId, threadId),
-        orderBy: messages.createdAt,
-      });
-
-      // In the inference function, replace the modelConfig section with:
-      const modelConfig = await ops.getModelConfig(
-        model,
-        rawMessages.map((msg) => ({
-          role: msg.role,
-          content: msg.content as ContentPart,
-        })),
-        message.experimental_attachments
-      );
-
-      // If thread has no title, find first user text message and generate title
-      if (!thread.title) {
-        const firstUserTextMessage = rawMessages.find(
-          (msg) =>
-            msg.role === "user" &&
-            "type" in (msg.content as ContentPart) &&
-            (msg.content as ContentPart).type === "text" &&
-            "text" in (msg.content as ContentPart)
-        );
-
-        if (firstUserTextMessage) {
-          const content = firstUserTextMessage.content as ContentPart;
-          generateThreadTitle((content as any).text).then((title) => {
-            db.update(threads)
-              .set({ title })
-              .where(eq(threads.id, threadId))
-              .catch((error) => {
-                console.error("Error generating title", error);
-              });
-          });
-        }
-      }
-
-      const filteredMessages = rawMessages.filter((msg) => {
-        const content = msg.content as ContentPart;
-        if (content.type === "text") return true;
-        return modelConfig.supportedMimeTypes?.includes(
-          content.file_metadata.mime_type
-        );
-      });
-
-      // Process message content
-      const processMessageContent = async (content: ContentPart) => {
-        if (content.type === "text")
-          return [{ type: "text", text: content.text }];
-
-        const metadata = s3.file(content.file_metadata.file_key);
-
-        // Can only generate presigned URLs in production because local url are not accessible to the AI apis
-        const getContentData = async () => {
-          if (CONFIG.__prod__) {
-            return metadata.presign({ expiresIn: 60 * 20 }); // 20 minutes
-          }
-
-          const buffer = Buffer.from(
-            new Uint8Array(await metadata.arrayBuffer())
-          );
-          return `data:${
-            content.file_metadata.mime_type
-          };base64,${buffer.toString("base64")}`;
+      try {
+        const { threadId } = req.params;
+        const { organizationId } = req.query;
+        const { model, maxTokens, temperature, instructions, projectId } =
+          req.body;
+        const message = req.body.message as Message & {
+          experimental_attachments?: ExtendedAttachment[]; // Use ExtendedAttachment instead of Attachment
         };
 
-        return [
-          {
-            type: content.type,
-            mimeType: content.file_metadata.mime_type,
-            [content.type === "image" ? "image" : "data"]:
-              await getContentData(),
-          },
-        ];
-      };
+        // Set headers for SSE
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no"); // Disable Nginx buffering
+        res.setHeader("Transfer-Encoding", "chunked");
+        res.flushHeaders(); // send headers to establish SSE connection
 
-      // Build messages array
-      const inferenceMessages = await Promise.all(
-        filteredMessages.map(async (msg) => ({
-          role: msg.role,
-          reasoning: msg.reasoning,
-          content: await processMessageContent(msg.content as ContentPart),
-        }))
-      );
+        const thread = await ops.threads.getThread(
+          threadId,
+          organizationId as string | undefined
+        );
 
-      // Build system message
-      let yoSystemMessage = `<assistant_instructions>
+        if (!thread) {
+          res.status(404).json({ error: "Thread not found" });
+          return;
+        }
+
+        // Add user message to thread
+        let contentParts: ContentPart[] = [];
+        if (message.experimental_attachments) {
+          message.experimental_attachments.forEach(
+            (attachment: ExtendedAttachment) => {
+              contentParts.push({
+                type: attachment.contentType?.includes("image")
+                  ? "image"
+                  : "file",
+                [attachment.contentType?.includes("image") ? "image" : "file"]:
+                  attachment.url,
+                file_metadata: {
+                  filename: attachment.name || "",
+                  mime_type: attachment.contentType || "",
+                  file_key: attachment.file_key || "",
+                },
+              });
+            }
+          );
+        }
+
+        // Add text message
+        contentParts.push({
+          type: "text",
+          text: message.content,
+        });
+
+        // add the message to the thread
+        await ops.createMessage(req.dbUser!.id, threadId, "user", contentParts);
+
+        // Get and filter messages
+        const rawMessages = await db.query.messages.findMany({
+          where: eq(messages.threadId, threadId),
+          orderBy: messages.createdAt,
+        });
+
+        // In the inference function, replace the modelConfig section with:
+        const modelConfig = await ops.getModelConfig(
+          model,
+          rawMessages.map((msg) => ({
+            role: msg.role,
+            content: msg.content as ContentPart,
+          })),
+          message.experimental_attachments
+        );
+
+        // If thread has no title, find first user text message and generate title
+        if (!thread.title) {
+          const firstUserTextMessage = rawMessages.find(
+            (msg) =>
+              msg.role === "user" &&
+              "type" in (msg.content as ContentPart) &&
+              (msg.content as ContentPart).type === "text" &&
+              "text" in (msg.content as ContentPart)
+          );
+
+          if (firstUserTextMessage) {
+            const content = firstUserTextMessage.content as ContentPart;
+            generateThreadTitle((content as any).text).then((title) => {
+              db.update(threads)
+                .set({ title })
+                .where(eq(threads.id, threadId))
+                .catch((error) => {
+                  console.error("Error generating title", error);
+                });
+            });
+          }
+        }
+
+        const filteredMessages = rawMessages.filter((msg) => {
+          const content = msg.content as ContentPart;
+          if (content.type === "text") return true;
+          return modelConfig.supportedMimeTypes?.includes(
+            content.file_metadata.mime_type
+          );
+        });
+
+        // Process message content
+        const processMessageContent = async (content: ContentPart) => {
+          if (content.type === "text")
+            return [{ type: "text", text: content.text }];
+
+          const metadata = s3.file(content.file_metadata.file_key);
+
+          // Can only generate presigned URLs in production because local url are not accessible to the AI apis
+          const getContentData = async () => {
+            if (CONFIG.__prod__) {
+              return metadata.presign({ expiresIn: 60 * 20 }); // 20 minutes
+            }
+
+            const buffer = Buffer.from(
+              new Uint8Array(await metadata.arrayBuffer())
+            );
+            return `data:${
+              content.file_metadata.mime_type
+            };base64,${buffer.toString("base64")}`;
+          };
+
+          return [
+            {
+              type: content.type,
+              mimeType: content.file_metadata.mime_type,
+              [content.type === "image" ? "image" : "data"]:
+                await getContentData(),
+            },
+          ];
+        };
+
+        // Build messages array
+        let inferenceMessages: CoreMessage[] = await Promise.all(
+          filteredMessages.map(async (msg) => ({
+            role: msg.role as any,
+            reasoning: msg.reasoning || null,
+            content: (await processMessageContent(
+              msg.content as ContentPart
+            )) as any,
+          }))
+        );
+
+        // Add project files to messages if available
+        let tools;
+        if (projectId) {
+          tools = {
+            list_files: tool({
+              description:
+                "List the files in a project with a given path. Use this to navigate the project folder structure. Similar to how you might think of ls command in a terminal. Providing no path will go the root of the project, then you can navigate from there.",
+              parameters: z.object({
+                path: z.string().optional(),
+              }),
+              execute: async ({ path }) => {
+                try {
+                  const projectContents: any = await getProjectFiles(
+                    projectId,
+                    path
+                  );
+
+                  const content = JSON.stringify(
+                    projectContents?.map((content: any) => ({
+                      name: content.name,
+                      path: content.path,
+                      type: content.type,
+                    })),
+                    null,
+                    2
+                  );
+
+                  console.log("Project files:", content);
+
+                  return content;
+                } catch {
+                  return "Error listing project files";
+                }
+              },
+            }),
+
+            // view_file: tool({
+            //   description:
+            //     "View the contents of a file in a project. Provide the path to the file you want to view. This works for all types of files not just text files.",
+            //   parameters: z.object({
+            //     path: z.string(),
+            //   }),
+            //   execute: async ({ path }) => {
+            //     try {
+            //       const file: any = await getFileContent(projectId, path);
+            //       const { isLfsPointer, s3Url, s3FileKey } = file;
+
+            //       console.log("File:", file);
+
+            //       // Create the content to send to model
+            //       let content = isLfsPointer ? s3Url : file.base64Content;
+
+            //       // If we are in not in prod need to convert urls to base64 for large files
+            //       if (!CONFIG.__prod__ && isLfsPointer) {
+            //         console.log("Getting file from S3");
+            //         const metadata = s3.file(s3FileKey);
+            //         const buffer = Buffer.from(
+            //           new Uint8Array(await metadata.arrayBuffer())
+            //         );
+            //         content = `data:${file.type};base64,${buffer.toString(
+            //           "base64"
+            //         )}`;
+            //       }
+
+            //       // Check its mime type
+            //       if (file.type?.includes("image")) {
+            //         return {
+            //           type: "image",
+            //           data: content,
+            //           mimeType: file.type,
+            //         };
+            //       }
+
+            //       // If its not a image, check to make sure model allows this mimeType
+            //       if (
+            //         MODELS["gemini-2.0-flash"].supportedMimeTypes?.includes(
+            //           file.type
+            //         )
+            //       ) {
+            //         console.log("File type:", file.type);
+            //         return {
+            //           type: "file",
+            //           data: content,
+            //           mimeType: file.type,
+            //         };
+            //       }
+
+            //       // If its not a image or a file, return text
+            //       return content;
+            //     } catch {
+            //       return "Error viewing file";
+            //     }
+            //   },
+
+            //   // map to tool result content for LLM consumption:
+            //   experimental_toToolResultContent(result) {
+            //     console.log(`Type of result: ${typeof result}`);
+            //     console.log(`Result: ${result.mimeType}`);
+            //     return typeof result === "string"
+            //       ? [{ type: "text", text: result }]
+            //       : [result];
+            //   },
+            // }),
+          };
+        }
+
+        //   console.log("Inference messages:");
+        //   console.log(JSON.stringify(inferenceMessages, null, 2));
+
+        // Build system message
+        let yoSystemMessage = `<assistant_instructions>
 Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it’s creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand. \
 </assistant_instructions>
     
 <current_date>
 It is currently: ${new Date().toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })}
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })}
 </current_date>`;
 
-      if (instructions && instructions.length > 0) {
-        yoSystemMessage += `<user_instructions>${instructions}</user_instructions>`;
-      }
+        if (instructions && instructions.length > 0) {
+          yoSystemMessage += `<user_instructions>${instructions}</user_instructions>`;
+        }
 
-      const inferenceParams = {
-        model: modelConfig.model,
-        messages: inferenceMessages as CoreMessage[],
-        temperature,
-        system: modelConfig.supportsSystemMessages
-          ? yoSystemMessage
-          : undefined,
-        // experimental_providerMetadata: { openai: { reasoningEffort: "high" } },
-        maxTokens: maxTokens || undefined,
-      };
+        const inferenceParams = {
+          model: modelConfig.model,
+          messages: inferenceMessages as CoreMessage[],
+          temperature,
+          system: modelConfig.supportsSystemMessages
+            ? yoSystemMessage
+            : undefined,
+          // experimental_providerMetadata: { openai: { reasoningEffort: "high" } },
+          maxTokens: maxTokens || undefined,
+          tools: tools || undefined,
+          maxSteps: 5,
+        };
 
-      let aiResponse = "";
-      let reasoning: string | undefined = undefined;
+        let aiResponse = "";
+        let reasoning: string | undefined = undefined;
 
-      // Handle client abort or end of response
-      req.on("close", async () => {
-        const aiResponseEmbedding = await getEmbeddings({
-          input: [
-            {
-              text: aiResponse,
-            },
-          ],
-          task: "retrieval.query",
-          model: "jina-clip-v2",
+        // Handle client abort or end of response
+        req.on("close", async () => {
+          const aiResponseEmbedding = await embeddingModel.doEmbed({
+            values: [aiResponse],
+          });
+
+          await db.insert(messages).values({
+            userId: req.dbUser!.id,
+            id: crypto.randomUUID(),
+            threadId: threadId,
+            role: "assistant",
+            content: JSON.stringify({ type: "text", text: aiResponse }),
+            reasoning: reasoning,
+            createdAt: new Date(),
+            model: model,
+            embedding: aiResponseEmbedding.embeddings[0],
+            provider: modelConfig.provider,
+          });
+
+          res.end();
         });
 
-        await db.insert(messages).values({
-          userId: req.dbUser!.id,
-          id: crypto.randomUUID(),
-          threadId: threadId,
-          role: "assistant",
-          content: JSON.stringify({ type: "text", text: aiResponse }),
-          reasoning: reasoning,
-          createdAt: new Date(),
-          model: model,
-          embedding: aiResponseEmbedding.data[0].embedding,
-          provider: modelConfig.provider,
-        });
-
-        res.end();
-      });
-
-      const result = streamText({
-        ...inferenceParams,
-        // experimental_transform: smoothStream(),
-        onChunk: ({ chunk }) => {
-          if (chunk.type === "text-delta") {
-            aiResponse += chunk.textDelta;
-          } else if (chunk.type === "reasoning") {
-            if (!reasoning) {
-              reasoning = "";
+        const result = streamText({
+          ...inferenceParams,
+          // experimental_transform: smoothStream(),
+          onChunk: ({ chunk }) => {
+            if (chunk.type === "text-delta") {
+              aiResponse += chunk.textDelta;
+            } else if (chunk.type === "reasoning") {
+              if (!reasoning) {
+                reasoning = "";
+              }
+              reasoning += chunk.textDelta;
             }
-            reasoning += chunk.textDelta;
-          }
-        },
-        // async onFinish({ response }) {
-        //   if (aborted) return;
+          },
 
-        //   // Store the assistant response
-        //   await db.insert(messages).values({
-        //     userId: req.userId!,
-        //     id: crypto.randomUUID(),
-        //     threadId: threadId,
-        //     role: "assistant",
-        //     content: {
-        //       type: "text",
-        //       text: (response.messages[0].content as TextPart[])[0].text,
-        //     },
-        //     createdAt: new Date(),
-        //     model: model,
-        //     provider: modelConfig.provider,
-        //   });
-        // },
-      });
+          // async onFinish({ response }) {
+          //   if (aborted) return;
 
-      return result.pipeDataStreamToResponse(res, {
-        sendReasoning: true,
-      });
+          //   // Store the assistant response
+          //   await db.insert(messages).values({
+          //     userId: req.userId!,
+          //     id: crypto.randomUUID(),
+          //     threadId: threadId,
+          //     role: "assistant",
+          //     content: {
+          //       type: "text",
+          //       text: (response.messages[0].content as TextPart[])[0].text,
+          //     },
+          //     createdAt: new Date(),
+          //     model: model,
+          //     provider: modelConfig.provider,
+          //   });
+          // },
+        });
+
+        return result.pipeDataStreamToResponse(res, {
+          sendReasoning: true,
+        });
+      } catch (error) {
+        console.error("Error in inference:", error);
+        res.status(500).json({
+          error: "An error occurred during inference",
+        });
+      }
     },
 
     deleteThread: async (
@@ -623,7 +713,14 @@ export default Router()
   .post("/:threadId/inference", (req, res) => {
     return schemas.inference
       .parseAsync(req.body)
-      .then(() => ops.threads.inference(req, res));
+      .then(() => ops.threads.inference(req, res))
+      .catch((error) => {
+        console.error("Error in inference endpoint:", error);
+        res.status(500).json({
+          error: "An error occurred during inference",
+          details: error.message,
+        });
+      });
   })
   .delete(
     "/:threadId",

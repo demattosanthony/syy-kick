@@ -24,9 +24,9 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.1.6",
+    "@ai-sdk/anthropic": "^1.1.7",
     "@ai-sdk/deepseek": "^0.1.8",
-    "@ai-sdk/google": "^1.1.10",
+    "@ai-sdk/google": "^1.1.12",
     "@ai-sdk/groq": "^1.1.7",
     "@ai-sdk/mistral": "^1.1.6",
     "@ai-sdk/openai": "^1.1.9",
@@ -36,7 +36,7 @@
     "@types/mime-types": "^2.1.4",
     "@types/multer": "^1.4.12",
     "@types/passport-microsoft": "^1.0.3",
-    "ai": "^4.1.21",
+    "ai": "^4.1.37",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.39.1",

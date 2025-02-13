@@ -8,6 +8,7 @@ import s3 from "../config/s3";
 import multer from "multer";
 import { shouldUseLfs } from "../utils/lfs-utils";
 import { getFileMimeType } from "../utils";
+import { CONFIG } from "../config/constants";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -66,7 +67,7 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
     name: toGitSafeName(data.name),
     private: true,
     description: data.description,
-    auto_init: true,
+    auto_init: false,
   });
   const gitRepo = response.data;
 
@@ -210,7 +211,7 @@ async function getProject(projectId: string) {
   return project;
 }
 
-async function getProjectFiles(projectId: string, path: string = "") {
+export async function getProjectFiles(projectId: string, path: string = "") {
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
   });
@@ -393,7 +394,7 @@ async function updateProject(
  * If the file content is an LFS pointer, return the S3 presigned url;
  * otherwise, return direct content (decoded for text, or base64 for binary).
  */
-async function getFileContent(projectId: string, path: string) {
+export async function getFileContent(projectId: string, path: string) {
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
   });
@@ -446,6 +447,7 @@ async function getFileContent(projectId: string, path: string) {
       ...baseResponse,
       isLfsPointer: true,
       s3Url: presignedUrl,
+      s3FileKey: s3FileKey,
     };
   }
 
