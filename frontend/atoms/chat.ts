@@ -2,6 +2,7 @@ import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { Model } from "@/types/model";
 import { ChatMessage, FileUpload } from "@/types/chat";
+import { ProjectContent } from "@/types/project";
 
 export const CLAUDE_3_5_CONFIG = {
   name: "claude-3.5-sonnet",
@@ -63,3 +64,4 @@ export const initalInputAtom = atom("");
 export const inputAtom = atom("");
 export const uploadsAtom = atom<FileUpload[]>([]);
 export const abortControllerAtom = atom<AbortController>(new AbortController());
+export const selectedProjectFilesAtom = atom<ProjectContent[]>([]);

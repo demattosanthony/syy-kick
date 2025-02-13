@@ -1,12 +1,12 @@
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Project } from "@/types/project";
 import { Slash } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Fragment } from "react";
 
@@ -22,12 +22,12 @@ export default function ProjectNavBreadcrumbs({
     <Breadcrumb className="mb-2">
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbLink
+          <Link
             href={`/projects/${project.id}`}
             className="hover:text-blue-500 hover:underline"
           >
             {project?.name}
-          </BreadcrumbLink>
+          </Link>
         </BreadcrumbItem>
         {pathArray.map((segment, index) => {
           const isLastItem = index === pathArray.length - 1;
@@ -41,14 +41,14 @@ export default function ProjectNavBreadcrumbs({
                 {isLastItem ? (
                   <span className="font-bold">{decodedSegment}</span>
                 ) : (
-                  <BreadcrumbLink
+                  <Link
                     href={`/projects/${project.id}/tree/main/${pathArray
                       .slice(0, index + 1)
                       .join("/")}`}
                     className="hover:text-blue-500 hover:underline"
                   >
                     {decodedSegment}
-                  </BreadcrumbLink>
+                  </Link>
                 )}
               </BreadcrumbItem>
             </Fragment>

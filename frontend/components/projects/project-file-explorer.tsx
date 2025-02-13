@@ -22,22 +22,25 @@ import { cn, getRelativeTimeString } from "@/lib/utils";
 import { ProjectContent, FileResponse } from "@/types/project";
 
 interface ProjectFileExplorerProps {
-  contents: ProjectContent[];
   projectId: string;
-  isLoading: boolean;
-  /** "detailed" shows file details/actions; "compact" is a simplified version */
+  currentPath?: string;
   variant?: "compact" | "detailed";
-  /** For auto-expanding folders in the left nav (e.g. ["folder1", "subfolder2"]) */
   initialOpenPathChain?: string[];
+  onFileSelect?: (item: ProjectContent) => void;
 }
 
 export default function ProjectFileExplorer({
-  contents,
   projectId,
-  isLoading,
+  currentPath,
   variant = "detailed",
   initialOpenPathChain,
+  onFileSelect,
 }: ProjectFileExplorerProps) {
+  const { data: contents, isLoading } = useProjectFilesQuery(
+    projectId,
+    currentPath
+  );
+
   if (isLoading) {
     return (
       <div className="divide-y">
@@ -76,6 +79,7 @@ export default function ProjectFileExplorer({
           projectId={projectId}
           variant={variant}
           initialPathChain={initialOpenPathChain}
+          onFileSelect={onFileSelect}
         />
       ))}
     </div>
@@ -88,6 +92,7 @@ interface FileExplorerItemProps {
   projectId: string;
   variant: "compact" | "detailed";
   initialPathChain?: string[];
+  onFileSelect?: (item: ProjectContent) => void;
 }
 
 function FileExplorerItem({
@@ -96,6 +101,7 @@ function FileExplorerItem({
   projectId,
   variant,
   initialPathChain = [],
+  onFileSelect,
 }: FileExplorerItemProps) {
   const router = useRouter();
   const pathname = window.location.pathname;
@@ -163,10 +169,17 @@ function FileExplorerItem({
 
   // Clicking the row navigates to the detailed view.
   const handleRowClick = async () => {
-    console.log("Clicked", item);
+    // If there was an onFileSelect callback, call it and return.
+    if (variant === "compact" && onFileSelect) {
+      if (item.type === "dir") {
+        setIsOpen(!isOpen);
+      } else onFileSelect(item);
+      return;
+    }
+
+    // Otherwise, navigate to the file or folder.
     if (item.type === "dir") {
       if (variant === "compact") {
-        // Toggle expansion for folders in compact mode
         setIsOpen(!isOpen);
       }
       router.push(`/projects/${projectId}/tree/main/${item.path}`);
@@ -272,6 +285,7 @@ function FileExplorerItem({
                 depth={depth + 1}
                 projectId={projectId}
                 variant={variant}
+                onFileSelect={onFileSelect}
                 // Pass down the remaining chain if this folder was auto-opened.
                 initialPathChain={
                   shouldAutoOpen && initialPathChain.length > 0

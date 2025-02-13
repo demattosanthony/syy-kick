@@ -2,13 +2,13 @@ import z from "zod";
 import s3 from "../config/s3";
 import { ContentPart, messages, threads } from "../config/schema";
 import db from "../config/db";
-import { and, cosineDistance, desc, eq, gt, sql } from "drizzle-orm";
+import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { Request, Response, Router } from "express";
-import { CoreMessage, generateObject, Message, streamText, tool } from "ai";
+import { CoreMessage, generateObject, Message, streamText } from "ai";
 import { CONFIG } from "../config/constants";
 import { handle, generateThreadTitle } from "../utils";
 import { embeddingModel, MODELS } from "./models";
-import { getFileContent, getProjectFiles } from "./projects";
+import { getFileContent } from "./projects";
 
 // Input validation
 const schemas = {
@@ -294,8 +294,14 @@ ${conversationText}`,
       try {
         const { threadId } = req.params;
         const { organizationId } = req.query;
-        const { model, maxTokens, temperature, instructions, projectId } =
-          req.body;
+        const {
+          model,
+          maxTokens,
+          temperature,
+          instructions,
+          projectId,
+          project_content,
+        } = req.body;
         const message = req.body.message as Message & {
           experimental_attachments?: ExtendedAttachment[]; // Use ExtendedAttachment instead of Attachment
         };
@@ -337,6 +343,41 @@ ${conversationText}`,
               });
             }
           );
+        }
+
+        // Add attached project files to the message
+        if (project_content && projectId) {
+          console.log("Project content", project_content);
+          for (const content of project_content) {
+            const file: any = await getFileContent(projectId, content.path);
+            console.log("File", file.name, file.type);
+            console.log(file.isLfsPointer);
+
+            // Check if its git LFS or not
+            if (file.isLfsPointer) {
+              if (file.type.startsWith("image")) {
+                contentParts.push({
+                  type: "image",
+                  image: file.s3Url,
+                  file_metadata: {
+                    filename: file.name,
+                    mime_type: file.type,
+                    file_key: file.s3FileKey,
+                  },
+                });
+              } else {
+                contentParts.push({
+                  type: "file",
+                  data: file.s3Url,
+                  file_metadata: {
+                    filename: file.name,
+                    mime_type: file.type,
+                    file_key: file.s3FileKey,
+                  },
+                });
+              }
+            }
+          }
         }
 
         // Add text message
@@ -437,115 +478,6 @@ ${conversationText}`,
           }))
         );
 
-        // Add project files to messages if available
-        let tools;
-        if (projectId) {
-          tools = {
-            list_files: tool({
-              description:
-                "List the files in a project with a given path. Use this to navigate the project folder structure. Similar to how you might think of ls command in a terminal. Providing no path will go the root of the project, then you can navigate from there.",
-              parameters: z.object({
-                path: z.string().optional(),
-              }),
-              execute: async ({ path }) => {
-                try {
-                  const projectContents: any = await getProjectFiles(
-                    projectId,
-                    path
-                  );
-
-                  const content = JSON.stringify(
-                    projectContents?.map((content: any) => ({
-                      name: content.name,
-                      path: content.path,
-                      type: content.type,
-                    })),
-                    null,
-                    2
-                  );
-
-                  console.log("Project files:", content);
-
-                  return content;
-                } catch {
-                  return "Error listing project files";
-                }
-              },
-            }),
-
-            // view_file: tool({
-            //   description:
-            //     "View the contents of a file in a project. Provide the path to the file you want to view. This works for all types of files not just text files.",
-            //   parameters: z.object({
-            //     path: z.string(),
-            //   }),
-            //   execute: async ({ path }) => {
-            //     try {
-            //       const file: any = await getFileContent(projectId, path);
-            //       const { isLfsPointer, s3Url, s3FileKey } = file;
-
-            //       console.log("File:", file);
-
-            //       // Create the content to send to model
-            //       let content = isLfsPointer ? s3Url : file.base64Content;
-
-            //       // If we are in not in prod need to convert urls to base64 for large files
-            //       if (!CONFIG.__prod__ && isLfsPointer) {
-            //         console.log("Getting file from S3");
-            //         const metadata = s3.file(s3FileKey);
-            //         const buffer = Buffer.from(
-            //           new Uint8Array(await metadata.arrayBuffer())
-            //         );
-            //         content = `data:${file.type};base64,${buffer.toString(
-            //           "base64"
-            //         )}`;
-            //       }
-
-            //       // Check its mime type
-            //       if (file.type?.includes("image")) {
-            //         return {
-            //           type: "image",
-            //           data: content,
-            //           mimeType: file.type,
-            //         };
-            //       }
-
-            //       // If its not a image, check to make sure model allows this mimeType
-            //       if (
-            //         MODELS["gemini-2.0-flash"].supportedMimeTypes?.includes(
-            //           file.type
-            //         )
-            //       ) {
-            //         console.log("File type:", file.type);
-            //         return {
-            //           type: "file",
-            //           data: content,
-            //           mimeType: file.type,
-            //         };
-            //       }
-
-            //       // If its not a image or a file, return text
-            //       return content;
-            //     } catch {
-            //       return "Error viewing file";
-            //     }
-            //   },
-
-            //   // map to tool result content for LLM consumption:
-            //   experimental_toToolResultContent(result) {
-            //     console.log(`Type of result: ${typeof result}`);
-            //     console.log(`Result: ${result.mimeType}`);
-            //     return typeof result === "string"
-            //       ? [{ type: "text", text: result }]
-            //       : [result];
-            //   },
-            // }),
-          };
-        }
-
-        //   console.log("Inference messages:");
-        //   console.log(JSON.stringify(inferenceMessages, null, 2));
-
         // Build system message
         let yoSystemMessage = `<assistant_instructions>
 Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it’s creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand. \
@@ -575,8 +507,6 @@ It is currently: ${new Date().toLocaleString("en-US", {
             : undefined,
           // experimental_providerMetadata: { openai: { reasoningEffort: "high" } },
           maxTokens: maxTokens || undefined,
-          tools: tools || undefined,
-          maxSteps: 5,
         };
 
         let aiResponse = "";

@@ -1,38 +1,46 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import {
-  useProjectFileQuery,
-  useProjectFilesQuery,
-  useProjectQuery,
-  // Removed: useUpdateProjectMutation since it's not used
-} from "@/queries/queries";
+import { useParams, useRouter } from "next/navigation";
+import { useProjectFileQuery, useProjectQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectFileExplorer from "@/components/projects/project-file-explorer";
 import { Card, CardContent } from "@/components/ui/card";
 import { ReadmeSection } from "@/components/projects/readme-section";
 import ChatInputForm from "@/components/chat/ChatInputForm";
-import { ProjectContent } from "@/types/project";
 import { ProjectAddFileButton } from "@/components/projects/project-add-file-button";
+import api from "@/lib/api";
+import { useAtom } from "jotai";
+import { initalInputAtom } from "@/atoms/chat";
 
-interface ProjectPageProps {
-  // Use optional prop if needed; updated the name to "initialProjectFiles"
-  initialProjectFiles?: ProjectContent[];
-}
-
-export default function ProjectPage({ initialProjectFiles }: ProjectPageProps) {
+export default function ProjectPage() {
+  const router = useRouter();
   const { projectId } = useParams();
   const pid = projectId as string;
 
-  const { data: project, isLoading: projectIsLoading } = useProjectQuery(pid);
-  const { data: projectContents, isLoading: projectContentsIsLoading } =
-    useProjectFilesQuery(pid);
+  const { data: project } = useProjectQuery(pid);
   const { data: readmeFile } = useProjectFileQuery(pid, "README.md");
 
   console.log("project", project);
 
   // Use nullish coalescing for a simple fallback
   const logo = project?.organization?.logoUrl ?? project?.user?.profilePicture;
+
+  const [initalInput, setInitalInput] = useAtom(initalInputAtom);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInitalInput(e.target.value);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      // Create thread in background
+      const { id: threadId } = await api.threads.createThread();
+      router.prefetch(`/threads/${threadId}?new=true`);
+      router.push(`/threads/${threadId}?new=true`);
+    } catch (error: unknown) {
+      console.error("Failed to create thread:", error);
+    }
+  };
 
   return (
     <div className="h-screen w-full flex justify-center overflow-y-auto pt-12">
@@ -60,24 +68,23 @@ export default function ProjectPage({ initialProjectFiles }: ProjectPageProps) {
         <main className="flex-1 h-full w-full px-4 pb-40">
           <Card className="w-full mt-4 shadow-none mb-4">
             <CardContent className="p-2">
-              <ProjectFileExplorer
-                contents={projectContents || []}
-                projectId={project?.id || ""}
-                isLoading={projectContentsIsLoading}
-              />
+              <ProjectFileExplorer projectId={project?.id || ""} />
             </CardContent>
           </Card>
           {readmeFile && <ReadmeSection content={readmeFile.content || ""} />}
         </main>
 
-        <footer className="absolute -bottom-14 inset-x-0 w-full group">
-          <div className="w-full flex items-center justify-center transition-all duration-300 ease-in-out group-hover:translate-y-[-4.5rem]">
+        <footer className="absolute bottom-4 inset-x-0 w-full group">
+          {/** group-hover:translate-y-[-4.5rem] */}
+          <div className="w-full flex items-center justify-center transition-all duration-300 ease-in-out">
             <div className="w-full max-w-3xl px-4">
               <ChatInputForm
-                input=""
-                setInput={() => {}}
-                handleInputChange={() => {}}
-                onSubmit={() => {}}
+                input={initalInput}
+                setInput={setInitalInput}
+                handleInputChange={handleInputChange}
+                onSubmit={handleSubmit}
+                showContextSelector={true}
+                projectId={pid}
               />
             </div>
           </div>

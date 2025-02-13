@@ -10,6 +10,7 @@ import {
   initalInputAtom,
   instructionsAtom,
   modelAtom,
+  selectedProjectFilesAtom,
   temperatureAtom,
   uploadsAtom,
 } from "@/atoms/chat";
@@ -47,6 +48,8 @@ export default function ThreadPage({
   const [temperature] = useAtom(temperatureAtom);
   const [instructions] = useAtom(instructionsAtom);
 
+  const [selectedProjectFiles] = useAtom(selectedProjectFilesAtom);
+
   const { activeWorkspace } = useWorkspace();
 
   const {
@@ -73,7 +76,10 @@ export default function ThreadPage({
         model: model.name,
         temperature: temperature,
         instructions,
-        // projectId: "f31e7729-6ad3-49c4-98f3-3565a4904a72",
+        project_content: selectedProjectFiles.map((file) => ({
+          path: file.path,
+        })),
+        projectId: "be2a6a11-5333-4b85-a803-d557e59057f3",
       };
     },
   });
