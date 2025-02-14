@@ -70,7 +70,7 @@ const ops = {
       let embedding = null;
       try {
         if ("type" in item) {
-          if (item.type === "text") {
+          if (item.type === "text" && item.text) {
             const embeddingResult = await embeddingModel.doEmbed({
               values: [item.text],
             });
@@ -347,7 +347,7 @@ ${conversationText}`,
               content.path
             );
 
-            // Check if its git LFS or not
+            // Check if its git LFS or not, don't need to handle converting to base64 because that happens later when proccessing all messages
             if (file.isLfsPointer) {
               if (file.type.startsWith("image")) {
                 contentParts.push({

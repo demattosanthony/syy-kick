@@ -26,6 +26,7 @@ import { useEffect } from "react";
 import ChatInputForm from "@/components/chat/ChatInputForm";
 import ChatMessagesList from "@/components/chat/MessagesList";
 import { Thread } from "@/types/chat";
+import { toast } from "sonner";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -50,7 +51,9 @@ export default function ThreadPage({
   const [temperature] = useAtom(temperatureAtom);
   const [instructions] = useAtom(instructionsAtom);
 
-  const [selectedProjectFiles] = useAtom(selectedProjectFilesAtom);
+  const [selectedProjectFiles, setSelectedProjectFiles] = useAtom(
+    selectedProjectFilesAtom
+  );
 
   const {
     input,
@@ -60,6 +63,7 @@ export default function ThreadPage({
     messages,
     isLoading,
     stop,
+    error,
   } = useChat({
     api: `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference`,
     credentials: "include",
@@ -127,6 +131,7 @@ export default function ThreadPage({
 
     // Reset attachments after submit
     setUploads([]);
+    setSelectedProjectFiles([]);
   }
 
   useEffect(() => {
@@ -151,6 +156,12 @@ export default function ThreadPage({
       setInitalInput("");
     };
   }, [threadId]);
+
+  useEffect(() => {
+    if (error) {
+      toast.error("An error occurred. Please try again later.");
+    }
+  }, [error]);
 
   return (
     <>

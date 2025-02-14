@@ -22,7 +22,7 @@ export default function ThreadHeader() {
   const pathname = usePathname();
 
   // Return null if not on a threads page
-  if (!pathname.includes("/threads")) {
+  if (!pathname.includes("/threads/")) {
     return null;
   }
 

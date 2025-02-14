@@ -4,7 +4,7 @@ import { FileResponse } from "@/types/project";
 import MarkdownViewer from "../MarkdownViewer";
 import PdfViewer from "../pdf-viewer";
 import ReactPlayer from "react-player";
-import { ArrowDown, File, FileDown } from "lucide-react";
+import { ArrowDown, File } from "lucide-react";
 
 export default function ProjectFileViewer({ file }: { file: FileResponse }) {
   // Helper function to get the correct source URL
