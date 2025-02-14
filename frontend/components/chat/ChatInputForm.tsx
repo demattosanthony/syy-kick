@@ -175,7 +175,7 @@ function ChatInputForm(
       >
         <div className="flex flex-col flex-1">
           {showContextSelector && (
-            <div className="flex items-center w-full h-8">
+            <div className="flex items-center w-full h-6">
               <Button
                 variant="ghost"
                 className="text-xs px-2 font-normal text-muted-foreground hover:bg-transparent hover:text-accent-foreground"

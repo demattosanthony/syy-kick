@@ -43,6 +43,8 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
+    if (initalInput.trim() === "") return;
+
     // Require login
     if (!user) {
       router.push("/login");

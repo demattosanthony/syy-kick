@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Provider as JotaiProvider } from "jotai";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import ReactQueryProvider from "./providers";
+import ReactQueryProvider, { KeyboardShortcutsProvider } from "./providers";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 import { WorkspaceProvider } from "@/components/sidebar/workspace-context";
@@ -133,8 +133,10 @@ export default function RootLayout({
           >
             <JotaiProvider>
               <WorkspaceProvider>
-                <Toaster />
-                {children}
+                <KeyboardShortcutsProvider>
+                  <Toaster />
+                  {children}
+                </KeyboardShortcutsProvider>
               </WorkspaceProvider>
             </JotaiProvider>
           </ThemeProvider>
