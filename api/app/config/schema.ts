@@ -142,6 +142,9 @@ export const threads = pgTable("threads", {
   organizationId: uuid("organization_id").references(() => organizations.id, {
     onDelete: "cascade",
   }),
+  projectId: uuid("project_id").references(() => projects.id, {
+    onDelete: "cascade",
+  }),
 });
 
 // Messages table with user association
@@ -203,6 +206,10 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
     references: [organizations.id],
   }),
   messages: many(messages),
+  project: one(projects, {
+    fields: [threads.projectId],
+    references: [projects.id],
+  }),
 }));
 
 export const messagesRelations = relations(messages, ({ one }) => ({

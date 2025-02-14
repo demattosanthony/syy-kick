@@ -19,7 +19,7 @@ export default function ProjectNavBreadcrumbs({
   const pathArray = (params.path as string[]) || [];
 
   return (
-    <Breadcrumb className="mb-2">
+    <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem>
           <Link

@@ -7,6 +7,10 @@ import { useAtom } from "jotai";
 import { useMeQuery } from "@/queries/queries";
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
+import { useWorkspace } from "@/components/sidebar/workspace-context";
+
+// State
+import { initalInputAtom } from "@/atoms/chat";
 
 // Components
 import ConversationStarters from "@/components/ConversationStarters";
@@ -20,8 +24,6 @@ import { toast } from "sonner";
 import ChatInputForm, {
   ChatInputFormRef,
 } from "@/components/chat/ChatInputForm";
-import { initalInputAtom } from "@/atoms/chat";
-import { useWorkspace } from "@/components/sidebar/workspace-context";
 import Rhombicuboctahedron from "@/components/rhombicuboctahedron";
 
 export default function Home() {

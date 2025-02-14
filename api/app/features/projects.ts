@@ -8,7 +8,6 @@ import s3 from "../config/s3";
 import multer from "multer";
 import { shouldUseLfs } from "../utils/lfs-utils";
 import { getFileMimeType } from "../utils";
-import { CONFIG } from "../config/constants";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -367,29 +366,6 @@ async function updateProject(
   return updatedProject;
 }
 
-// function getFileType(filename: string): "text" | "pdf" | "image" | "binary" {
-//   const extension = filename.toLowerCase().split(".").pop();
-
-//   const textExtensions = [
-//     "txt",
-//     "md",
-//     "js",
-//     "ts",
-//     "json",
-//     "yaml",
-//     "yml",
-//     "css",
-//     "html",
-//     "sh",
-//   ];
-//   const imageExtensions = ["jpg", "jpeg", "png", "gif", "svg", "webp"];
-
-//   if (extension && textExtensions.includes(extension)) return "text";
-//   if (extension === "pdf") return "pdf";
-//   if (extension && imageExtensions.includes(extension)) return "image";
-//   return "binary";
-// }
-
 /**
  * If the file content is an LFS pointer, return the S3 presigned url;
  * otherwise, return direct content (decoded for text, or base64 for binary).
@@ -650,12 +626,16 @@ file ${fileKey}
 export default Router()
   .post("/", handlers.createProject)
   .get("/", handlers.listProjects)
-  .patch("/:projectId", handlers.updateProject)
-  .get("/:projectId", handlers.getProject)
-  .delete("/:projectId", handlers.deleteProject)
+
+  // Routes with files
   .post("/:projectId/files", upload.single("file"), handlers.uploadFile)
   .post("/:projectId/files/presign-lfs", handlers.presignLfs)
   .post("/:projectId/files/finalize-lfs", handlers.finalizeLfs)
   .get("/:projectId/files", handlers.getFiles)
   .delete("/:projectId/files", handlers.deleteContents)
+
+  .patch("/:projectId", handlers.updateProject)
+  .get("/:projectId", handlers.getProject)
+  .delete("/:projectId", handlers.deleteProject)
+
   .get("/:projectId/files/content", handlers.getFile);

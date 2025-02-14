@@ -277,6 +277,7 @@ export function useProjectQuery(projectId: string) {
   return useQuery({
     queryKey: ["project", projectId],
     queryFn: () => api.projects.getProject(projectId),
+    enabled: !!projectId,
   });
 }
 
@@ -307,6 +308,7 @@ export function useProjectFilesQuery(
     queryKey: ["project-files", projectId, path],
     initialData: initalContent,
     queryFn: () => api.projects.getFiles(projectId, path),
+    enabled: !!projectId,
   });
 }
 

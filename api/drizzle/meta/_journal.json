@@ -162,6 +162,13 @@
       "when": 1739221515449,
       "tag": "0022_perpetual_invisible_woman",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1739544118302,
+      "tag": "0023_neat_betty_brant",
+      "breakpoints": true
     }
   ]
 }

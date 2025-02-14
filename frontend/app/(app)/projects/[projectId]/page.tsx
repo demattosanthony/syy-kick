@@ -11,6 +11,7 @@ import { ProjectAddFileButton } from "@/components/projects/project-add-file-but
 import api from "@/lib/api";
 import { useAtom } from "jotai";
 import { initalInputAtom } from "@/atoms/chat";
+import { useWorkspace } from "@/components/sidebar/workspace-context";
 
 export default function ProjectPage() {
   const router = useRouter();
@@ -19,6 +20,8 @@ export default function ProjectPage() {
 
   const { data: project } = useProjectQuery(pid);
   const { data: readmeFile } = useProjectFileQuery(pid, "README.md");
+
+  const { activeWorkspace } = useWorkspace();
 
   console.log("project", project);
 
@@ -34,7 +37,12 @@ export default function ProjectPage() {
   const handleSubmit = async () => {
     try {
       // Create thread in background
-      const { id: threadId } = await api.threads.createThread();
+      const { id: threadId } = await api.threads.createThread(
+        activeWorkspace?.type === "organization"
+          ? activeWorkspace.id
+          : undefined,
+        pid
+      );
       router.prefetch(`/threads/${threadId}?new=true`);
       router.push(`/threads/${threadId}?new=true`);
     } catch (error: unknown) {
@@ -68,7 +76,7 @@ export default function ProjectPage() {
         <main className="flex-1 h-full w-full px-4 pb-40">
           <Card className="w-full mt-4 shadow-none mb-4">
             <CardContent className="p-2">
-              <ProjectFileExplorer projectId={project?.id || ""} />
+              <ProjectFileExplorer projectId={pid} />
             </CardContent>
           </Card>
           {readmeFile && <ReadmeSection content={readmeFile.content || ""} />}

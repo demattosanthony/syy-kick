@@ -1,3 +1,5 @@
+import { Project } from "./project";
+
 export enum MessageRole {
   system = "system",
   user = "user",
@@ -41,6 +43,9 @@ export interface Thread {
   createdAt: string;
   updatedAt: string;
   title?: string;
+  organizationId?: string;
+  projectId?: string;
+  project?: Project;
   messages: {
     id: string;
     thread_id: string;

@@ -382,10 +382,14 @@ class UploadApi extends ApiRequest {
  * Thread API Module
  */
 class ThreadApi extends ApiRequest {
-  async createThread(organizationId?: string): Promise<{ id: string }> {
+  async createThread(
+    organizationId?: string,
+    projectId?: string
+  ): Promise<{ id: string }> {
     try {
       return await this.request<{ id: string }>("/threads", "POST", {
         organizationId,
+        projectId,
       });
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 402) {

@@ -1,17 +1,20 @@
 "use client";
 
-import ModelSelector from "./ModelSelector";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { SidebarTrigger } from "./ui/sidebar";
-import HeaderActions from "./HeaderActions";
 import { User } from "@/types/user";
 import { useWorkspace } from "./sidebar/workspace-context";
-import { ArrowRight, TriangleAlert } from "lucide-react";
+import { ArrowRight, Plus, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { useAtom } from "jotai";
+import { messagesAtom } from "@/atoms/chat";
 
 export default function Header({ user }: { user: User | null }) {
   const { activeWorkspace } = useWorkspace();
+  const router = useRouter();
+  const [, setMessages] = useAtom(messagesAtom);
 
   const showFinishOrganizationSetup =
     activeWorkspace?.type === "organization" &&
@@ -42,11 +45,17 @@ export default function Header({ user }: { user: User | null }) {
             <SidebarTrigger />
           </div>
 
-          <HeaderActions>
-            <div className="order-1 md:order-none">
-              {/* <ModelSelector /> */}
-            </div>
-          </HeaderActions>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => {
+              setMessages([]);
+              router.push("/");
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
 
         <div className="flex items-center gap-2">

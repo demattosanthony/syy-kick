@@ -4,14 +4,20 @@ import ProjectFileLayout from "@/components/projects/project-file-layout";
 import ProjectFileViewer from "@/components/projects/project-file-viewer";
 import { Card, CardContent } from "@/components/ui/card";
 import { useProjectFileQuery } from "@/queries/queries";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 
 export default function Page() {
+  const pathname = usePathname();
   const params = useParams();
-  const pathArray = (params.path as string[]) || [];
   const projectId = params.projectId as string;
 
-  const currentPath = pathArray.length ? pathArray.join("/") : "";
+  // Remove the fixed parts of the path to get the file path
+  const currentPath = pathname
+    .replace(`/projects/${projectId}/blob/main/`, "")
+    .replace(/^\/+|\/+$/g, ""); // Trim any leading/trailing slashes
+
+  const pathArray = currentPath ? currentPath.split("/") : [];
+
   const { data: fileContent } = useProjectFileQuery(projectId, currentPath);
 
   const rightContent = (

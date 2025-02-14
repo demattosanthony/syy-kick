@@ -25,7 +25,6 @@ import { useEffect } from "react";
 // Components
 import ChatInputForm from "@/components/chat/ChatInputForm";
 import ChatMessagesList from "@/components/chat/MessagesList";
-import { useWorkspace } from "../sidebar/workspace-context";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -50,8 +49,6 @@ export default function ThreadPage({
 
   const [selectedProjectFiles] = useAtom(selectedProjectFilesAtom);
 
-  const { activeWorkspace } = useWorkspace();
-
   const {
     input,
     setInput,
@@ -61,11 +58,7 @@ export default function ThreadPage({
     isLoading,
     stop,
   } = useChat({
-    api: `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference${
-      activeWorkspace?.type === "organization"
-        ? `?organizationId=${activeWorkspace.id}`
-        : ""
-    }`,
+    api: `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference`,
     credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,
@@ -79,7 +72,6 @@ export default function ThreadPage({
         project_content: selectedProjectFiles.map((file) => ({
           path: file.path,
         })),
-        projectId: "be2a6a11-5333-4b85-a803-d557e59057f3",
       };
     },
   });

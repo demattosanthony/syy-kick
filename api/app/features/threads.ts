@@ -173,7 +173,8 @@ ${conversationText}`,
   threads: {
     create: async (
       userId: string,
-      organizationId?: string
+      organizationId?: string,
+      projectId?: string
     ): Promise<{ id: string }> => {
       if (!userId) throw new Error("User ID is required");
       const id = crypto.randomUUID();
@@ -182,6 +183,7 @@ ${conversationText}`,
         id,
         userId,
         organizationId: organizationId || null,
+        projectId: projectId || null,
         createdAt: now,
         updatedAt: now,
       });
@@ -200,8 +202,12 @@ ${conversationText}`,
           messages: {
             orderBy: messages.createdAt,
           },
+          project: true,
+          organization: true,
         },
       });
+
+      console.log("Thread", thread);
 
       return ops.processThreadMessages(thread);
     },
@@ -293,15 +299,8 @@ ${conversationText}`,
     inference: async (req: Request, res: Response) => {
       try {
         const { threadId } = req.params;
-        const { organizationId } = req.query;
-        const {
-          model,
-          maxTokens,
-          temperature,
-          instructions,
-          projectId,
-          project_content,
-        } = req.body;
+        const { model, maxTokens, temperature, instructions, project_content } =
+          req.body;
         const message = req.body.message as Message & {
           experimental_attachments?: ExtendedAttachment[]; // Use ExtendedAttachment instead of Attachment
         };
@@ -314,10 +313,9 @@ ${conversationText}`,
         res.setHeader("Transfer-Encoding", "chunked");
         res.flushHeaders(); // send headers to establish SSE connection
 
-        const thread = await ops.threads.getThread(
-          threadId,
-          organizationId as string | undefined
-        );
+        const thread = await ops.threads.getThread(threadId);
+
+        console.log("Thread", thread);
 
         if (!thread) {
           res.status(404).json({ error: "Thread not found" });
@@ -346,10 +344,13 @@ ${conversationText}`,
         }
 
         // Add attached project files to the message
-        if (project_content && projectId) {
+        if (project_content && thread.projectId) {
           console.log("Project content", project_content);
           for (const content of project_content) {
-            const file: any = await getFileContent(projectId, content.path);
+            const file: any = await getFileContent(
+              thread.projectId,
+              content.path
+            );
             console.log("File", file.name, file.type);
             console.log(file.isLfsPointer);
 
@@ -614,8 +615,8 @@ export default Router()
   .post(
     "/",
     handle(async (req) => {
-      const { organizationId } = req.body;
-      return ops.threads.create(req.dbUser!.id, organizationId);
+      const { organizationId, projectId } = req.body;
+      return ops.threads.create(req.dbUser!.id, organizationId, projectId);
     })
   )
   .get(
