@@ -25,6 +25,7 @@ import { useEffect } from "react";
 // Components
 import ChatInputForm from "@/components/chat/ChatInputForm";
 import ChatMessagesList from "@/components/chat/MessagesList";
+import { Thread } from "@/types/chat";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -32,8 +33,10 @@ type ExtendedAttachment = Attachment & {
 
 export default function ThreadPage({
   initalMessages,
+  thread,
 }: {
   initalMessages: Message[];
+  thread?: Thread;
 }) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -161,6 +164,8 @@ export default function ThreadPage({
           onSubmit={onSubmit}
           stop={stop}
           isGenerating={isLoading}
+          showContextSelector={thread?.project !== null}
+          projectId={thread?.project?.id}
         />
       </div>
     </>

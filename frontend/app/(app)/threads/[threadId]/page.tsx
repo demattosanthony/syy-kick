@@ -40,5 +40,5 @@ export default function ThreadsPage() {
     );
   }, [isNew, thread]);
 
-  return <ChatThread initalMessages={initalMessages} />;
+  return <ChatThread initalMessages={initalMessages} thread={thread} />;
 }

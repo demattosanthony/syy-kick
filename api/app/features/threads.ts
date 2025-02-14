@@ -207,8 +207,6 @@ ${conversationText}`,
         },
       });
 
-      console.log("Thread", thread);
-
       return ops.processThreadMessages(thread);
     },
 
@@ -315,8 +313,6 @@ ${conversationText}`,
 
         const thread = await ops.threads.getThread(threadId);
 
-        console.log("Thread", thread);
-
         if (!thread) {
           res.status(404).json({ error: "Thread not found" });
           return;
@@ -345,14 +341,11 @@ ${conversationText}`,
 
         // Add attached project files to the message
         if (project_content && thread.projectId) {
-          console.log("Project content", project_content);
           for (const content of project_content) {
             const file: any = await getFileContent(
               thread.projectId,
               content.path
             );
-            console.log("File", file.name, file.type);
-            console.log(file.isLfsPointer);
 
             // Check if its git LFS or not
             if (file.isLfsPointer) {
@@ -481,7 +474,7 @@ ${conversationText}`,
 
         // Build system message
         let yoSystemMessage = `<assistant_instructions>
-Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it’s creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand. \
+Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it’s creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand.
 </assistant_instructions>
     
 <current_date>
@@ -548,25 +541,6 @@ It is currently: ${new Date().toLocaleString("en-US", {
               reasoning += chunk.textDelta;
             }
           },
-
-          // async onFinish({ response }) {
-          //   if (aborted) return;
-
-          //   // Store the assistant response
-          //   await db.insert(messages).values({
-          //     userId: req.userId!,
-          //     id: crypto.randomUUID(),
-          //     threadId: threadId,
-          //     role: "assistant",
-          //     content: {
-          //       type: "text",
-          //       text: (response.messages[0].content as TextPart[])[0].text,
-          //     },
-          //     createdAt: new Date(),
-          //     model: model,
-          //     provider: modelConfig.provider,
-          //   });
-          // },
         });
 
         return result.pipeDataStreamToResponse(res, {
