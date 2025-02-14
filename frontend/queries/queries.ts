@@ -40,17 +40,9 @@ export function useThreadsQuery(search?: string) {
 }
 
 export function useThreadQuery(threadId: string, isNewThread: boolean) {
-  const { activeWorkspace } = useWorkspace();
-
   return useQuery({
-    queryKey: ["thread", threadId, activeWorkspace?.id],
-    queryFn: () =>
-      api.threads.getThread(
-        threadId,
-        activeWorkspace?.type === "organization"
-          ? activeWorkspace.id
-          : undefined
-      ),
+    queryKey: ["thread", threadId],
+    queryFn: () => api.threads.getThread(threadId),
     enabled: !isNewThread, // Only fetch if it's not a new thread
     refetchOnWindowFocus: false,
   });
