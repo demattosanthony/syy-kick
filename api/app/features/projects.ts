@@ -29,6 +29,7 @@ const schemas = {
   }),
 };
 
+// Helper functions
 function toGitSafeName(name: string): string {
   return name
     .toLowerCase()
@@ -50,6 +51,45 @@ async function extractS3KeyFromLfsPointer(
   return fileKeyMatch ? fileKeyMatch[1] : null;
 }
 
+async function getProjectOrThrow(projectId: string) {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  });
+  if (!project) {
+    throw new Error("Project not found");
+  }
+  return project;
+}
+
+async function getGiteaContents(owner: string, repoName: string, path: string) {
+  return await gitea.repos.repoGetContents(owner, repoName, path, {
+    ref: "main",
+  });
+}
+
+async function getGiteaCommitMetadata(
+  owner: string,
+  repoName: string,
+  path: string
+) {
+  const commitResponse = await gitea.repos.repoGetAllCommits(owner, repoName, {
+    path,
+    page: 1,
+    limit: 1,
+  });
+  return commitResponse.data?.[0]?.commit?.committer?.date;
+}
+
+async function enrichFileMetadata(file: any, owner: string, repoName: string) {
+  const lastModified = await getGiteaCommitMetadata(owner, repoName, file.path);
+  return {
+    ...file,
+    lastModified,
+    mimeType: file.type !== "dir" ? getFileMimeType(file.name) : undefined,
+  };
+}
+
+// Ops methods
 async function createProject(data: z.infer<typeof schemas.createProject>) {
   // Check organization exists if organizationId is provided
   if (data.organizationId) {
@@ -128,14 +168,8 @@ async function uploadFileToProject(
   fileBuffer: Buffer, // Only used if not LFS
   message: string = "Add file via API"
 ) {
-  const project = await db.query.projects.findFirst({
-    where: eq(projects.id, projectId),
-  });
-  if (!project) {
-    throw new Error("Project not found");
-  }
-
-  const repoOwner = "admin"; // or however you manage your Gitea user
+  const project = await getProjectOrThrow(projectId);
+  const repoOwner = "admin";
   const repoName = toGitSafeName(project.name);
 
   // If it’s forced LFS or beyond threshold => throw or handle it:
@@ -152,17 +186,8 @@ async function uploadFileToProject(
 }
 
 async function deleteProject(projectId: string) {
-  const project = await db.query.projects.findFirst({
-    where: eq(projects.id, projectId),
-  });
-
-  if (!project) {
-    throw new Error("Project not found");
-  }
-
-  // Delete the git repo
+  const project = await getProjectOrThrow(projectId);
   await gitea.repos.repoDelete("admin", toGitSafeName(project.name));
-
   await db.delete(projects).where(eq(projects.id, projectId));
 }
 
@@ -222,47 +247,17 @@ async function getProject(projectId: string) {
 }
 
 export async function getProjectFiles(projectId: string, path: string = "") {
-  const project = await db.query.projects.findFirst({
-    where: eq(projects.id, projectId),
-  });
-  if (!project) {
-    throw new Error("Project not found");
-  }
-
+  const project = await getProjectOrThrow(projectId);
   const repoName = toGitSafeName(project.name);
+  const owner = "admin";
 
   try {
-    const contents = await gitea.repos.repoGetContents(
-      "admin",
-      repoName,
-      path,
-      {
-        ref: "main",
-      }
-    );
+    const contents = await getGiteaContents(owner, repoName, path);
 
     // If directory, fetch commit metadata for each item
     if (Array.isArray(contents.data)) {
       const filesWithMetadata = await Promise.all(
-        contents.data.map(async (file: any) => {
-          const commitResponse = await gitea.repos.repoGetAllCommits(
-            "admin",
-            repoName,
-            {
-              path: file.path,
-              page: 1,
-              limit: 1,
-            }
-          );
-          if (commitResponse.data && commitResponse.data.length > 0) {
-            file.lastModified = commitResponse.data[0].commit?.committer?.date;
-          }
-          // Add mimeType for files (not directories)
-          if (file.type !== "dir") {
-            file.mimeType = getFileMimeType(file.name);
-          }
-          return file;
-        })
+        contents.data.map((file) => enrichFileMetadata(file, owner, repoName))
       );
 
       // GitHub-style sorting
@@ -290,25 +285,7 @@ export async function getProjectFiles(projectId: string, path: string = "") {
         });
       });
     } else {
-      // Single file => fetch commit metadata
-      const commitResponse = await gitea.repos.repoGetAllCommits(
-        "admin",
-        repoName,
-        {
-          path: contents.data.path,
-          page: 1,
-          limit: 1,
-        }
-      );
-      if (commitResponse.data && commitResponse.data.length > 0) {
-        (contents.data as any).lastModified =
-          commitResponse.data[0].commit?.committer?.date;
-      }
-      (contents.data as any).mimeType = contents.data.name
-        ? getFileMimeType(contents.data.name)
-        : "application/octet-stream";
-
-      return contents.data;
+      return await enrichFileMetadata(contents.data, owner, repoName);
     }
   } catch (error) {
     throw new Error("Failed to fetch repository contents");
@@ -339,31 +316,66 @@ async function deleteFileWithLfsCheck(
   });
 }
 
-async function deleteProjectContent(projectId: string, path: string) {
-  const project = await db.query.projects.findFirst({
-    where: eq(projects.id, projectId),
-  });
-  if (!project) {
-    throw new Error("Project not found");
-  }
-
-  const repoName = toGitSafeName(project.name);
-
+async function deleteDirectoryContentsRecursively(
+  owner: string,
+  repoName: string,
+  path: string
+) {
   try {
-    // First check if we're about to delete the last file
-    const allFiles = await gitea.repos.repoGetContents("admin", repoName, "", {
+    const contents = await gitea.repos.repoGetContents(owner, repoName, path, {
       ref: "main",
     });
 
-    const isLastFile =
+    if (!Array.isArray(contents.data)) {
+      throw new Error("Expected directory contents");
+    }
+
+    // Process all items except .gitkeep
+    for (const item of contents.data.filter(
+      (file) => file.name !== ".gitkeep"
+    )) {
+      if (item.type === "dir") {
+        // Recursively delete contents of subdirectory
+        await deleteDirectoryContentsRecursively(owner, repoName, item.path);
+      } else {
+        // Get file content for LFS check
+        const fileContent = await getGiteaContents(owner, repoName, item.path);
+
+        if (!Array.isArray(fileContent.data)) {
+          await deleteFileWithLfsCheck(
+            owner,
+            repoName,
+            item.path,
+            item.sha,
+            fileContent.data.content
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error deleting directory ${path}:`, error);
+    throw error;
+  }
+}
+
+async function deleteProjectContent(projectId: string, path: string) {
+  const project = await getProjectOrThrow(projectId);
+  const repoName = toGitSafeName(project.name);
+  const owner = "admin";
+
+  try {
+    // First check if we're about to delete the last file/directory
+    const allFiles = await getGiteaContents(owner, repoName, "");
+
+    const isLastItem =
       Array.isArray(allFiles.data) &&
       allFiles.data.length === 1 &&
       allFiles.data[0].path === path;
 
-    // If we're about to delete the last file, create .gitkeep first
-    if (isLastFile) {
+    // If we're about to delete the last item, create .gitkeep first
+    if (isLastItem) {
       try {
-        await gitea.repos.repoCreateFile("admin", repoName, ".gitkeep", {
+        await gitea.repos.repoCreateFile(owner, repoName, ".gitkeep", {
           content: Buffer.from("").toString("base64"),
           message: "Keep repository valid",
         });
@@ -373,80 +385,46 @@ async function deleteProjectContent(projectId: string, path: string) {
       }
     }
 
-    // Now proceed with deletion
-    const fileInfo = await gitea.repos.repoGetContents(
-      "admin",
-      repoName,
-      path,
-      {
-        ref: "main",
-      }
-    );
+    // Get info about the item we're deleting
+    const itemInfo = await getGiteaContents(owner, repoName, path);
 
-    if (Array.isArray(fileInfo.data)) {
-      // Directory => delete all children except .gitkeep
-      await Promise.all(
-        fileInfo.data
-          .filter((file) => file.name !== ".gitkeep")
-          .map(async (file) => {
-            try {
-              const content = await gitea.repos.repoGetContents(
-                "admin",
-                repoName,
-                file.path,
-                { ref: "main" }
-              );
-              const fileContent = !Array.isArray(content.data)
-                ? content.data.content
-                : undefined;
-              await deleteFileWithLfsCheck(
-                "admin",
-                repoName,
-                file.path,
-                file.sha,
-                fileContent
-              );
-            } catch (err) {
-              console.error(`Failed to delete file ${file.path}:`, err);
-              throw err;
-            }
-          })
-      );
+    if (Array.isArray(itemInfo.data)) {
+      // It's a directory - recursively delete contents
+      await deleteDirectoryContentsRecursively(owner, repoName, path);
     } else {
       // Single file - don't delete if it's .gitkeep and it's the last file
-      if (path === ".gitkeep" && isLastFile) {
+      if (path === ".gitkeep" && isLastItem) {
         return true;
       }
 
-      if (!fileInfo.data.sha) {
+      if (!itemInfo.data.sha) {
         throw new Error("Could not get file SHA");
       }
 
       await deleteFileWithLfsCheck(
-        "admin",
+        owner,
         repoName,
         path,
-        fileInfo.data.sha,
-        fileInfo.data.content
+        itemInfo.data.sha,
+        itemInfo.data.content
       );
     }
 
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Delete content error:", error);
+    if (error.status === 404) {
+      throw new Error(`Path '${path}' not found in repository`);
+    }
     throw new Error("Failed to delete repository content");
   }
 }
+
 async function updateProject(
   projectId: string,
   data: z.infer<typeof schemas.updateProject>
 ) {
-  const project = await db.query.projects.findFirst({
-    where: eq(projects.id, projectId),
-  });
-  if (!project) {
-    throw new Error("Project not found");
-  }
+  const project = await getProjectOrThrow(projectId);
 
   const updatedProject = await db
     .update(projects)
@@ -472,17 +450,11 @@ async function updateProject(
  * otherwise, return direct content (decoded for text, or base64 for binary).
  */
 export async function getFileContent(projectId: string, path: string) {
-  const project = await db.query.projects.findFirst({
-    where: eq(projects.id, projectId),
-  });
-  if (!project) {
-    throw new Error("Project not found");
-  }
-
+  const project = await getProjectOrThrow(projectId);
   const repoName = toGitSafeName(project.name);
-  const response = await gitea.repos.repoGetContents("admin", repoName, path, {
-    ref: "main",
-  });
+  const owner = "admin";
+
+  const response = await getGiteaContents(owner, repoName, path);
 
   if (Array.isArray(response.data)) {
     throw new Error("Path points to a directory, not a file");
@@ -542,6 +514,7 @@ export async function getFileContent(projectId: string, path: string) {
   };
 }
 
+// Route handlers
 const handlers = {
   createProject: async (req: Request, res: Response) => {
     const data = {
