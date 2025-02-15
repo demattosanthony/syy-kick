@@ -78,7 +78,7 @@ export const PdfThumbnail = ({
       className="thumbnail-container cursor-pointer transition-all rounded overflow-hidden"
       onClick={() => window.open(url, "_blank")}
     >
-      {loading && <Skeleton className={`h-56 w-[${width}px]`} />}
+      {loading && <Skeleton className="h-56" style={{ width: `${width}px` }} />}
       <canvas ref={canvasRef} style={{ display: loading ? "none" : "block" }} />
     </div>
   );
