@@ -127,6 +127,39 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
 export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
+  const supportedMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/heic",
+    "image/heif",
+    "application/pdf",
+    "application/x-javascript",
+    "text/javascript",
+    "application/x-python",
+    "text/python",
+    "text/plain",
+    "text/html",
+    "text/md",
+    "text/csv",
+    "text/xml",
+    "text/rtf",
+    "text/markdown",
+    "text/x-markdown",
+    "text/org",
+    "text/asciidoc",
+    "text/restructuredtext",
+    "text/textile",
+    "text/wiki",
+    "text/yaml",
+    "text/toml",
+    "text/ini",
+    "text/properties",
+    "text/conf",
+    "text/log",
+  ];
+
   return {
     "gemini-2.0-pro": {
       model: google("gemini-2.0-pro-exp-02-05"),
@@ -134,25 +167,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "google",
       supportsSystemMessages: true,
-      supportedMimeTypes: [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-        "image/heic",
-        "image/heif",
-        "application/pdf",
-        "application/x-javascript",
-        "text/javascript",
-        "application/x-python",
-        "text/python",
-        "text/plain",
-        "text/html",
-        "text/md",
-        "text/csv",
-        "text/xml",
-        "text/rtf",
-      ],
+      supportedMimeTypes,
       maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
       maxFileSize: 50 * 1024 * 1024, // 50MB
       description:
@@ -164,25 +179,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "google",
       supportsSystemMessages: true,
-      supportedMimeTypes: [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-        "image/heic",
-        "image/heif",
-        "application/pdf",
-        "application/x-javascript",
-        "text/javascript",
-        "application/x-python",
-        "text/python",
-        "text/plain",
-        "text/html",
-        "text/md",
-        "text/csv",
-        "text/xml",
-        "text/rtf",
-      ],
+      supportedMimeTypes,
       maxImageSize: 2 * 1024 * 1024 * 1024, //
       maxFileSize: 50 * 1024 * 1024, // 50MB
       description:
@@ -196,25 +193,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "google",
       supportsSystemMessages: true,
-      supportedMimeTypes: [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-        "image/heic",
-        "image/heif",
-        "application/pdf",
-        "application/x-javascript",
-        "text/javascript",
-        "application/x-python",
-        "text/python",
-        "text/plain",
-        "text/html",
-        "text/md",
-        "text/csv",
-        "text/xml",
-        "text/rtf",
-      ],
+      supportedMimeTypes,
       maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
       maxFileSize: 50 * 1024 * 1024, // 50MB
       description:
@@ -226,25 +205,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "google",
       supportsSystemMessages: true,
-      supportedMimeTypes: [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-        "image/heic",
-        "image/heif",
-        "application/pdf",
-        "application/x-javascript",
-        "text/javascript",
-        "application/x-python",
-        "text/python",
-        "text/plain",
-        "text/html",
-        "text/md",
-        "text/csv",
-        "text/xml",
-        "text/rtf",
-      ],
+      supportedMimeTypes,
       maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
       maxFileSize: 50 * 1024 * 1024, // 50MB
       description:

@@ -14,8 +14,7 @@ import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { SidebarItem } from "./sidebar-item";
-import { useParams } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { useParams, usePathname } from "next/navigation";
 
 interface ThreadsListProps {
   user: User;
@@ -23,7 +22,13 @@ interface ThreadsListProps {
 
 export function ThreadsList({ user }: ThreadsListProps) {
   const params = useParams();
-  const currentThreadId = params?.threadId;
+  const pathname = usePathname();
+  // Only set currentThreadId if we're actually on a thread route
+  const currentThreadId = pathname.startsWith("/threads/")
+    ? typeof params?.threadId === "string"
+      ? params.threadId
+      : null
+    : null;
   const { data, isLoading } = useThreadsQuery();
   const threads = (data?.pages[0]?.threads ?? []).slice(0, 6);
 

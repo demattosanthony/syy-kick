@@ -22,6 +22,7 @@ import {
 } from "../ui/dialog";
 import ProjectFileExplorer from "../projects/project-file-explorer";
 import { ProjectContent } from "@/types/project";
+import { toast } from "sonner";
 
 interface ChatInputFormProps {
   onSubmit: (e: React.FormEvent) => void;
@@ -148,6 +149,15 @@ function ChatInputForm(
   // Add this before the return statement
   const handleFileSelect = (item: ProjectContent) => {
     if (item.type === "file") {
+      // If the selected model can't handle the file type, return and show toast error message
+      if (
+        selectedModel.supportedMimeTypes &&
+        !selectedModel.supportedMimeTypes.includes(item.mimeType)
+      ) {
+        toast.error(`Selected model does not support ${item.mimeType} files.`);
+        return;
+      }
+
       setSelectedProjectFiles((prev) => {
         if (prev.find((file) => file.path === item.path)) {
           return prev;

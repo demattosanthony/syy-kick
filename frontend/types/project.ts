@@ -20,6 +20,7 @@ export interface ProjectContent {
   lastModified: string;
   content: string;
   type: "file" | "dir";
+  mimeType: string;
 }
 
 export interface FileResponse {

@@ -14,14 +14,23 @@ import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { SidebarItem } from "./sidebar-item";
+import { useParams, usePathname } from "next/navigation";
 
 interface ProjectsListProps {
   user: User;
 }
 
 export function SidebarProjectsList({ user }: ProjectsListProps) {
-  const { data: projects, isLoading } = useProjectsQuery();
+  const params = useParams();
+  const pathname = usePathname();
+  // Only set currentThreadId if we're actually on a thread route
+  const currentProjectId = pathname.startsWith("/projects/")
+    ? typeof params?.projectId === "string"
+      ? params.projectId
+      : null
+    : null;
 
+  const { data: projects, isLoading } = useProjectsQuery();
   const deleteProjectMutatio = useDeleteProjectMutation();
 
   const handleDeleteProject = async (id: string) => {
@@ -51,7 +60,7 @@ export function SidebarProjectsList({ user }: ProjectsListProps) {
                   id={project.id}
                   title={project.name}
                   href={`/projects/${project.id}`}
-                  //   currentId={currentThreadId as string}
+                  currentId={currentProjectId as string}
                   onDelete={handleDeleteProject}
                   itemType="project"
                 />

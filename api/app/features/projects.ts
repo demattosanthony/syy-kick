@@ -257,6 +257,10 @@ export async function getProjectFiles(projectId: string, path: string = "") {
           if (commitResponse.data && commitResponse.data.length > 0) {
             file.lastModified = commitResponse.data[0].commit?.committer?.date;
           }
+          // Add mimeType for files (not directories)
+          if (file.type !== "dir") {
+            file.mimeType = getFileMimeType(file.name);
+          }
           return file;
         })
       );
@@ -300,6 +304,10 @@ export async function getProjectFiles(projectId: string, path: string = "") {
         (contents.data as any).lastModified =
           commitResponse.data[0].commit?.committer?.date;
       }
+      (contents.data as any).mimeType = contents.data.name
+        ? getFileMimeType(contents.data.name)
+        : "application/octet-stream";
+
       return contents.data;
     }
   } catch (error) {
