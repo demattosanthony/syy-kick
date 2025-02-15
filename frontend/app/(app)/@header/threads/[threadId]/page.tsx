@@ -21,15 +21,15 @@ export default function ThreadHeader() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Return null if not on a threads page
-  if (!pathname.includes("/threads/")) {
-    return null;
-  }
-
   const threadId = params.threadId as string;
   const [, setMessages] = useAtom(messagesAtom);
 
   const { data: thread } = useThreadQuery(threadId, false);
+
+  // Return null if not on a threads page
+  if (!pathname.includes("/threads/")) {
+    return null;
+  }
 
   return (
     <header

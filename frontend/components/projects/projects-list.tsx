@@ -18,8 +18,6 @@ export default function ProjectsList() {
     search: search,
   });
 
-  console.log(projects);
-
   return (
     <ScrollArea className="h-[calc(100vh-175px)] px-2">
       {projects?.length === 0 ? (

@@ -26,7 +26,7 @@ export function ProjectAddFileButton({ projectId }: UploadButtonsProps) {
           path: file.name,
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to upload files:", error);
     }
   };
@@ -43,7 +43,7 @@ export function ProjectAddFileButton({ projectId }: UploadButtonsProps) {
           path: file.webkitRelativePath,
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to upload folder:", error);
     }
   };
@@ -66,7 +66,7 @@ export function ProjectAddFileButton({ projectId }: UploadButtonsProps) {
               <FolderClosed className="h-5 w-5 fill-blue-400 text-blue-400" />
               <input
                 type="file"
-                // @ts-ignore
+                // @ts-expect-error webkitdirectory is a non-standard attribute
                 webkitdirectory=""
                 multiple
                 className="hidden"

@@ -6,9 +6,6 @@ import { useSidebar } from "../ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useCreateProjectMutation } from "@/queries/queries";
-import { useState } from "react";
-import { useWorkspace } from "./workspace-context";
 import { CreateProjectDialog } from "../projects/create-project-dialog";
 
 export function ProjectsButton() {
@@ -16,41 +13,16 @@ export function ProjectsButton() {
   const { state, toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
   const pathname = usePathname();
-  const { activeWorkspace } = useWorkspace();
   const isProjectsPage = pathname === "/projects";
-
-  const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-  });
-
-  const createProjectMutation = useCreateProjectMutation();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await createProjectMutation.mutateAsync({
-        name: formData.name,
-        description: formData.description,
-        organizationId:
-          activeWorkspace?.type === "organization"
-            ? activeWorkspace.id
-            : undefined,
-      });
-      setFormData({ name: "", description: "" });
-      setOpen(false);
-    } catch (error) {
-      console.error("Failed to create project:", error);
-    }
-  };
 
   return (
     <div className="relative group/projects">
       <Button
         variant={"ghost"}
         onClick={() => {
-          isMobile && toggleSidebar();
+          if (isMobile) {
+            toggleSidebar();
+          }
           router.push("/projects");
         }}
         className={cn(

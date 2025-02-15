@@ -67,12 +67,14 @@ export default function ProjectFileExplorer({
     );
   }
 
-  // Sort contents so that README.md appears last.
-  const sortedContents = [...contents].sort((a, b) => {
-    if (a.name.toLowerCase() === "readme.md") return 1;
-    if (b.name.toLowerCase() === "readme.md") return -1;
-    return 0;
-  });
+  // Filter out hidden files and sort contents so that README.md appears last
+  const sortedContents = [...contents]
+    .filter((file) => !file.name.startsWith("."))
+    .sort((a, b) => {
+      if (a.name.toLowerCase() === "readme.md") return 1;
+      if (b.name.toLowerCase() === "readme.md") return -1;
+      return 0;
+    });
 
   return (
     <div className="divide-y">
@@ -107,8 +109,6 @@ function FileExplorerItem({
   initialPathChain = [],
   onFileSelect,
 }: FileExplorerItemProps) {
-  if (item.name[0] === ".") return null;
-
   const router = useRouter();
   const pathname = window.location.pathname;
   const isSelected =
