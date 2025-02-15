@@ -51,7 +51,11 @@ export default function ProjectFileExplorer({
     );
   }
 
-  if (!contents || contents.length === 0) {
+  if (
+    !contents ||
+    contents.length === 0 ||
+    contents.every((file) => file.name[0] === ".")
+  ) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
         <Folder className="h-12 w-12 mb-4 fill-blue-400 text-blue-400" />
@@ -103,6 +107,8 @@ function FileExplorerItem({
   initialPathChain = [],
   onFileSelect,
 }: FileExplorerItemProps) {
+  if (item.name[0] === ".") return null;
+
   const router = useRouter();
   const pathname = window.location.pathname;
   const isSelected =

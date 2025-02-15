@@ -39,6 +39,17 @@ function toGitSafeName(name: string): string {
     .replace(/\.git$/i, "-git"); // Replace .git suffix
 }
 
+function isLfsPointer(content: string): boolean {
+  return content.startsWith("version https://git-lfs.github.com/spec/v1");
+}
+
+async function extractS3KeyFromLfsPointer(
+  content: string
+): Promise<string | null> {
+  const fileKeyMatch = content.match(/file\s+([^\s]+)/);
+  return fileKeyMatch ? fileKeyMatch[1] : null;
+}
+
 async function createProject(data: z.infer<typeof schemas.createProject>) {
   // Check organization exists if organizationId is provided
   if (data.organizationId) {
@@ -66,7 +77,7 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
     name: toGitSafeName(data.name),
     private: true,
     description: data.description,
-    auto_init: false,
+    // auto_init: true,
   });
   const gitRepo = response.data;
 
@@ -296,6 +307,30 @@ export async function getProjectFiles(projectId: string, path: string = "") {
   }
 }
 
+async function deleteFileWithLfsCheck(
+  owner: string,
+  repoName: string,
+  path: string,
+  sha: string,
+  content?: string
+) {
+  if (content) {
+    const decoded = Buffer.from(content, "base64").toString("utf-8");
+    if (isLfsPointer(decoded)) {
+      const s3Key = await extractS3KeyFromLfsPointer(decoded);
+      if (s3Key) {
+        await s3.delete(s3Key);
+      }
+    }
+  }
+
+  await gitea.repos.repoDeleteFile(owner, repoName, path, {
+    message: "Delete file via API",
+    branch: "main",
+    sha,
+  });
+}
+
 async function deleteProjectContent(projectId: string, path: string) {
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
@@ -306,36 +341,94 @@ async function deleteProjectContent(projectId: string, path: string) {
 
   const repoName = toGitSafeName(project.name);
 
-  // First get the file/directory to obtain its SHA(s)
-  const fileInfo = await gitea.repos.repoGetContents("admin", repoName, path, {
-    ref: "main",
-  });
-
-  if (Array.isArray(fileInfo.data)) {
-    // Directory => delete all children
-    for (const file of fileInfo.data) {
-      await gitea.repos.repoDeleteFile("admin", repoName, file.path, {
-        message: "Delete file via API",
-        branch: "main",
-        sha: file.sha,
-      });
-    }
-  } else {
-    // Single file
-    const fileSha = fileInfo.data.sha;
-    if (!fileSha) {
-      throw new Error("Could not get file SHA");
-    }
-    await gitea.repos.repoDeleteFile("admin", repoName, path, {
-      message: "Delete file via API",
-      branch: "main",
-      sha: fileSha,
+  try {
+    // First check if we're about to delete the last file
+    const allFiles = await gitea.repos.repoGetContents("admin", repoName, "", {
+      ref: "main",
     });
+
+    const isLastFile =
+      Array.isArray(allFiles.data) &&
+      allFiles.data.length === 1 &&
+      allFiles.data[0].path === path;
+
+    // If we're about to delete the last file, create .gitkeep first
+    if (isLastFile) {
+      try {
+        await gitea.repos.repoCreateFile("admin", repoName, ".gitkeep", {
+          content: Buffer.from("").toString("base64"),
+          message: "Keep repository valid",
+        });
+      } catch (err) {
+        // Ignore if .gitkeep already exists
+        console.log("Failed to create .gitkeep, may already exist:", err);
+      }
+    }
+
+    // Now proceed with deletion
+    const fileInfo = await gitea.repos.repoGetContents(
+      "admin",
+      repoName,
+      path,
+      {
+        ref: "main",
+      }
+    );
+
+    if (Array.isArray(fileInfo.data)) {
+      // Directory => delete all children except .gitkeep
+      await Promise.all(
+        fileInfo.data
+          .filter((file) => file.name !== ".gitkeep")
+          .map(async (file) => {
+            try {
+              const content = await gitea.repos.repoGetContents(
+                "admin",
+                repoName,
+                file.path,
+                { ref: "main" }
+              );
+              const fileContent = !Array.isArray(content.data)
+                ? content.data.content
+                : undefined;
+              await deleteFileWithLfsCheck(
+                "admin",
+                repoName,
+                file.path,
+                file.sha,
+                fileContent
+              );
+            } catch (err) {
+              console.error(`Failed to delete file ${file.path}:`, err);
+              throw err;
+            }
+          })
+      );
+    } else {
+      // Single file - don't delete if it's .gitkeep and it's the last file
+      if (path === ".gitkeep" && isLastFile) {
+        return true;
+      }
+
+      if (!fileInfo.data.sha) {
+        throw new Error("Could not get file SHA");
+      }
+
+      await deleteFileWithLfsCheck(
+        "admin",
+        repoName,
+        path,
+        fileInfo.data.sha,
+        fileInfo.data.content
+      );
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Delete content error:", error);
+    throw new Error("Failed to delete repository content");
   }
-
-  return true;
 }
-
 async function updateProject(
   projectId: string,
   data: z.infer<typeof schemas.updateProject>
@@ -509,10 +602,15 @@ const handlers = {
   },
 
   getFiles: async (req: Request, res: Response) => {
-    const { projectId } = req.params;
-    const { path } = req.query;
-    const files = await getProjectFiles(projectId, path as string);
-    res.json(files);
+    try {
+      const { projectId } = req.params;
+      const { path } = req.query;
+      const files = await getProjectFiles(projectId, path as string);
+      res.json(files);
+    } catch (error) {
+      console.error("Error getting project files:", error);
+      res.status(500).json({ error: "Failed to get project files" });
+    }
   },
 
   deleteContents: async (req: Request, res: Response) => {
