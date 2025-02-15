@@ -58,7 +58,7 @@ const ops = {
     return thread;
   },
 
-  async createMessage(
+  async createMessages(
     userId: string,
     threadId: string,
     role: string,
@@ -168,6 +168,26 @@ ${conversationText}`,
     }
 
     return MODELS[object.request_type];
+  },
+
+  generateTitle: async (threadId: string, rawMessages: any[]) => {
+    const firstUserTextMessage = rawMessages.find(
+      (msg) =>
+        msg.role === "user" &&
+        "type" in (msg.content as ContentPart) &&
+        (msg.content as ContentPart).type === "text" &&
+        "text" in (msg.content as ContentPart)
+    );
+
+    if (firstUserTextMessage) {
+      const content = firstUserTextMessage.content as ContentPart;
+      try {
+        const title = await generateThreadTitle((content as any).text);
+        await db.update(threads).set({ title }).where(eq(threads.id, threadId));
+      } catch (error) {
+        console.error("Error generating title", error);
+      }
+    }
   },
 
   threads: {
@@ -349,27 +369,42 @@ ${conversationText}`,
 
             // Check if its git LFS or not, don't need to handle converting to base64 because that happens later when proccessing all messages
             if (file.isLfsPointer) {
-              if (file.type.startsWith("image")) {
-                contentParts.push({
-                  type: "image",
-                  image: file.s3Url,
-                  file_metadata: {
-                    filename: file.name,
-                    mime_type: file.type,
-                    file_key: file.s3FileKey,
-                  },
-                });
-              } else {
-                contentParts.push({
-                  type: "file",
-                  data: file.s3Url,
-                  file_metadata: {
-                    filename: file.name,
-                    mime_type: file.type,
-                    file_key: file.s3FileKey,
-                  },
-                });
-              }
+              contentParts.push({
+                type: file.type.startsWith("image") ? "image" : "file",
+                [file.type.startsWith("image") ? "image" : "data"]: file.s3Url,
+                file_metadata: {
+                  filename: file.name,
+                  mime_type: file.type,
+                  file_key: file.s3FileKey,
+                },
+              });
+            } else if (file.content) {
+              // Regulat text file
+              contentParts.push({
+                type: "text",
+                text: file.content,
+              });
+            } else if (file.base64Content) {
+              // Upload base64 content to s3
+              const fileKey = crypto.randomUUID();
+              const metadata = s3.file(fileKey);
+              await metadata.write(Buffer.from(file.base64Content, "base64"), {
+                type: file.type,
+              });
+
+              contentParts.push({
+                type: file.type.startsWith("image") ? "image" : "file",
+                [file.type.startsWith("image") ? "image" : "data"]:
+                  metadata.presign({
+                    expiresIn: 3600,
+                    method: "GET",
+                  }),
+                file_metadata: {
+                  filename: file.name,
+                  mime_type: file.type,
+                  file_key: fileKey,
+                },
+              });
             }
           }
         }
@@ -380,8 +415,13 @@ ${conversationText}`,
           text: message.content,
         });
 
-        // add the message to the thread
-        await ops.createMessage(req.dbUser!.id, threadId, "user", contentParts);
+        // add the messages to the thread
+        await ops.createMessages(
+          req.dbUser!.id,
+          threadId,
+          "user",
+          contentParts
+        );
 
         // Get and filter messages
         const rawMessages = await db.query.messages.findMany({
@@ -399,27 +439,9 @@ ${conversationText}`,
           message.experimental_attachments
         );
 
-        // If thread has no title, find first user text message and generate title
+        // If thread has no title, generate one
         if (!thread.title) {
-          const firstUserTextMessage = rawMessages.find(
-            (msg) =>
-              msg.role === "user" &&
-              "type" in (msg.content as ContentPart) &&
-              (msg.content as ContentPart).type === "text" &&
-              "text" in (msg.content as ContentPart)
-          );
-
-          if (firstUserTextMessage) {
-            const content = firstUserTextMessage.content as ContentPart;
-            generateThreadTitle((content as any).text).then((title) => {
-              db.update(threads)
-                .set({ title })
-                .where(eq(threads.id, threadId))
-                .catch((error) => {
-                  console.error("Error generating title", error);
-                });
-            });
-          }
+          await ops.generateTitle(threadId, rawMessages);
         }
 
         const filteredMessages = rawMessages.filter((msg) => {

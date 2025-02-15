@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { cn, getRelativeTimeString } from "@/lib/utils";
-import { ProjectContent, FileResponse } from "@/types/project";
+import { ProjectContent } from "@/types/project";
 
 interface ProjectFileExplorerProps {
   projectId: string;
@@ -175,11 +175,8 @@ function FileExplorerItem({
 
   // Clicking the row navigates to the detailed view.
   const handleRowClick = async () => {
-    console.log("handleRowClick");
-    console.log(item);
     // If there was an onFileSelect callback, call it and return.
     if (variant === "compact" && onFileSelect) {
-      console.log("onFileSelect");
       if (item.type === "dir") {
         setIsOpen(!isOpen);
       } else onFileSelect(item);
@@ -191,10 +188,8 @@ function FileExplorerItem({
       if (variant === "compact") {
         setIsOpen(!isOpen);
       }
-      console.log(`/projects/${projectId}/tree/main/${item.path}`);
       router.push(`/projects/${projectId}/tree/main/${item.path}`);
     } else {
-      console.log(`/projects/${projectId}/blob/main/${item.path}`);
       router.push(`/projects/${projectId}/blob/main/${item.path}`);
     }
   };
@@ -321,35 +316,4 @@ function FileExplorerSkeleton({ depth = 0 }: { depth?: number }) {
       <Skeleton className="h-4 w-[165px]" />
     </div>
   );
-}
-
-/** (Optional) FileViewer remains unchanged */
-export function FileViewer({ file }: { file: FileResponse }) {
-  switch (file.type) {
-    case "text":
-      return <pre className="code-viewer">{file.content}</pre>;
-    case "pdf":
-      return (
-        <iframe
-          src={file.s3Url}
-          width="100%"
-          height="800px"
-          frameBorder="0"
-          title={file.name}
-        ></iframe>
-      );
-    case "image":
-      return (
-        <img src={file.s3Url} alt={file.name} style={{ maxWidth: "100%" }} />
-      );
-    default:
-      return (
-        <div className="download-prompt">
-          <p>This file type cannot be previewed.</p>
-          <a href={file.s3Url} className="download-button">
-            Download {file.name}
-          </a>
-        </div>
-      );
-  }
 }

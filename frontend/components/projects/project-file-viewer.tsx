@@ -7,6 +7,7 @@ import ReactPlayer from "react-player";
 import { ArrowDown, File } from "lucide-react";
 
 export default function ProjectFileViewer({ file }: { file: FileResponse }) {
+  console.log(file);
   // Helper function to get the correct source URL
   const getFileSource = () => {
     if (file.base64Content) {
