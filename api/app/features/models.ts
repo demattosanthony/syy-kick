@@ -32,6 +32,14 @@ export const anthropicModels = (
 ): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
+  const supportedMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+  ];
+
   return {
     "claude-3.5-sonnet": {
       model: anthropic("claude-3-5-sonnet-20241022"),
@@ -39,13 +47,7 @@ export const anthropicModels = (
       supportsStreaming: true,
       provider: "anthropic",
       supportsSystemMessages: true,
-      supportedMimeTypes: [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-        "application/pdf",
-      ],
+      supportedMimeTypes,
       maxImageSize: 5 * 1024 * 1024, // 5MB
       maxFileSize: 32 * 1024 * 1024, // 32MB
       description:
@@ -57,12 +59,7 @@ export const anthropicModels = (
       supportsStreaming: true,
       provider: "anthropic",
       supportsSystemMessages: true,
-      supportedMimeTypes: [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-      ],
+      supportedMimeTypes,
       maxImageSize: 5 * 1024 * 1024, // 5MB
       description:
         "Claude 3.5 Haiku is the next generation of our fastest model. For a similar speed to Claude 3 Haiku, Claude 3.5 Haiku improves across every skill set and surpasses Claude 3 Opus, the largest model in our previous generation, on many intelligence benchmarks.",
@@ -73,6 +70,13 @@ export const anthropicModels = (
 export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
+  const supportedMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+  ];
+
   return {
     o1: {
       model: openai("o1"),
@@ -80,12 +84,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       supportsSystemMessages: true,
       provider: "openai",
-      supportedMimeTypes: [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-      ],
+      supportedMimeTypes,
       description:
         "o1 is a versatile model from OpenAI, capable of handling a wide range of tasks with good performance. It supports tool use, streaming, system messages, and image inputs, making it a solid all-around choice.",
     },
@@ -96,12 +95,6 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsSystemMessages: true,
       provider: "openai",
       maxImageSize: 20 * 1024 * 1024, // 20MB
-      //   supportedMimeTypes: [
-      //     "image/jpeg",
-      //     "image/png",
-      //     "image/webp",
-      //     "image/gif",
-      //   ],
       description:
         "o3-mini is a smaller, more efficient version of o3, designed for faster responses and lower resource usage. It's suitable for tasks where speed and cost-effectiveness are priorities, while still offering good performance and supporting tool use, streaming, system messages, and image inputs.",
     },
@@ -112,12 +105,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       provider: "openai",
       supportsSystemMessages: true,
       maxImageSize: 20 * 1024 * 1024, // 20MB
-      supportedMimeTypes: [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-      ],
+      supportedMimeTypes,
       description:
         "GPT-4o from OpenAI has broad general knowledge and domain expertise allowing it to follow complex instructions in natural language and solve difficult problems accurately. It matches GPT-4 Turbo performance with a faster and cheaper API.",
     },

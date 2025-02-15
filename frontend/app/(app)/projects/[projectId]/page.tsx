@@ -23,8 +23,6 @@ export default function ProjectPage() {
 
   const { activeWorkspace } = useWorkspace();
 
-  console.log("project", project);
-
   // Use nullish coalescing for a simple fallback
   const logo = project?.organization?.logoUrl ?? project?.user?.profilePicture;
 

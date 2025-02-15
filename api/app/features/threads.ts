@@ -210,14 +210,9 @@ ${conversationText}`,
       return { id };
     },
 
-    getThread: async (threadId: string, organizationId?: string) => {
+    getThread: async (threadId: string) => {
       const thread = await db.query.threads.findFirst({
-        where: and(
-          eq(threads.id, threadId),
-          organizationId
-            ? eq(threads.organizationId, organizationId)
-            : sql`${threads.organizationId} IS NULL`
-        ),
+        where: eq(threads.id, threadId),
         with: {
           messages: {
             orderBy: messages.createdAt,
@@ -334,6 +329,7 @@ ${conversationText}`,
         const thread = await ops.threads.getThread(threadId);
 
         if (!thread) {
+          console.error("Thread not found");
           res.status(404).json({ error: "Thread not found" });
           return;
         }
@@ -630,11 +626,7 @@ export default Router()
   .get(
     "/:threadId",
     handle(async (req) => {
-      const { organizationId } = req.query;
-      return ops.threads.getThread(
-        req.params.threadId,
-        organizationId as string | undefined
-      );
+      return ops.threads.getThread(req.params.threadId);
     })
   )
   .post("/:threadId/inference", (req, res) => {

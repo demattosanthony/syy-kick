@@ -44,7 +44,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
 
   return (
     <SidebarGroup key={"Recents"}>
-      <SidebarGroupLabel>{"Recent Chats"}</SidebarGroupLabel>
+      <SidebarGroupLabel>{"Recent Threads"}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {isLoading

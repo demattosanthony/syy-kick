@@ -16,12 +16,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateProjectMutation } from "@/queries/queries";
 import { useWorkspace } from "@/components/sidebar/workspace-context";
+import { useRouter } from "next/navigation";
 
 interface CreateProjectDialogProps {
   trigger: React.ReactNode;
 }
 
 export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -34,7 +36,7 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createProjectMutation.mutateAsync({
+      const project = await createProjectMutation.mutateAsync({
         name: formData.name,
         description: formData.description,
         organizationId:
@@ -44,6 +46,7 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
       });
       setFormData({ name: "", description: "" });
       setOpen(false);
+      router.push(`/projects/${project.id}`);
     } catch (error) {
       console.error("Failed to create project:", error);
     }
