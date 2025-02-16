@@ -590,7 +590,6 @@ class ProjectsApi extends ApiRequest {
       }
 
       // The last part is the file name itself
-      const fileName = parts[parts.length - 1];
       const sha256 = await this.calculateSha256(file);
       const fileKey = `projects/${projectId}/${sha256}`;
 
@@ -599,7 +598,7 @@ class ProjectsApi extends ApiRequest {
         path: filePath,
         type: "file",
         fileKey,
-        mimeType: file.type,
+        mimeType: file.type || "application/octet-stream",
         size: file.size,
         sha256,
       });
