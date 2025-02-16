@@ -171,7 +171,6 @@ async function getProject(projectId: string) {
 
   return project;
 }
-
 export async function getProjectDocs(projectId: string, path: string = "") {
   await getProjectOrThrow(projectId);
 
@@ -204,8 +203,21 @@ export async function getProjectDocs(projectId: string, path: string = "") {
       orderBy: [asc(documents.type), asc(documents.name)],
     });
 
+    // Add presigned URLs for files
+    const docsWithUrls = await Promise.all(
+      docs.map(async (doc) => {
+        if (doc.type === "file" && doc.fileKey) {
+          const url = await s3.presign(doc.fileKey, {
+            expiresIn: 60 * 60, // 1 hour
+          });
+          return { ...doc, url };
+        }
+        return doc;
+      })
+    );
+
     // Sort the results GitHub-style
-    return docs.sort((a, b) => {
+    return docsWithUrls.sort((a, b) => {
       // First sort by type (folders first)
       if (a.type !== b.type) {
         return a.type === "folder" ? -1 : 1;
@@ -225,6 +237,7 @@ export async function getProjectDocs(projectId: string, path: string = "") {
     throw new Error("Failed to fetch project contents");
   }
 }
+
 async function deleteProjectContent(projectId: string, path: string) {
   await getProjectOrThrow(projectId);
 

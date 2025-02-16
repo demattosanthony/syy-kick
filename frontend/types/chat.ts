@@ -21,12 +21,25 @@ export type MessageContent = {
   };
 };
 
+export type MessageAttachment = {
+  id: string;
+  messageId: string;
+  type: "file" | "image";
+  fileKey: string;
+  url: string;
+  fileName?: string;
+  mimeType?: string;
+  size?: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type ChatMessage = {
   id: string;
   role: MessageRole;
-  content: MessageContent | null;
-  name?: string;
-  createdAt?: string;
+  text: string;
+  createdAt: string;
+  attachments?: MessageAttachment[];
   model?: string;
   provider?: string;
   reasoning?: string;
@@ -46,14 +59,5 @@ export interface Thread {
   organizationId?: string;
   projectId?: string;
   project?: Project;
-  messages: {
-    id: string;
-    thread_id: string;
-    role: string;
-    content: MessageContent;
-    createdAt: string;
-    model?: string;
-    provider?: string;
-    reasoning?: string;
-  }[];
+  messages: ChatMessage[];
 }

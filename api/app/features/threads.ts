@@ -94,7 +94,7 @@ const ops = {
     if (!thread) return null;
 
     for (const message of thread.messages) {
-      message.content = await ops.processMessage(message.attachments);
+      message.attachments = await ops.processMessage(message.attachments);
     }
     return thread;
   },
@@ -138,7 +138,6 @@ const ops = {
         });
       }
     }
-    console.log("Message created successfully");
     return { message: "Messages created successfully" };
   },
 
@@ -253,6 +252,18 @@ ${conversationText}`,
         with: {
           messages: {
             orderBy: messages.createdAt,
+            columns: {
+              embedding: false, // Exclude embedding from the query
+              id: true,
+              threadId: true,
+              userId: true,
+              role: true,
+              text: true,
+              reasoning: true,
+              model: true,
+              provider: true,
+              createdAt: true,
+            },
             with: {
               attachments: true,
             },
@@ -261,6 +272,7 @@ ${conversationText}`,
           organization: true,
         },
       });
+
       if (!thread) return null;
       return ops.processThreadMessages({
         ...thread,
@@ -271,6 +283,7 @@ ${conversationText}`,
             fileName: att.fileName ?? undefined,
             mimeType: att.mimeType ?? undefined,
             size: att.size ?? undefined,
+            fileKey: att.fileKey ?? undefined,
           })),
         })),
       });
@@ -377,16 +390,6 @@ ${conversationText}`,
           req.body;
         const message = req.body.message as MyMessage;
 
-        console.log("Inference request:", {
-          threadId,
-          model,
-          maxTokens,
-          temperature,
-          instructions,
-          project_content,
-          message,
-        });
-
         // Set headers for SSE
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Cache-Control", "no-cache");
@@ -403,26 +406,6 @@ ${conversationText}`,
           return;
         }
 
-        // Add user message to threads
-        // if (message.experimental_attachments) {
-        //   message.experimental_attachments.forEach(
-        //     (attachment: ExtendedAttachment) => {
-        //       contentParts.push({
-        //         type: attachment.contentType?.includes("image")
-        //           ? "image"
-        //           : "file",
-        //         [attachment.contentType?.includes("image") ? "image" : "file"]:
-        //           attachment.url,
-        //         file_metadata: {
-        //           filename: attachment.name || "",
-        //           mime_type: attachment.contentType || "",
-        //           file_key: attachment.file_key || "",
-        //         },
-        //       });
-        //     }
-        //   );
-        // }
-
         // add the messages to the thread
         await ops.createMessage(req.dbUser!.id, threadId, "user", message);
 
@@ -434,8 +417,6 @@ ${conversationText}`,
             attachments: true,
           },
         });
-
-        console.log("Raw messages:", rawMessages);
 
         const transformedMessages: MyMessage[] = rawMessages.map((msg) => {
           const experimental_attachments: ExtendedAttachment[] =
@@ -523,12 +504,11 @@ ${conversationText}`,
         let inferenceMessages = (await Promise.all(
           filteredMessages.map(async (msg) => ({
             role: msg.role as any,
-            reasoning: msg.reasoning || null,
+            reasoning:
+              msg.parts?.find((part) => part.type === "reasoning") || null,
             content: await processMessageContent(msg),
           }))
         )) as CoreMessage[];
-
-        console.log("Inference messages:", inferenceMessages);
 
         // Build system message
         let yoSystemMessage = `<assistant_instructions>

@@ -64,12 +64,7 @@ function ThreadItem({ thread }: { thread: Thread }) {
   const provider = lastMessage?.provider;
   const model = lastMessage?.model;
   const title = thread.title;
-  if (
-    !lastMessage ||
-    !lastMessage.content.text ||
-    typeof lastMessage.content.text !== "string"
-  )
-    return null;
+  if (!lastMessage || !lastMessage.text) return null;
 
   return (
     <Link href={`/threads/${thread.id}`} prefetch>
@@ -95,7 +90,7 @@ function ThreadItem({ thread }: { thread: Thread }) {
                 : "AI Assistant"}
             </p>
             <p className="text-sm text-muted-foreground line-clamp-2 max-w-[calc(100vw-8rem)] md:max-w-[calc(100vw-8rem)]">
-              {lastMessage.content.text}
+              {lastMessage.text}
             </p>
             <time className="text-xs text-muted-foreground">
               {new Date(lastMessage.createdAt).toLocaleDateString()}

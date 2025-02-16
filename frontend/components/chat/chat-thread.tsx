@@ -10,6 +10,7 @@ import {
   initalInputAtom,
   instructionsAtom,
   modelAtom,
+  selectedProjectDocsAtom,
   temperatureAtom,
   uploadsAtom,
 } from "@/atoms/chat";
@@ -50,9 +51,9 @@ export default function ThreadPage({
   const [temperature] = useAtom(temperatureAtom);
   const [instructions] = useAtom(instructionsAtom);
 
-  //   const [selectedProjectFiles, setSelectedProjectFiles] = useAtom(
-  //     selectedProjectFilesAtom
-  //   );
+  const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
+    selectedProjectDocsAtom
+  );
 
   const {
     input,
@@ -80,9 +81,11 @@ export default function ThreadPage({
   });
 
   async function processAttachments() {
+    const attachments: ExtendedAttachment[] = [];
+
     // Process uploads
     if (uploads.length > 0) {
-      const attachments: ExtendedAttachment[] = await Promise.all(
+      const uploadAttachments = await Promise.all(
         uploads.map(async (upload) => {
           const { url, file_metadata, viewUrl } =
             await api.uploads.getPresignedUrl(
@@ -112,9 +115,26 @@ export default function ThreadPage({
         })
       );
 
-      return attachments;
+      attachments.push(...uploadAttachments);
     }
-    return [];
+
+    // Process selected project docs
+    if (selectedProjectDocs.length > 0) {
+      const docAttachments: ExtendedAttachment[] = selectedProjectDocs
+        .filter((doc): doc is typeof doc & { url: string; fileKey: string } =>
+          Boolean(doc.url && doc.fileKey)
+        )
+        .map((doc) => ({
+          name: doc.name,
+          contentType: doc.mimeType,
+          url: doc.url,
+          file_key: doc.fileKey,
+        }));
+
+      attachments.push(...docAttachments);
+    }
+
+    return attachments;
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -128,6 +148,7 @@ export default function ThreadPage({
 
     // Reset attachments after submit
     setUploads([]);
+    setSelectedProjectDocs([]);
   }
 
   useEffect(() => {

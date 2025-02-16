@@ -13,8 +13,6 @@ export default function ThreadsPage() {
 
   const { data: thread } = useThreadQuery(threadId, isNew);
 
-  console.log("thread", thread);
-
   const initalMessages = useMemo(() => {
     if (isNew) return [];
 
@@ -22,22 +20,17 @@ export default function ThreadsPage() {
 
     return (
       thread?.messages?.map((message) => ({
-        content: message.content?.text || "",
+        content: message.text,
         role: message.role as "user" | "assistant",
         id: message.id,
         createdAt: message.createdAt ? new Date(message.createdAt) : undefined,
         reasoning: message.reasoning,
-        experimental_attachments:
-          message.content?.type === "image" || message.content?.type === "file"
-            ? [
-                {
-                  name: message.content.file_metadata?.filename,
-                  url: message.content?.data || "",
-                  file_key: message.content.file_metadata?.file_key,
-                  contentType: message.content.file_metadata?.mime_type,
-                },
-              ]
-            : [],
+        experimental_attachments: message.attachments?.map((attachment) => ({
+          name: attachment.fileName,
+          url: attachment.url,
+          file_key: attachment.fileKey,
+          contentType: attachment.mimeType,
+        })),
       })) ?? []
     );
   }, [isNew, thread]);
