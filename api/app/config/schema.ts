@@ -166,6 +166,20 @@ export const threads = pgTable("threads", {
   }),
 });
 
+export const messageAttachments = pgTable("message_attachments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id")
+    .notNull()
+    .references(() => messages.id, { onDelete: "cascade" }),
+  type: text("type", { enum: ["file", "image"] }).notNull(),
+  fileKey: varchar("file_key", { length: 255 }).notNull(),
+  fileName: varchar("file_name", { length: 255 }),
+  mimeType: varchar("mime_type", { length: 255 }),
+  size: integer("size"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Messages table with user association
 export const messages = pgTable(
   "messages",
@@ -178,7 +192,7 @@ export const messages = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role", { enum: MESSAGE_ROLES }).notNull(),
-    content: jsonb("content").notNull(),
+    text: text("text"),
     reasoning: text("reasoning"),
     model: text("model"),
     provider: text("provider"),
@@ -243,7 +257,7 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
   }),
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const messagesRelations = relations(messages, ({ one, many }) => ({
   thread: one(threads, {
     fields: [messages.threadId],
     references: [threads.id],
@@ -252,7 +266,18 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     fields: [messages.userId],
     references: [users.id],
   }),
+  attachments: many(messageAttachments),
 }));
+
+export const messageAttachmentsRelations = relations(
+  messageAttachments,
+  ({ one }) => ({
+    message: one(messages, {
+      fields: [messageAttachments.messageId],
+      references: [messages.id],
+    }),
+  })
+);
 
 export const toolCallsRelations = relations(toolCalls, ({ one }) => ({
   message: one(messages, {
@@ -312,29 +337,17 @@ export const projectsRelations = relations(projects, ({ one }) => ({
   }),
 }));
 
-// Types
-type BaseContentPart = {
-  type: (typeof CONTENT_TYPES)[number];
-};
-
-type TextContent = BaseContentPart & {
-  type: "text";
-  text: string;
-};
-
-export type FileContent = BaseContentPart & {
+export type MessageAttachment = {
+  id: string;
+  messageId: string;
   type: "file" | "image";
-  data?: string;
-  image?: string;
-  file_metadata: {
-    filename: string;
-    mime_type: string;
-    file_key: string;
-    size?: number;
-  };
+  fileKey: string;
+  fileName?: string;
+  mimeType?: string;
+  size?: number;
+  createdAt: Date;
+  updatedAt: Date;
 };
-
-export type ContentPart = TextContent | FileContent;
 
 // Response types
 export type ApiResponse<T> = T | { error: string };

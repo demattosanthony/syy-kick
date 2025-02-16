@@ -21,6 +21,7 @@ import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { cn, getRelativeTimeString } from "@/lib/utils";
 import { DocumentContent } from "@/types/project";
+import { ProjectAddFileButton } from "./project-add-file-button";
 
 interface ProjectFileExplorerProps {
   projectId: string;
@@ -41,8 +42,6 @@ export default function ProjectFileExplorer({
     projectId,
     currentPath
   );
-
-  console.log(contents);
 
   if (isLoading) {
     return (
@@ -66,6 +65,7 @@ export default function ProjectFileExplorer({
         <p className="text-muted-foreground text-sm mb-4">
           Upload files or folders to get started with your project
         </p>
+        <ProjectAddFileButton projectId={projectId} />
       </div>
     );
   }

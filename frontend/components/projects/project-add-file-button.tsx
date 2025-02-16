@@ -26,10 +26,10 @@ export function ProjectAddFileButton({ projectId }: UploadButtonsProps) {
     if (!files || files.length === 0) return;
 
     try {
+      setOpen(false); // Close popover after successful upload
       const fileArray = Array.from(files);
       await uploadFiles({ projectId, files: fileArray });
       console.log("Files uploaded successfully");
-      setOpen(false); // Close popover after successful upload
     } catch (error: unknown) {
       console.error("Failed to upload files:", error);
     } finally {
@@ -42,10 +42,10 @@ export function ProjectAddFileButton({ projectId }: UploadButtonsProps) {
     if (!files || files.length === 0) return;
 
     try {
+      setOpen(false); // Close popover after successful upload
       const fileArray = Array.from(files);
       await uploadFiles({ projectId, files: fileArray });
       console.log("Folder uploaded successfully");
-      setOpen(false); // Close popover after successful upload
     } catch (error: unknown) {
       console.error("Failed to upload folder:", error);
     } finally {
@@ -72,7 +72,7 @@ export function ProjectAddFileButton({ projectId }: UploadButtonsProps) {
                 <FolderClosed className="h-5 w-5 fill-blue-400 text-blue-400" />
                 <input
                   type="file"
-                  // @ts-expect-error webkitdirectory is a non-standard attribute
+                  // @ts-expect-error directory and webkitdirectory are non-standard attributes
                   webkitdirectory=""
                   multiple
                   className="hidden"

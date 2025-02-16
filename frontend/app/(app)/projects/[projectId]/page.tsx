@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useProjectDocQuery, useProjectQuery } from "@/queries/queries";
+import { useProjectQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectFileExplorer from "@/components/projects/project-file-explorer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,7 +49,7 @@ export default function ProjectPage() {
   };
 
   return (
-    <div className="h-screen w-full flex justify-center overflow-y-auto pt-12">
+    <div className="h-screen w-full flex justify-center overflow-y-auto pt-14">
       <div className="flex flex-col items-center max-w-3xl w-full flex-1">
         {/* Project Header */}
         <header className="border-b w-full">

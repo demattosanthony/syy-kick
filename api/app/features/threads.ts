@@ -1,14 +1,24 @@
 import z from "zod";
 import s3 from "../config/s3";
-import { ContentPart, messages, threads } from "../config/schema";
+import {
+  MessageAttachment,
+  messageAttachments,
+  messages,
+  threads,
+} from "../config/schema";
 import db from "../config/db";
 import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { Request, Response, Router } from "express";
-import { CoreMessage, generateObject, Message, streamText } from "ai";
+import {
+  Attachment,
+  CoreMessage,
+  generateObject,
+  Message,
+  streamText,
+} from "ai";
 import { CONFIG } from "../config/constants";
 import { handle, generateThreadTitle } from "../utils";
 import { embeddingModel, MODELS } from "./models";
-import { getDocContent } from "./projects";
 
 // Input validation
 const schemas = {
@@ -21,102 +31,137 @@ const schemas = {
   }),
 };
 
-type ExtendedAttachment = {
-  name?: string;
-  contentType?: string;
-  url: string;
+type ExtendedAttachment = Attachment & {
   file_key: string;
+};
+
+type MyMessage = Message & {
+  experimental_attachments?: ExtendedAttachment[];
+};
+
+type ThreadWithMessages = {
+  id: string;
+  title?: string | null;
+  userId: string;
+  organizationId?: string | null;
+  projectId?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  messages: {
+    id: string;
+    threadId: string;
+    userId: string;
+    role: "system" | "user" | "assistant" | "tool";
+    text: string | null;
+    reasoning?: string | null;
+    model?: string | null;
+    provider?: string | null;
+    createdAt: Date;
+    attachments: MessageAttachment[];
+    content?: any; // This will be added by processFile
+  }[];
+  project?: any;
+  organization?: any;
 };
 
 const ops = {
   // Shared file processing logic
-  processFile: async (content: any) => {
+  processMessage: async (attachments: MessageAttachment[]) => {
     try {
-      if (content.type !== "file" && content.type !== "image") return content;
-      if (!content.file_metadata?.file_key) return content;
-
-      const metadata = s3.file(content.file_metadata.file_key);
-      const url = metadata.presign({
-        acl: "public-read",
-        expiresIn: 3600,
-        method: "GET",
+      // Add presigned URLs to each attachment
+      const processedAttachments = attachments.map((attachment) => {
+        const metadata = s3.file(attachment.fileKey);
+        const url = metadata.presign({
+          acl: "public-read",
+          expiresIn: 3600,
+          method: "GET",
+        });
+        return {
+          ...attachment,
+          url,
+        };
       });
-      return { ...content, data: url };
+
+      return processedAttachments;
     } catch (error) {
-      console.error("Error processing file:", error);
-      return content;
+      console.error("Error processing attachments:", error);
+      return attachments;
     }
   },
 
   // Process all messages in a thread
-  processThreadMessages: async (thread: any) => {
+  processThreadMessages: async (thread: ThreadWithMessages) => {
     if (!thread) return null;
 
     for (const message of thread.messages) {
-      message.content = await ops.processFile(message.content);
+      message.content = await ops.processMessage(message.attachments);
     }
     return thread;
   },
 
-  async createMessages(
+  async createMessage(
     userId: string,
     threadId: string,
     role: string,
-    content: ContentPart[]
+    message: MyMessage
   ) {
-    for (const item of content) {
-      const messageId = crypto.randomUUID();
+    const messageId = crypto.randomUUID();
 
-      let embedding = null;
-      try {
-        if ("type" in item) {
-          if (item.type === "text" && item.text) {
-            const embeddingResult = await embeddingModel.doEmbed({
-              values: [item.text],
-            });
-            embedding = embeddingResult.embeddings[0];
-          }
-        }
-      } catch (error) {
-        console.error("Error embedding message", error);
-      }
-
-      await db.insert(messages).values({
-        userId,
-        id: messageId,
-        threadId: threadId,
-        role: role as "system" | "user" | "assistant" | "tool", // Type assertion for role
-        content: item,
-        embedding,
-        createdAt: new Date(),
+    let embedding = null;
+    try {
+      const embeddingResult = await embeddingModel.doEmbed({
+        values: [message.content],
       });
+      embedding = embeddingResult.embeddings[0];
+    } catch (error) {
+      console.error("Error embedding message", error);
     }
+
+    await db.insert(messages).values({
+      userId,
+      id: messageId,
+      threadId: threadId,
+      role: role as "system" | "user" | "assistant" | "tool", // Type assertion for role
+      text: message.content,
+      embedding,
+      createdAt: new Date(),
+    });
+
+    if (message.experimental_attachments) {
+      for (const attachment of message.experimental_attachments) {
+        await db.insert(messageAttachments).values({
+          messageId,
+          fileName: attachment.name,
+          mimeType: attachment.contentType,
+          fileKey: attachment.file_key,
+          type: attachment.contentType?.includes("image") ? "image" : "file",
+        });
+      }
+    }
+    console.log("Message created successfully");
     return { message: "Messages created successfully" };
   },
 
   // Get model config
-  async getModelConfig(
-    model: string,
-    messages: { role: string; content: ContentPart }[],
-    attachments?: ExtendedAttachment[]
-  ) {
+  async getModelConfig(model: string, messages: MyMessage[]) {
     if (model !== "Auto") {
       return MODELS[model];
     }
 
     // Check for PDFs or images in attachments or previous messages
-    const hasMediaContent =
-      attachments?.some(
-        (attachment) =>
-          attachment.contentType?.includes("pdf") ||
-          attachment.contentType?.includes("image")
-      ) ||
-      messages.some(
-        (msg) =>
-          (msg.content as ContentPart).type === "image" ||
-          ((msg.content as ContentPart).type === "file" &&
-            (msg.content as any).file_metadata?.mime_type?.includes("pdf"))
+    const hasMediaContent = messages.some((msg) => {
+      const content = msg.content as any;
+      return (
+        msg.experimental_attachments?.some(
+          (attachment) =>
+            attachment.contentType?.includes("pdf") ||
+            attachment.contentType?.includes("image")
+        ) ||
+        content.type === "image" ||
+        (content.type === "file" &&
+          content.file_metadata?.mime_type?.includes("pdf"))
       );
+    });
 
     if (hasMediaContent) {
       return MODELS["gemini-2.0-flash"];
@@ -125,8 +170,7 @@ const ops = {
     // Get the full conversation text for context
     const conversationText = messages
       .map((msg) => {
-        const content = msg.content as ContentPart;
-        return content.type === "text" ? `${msg.role}: ${content.text}` : "";
+        return `${msg.role}: ${msg.content}`;
       })
       .filter(Boolean)
       .join("\n\n");
@@ -170,19 +214,12 @@ ${conversationText}`,
     return MODELS[object.request_type];
   },
 
-  generateTitle: async (threadId: string, rawMessages: any[]) => {
-    const firstUserTextMessage = rawMessages.find(
-      (msg) =>
-        msg.role === "user" &&
-        "type" in (msg.content as ContentPart) &&
-        (msg.content as ContentPart).type === "text" &&
-        "text" in (msg.content as ContentPart)
-    );
+  generateTitle: async (threadId: string, rawMessages: MyMessage[]) => {
+    const firstUserTextMessage = rawMessages.find((msg) => msg.role === "user");
 
     if (firstUserTextMessage) {
-      const content = firstUserTextMessage.content as ContentPart;
       try {
-        const title = await generateThreadTitle((content as any).text);
+        const title = await generateThreadTitle(firstUserTextMessage.content);
         await db.update(threads).set({ title }).where(eq(threads.id, threadId));
       } catch (error) {
         console.error("Error generating title", error);
@@ -216,13 +253,27 @@ ${conversationText}`,
         with: {
           messages: {
             orderBy: messages.createdAt,
+            with: {
+              attachments: true,
+            },
           },
           project: true,
           organization: true,
         },
       });
-
-      return ops.processThreadMessages(thread);
+      if (!thread) return null;
+      return ops.processThreadMessages({
+        ...thread,
+        messages: thread.messages.map((msg) => ({
+          ...msg,
+          attachments: msg.attachments.map((att) => ({
+            ...att,
+            fileName: att.fileName ?? undefined,
+            mimeType: att.mimeType ?? undefined,
+            size: att.size ?? undefined,
+          })),
+        })),
+      });
     },
 
     getThreads: async (
@@ -306,7 +357,17 @@ ${conversationText}`,
       });
 
       // Process all threads
-      return Promise.all(completeThreads.map(ops.processThreadMessages));
+      return Promise.all(
+        completeThreads.map((thread) =>
+          ops.processThreadMessages({
+            ...thread,
+            messages: thread.messages.map((msg) => ({
+              ...msg,
+              attachments: [], // Add empty attachments array since it's required by ThreadWithMessages
+            })),
+          })
+        )
+      );
     },
 
     inference: async (req: Request, res: Response) => {
@@ -314,9 +375,17 @@ ${conversationText}`,
         const { threadId } = req.params;
         const { model, maxTokens, temperature, instructions, project_content } =
           req.body;
-        const message = req.body.message as Message & {
-          experimental_attachments?: ExtendedAttachment[]; // Use ExtendedAttachment instead of Attachment
-        };
+        const message = req.body.message as MyMessage;
+
+        console.log("Inference request:", {
+          threadId,
+          model,
+          maxTokens,
+          temperature,
+          instructions,
+          project_content,
+          message,
+        });
 
         // Set headers for SSE
         res.setHeader("Content-Type", "text/event-stream");
@@ -334,161 +403,132 @@ ${conversationText}`,
           return;
         }
 
-        // Add user message to thread
-        let contentParts: ContentPart[] = [];
-        if (message.experimental_attachments) {
-          message.experimental_attachments.forEach(
-            (attachment: ExtendedAttachment) => {
-              contentParts.push({
-                type: attachment.contentType?.includes("image")
-                  ? "image"
-                  : "file",
-                [attachment.contentType?.includes("image") ? "image" : "file"]:
-                  attachment.url,
-                file_metadata: {
-                  filename: attachment.name || "",
-                  mime_type: attachment.contentType || "",
-                  file_key: attachment.file_key || "",
-                },
-              });
-            }
-          );
-        }
-
-        // Add attached project files to the message
-        if (project_content && thread.projectId) {
-          for (const content of project_content) {
-            const file: any = await getDocContent(
-              thread.projectId,
-              content.path
-            );
-
-            // Check if its git LFS or not, don't need to handle converting to base64 because that happens later when proccessing all messages
-            if (file.isLfsPointer) {
-              contentParts.push({
-                type: file.type.startsWith("image") ? "image" : "file",
-                [file.type.startsWith("image") ? "image" : "data"]: file.s3Url,
-                file_metadata: {
-                  filename: file.name,
-                  mime_type: file.type,
-                  file_key: file.s3FileKey,
-                },
-              });
-            } else if (file.content) {
-              // Regulat text file
-              contentParts.push({
-                type: "text",
-                text: file.content,
-              });
-            } else if (file.base64Content) {
-              // Upload base64 content to s3
-              const fileKey = crypto.randomUUID();
-              const metadata = s3.file(fileKey);
-              await metadata.write(Buffer.from(file.base64Content, "base64"), {
-                type: file.type,
-              });
-
-              contentParts.push({
-                type: file.type.startsWith("image") ? "image" : "file",
-                [file.type.startsWith("image") ? "image" : "data"]:
-                  metadata.presign({
-                    expiresIn: 3600,
-                    method: "GET",
-                  }),
-                file_metadata: {
-                  filename: file.name,
-                  mime_type: file.type,
-                  file_key: fileKey,
-                },
-              });
-            }
-          }
-        }
-
-        // Add text message
-        contentParts.push({
-          type: "text",
-          text: message.content,
-        });
+        // Add user message to threads
+        // if (message.experimental_attachments) {
+        //   message.experimental_attachments.forEach(
+        //     (attachment: ExtendedAttachment) => {
+        //       contentParts.push({
+        //         type: attachment.contentType?.includes("image")
+        //           ? "image"
+        //           : "file",
+        //         [attachment.contentType?.includes("image") ? "image" : "file"]:
+        //           attachment.url,
+        //         file_metadata: {
+        //           filename: attachment.name || "",
+        //           mime_type: attachment.contentType || "",
+        //           file_key: attachment.file_key || "",
+        //         },
+        //       });
+        //     }
+        //   );
+        // }
 
         // add the messages to the thread
-        await ops.createMessages(
-          req.dbUser!.id,
-          threadId,
-          "user",
-          contentParts
-        );
+        await ops.createMessage(req.dbUser!.id, threadId, "user", message);
 
         // Get and filter messages
         const rawMessages = await db.query.messages.findMany({
           where: eq(messages.threadId, threadId),
           orderBy: messages.createdAt,
+          with: {
+            attachments: true,
+          },
+        });
+
+        console.log("Raw messages:", rawMessages);
+
+        const transformedMessages: MyMessage[] = rawMessages.map((msg) => {
+          const experimental_attachments: ExtendedAttachment[] =
+            msg.attachments?.map((att) => ({
+              name: att.fileName || undefined, // Convert null to undefined
+              file_key: att.fileKey,
+              contentType: att.mimeType || undefined, // Convert null to undefined
+              url: s3.file(att.fileKey).presign({ expiresIn: 3600 }),
+            })) || [];
+
+          return {
+            id: msg.id,
+            role: msg.role as any,
+            content: msg.text || "",
+            experimental_attachments,
+          };
         });
 
         // In the inference function, replace the modelConfig section with:
         const modelConfig = await ops.getModelConfig(
           model,
-          rawMessages.map((msg) => ({
-            role: msg.role,
-            content: msg.content as ContentPart,
-          })),
-          message.experimental_attachments
+          transformedMessages
         );
 
         // If thread has no title, generate one
         if (!thread.title) {
-          await ops.generateTitle(threadId, rawMessages);
+          await ops.generateTitle(threadId, transformedMessages);
         }
 
-        const filteredMessages = rawMessages.filter((msg) => {
-          const content = msg.content as ContentPart;
-          if (content.type === "text") return true;
-          return modelConfig.supportedMimeTypes?.includes(
-            content.file_metadata.mime_type
+        const filteredMessages = transformedMessages.filter((msg) => {
+          // If there are no attachments, or it's just text content, include the message
+          if (!msg.experimental_attachments?.length) return true;
+
+          // Check if all attachments are supported by the model
+          return msg.experimental_attachments.every((attachment) =>
+            modelConfig.supportedMimeTypes?.includes(
+              attachment.contentType || ""
+            )
           );
         });
 
         // Process message content
-        const processMessageContent = async (content: ContentPart) => {
-          if (content.type === "text")
-            return [{ type: "text", text: content.text }];
+        const processMessageContent = async (message: MyMessage) => {
+          const results = [];
 
-          const metadata = s3.file(content.file_metadata.file_key);
+          // Process main text content
+          if (message.content) {
+            results.push({ type: "text", text: message.content });
+          }
 
-          // Can only generate presigned URLs in production because local url are not accessible to the AI apis
-          const getContentData = async () => {
-            if (CONFIG.__prod__) {
-              return metadata.presign({ expiresIn: 60 * 20 }); // 20 minutes
+          // Process attachments if any
+          if (message.experimental_attachments?.length) {
+            for (const attachment of message.experimental_attachments) {
+              const metadata = s3.file(attachment.file_key);
+
+              // Can only generate presigned URLs in production because local urls are not accessible to the AI apis
+              const getContentData = async () => {
+                if (CONFIG.__prod__) {
+                  return metadata.presign({ expiresIn: 60 * 20 }); // 20 minutes
+                }
+
+                const buffer = Buffer.from(
+                  new Uint8Array(await metadata.arrayBuffer())
+                );
+                return `data:${attachment.contentType};base64,${buffer.toString(
+                  "base64"
+                )}`;
+              };
+
+              const type = attachment.contentType?.includes("image")
+                ? "image"
+                : "file";
+              results.push({
+                type,
+                mimeType: attachment.contentType,
+                [type === "image" ? "image" : "data"]: await getContentData(),
+              });
             }
+          }
 
-            const buffer = Buffer.from(
-              new Uint8Array(await metadata.arrayBuffer())
-            );
-            return `data:${
-              content.file_metadata.mime_type
-            };base64,${buffer.toString("base64")}`;
-          };
-
-          return [
-            {
-              type: content.type,
-              mimeType: content.file_metadata.mime_type,
-              [content.type === "image" ? "image" : "data"]:
-                await getContentData(),
-            },
-          ];
+          return results;
         };
 
         // Build messages array
-        let inferenceMessages: CoreMessage[] = await Promise.all(
+        let inferenceMessages = (await Promise.all(
           filteredMessages.map(async (msg) => ({
             role: msg.role as any,
             reasoning: msg.reasoning || null,
-            content: (await processMessageContent(
-              msg.content as ContentPart
-            )) as any,
+            content: await processMessageContent(msg),
           }))
-        );
+        )) as CoreMessage[];
+
+        console.log("Inference messages:", inferenceMessages);
 
         // Build system message
         let yoSystemMessage = `<assistant_instructions>
@@ -535,7 +575,7 @@ It is currently: ${new Date().toLocaleString("en-US", {
             id: crypto.randomUUID(),
             threadId: threadId,
             role: "assistant",
-            content: JSON.stringify({ type: "text", text: aiResponse }),
+            text: aiResponse,
             reasoning: reasoning,
             createdAt: new Date(),
             model: model,
