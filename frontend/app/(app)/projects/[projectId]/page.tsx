@@ -5,7 +5,6 @@ import { useProjectQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectFileExplorer from "@/components/projects/project-file-explorer";
 import { Card, CardContent } from "@/components/ui/card";
-import { ReadmeSection } from "@/components/projects/readme-section";
 import ChatInputForm from "@/components/chat/ChatInputForm";
 import { ProjectAddFileButton } from "@/components/projects/project-add-file-button";
 import api from "@/lib/api";
@@ -19,7 +18,6 @@ export default function ProjectPage() {
   const pid = projectId as string;
 
   const { data: project } = useProjectQuery(pid);
-  //   const { data: readmeFile } = useProjectDocQuery(pid, "README.md");
 
   const { activeWorkspace } = useWorkspace();
 

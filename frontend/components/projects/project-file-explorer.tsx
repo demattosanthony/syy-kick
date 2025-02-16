@@ -14,14 +14,12 @@ import { useRouter } from "next/navigation";
 import {
   useProjectDocsQuery,
   useDeleteProjectContentMutation,
-  useProjectDocQuery,
 } from "@/queries/queries";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { cn, getRelativeTimeString } from "@/lib/utils";
 import { DocumentContent } from "@/types/project";
-import { ProjectAddFileButton } from "./project-add-file-button";
 
 interface ProjectFileExplorerProps {
   projectId: string;
@@ -67,7 +65,6 @@ export default function ProjectFileExplorer({
         <p className="text-muted-foreground text-sm mb-4">
           Upload files or folders to get started with your project
         </p>
-        <ProjectAddFileButton projectId={projectId} />
       </div>
     );
   }
@@ -238,7 +235,7 @@ function FileExplorerItem({
               )}
             </span>
           )}
-          <span className="text-sm hover:underline hover:text-blue-500 truncate ">
+          <span className="text-sm hover:underline hover:text-blue-500 truncate">
             {item.name}
           </span>
         </div>

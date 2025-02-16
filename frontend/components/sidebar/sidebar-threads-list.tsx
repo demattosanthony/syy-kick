@@ -14,7 +14,7 @@ import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { SidebarItem } from "./sidebar-item";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 
 interface ThreadsListProps {
   user: User;
@@ -23,6 +23,8 @@ interface ThreadsListProps {
 export function ThreadsList({ user }: ThreadsListProps) {
   const params = useParams();
   const pathname = usePathname();
+  const router = useRouter();
+
   // Only set currentThreadId if we're actually on a thread route
   const currentThreadId = pathname.startsWith("/threads/")
     ? typeof params?.threadId === "string"
@@ -36,6 +38,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
 
   const handleThreadDelete = async (id: string) => {
     await deleteThreadMutation.mutateAsync(id);
+    router.push("/");
   };
 
   if (threads.length === 0) {

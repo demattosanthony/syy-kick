@@ -84,7 +84,8 @@ export function OrganizationSettings({ orgId }: { orgId: string }) {
                   await api.uploads.getPresignedUrl(
                     file.name,
                     file.type,
-                    file.size
+                    file.size,
+                    `uploads/${Date.now()}-${file.name}`
                   );
 
                 const res = await fetch(url, {
