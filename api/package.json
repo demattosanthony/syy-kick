@@ -49,6 +49,7 @@
     "passport-microsoft": "^2.1.0",
     "passport-saml": "^3.2.4",
     "pg": "^8.13.1",
-    "stripe": "^17.6.0"
+    "stripe": "^17.6.0",
+    "unstructured-client": "^0.20.0"
   }
 }

@@ -4,6 +4,7 @@ import { and, asc, eq, ilike, isNull, like, or } from "drizzle-orm";
 import { documents, organizations, projects, users } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
+import { processFile } from "../config/unstructured";
 
 const schemas = {
   createProject: z
@@ -318,8 +319,13 @@ async function updateProject(
  * @throws Error if file not found or if path points to a folder
  */
 export async function getDocContent(projectId: string, path: string) {
+  const decodedPath = decodeURIComponent(path);
+
   const document = await db.query.documents.findFirst({
-    where: and(eq(documents.projectId, projectId), eq(documents.path, path)),
+    where: and(
+      eq(documents.projectId, projectId),
+      eq(documents.path, decodedPath)
+    ),
   });
 
   if (!document) {
@@ -566,6 +572,21 @@ const handlers = {
       entries: sortedEntries,
       basePath: validatedData.basePath,
     });
+
+    // Run document extraction for each file that was uploaded
+    // Process each uploaded file for document extraction in the background
+    // try {
+    //   for (const entry of sortedEntries) {
+    //     if (entry.type === "file" && entry.fileKey) {
+    //       // Fire and forget - run processing in background
+    //       processFile(entry.fileKey, entry.path).catch((error) => {
+    //         console.error(`Error processing file ${entry.path}:`, error);
+    //       });
+    //     }
+    //   }
+    // } catch {
+    //   // Ignore any errors here
+    // }
 
     res.json(result);
   },
