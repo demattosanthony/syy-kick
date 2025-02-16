@@ -1,9 +1,124 @@
 {
-  "id": "49f82dfc-1c9a-4993-9655-52947b61119c",
+  "id": "876b032a-b6d1-4eb8-8b6a-9ab4b427faa3",
   "prevId": "4928aef4-eca0-47e9-a2be-5a4dd647383f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.documents": {
+      "name": "documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_hash": {
+          "name": "file_hash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "path": {
+          "name": "path",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_key": {
+          "name": "file_key",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "size": {
+          "name": "size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "documents_parent_id_documents_id_fk": {
+          "name": "documents_parent_id_documents_id_fk",
+          "tableFrom": "documents",
+          "tableTo": "documents",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "documents_project_id_projects_id_fk": {
+          "name": "documents_project_id_projects_id_fk",
+          "tableFrom": "documents",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.messages": {
       "name": "messages",
       "schema": "",
@@ -57,6 +172,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "embedding": {
+          "name": "embedding",
+          "type": "vector(1536)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -65,7 +186,24 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "embeddingIndex": {
+          "name": "embeddingIndex",
+          "columns": [
+            {
+              "expression": "embedding",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "vector_cosine_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "hnsw",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "messages_thread_id_threads_id_fk": {
           "name": "messages_thread_id_threads_id_fk",
@@ -336,12 +474,6 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "gitea_repo_id": {
-          "name": "gitea_repo_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
         "name": {
           "name": "name",
           "type": "varchar(255)",
@@ -543,6 +675,12 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -566,6 +704,19 @@
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "threads_project_id_projects_id_fk": {
+          "name": "threads_project_id_projects_id_fk",
+          "tableFrom": "threads",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
           ],
           "columnsTo": [
             "id"
@@ -687,6 +838,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "microsoft_id": {
+          "name": "microsoft_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "identity_provider": {
           "name": "identity_provider",
           "type": "text",
@@ -764,6 +921,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "google_id"
+          ]
+        },
+        "users_microsoft_id_unique": {
+          "name": "users_microsoft_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "microsoft_id"
           ]
         },
         "users_stripe_customer_id_unique": {

@@ -1,1 +1,0 @@
-ALTER TABLE "projects" DROP COLUMN "gitea_repo_id";
