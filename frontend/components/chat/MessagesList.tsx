@@ -70,7 +70,7 @@ const AssistantMessage = (
     <div className="mb-4 flex flex-col justify-start">
       <div className="flex gap-2">
         <div className="mr-[1px] w-[32px] h-[32px]">
-          <Rhombicuboctahedron size={32} animate={false} />
+          <Rhombicuboctahedron size={32} animate={true} />
         </div>
 
         <div

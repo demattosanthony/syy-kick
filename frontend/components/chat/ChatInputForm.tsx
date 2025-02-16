@@ -173,12 +173,12 @@ function ChatInputForm(
   return (
     <Card
       className={cn(
-        "relative flex flex-col h-auto min-h-[105px] max-h-[450px] w-full mx-auto max-w-[750px] p-0 rounded-lg",
+        "relative flex flex-col h-auto min-h-[105px] max-h-[450px] w-full mx-auto max-w-[750px] p-0 rounded-2xl",
         focused && !isMobile ? "shadow-md" : "shadow-none"
       )}
     >
       <form
-        className={`relative flex flex-col flex-1 w-full justify-center p-2`}
+        className={`relative flex flex-col flex-1 w-full justify-center p-1`}
         onSubmit={onSubmit}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -290,7 +290,7 @@ function ChatInputForm(
                 height: "42px",
                 minHeight: "42px",
               }}
-              className="resize-none !min-h-[42px] w-full text-lg rounded-xl border-none focus:ring-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:font-medium"
+              className="resize-none !min-h-[42px] w-full text-base rounded-xl border-none focus:ring-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:font-medium"
             />
           </div>
         </div>

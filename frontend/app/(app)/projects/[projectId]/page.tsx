@@ -31,6 +31,8 @@ export default function ProjectPage() {
   };
 
   const handleSubmit = async () => {
+    if (initalInput.trim() === "") return;
+
     try {
       // Create thread in background
       const { id: threadId } = await api.threads.createThread(
