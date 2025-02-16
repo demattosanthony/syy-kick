@@ -40,9 +40,13 @@ export function useThreadsQuery(search?: string) {
 }
 
 export function useThreadQuery(threadId: string, isNewThread: boolean) {
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
   return useQuery({
-    queryKey: ["thread", threadId],
-    queryFn: () => api.threads.getThread(threadId),
+    queryKey: ["thread", threadId, orgId],
+    queryFn: () => api.threads.getThread(threadId, orgId),
     enabled: !isNewThread, // Only fetch if it's not a new thread
     refetchOnWindowFocus: false,
   });
@@ -227,28 +231,31 @@ export function useUpdateOrganizationSeatsMutation() {
 
 export function useProjectsQuery({ search }: { search?: string } = {}) {
   const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
 
   return useQuery({
     queryKey: ["projects", search, activeWorkspace?.id],
-    queryFn: () =>
-      api.projects.listProjects(
-        activeWorkspace?.type === "organization"
-          ? activeWorkspace.id
-          : undefined,
-        search
-      ),
+    queryFn: () => api.projects.listProjects(orgId, search),
   });
 }
 
 export function useCreateProjectMutation() {
   const queryClient = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
 
   return useMutation({
     mutationFn: (data: {
       name: string;
       description: string;
       organizationId?: string;
-    }) => api.projects.createProject(data),
+    }) =>
+      api.projects.createProject({
+        ...data,
+        organizationId: orgId,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
@@ -257,8 +264,13 @@ export function useCreateProjectMutation() {
 
 export function useDeleteProjectMutation() {
   const queryClient = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
   return useMutation({
-    mutationFn: (projectId: string) => api.projects.deleteProject(projectId),
+    mutationFn: (projectId: string) =>
+      api.projects.deleteProject(projectId, orgId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
@@ -266,9 +278,13 @@ export function useDeleteProjectMutation() {
 }
 
 export function useProjectQuery(projectId: string) {
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
   return useQuery({
-    queryKey: ["project", projectId],
-    queryFn: () => api.projects.getProject(projectId),
+    queryKey: ["project", projectId, orgId],
+    queryFn: () => api.projects.getProject(projectId, orgId),
     enabled: !!projectId,
   });
 }
@@ -276,12 +292,21 @@ export function useProjectQuery(projectId: string) {
 export function useUploadDocsMutation() {
   const queryClient = useQueryClient();
   const [progress, setProgress] = useState(0);
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
 
   const mutation = useMutation({
     mutationFn: ({ projectId, files }: { projectId: string; files: File[] }) =>
-      api.projects.uploadFiles(projectId, files, "", (progress) => {
-        setProgress(progress);
-      }),
+      api.projects.uploadFiles(
+        projectId,
+        files,
+        "",
+        (progress) => {
+          setProgress(progress);
+        },
+        orgId
+      ),
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: ["project-docs", projectId] });
       setProgress(0);
@@ -294,18 +319,26 @@ export function useUploadDocsMutation() {
   return { ...mutation, progress };
 }
 export function useProjectDocsQuery(projectId: string, path?: string) {
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
   return useQuery({
-    queryKey: ["project-docs", projectId, path],
-    queryFn: () => api.projects.getDocuments(projectId, path),
+    queryKey: ["project-docs", projectId, path, orgId],
+    queryFn: () => api.projects.getDocuments(projectId, path, orgId),
     enabled: !!projectId,
   });
 }
 
 export function useDeleteProjectContentMutation() {
   const queryClient = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
   return useMutation({
     mutationFn: ({ projectId, path }: { projectId: string; path: string }) =>
-      api.projects.deleteContents(projectId, path),
+      api.projects.deleteContents(projectId, path, orgId),
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: ["project-docs", projectId] });
     },
@@ -314,6 +347,9 @@ export function useDeleteProjectContentMutation() {
 
 export function useUpdateProjectMutation() {
   const queryClient = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
 
   return useMutation({
     mutationFn: ({
@@ -322,7 +358,11 @@ export function useUpdateProjectMutation() {
     }: {
       projectId: string;
       data: { name?: string; description?: string };
-    }) => api.projects.updateProject(projectId, data),
+    }) =>
+      api.projects.updateProject(projectId, {
+        ...data,
+        organizationId: orgId,
+      }),
     onSuccess: (_, { projectId }) => {
       // Invalidate the specific project query
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
@@ -333,8 +373,12 @@ export function useUpdateProjectMutation() {
 }
 
 export function useProjectDocQuery(projectId: string, path: string) {
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
   return useQuery({
-    queryKey: ["project-doc", projectId, path],
-    queryFn: () => api.projects.getDocument(projectId, path),
+    queryKey: ["project-doc", projectId, path, orgId],
+    queryFn: () => api.projects.getDocument(projectId, path, orgId),
   });
 }

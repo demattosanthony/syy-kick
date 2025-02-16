@@ -20,6 +20,7 @@ const schemas = {
   updateProject: z.object({
     name: z.string().min(1).max(255).optional(),
     description: z.string().max(255).optional(),
+    organizationId: z.string().optional(),
   }),
 
   docsUpload: z.object({
@@ -35,6 +36,7 @@ const schemas = {
       })
     ),
     basePath: z.string(),
+    organizationId: z.string().optional(),
   }),
 };
 
@@ -497,12 +499,14 @@ const handlers = {
 
   getProject: async (req: Request, res: Response) => {
     const { projectId } = req.params;
+    const organizationId = req.query.organizationId as string | undefined;
     const project = await getProject(projectId);
     res.json(project || {});
   },
 
   deleteProject: async (req: Request, res: Response) => {
     const { projectId } = req.params;
+    const organizationId = req.query.organizationId as string | undefined;
     await deleteProject(projectId);
     res.json({ success: true });
   },
@@ -510,7 +514,7 @@ const handlers = {
   getDocuments: async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
-      const { path } = req.query;
+      const { path, organizationId } = req.query;
       const files = await getProjectDocs(projectId, path as string);
       res.json(files);
     } catch (error) {
@@ -521,13 +525,14 @@ const handlers = {
 
   deleteContents: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const { path } = req.query;
+    const { path, organizationId } = req.query;
     await deleteProjectContent(projectId, decodeURIComponent(path as string));
     res.json({ success: true });
   },
 
   updateProject: async (req: Request, res: Response) => {
     const { projectId } = req.params;
+
     const validatedData = schemas.updateProject.parse(req.body);
     const project = await updateProject(projectId, validatedData);
     res.json(project);
@@ -539,7 +544,7 @@ const handlers = {
    */
   getDocument: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const { path } = req.query;
+    const { path, organizationId } = req.query;
     const file = await getDocContent(
       projectId,
       decodeURIComponent(path as string)

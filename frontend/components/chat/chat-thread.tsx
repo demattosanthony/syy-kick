@@ -27,6 +27,7 @@ import ChatInputForm from "@/components/chat/ChatInputForm";
 import ChatMessagesList from "@/components/chat/MessagesList";
 import { Thread } from "@/types/chat";
 import { toast } from "sonner";
+import { useWorkspace } from "../sidebar/workspace-context";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -55,6 +56,10 @@ export default function ThreadPage({
     selectedProjectDocsAtom
   );
 
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
   const {
     input,
     setInput,
@@ -76,6 +81,7 @@ export default function ThreadPage({
         model: model.name,
         temperature: temperature,
         instructions,
+        organizationId: orgId,
       };
     },
   });

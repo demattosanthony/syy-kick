@@ -453,8 +453,19 @@ class ProjectsApi extends ApiRequest {
     return await this.request("/projects", "POST", data);
   }
 
-  async getProject(projectId: string): Promise<Project> {
-    return await this.request(`/projects/${projectId}`);
+  async getProject(
+    projectId: string,
+    organizationId?: string
+  ): Promise<Project> {
+    const queryParams = new URLSearchParams();
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
+    return await this.request(
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
+      }`
+    );
   }
 
   async listProjects(
@@ -471,17 +482,33 @@ class ProjectsApi extends ApiRequest {
     return await this.request(`/projects?${queryParams.toString()}`);
   }
 
-  async deleteProject(projectId: string): Promise<{ success: boolean }> {
-    return await this.request(`/projects/${projectId}`, "DELETE");
+  async deleteProject(
+    projectId: string,
+    organizationId?: string
+  ): Promise<{ success: boolean }> {
+    const queryParams = new URLSearchParams();
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
+    return await this.request(
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
+      }`,
+      "DELETE"
+    );
   }
 
   async getDocuments(
     projectId: string,
-    path?: string
+    path?: string,
+    organizationId?: string
   ): Promise<DocumentContent[]> {
     const queryParams = new URLSearchParams();
     if (path) {
       queryParams.append("path", path);
+    }
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
     }
     return await this.request(
       `/projects/${projectId}/documents${
@@ -492,12 +519,18 @@ class ProjectsApi extends ApiRequest {
 
   async deleteContents(
     projectId: string,
-    path: string
+    path: string,
+    organizationId?: string
   ): Promise<{
     success: boolean;
   }> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("path", encodeURIComponent(path));
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
     return await this.request(
-      `/projects/${projectId}/documents?path=${encodeURIComponent(path)}`,
+      `/projects/${projectId}/documents?${queryParams.toString()}`,
       "DELETE"
     );
   }
@@ -507,6 +540,7 @@ class ProjectsApi extends ApiRequest {
     data: {
       name?: string;
       description?: string;
+      organizationId?: string;
     }
   ): Promise<Project> {
     return await this.request(`/projects/${projectId}`, "PATCH", data);
@@ -518,11 +552,19 @@ class ProjectsApi extends ApiRequest {
    * - content (for text files),
    * - base64Content (for small/binary files directly in Gitea).
    */
-  async getDocument(projectId: string, path: string): Promise<DocumentContent> {
+  async getDocument(
+    projectId: string,
+    path: string,
+    organizationId?: string
+  ): Promise<DocumentContent> {
     // URL-encode path to ensure proper handling of spaces, etc.
-    const encodedPath = encodeURIComponent(path);
+    const queryParams = new URLSearchParams();
+    queryParams.append("path", encodeURIComponent(path));
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
     return await this.request(
-      `/projects/${projectId}/document?path=${encodedPath}`
+      `/projects/${projectId}/document?${queryParams.toString()}`
     );
   }
 
@@ -673,7 +715,8 @@ class ProjectsApi extends ApiRequest {
     projectId: string,
     files: File[],
     basePath: string = "",
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    organizationId?: string
   ): Promise<{
     success: boolean;
     documents?: any;
@@ -728,7 +771,7 @@ class ProjectsApi extends ApiRequest {
       }
     }
 
-    const payload = { basePath, entries };
+    const payload = { basePath, entries, organizationId };
     return this.request<{
       success: boolean;
       documents?: any;

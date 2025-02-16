@@ -17,6 +17,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCreateProjectMutation } from "@/queries/queries";
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { ApiError } from "@/lib/api";
 
 interface CreateProjectDialogProps {
   trigger: React.ReactNode;
@@ -47,8 +49,15 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
       setFormData({ name: "", description: "" });
       setOpen(false);
       router.push(`/projects/${project.id}`);
-    } catch (error) {
-      console.error("Failed to create project:", error);
+    } catch (error: unknown) {
+      if (error instanceof ApiError) {
+        console.log(error.status);
+        if (error.status === 402) {
+          toast.error("Pro plan is required to create a project");
+          return;
+        }
+      }
+      toast.error("Failed to create project");
     }
   };
 

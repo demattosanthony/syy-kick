@@ -245,7 +245,7 @@ function ChatInputForm(
 
           {/* File Upload Preview */}
           {uploads.length > 0 && (
-            <div className="flex gap-3 p-3 flex-wrap h-26 overflow-auto">
+            <div className="flex gap-3 p-2 flex-wrap h-26 overflow-auto">
               {uploads.map((upload, index) => (
                 <div
                   key={index}

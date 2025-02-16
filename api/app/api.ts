@@ -65,7 +65,7 @@ export default Router()
     })
   )
   .use("/organizations", auth, organizationRoutes)
-  .use("/projects", auth, projectRoutes)
+  .use("/projects", auth, checkSub, projectRoutes)
   .post(
     "/presigned-url",
     auth,

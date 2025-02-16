@@ -54,6 +54,7 @@ export const checkSub = async (req: any, res: any, next: any) => {
     });
 
     if (!org) {
+      console.log("Organization not found");
       return res.status(404).json({ error: "Organization not found" });
     }
 

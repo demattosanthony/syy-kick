@@ -345,6 +345,7 @@ export type MessageAttachment = {
   fileName?: string;
   mimeType?: string;
   size?: number;
+  url?: string;
   createdAt: Date;
   updatedAt: Date;
 };
