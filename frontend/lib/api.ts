@@ -614,7 +614,9 @@ class ProjectsApi extends ApiRequest {
       // webkitRelativePath includes the nested folder structure
       // e.g. "myFolder/subfolder1/file.txt".
       // If the user just selected files (no directories), it might just be the filename.
-      const filePath: string = (file as any).webkitRelativePath || file.name;
+      const filePath: string =
+        (file as File & { webkitRelativePath?: string }).webkitRelativePath ||
+        file.name;
 
       // We want to push entries for each folder in that path too
       // e.g. "myFolder" and "myFolder/subfolder1" as "folder" type
@@ -719,7 +721,6 @@ class ProjectsApi extends ApiRequest {
     organizationId?: string
   ): Promise<{
     success: boolean;
-    documents?: any;
   }> {
     const entries = await this.generateEntriesFromFileList(files, projectId);
     let uploadedBytes = 0;
@@ -728,7 +729,9 @@ class ProjectsApi extends ApiRequest {
     for (const entry of entries) {
       if (entry.type === "file" && entry.fileKey) {
         const rawFile = files.find((f) => {
-          const relPath = (f as any).webkitRelativePath || f.name;
+          const relPath =
+            (f as File & { webkitRelativePath?: string }).webkitRelativePath ||
+            f.name;
           return relPath === entry.path;
         });
 
@@ -774,7 +777,6 @@ class ProjectsApi extends ApiRequest {
     const payload = { basePath, entries, organizationId };
     return this.request<{
       success: boolean;
-      documents?: any;
     }>(`/projects/${projectId}/documents`, "POST", payload);
   }
 }
