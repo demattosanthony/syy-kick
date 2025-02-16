@@ -273,33 +273,26 @@ export function useProjectQuery(projectId: string) {
   });
 }
 
-export function useUploadFileMutation() {
+export function useUploadDocsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      projectId,
-      file,
-      path,
-    }: {
-      projectId: string;
-      file: File;
-      path?: string;
-    }) => api.projects.uploadFileToProject(projectId, file, path),
+    mutationFn: ({ projectId, files }: { projectId: string; files: File[] }) =>
+      api.projects.uploadFiles(projectId, files),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: ["project-files", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-docs", projectId] });
     },
   });
 }
 
-export function useProjectFilesQuery(
+export function useProjectDocsQuery(
   projectId: string,
   path?: string,
   initalContent?: ProjectContent[]
 ) {
   return useQuery({
-    queryKey: ["project-files", projectId, path],
+    queryKey: ["project-docs", projectId, path],
     initialData: initalContent,
-    queryFn: () => api.projects.getFiles(projectId, path),
+    queryFn: () => api.projects.getDocuments(projectId, path),
     enabled: !!projectId,
   });
 }
@@ -310,7 +303,7 @@ export function useDeleteProjectContentMutation() {
     mutationFn: ({ projectId, path }: { projectId: string; path: string }) =>
       api.projects.deleteContents(projectId, path),
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: ["project-files", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-docs", projectId] });
     },
   });
 }
@@ -335,9 +328,9 @@ export function useUpdateProjectMutation() {
   });
 }
 
-export function useProjectFileQuery(projectId: string, path: string) {
+export function useProjectDocQuery(projectId: string, path: string) {
   return useQuery({
-    queryKey: ["project-file", projectId, path],
-    queryFn: () => api.projects.getFileContent(projectId, path),
+    queryKey: ["project-doc", projectId, path],
+    queryFn: () => api.projects.getDocument(projectId, path),
   });
 }

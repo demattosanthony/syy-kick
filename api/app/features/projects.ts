@@ -1,15 +1,9 @@
 import z from "zod";
 import db from "../config/db";
-import { and, eq, ilike } from "drizzle-orm";
-import { organizations, projects, users } from "../config/schema";
-import gitea from "../config/gitea";
+import { and, asc, eq, ilike, isNull, like, or } from "drizzle-orm";
+import { documents, organizations, projects, users } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
-import multer from "multer";
-import { shouldUseLfs } from "../utils/lfs-utils";
-import { getFileMimeType } from "../utils";
-
-const upload = multer({ storage: multer.memoryStorage() });
 
 const schemas = {
   createProject: z
@@ -27,28 +21,35 @@ const schemas = {
     name: z.string().min(1).max(255).optional(),
     description: z.string().max(255).optional(),
   }),
+
+  docsUpload: z.object({
+    entries: z.array(
+      z.object({
+        path: z.string(),
+        type: z.enum(["file", "folder"]),
+        // File-specific fields
+        fileKey: z.string().optional(),
+        size: z.number().optional(),
+        mimeType: z.string().optional(),
+        sha256: z.string().optional(),
+      })
+    ),
+    basePath: z.string(),
+  }),
 };
 
-// Helper functions
-function toGitSafeName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\s+/g, "-") // Replace spaces with dashes
-    .replace(/[^a-z0-9-._]/g, "") // Remove special chars except dash, dot, underscore
-    .replace(/^[-._]+|[-._]+$/g, "") // Remove leading/trailing dash, dot, underscore
-    .replace(/\.+/g, ".") // Replace multiple dots with single dot
-    .replace(/\.git$/i, "-git"); // Replace .git suffix
-}
+// Helpers
 
-function isLfsPointer(content: string): boolean {
-  return content.startsWith("version https://git-lfs.github.com/spec/v1");
-}
-
-async function extractS3KeyFromLfsPointer(
-  content: string
-): Promise<string | null> {
-  const fileKeyMatch = content.match(/file\s+([^\s]+)/);
-  return fileKeyMatch ? fileKeyMatch[1] : null;
+/**
+ * Normalizes a path:
+ * - Trims leading/trailing slashes
+ * - Replaces multiple slashes with a single slash
+ */
+function normalizePath(input: string) {
+  // Remove leading/trailing slashes
+  const trimmed = input.replace(/^\/+|\/+$/g, "");
+  // Replace multiple consecutive slashes with single
+  return trimmed.replace(/\/{2,}/g, "/");
 }
 
 async function getProjectOrThrow(projectId: string) {
@@ -59,34 +60,6 @@ async function getProjectOrThrow(projectId: string) {
     throw new Error("Project not found");
   }
   return project;
-}
-
-async function getGiteaContents(owner: string, repoName: string, path: string) {
-  return await gitea.repos.repoGetContents(owner, repoName, path, {
-    ref: "main",
-  });
-}
-
-async function getGiteaCommitMetadata(
-  owner: string,
-  repoName: string,
-  path: string
-) {
-  const commitResponse = await gitea.repos.repoGetAllCommits(owner, repoName, {
-    path,
-    page: 1,
-    limit: 1,
-  });
-  return commitResponse.data?.[0]?.commit?.committer?.date;
-}
-
-async function enrichFileMetadata(file: any, owner: string, repoName: string) {
-  const lastModified = await getGiteaCommitMetadata(owner, repoName, file.path);
-  return {
-    ...file,
-    lastModified,
-    mimeType: file.type !== "dir" ? getFileMimeType(file.name) : undefined,
-  };
 }
 
 // Ops methods
@@ -111,20 +84,6 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
     }
   }
 
-  // Create the git repo
-  const response = await gitea.user.createCurrentUserRepo({
-    default_branch: "main",
-    name: toGitSafeName(data.name),
-    private: true,
-    description: data.description,
-    // auto_init: true,
-  });
-  const gitRepo = response.data;
-
-  if (!gitRepo || !gitRepo.id) {
-    throw new Error("Failed to create git repo");
-  }
-
   const newProject = await db
     .insert(projects)
     .values({
@@ -132,7 +91,6 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
       description: data.description,
       organizationId: data.organizationId,
       userId: data.userId,
-      giteaRepoId: gitRepo.id,
       visibility: "private",
     })
     .returning()
@@ -141,53 +99,7 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
   return newProject;
 }
 
-/**
- * For smaller / text-based files, we commit directly via base64 content to Gitea.
- */
-async function createFileInGitea(
-  owner: string,
-  repoName: string,
-  filePath: string,
-  fileBuffer: Buffer,
-  message: string
-) {
-  const base64Content = fileBuffer.toString("base64");
-  await gitea.repos.repoCreateFile(owner, repoName, filePath, {
-    content: base64Content,
-    message,
-  });
-}
-
-/**
- * We'll keep the existing logic that picks LFS or normal commit,
- * but now we only do the direct buffer approach for small files.
- */
-async function uploadFileToProject(
-  projectId: string,
-  filePath: string,
-  fileBuffer: Buffer, // Only used if not LFS
-  message: string = "Add file via API"
-) {
-  const project = await getProjectOrThrow(projectId);
-  const repoOwner = "admin";
-  const repoName = toGitSafeName(project.name);
-
-  // If it’s forced LFS or beyond threshold => throw or handle it:
-  if (shouldUseLfs(filePath, fileBuffer.length)) {
-    // You could either throw an Error telling the client to use presign-lfs,
-    // or simply do the old approach of uploading to S3 from here (not recommended).
-    throw new Error(
-      "File too large or forced for LFS. Please use the LFS presigned upload flow."
-    );
-  }
-
-  // Otherwise, commit file to Gitea as normal (base64)
-  await createFileInGitea(repoOwner, repoName, filePath, fileBuffer, message);
-}
-
 async function deleteProject(projectId: string) {
-  const project = await getProjectOrThrow(projectId);
-  await gitea.repos.repoDelete("admin", toGitSafeName(project.name));
   await db.delete(projects).where(eq(projects.id, projectId));
 }
 
@@ -246,177 +158,94 @@ async function getProject(projectId: string) {
   return project;
 }
 
-export async function getProjectFiles(projectId: string, path: string = "") {
-  const project = await getProjectOrThrow(projectId);
-  const repoName = toGitSafeName(project.name);
-  const owner = "admin";
+export async function getProjectDocs(projectId: string, path: string = "") {
+  await getProjectOrThrow(projectId);
 
   try {
-    const contents = await getGiteaContents(owner, repoName, path);
+    const normalizedPath = normalizePath(path);
 
-    // If directory, fetch commit metadata for each item
-    if (Array.isArray(contents.data)) {
-      const filesWithMetadata = await Promise.all(
-        contents.data.map((file) => enrichFileMetadata(file, owner, repoName))
-      );
-
-      // GitHub-style sorting
-      return filesWithMetadata.sort((a, b) => {
-        // First sort by type (directories first)
-        if (a.type !== b.type) {
-          return a.type === "dir" ? -1 : 1;
-        }
-
-        // Then sort by name (case-insensitive)
-        const nameA = a.name.toLowerCase();
-        const nameB = b.name.toLowerCase();
-
-        // Handle dotfiles (files/folders starting with .) - they come first
-        const isDotFileA = nameA.startsWith(".");
-        const isDotFileB = nameB.startsWith(".");
-        if (isDotFileA !== isDotFileB) {
-          return isDotFileA ? -1 : 1;
-        }
-
-        // Natural sort for numbers (e.g., "file2" comes before "file10")
-        return nameA.localeCompare(nameB, undefined, {
-          numeric: true,
-          sensitivity: "base",
-        });
+    // If path is not empty, first find the folder document to get its ID
+    let parentId: string | null = null;
+    if (normalizedPath !== "") {
+      const folder = await db.query.documents.findFirst({
+        where: and(
+          eq(documents.projectId, projectId),
+          eq(documents.path, normalizedPath),
+          eq(documents.type, "folder")
+        ),
       });
-    } else {
-      return await enrichFileMetadata(contents.data, owner, repoName);
-    }
-  } catch (error) {
-    throw new Error("Failed to fetch repository contents");
-  }
-}
-
-async function deleteFileWithLfsCheck(
-  owner: string,
-  repoName: string,
-  path: string,
-  sha: string,
-  content?: string
-) {
-  if (content) {
-    const decoded = Buffer.from(content, "base64").toString("utf-8");
-    if (isLfsPointer(decoded)) {
-      const s3Key = await extractS3KeyFromLfsPointer(decoded);
-      if (s3Key) {
-        await s3.delete(s3Key);
+      if (!folder) {
+        throw new Error("Folder not found");
       }
+      parentId = folder.id;
     }
-  }
 
-  await gitea.repos.repoDeleteFile(owner, repoName, path, {
-    message: "Delete file via API",
-    branch: "main",
-    sha,
-  });
-}
-
-async function deleteDirectoryContentsRecursively(
-  owner: string,
-  repoName: string,
-  path: string
-) {
-  try {
-    const contents = await gitea.repos.repoGetContents(owner, repoName, path, {
-      ref: "main",
+    const docs = await db.query.documents.findMany({
+      where: and(
+        eq(documents.projectId, projectId),
+        parentId === null
+          ? isNull(documents.parentId)
+          : eq(documents.parentId, parentId)
+      ),
+      orderBy: [asc(documents.type), asc(documents.name)],
     });
 
-    if (!Array.isArray(contents.data)) {
-      throw new Error("Expected directory contents");
-    }
-
-    // Process all items except .gitkeep
-    for (const item of contents.data.filter(
-      (file) => file.name !== ".gitkeep"
-    )) {
-      if (item.type === "dir") {
-        // Recursively delete contents of subdirectory
-        await deleteDirectoryContentsRecursively(owner, repoName, item.path);
-      } else {
-        // Get file content for LFS check
-        const fileContent = await getGiteaContents(owner, repoName, item.path);
-
-        if (!Array.isArray(fileContent.data)) {
-          await deleteFileWithLfsCheck(
-            owner,
-            repoName,
-            item.path,
-            item.sha,
-            fileContent.data.content
-          );
-        }
+    // Sort the results GitHub-style
+    return docs.sort((a, b) => {
+      // First sort by type (folders first)
+      if (a.type !== b.type) {
+        return a.type === "folder" ? -1 : 1;
       }
-    }
+
+      // Then sort by name (case-insensitive)
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+
+      // Natural sort for numbers (e.g., "file2" comes before "file10")
+      return nameA.localeCompare(nameB, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+    });
   } catch (error) {
-    console.error(`Error deleting directory ${path}:`, error);
-    throw error;
+    throw new Error("Failed to fetch project contents");
   }
 }
 
 async function deleteProjectContent(projectId: string, path: string) {
-  const project = await getProjectOrThrow(projectId);
-  const repoName = toGitSafeName(project.name);
-  const owner = "admin";
+  await getProjectOrThrow(projectId);
 
   try {
-    // First check if we're about to delete the last file/directory
-    const allFiles = await getGiteaContents(owner, repoName, "");
+    // Get all documents at and below this path
+    const docsToDelete = await db.query.documents.findMany({
+      where: and(
+        eq(documents.projectId, projectId),
+        // Match exact path or path starting with path/
+        or(eq(documents.path, path), like(documents.path, `${path}/%`))
+      ),
+    });
 
-    const isLastItem =
-      Array.isArray(allFiles.data) &&
-      allFiles.data.length === 1 &&
-      allFiles.data[0].path === path;
-
-    // If we're about to delete the last item, create .gitkeep first
-    if (isLastItem) {
-      try {
-        await gitea.repos.repoCreateFile(owner, repoName, ".gitkeep", {
-          content: Buffer.from("").toString("base64"),
-          message: "Keep repository valid",
-        });
-      } catch (err) {
-        // Ignore if .gitkeep already exists
-        console.log("Failed to create .gitkeep, may already exist:", err);
-      }
+    if (docsToDelete.length === 0) {
+      throw new Error(`Path '${path}' not found`);
     }
 
-    // Get info about the item we're deleting
-    const itemInfo = await getGiteaContents(owner, repoName, path);
-
-    if (Array.isArray(itemInfo.data)) {
-      // It's a directory - recursively delete contents
-      await deleteDirectoryContentsRecursively(owner, repoName, path);
-    } else {
-      // Single file - don't delete if it's .gitkeep and it's the last file
-      if (path === ".gitkeep" && isLastItem) {
-        return true;
-      }
-
-      if (!itemInfo.data.sha) {
-        throw new Error("Could not get file SHA");
-      }
-
-      await deleteFileWithLfsCheck(
-        owner,
-        repoName,
-        path,
-        itemInfo.data.sha,
-        itemInfo.data.content
+    // Delete all matching documents
+    await db
+      .delete(documents)
+      .where(
+        and(
+          eq(documents.projectId, projectId),
+          or(eq(documents.path, path), like(documents.path, `${path}/%`))
+        )
       );
-    }
 
     return true;
   } catch (error: any) {
     console.error("Delete content error:", error);
-    if (error.status === 404) {
-      throw new Error(`Path '${path}' not found in repository`);
+    if (error.message.includes("not found")) {
+      throw new Error(`Path '${path}' not found`);
     }
-    throw new Error("Failed to delete repository content");
+    throw new Error("Failed to delete content");
   }
 }
 
@@ -436,82 +265,170 @@ async function updateProject(
     .returning()
     .then((res) => res[0]);
 
-  // Update the Gitea repo info (e.g. name, description)
-  await gitea.repos.repoEdit("admin", toGitSafeName(project.name), {
-    name: toGitSafeName(updatedProject.name),
-    description: updatedProject.description ?? undefined,
+  return updatedProject;
+}
+/**
+ * Gets the content and metadata for a document in a project
+ * @param projectId The ID of the project containing the document
+ * @param path The full path to the document within the project
+ * @returns The document metadata including file content or S3 URL if it's an LFS file
+ * @throws Error if file not found or if path points to a folder
+ */
+export async function getDocContent(projectId: string, path: string) {
+  const document = await db.query.documents.findFirst({
+    where: and(eq(documents.projectId, projectId), eq(documents.path, path)),
   });
 
-  return updatedProject;
+  if (!document) {
+    throw new Error("File not found");
+  }
+
+  if (document.type === "folder") {
+    throw new Error("Cannot get content of a folder");
+  }
+
+  // If document has a fileKey, generate a presigned URL for S3 access
+  if (document.fileKey) {
+    const url = s3.presign(document.fileKey, {
+      expiresIn: 60 * 60, // 1 hour
+      method: "GET",
+    });
+
+    return {
+      ...document,
+      url,
+    };
+  }
+
+  return document;
 }
 
 /**
- * If the file content is an LFS pointer, return the S3 presigned url;
- * otherwise, return direct content (decoded for text, or base64 for binary).
+ * Recursively creates missing folder ancestors if they don't exist.
+ * Returns the ID of the final parent folder.
  */
-export async function getFileContent(projectId: string, path: string) {
-  const project = await getProjectOrThrow(projectId);
-  const repoName = toGitSafeName(project.name);
-  const owner = "admin";
-
-  const response = await getGiteaContents(owner, repoName, path);
-
-  if (Array.isArray(response.data)) {
-    throw new Error("Path points to a directory, not a file");
-  }
-  if (!response.data.name) {
-    throw new Error("File name is missing");
+async function ensureParentFolderExists(
+  projectId: string,
+  fullPath: string
+): Promise<string | null> {
+  // If there's no slash, it means there's no parent folder, e.g. "myFolder"
+  if (!fullPath.includes("/")) {
+    return null;
   }
 
-  const fileType = getFileMimeType(response.data.name);
-  const baseResponse = {
-    name: response.data.name,
-    path: response.data.path,
-    size: response.data.size,
-    type: fileType,
-    sha: response.data.sha,
-  };
+  // e.g. parentPath = "folderA" or "folderA/folderB"
+  const parentPath = fullPath.split("/").slice(0, -1).join("/");
+  const normalizedParentPath = normalizePath(parentPath);
 
-  const decoded = Buffer.from(response.data.content || "", "base64").toString(
-    "utf-8"
-  );
+  if (!normalizedParentPath) {
+    // This means fullPath was something like "/file.txt" after trimming
+    // or there's effectively no real parent. Return null.
+    return null;
+  }
 
-  // Check if it's an LFS pointer file.
-  if (decoded.startsWith("version https://git-lfs.github.com/spec/v1")) {
-    // Extract the oid.
-    const oidMatch = decoded.match(/oid sha256:([0-9a-f]+)/i);
-    if (!oidMatch) {
-      return { ...baseResponse, error: "Invalid LFS pointer" };
+  // Check if parent folder already exists
+  let parent = await db.query.documents.findFirst({
+    where: and(
+      eq(documents.projectId, projectId),
+      eq(documents.path, normalizedParentPath),
+      eq(documents.type, "folder")
+    ),
+  });
+
+  // If not found, recursively create that parent
+  if (!parent) {
+    // Create the parent's parent first
+    const grandParentId = await ensureParentFolderExists(
+      projectId,
+      normalizedParentPath
+    );
+
+    // Insert the parent folder
+    const [parentDoc] = await db
+      .insert(documents)
+      .values({
+        name: normalizedParentPath.split("/").pop()!,
+        path: normalizedParentPath,
+        type: "folder",
+        projectId,
+        parentId: grandParentId,
+      })
+      .returning();
+
+    parent = parentDoc;
+  }
+
+  return parent.id;
+}
+
+/**
+ * Creates documents (folders or files) based on a list of entries.
+ * - Sort entries so folders come first
+ * - Normalizes paths
+ * - Recursively ensures parents exist (optional)
+ * - Skips duplicates if a doc with the same path + projectId already exists
+ */
+async function createFolderStructure(
+  projectId: string,
+  data: z.infer<typeof schemas.docsUpload>
+) {
+  // Keep track of any paths created this run to avoid re-inserting
+  const createdThisRun = new Set<string>();
+
+  for (const entry of data.entries) {
+    // 1. Normalize the incoming path
+    const normalizedEntryPath = normalizePath(entry.path);
+
+    // 2. Combine with basePath if provided
+    const fullPath = data.basePath
+      ? normalizePath(`${data.basePath}/${normalizedEntryPath}`)
+      : normalizedEntryPath;
+
+    // If we've already processed this path in the same request, skip
+    if (createdThisRun.has(fullPath)) {
+      continue;
     }
-    // Default to using the oid.
-    let s3FileKey = oidMatch[1];
-    // But if the pointer file includes a "file" line, use that.
-    const fileKeyMatch = decoded.match(/file\s+([^\s]+)/);
-    if (fileKeyMatch) {
-      s3FileKey = fileKeyMatch[1];
+
+    // 3. Check if there's already a doc with this exact path in DB
+    //    If so, skip (or handle it how you like—maybe overwrite)
+    const existingDoc = await db.query.documents.findFirst({
+      where: and(
+        eq(documents.projectId, projectId),
+        eq(documents.path, fullPath)
+      ),
+    });
+    if (existingDoc) {
+      continue; // or throw an error or update, depending on your needs
     }
-    const presignedUrl = s3.presign(s3FileKey, { expiresIn: 60 * 60 }); // 1 hour
 
-    return {
-      ...baseResponse,
-      isLfsPointer: true,
-      s3Url: presignedUrl,
-      s3FileKey: s3FileKey,
-    };
+    // 4. Ensure parent folder exists (only if there's a parent path)
+    let parentId: string | null = null;
+    if (fullPath.includes("/")) {
+      parentId = await ensureParentFolderExists(projectId, fullPath);
+    }
+
+    // 5. Insert the folder or file
+    await db.insert(documents).values({
+      name: fullPath.split("/").pop()!,
+      type: entry.type,
+      path: fullPath,
+      parentId,
+      projectId,
+      ...(entry.type === "file"
+        ? {
+            fileKey: entry.fileKey,
+            size: entry.size,
+            mimeType: entry.mimeType,
+            fileHash: entry.sha256,
+          }
+        : {}),
+    });
+
+    // Mark this path as created
+    createdThisRun.add(fullPath);
   }
 
-  // For non-LFS files.
-  if (fileType.startsWith("text")) {
-    return {
-      ...baseResponse,
-      content: decoded,
-    };
-  }
-
-  return {
-    ...baseResponse,
-    base64Content: response.data.content,
-  };
+  return { success: true };
 }
 
 // Route handlers
@@ -549,44 +466,11 @@ const handlers = {
     res.json({ success: true });
   },
 
-  /**
-   * Upload a single file to a project.
-   * If large/binary => S3 + pointer commit. Otherwise => direct base64 commit.
-   */
-  uploadFile: async (req: Request, res: Response) => {
-    const { projectId } = req.params;
-
-    // For multi-part form data, Multer places text fields on req.body
-    // so read from there first, then fall back to query (if you still need it).
-    let uploadPath = req.body.path;
-    if (!uploadPath) {
-      uploadPath = req.query.path as string;
-    }
-
-    if (!req.file) {
-      throw new Error("No file provided");
-    }
-
-    if (!req.file) {
-      throw new Error("No file provided");
-    }
-
-    // Attempt to directly upload (will throw if LFS is needed)
-    await uploadFileToProject(
-      projectId,
-      uploadPath,
-      req.file.buffer,
-      `Upload ${req.file.originalname}`
-    );
-
-    res.json({ success: true });
-  },
-
-  getFiles: async (req: Request, res: Response) => {
+  getDocuments: async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
       const { path } = req.query;
-      const files = await getProjectFiles(projectId, path as string);
+      const files = await getProjectDocs(projectId, path as string);
       res.json(files);
     } catch (error) {
       console.error("Error getting project files:", error);
@@ -612,93 +496,32 @@ const handlers = {
    * Get file metadata + content. If it's an LFS pointer, return a presigned S3 URL.
    * Otherwise, return the actual file (text or base64).
    */
-  getFile: async (req: Request, res: Response) => {
+  getDocument: async (req: Request, res: Response) => {
     const { projectId } = req.params;
     const { path } = req.query;
-    const file = await getFileContent(
+    const file = await getDocContent(
       projectId,
       decodeURIComponent(path as string)
     );
     res.json(file);
   },
 
-  /**
-   * Step 1 for LFS: client asks for a presigned URL if the file is big or forced by extension.
-   */
-  presignLfs: async (req: Request, res: Response) => {
+  documentsUpload: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const { filename, mimeType, size, sha256 } = req.body;
+    const validatedData = schemas.docsUpload.parse(req.body);
 
-    if (!shouldUseLfs(filename, size)) {
-      res.json({ isLfs: false });
-      return;
-    }
-
-    // Create a "clean" S3 key from the project and file name.
-    // (You could add a timestamp or version suffix if needed to avoid accidental overwrites.)
-    const safeFilename = toGitSafeName(filename);
-    const s3FileKey = `files/${projectId}/${safeFilename}`;
-
-    const putUrl = s3.presign(s3FileKey, {
-      expiresIn: 3600,
-      method: "PUT",
-      type: mimeType,
+    // Sort so folders are created before files; if two folders, shorter path first
+    const sortedEntries = [...validatedData.entries].sort((a, b) => {
+      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+      return a.path.length - b.path.length;
     });
 
-    res.json({
-      isLfs: true,
-      presignedUrl: putUrl,
-      fileKey: s3FileKey, // Return the clean key for later use.
-      file_metadata: {
-        filename,
-        mimeType,
-        size,
-        sha256,
-      },
+    const result = await createFolderStructure(projectId, {
+      entries: sortedEntries,
+      basePath: validatedData.basePath,
     });
-  },
 
-  /**
-   * Step 2 for LFS: after the client has PUT the file to S3, finalize by creating the pointer in Gitea.
-   */
-  finalizeLfs: async (req: Request, res: Response) => {
-    const { projectId } = req.params;
-    const { fileKey, filePath, size, sha256 } = req.body;
-
-    // Optionally validate that fileKey follows your naming scheme.
-    if (!fileKey || !fileKey.startsWith(`files/${projectId}/`)) {
-      throw new Error("Invalid fileKey format");
-    }
-
-    const project = await db.query.projects.findFirst({
-      where: eq(projects.id, projectId),
-    });
-    if (!project) {
-      throw new Error("Project not found");
-    }
-
-    // Create an extended pointer file that includes the S3 file key.
-    const pointerContent = `version https://git-lfs.github.com/spec/v1
-oid sha256:${sha256}
-size ${size}
-file ${fileKey}
-`;
-
-    const base64Pointer = Buffer.from(pointerContent, "utf-8").toString(
-      "base64"
-    );
-
-    await gitea.repos.repoCreateFile(
-      "admin",
-      toGitSafeName(project.name),
-      filePath,
-      {
-        content: base64Pointer,
-        message: `LFS upload of ${filePath}`,
-      }
-    );
-
-    res.json({ success: true });
+    res.json(result);
   },
 };
 
@@ -706,15 +529,11 @@ export default Router()
   .post("/", handlers.createProject)
   .get("/", handlers.listProjects)
 
-  // Routes with files
-  .post("/:projectId/files", upload.single("file"), handlers.uploadFile)
-  .post("/:projectId/files/presign-lfs", handlers.presignLfs)
-  .post("/:projectId/files/finalize-lfs", handlers.finalizeLfs)
-  .get("/:projectId/files", handlers.getFiles)
-  .delete("/:projectId/files", handlers.deleteContents)
+  .post("/:projectId/documents", handlers.documentsUpload)
+  .get("/:projectId/documents", handlers.getDocuments)
+  .delete("/:projectId/documents", handlers.deleteContents)
 
   .patch("/:projectId", handlers.updateProject)
   .get("/:projectId", handlers.getProject)
   .delete("/:projectId", handlers.deleteProject)
-
-  .get("/:projectId/files/content", handlers.getFile);
+  .get("/:projectId/document", handlers.getDocument);

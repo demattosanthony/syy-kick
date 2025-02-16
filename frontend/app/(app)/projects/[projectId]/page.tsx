@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useProjectFileQuery, useProjectQuery } from "@/queries/queries";
+import { useProjectDocQuery, useProjectQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ProjectFileExplorer from "@/components/projects/project-file-explorer";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +19,7 @@ export default function ProjectPage() {
   const pid = projectId as string;
 
   const { data: project } = useProjectQuery(pid);
-  const { data: readmeFile } = useProjectFileQuery(pid, "README.md");
+  //   const { data: readmeFile } = useProjectDocQuery(pid, "README.md");
 
   const { activeWorkspace } = useWorkspace();
 
@@ -77,7 +77,7 @@ export default function ProjectPage() {
               <ProjectFileExplorer projectId={pid} />
             </CardContent>
           </Card>
-          {readmeFile && <ReadmeSection content={readmeFile.content || ""} />}
+          {/* {readmeFile && <ReadmeSection content={readmeFile.content || ""} />} */}
         </main>
 
         <footer className="absolute bottom-4 inset-x-0 w-full group">

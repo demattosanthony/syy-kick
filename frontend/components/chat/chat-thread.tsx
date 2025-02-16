@@ -10,7 +10,6 @@ import {
   initalInputAtom,
   instructionsAtom,
   modelAtom,
-  selectedProjectFilesAtom,
   temperatureAtom,
   uploadsAtom,
 } from "@/atoms/chat";
@@ -51,9 +50,9 @@ export default function ThreadPage({
   const [temperature] = useAtom(temperatureAtom);
   const [instructions] = useAtom(instructionsAtom);
 
-  const [selectedProjectFiles, setSelectedProjectFiles] = useAtom(
-    selectedProjectFilesAtom
-  );
+  //   const [selectedProjectFiles, setSelectedProjectFiles] = useAtom(
+  //     selectedProjectFilesAtom
+  //   );
 
   const {
     input,
@@ -76,9 +75,6 @@ export default function ThreadPage({
         model: model.name,
         temperature: temperature,
         instructions,
-        project_content: selectedProjectFiles.map((file) => ({
-          path: file.path,
-        })),
       };
     },
   });
@@ -92,7 +88,8 @@ export default function ThreadPage({
             await api.uploads.getPresignedUrl(
               upload.file.name,
               upload.file.type,
-              upload.file.size
+              upload.file.size,
+              `uploads/${Date.now()}-${upload.file.name}`
             );
 
           // upload directly to storage
@@ -131,7 +128,6 @@ export default function ThreadPage({
 
     // Reset attachments after submit
     setUploads([]);
-    setSelectedProjectFiles([]);
   }
 
   useEffect(() => {

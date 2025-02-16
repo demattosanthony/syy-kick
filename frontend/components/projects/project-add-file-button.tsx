@@ -5,29 +5,29 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useUploadFileMutation } from "@/queries/queries";
+import { useUploadDocsMutation } from "@/queries/queries";
 
 interface UploadButtonsProps {
   projectId: string;
 }
 
 export function ProjectAddFileButton({ projectId }: UploadButtonsProps) {
-  const uploadMutation = useUploadFileMutation();
+  const { mutateAsync: uploadFiles, isPending } = useUploadDocsMutation();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     try {
-      for (const file of files) {
-        await uploadMutation.mutateAsync({
-          projectId,
-          file,
-          path: file.name,
-        });
-      }
+      // Convert FileList to an array
+      const fileArray = Array.from(files);
+      // Single call to batch upload
+      await uploadFiles({ projectId, files: fileArray });
+      console.log("Files uploaded successfully");
     } catch (error: unknown) {
       console.error("Failed to upload files:", error);
+    } finally {
+      e.target.value = ""; // Reset the input so onChange triggers again if needed
     }
   };
 
@@ -36,18 +36,16 @@ export function ProjectAddFileButton({ projectId }: UploadButtonsProps) {
     if (!files || files.length === 0) return;
 
     try {
-      for (const file of files) {
-        await uploadMutation.mutateAsync({
-          projectId,
-          file,
-          path: file.webkitRelativePath,
-        });
-      }
+      const fileArray = Array.from(files);
+      // Again, a single call to batch upload
+      await uploadFiles({ projectId, files: fileArray });
+      console.log("Folder uploaded successfully");
     } catch (error: unknown) {
       console.error("Failed to upload folder:", error);
+    } finally {
+      e.target.value = "";
     }
   };
-
   return (
     <Popover>
       <PopoverTrigger asChild>

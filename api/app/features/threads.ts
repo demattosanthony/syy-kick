@@ -8,7 +8,7 @@ import { CoreMessage, generateObject, Message, streamText } from "ai";
 import { CONFIG } from "../config/constants";
 import { handle, generateThreadTitle } from "../utils";
 import { embeddingModel, MODELS } from "./models";
-import { getFileContent } from "./projects";
+import { getDocContent } from "./projects";
 
 // Input validation
 const schemas = {
@@ -358,7 +358,7 @@ ${conversationText}`,
         // Add attached project files to the message
         if (project_content && thread.projectId) {
           for (const content of project_content) {
-            const file: any = await getFileContent(
+            const file: any = await getDocContent(
               thread.projectId,
               content.path
             );

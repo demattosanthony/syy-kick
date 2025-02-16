@@ -3,7 +3,7 @@
 import ProjectFileLayout from "@/components/projects/project-file-layout";
 import ProjectFileViewer from "@/components/projects/project-file-viewer";
 import { Card, CardContent } from "@/components/ui/card";
-import { useProjectFileQuery } from "@/queries/queries";
+import { useProjectDocQuery } from "@/queries/queries";
 import { useParams, usePathname } from "next/navigation";
 
 export default function Page() {
@@ -18,12 +18,12 @@ export default function Page() {
 
   const pathArray = currentPath ? currentPath.split("/") : [];
 
-  const { data: fileContent } = useProjectFileQuery(projectId, currentPath);
+  const { data: doc } = useProjectDocQuery(projectId, currentPath);
 
   const rightContent = (
     <Card className="h-full overflow-y-auto">
       <CardContent className="flex flex-col h-full p-0">
-        {fileContent && <ProjectFileViewer file={fileContent} />}
+        {doc && <ProjectFileViewer doc={doc} />}
       </CardContent>
     </Card>
   );

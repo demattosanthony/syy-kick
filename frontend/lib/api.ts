@@ -1,6 +1,6 @@
 import { Thread } from "@/types/chat";
 import { Model } from "@/types/model";
-import { FileResponse, Project, ProjectContent } from "@/types/project";
+import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
 
 /**
@@ -354,7 +354,8 @@ class UploadApi extends ApiRequest {
   async getPresignedUrl(
     filename: string,
     mime_type: string,
-    size: number
+    size: number,
+    file_key: string
   ): Promise<{
     url: string;
     viewUrl: string;
@@ -374,7 +375,7 @@ class UploadApi extends ApiRequest {
         file_key: string;
         size: number;
       };
-    }>(`/presigned-url`, "POST", { filename, mime_type, size });
+    }>(`/presigned-url`, "POST", { filename, mime_type, size, file_key });
   }
 }
 
@@ -471,13 +472,16 @@ class ProjectsApi extends ApiRequest {
     return await this.request(`/projects/${projectId}`, "DELETE");
   }
 
-  async getFiles(projectId: string, path?: string): Promise<ProjectContent[]> {
+  async getDocuments(
+    projectId: string,
+    path?: string
+  ): Promise<DocumentContent[]> {
     const queryParams = new URLSearchParams();
     if (path) {
       queryParams.append("path", path);
     }
     return await this.request(
-      `/projects/${projectId}/files${
+      `/projects/${projectId}/documents${
         queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
@@ -490,7 +494,7 @@ class ProjectsApi extends ApiRequest {
     success: boolean;
   }> {
     return await this.request(
-      `/projects/${projectId}/files?path=${encodeURIComponent(path)}`,
+      `/projects/${projectId}/documents?path=${encodeURIComponent(path)}`,
       "DELETE"
     );
   }
@@ -511,15 +515,17 @@ class ProjectsApi extends ApiRequest {
    * - content (for text files),
    * - base64Content (for small/binary files directly in Gitea).
    */
-  async getFileContent(projectId: string, path: string): Promise<FileResponse> {
+  async getDocument(projectId: string, path: string): Promise<DocumentContent> {
     // URL-encode path to ensure proper handling of spaces, etc.
     const encodedPath = encodeURIComponent(path);
     return await this.request(
-      `/projects/${projectId}/files/content?path=${encodedPath}`
+      `/projects/${projectId}/document?path=${encodedPath}`
     );
   }
 
-  // Helper function to calculate SHA256 of a file
+  // ---------------------------------------------------
+  //         Utility: Calculate SHA-256 of a file
+  // ---------------------------------------------------
   private async calculateSha256(file: File): Promise<string> {
     // Use Web Crypto API for better performance than pure JS implementations
     const buffer = await file.arrayBuffer();
@@ -531,62 +537,148 @@ class ProjectsApi extends ApiRequest {
       .join("");
   }
 
-  async uploadFileToProject(projectId: string, file: File, path?: string) {
-    // Calculate SHA256 hash first
-    const sha256 = await this.calculateSha256(file);
+  // ---------------------------------------------------
+  //   Utility: Generate folder + file entries
+  // ---------------------------------------------------
+  private async generateEntriesFromFileList(
+    files: File[],
+    projectId: string
+  ): Promise<
+    {
+      path: string;
+      type: "folder" | "file";
+      fileKey?: string;
+      mimeType?: string;
+      size?: number;
+      sha256?: string;
+    }[]
+  > {
+    const entries: {
+      path: string;
+      type: "folder" | "file";
+      fileKey?: string;
+      mimeType?: string;
+      size?: number;
+      sha256?: string;
+    }[] = [];
 
-    // 1) Ask server if this file triggers LFS
-    const presignResp = await fetch(
-      `${this.baseUrl}/projects/${projectId}/files/presign-lfs`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          filename: file.name,
-          mimeType: file.type,
-          size: file.size,
-          sha256, // Include the hash in the request
-        }),
+    // We'll track which folders we've seen, so we don't duplicate folder entries
+    const seenFolders = new Set<string>();
+
+    for (const file of files) {
+      // webkitRelativePath includes the nested folder structure
+      // e.g. "myFolder/subfolder1/file.txt".
+      // If the user just selected files (no directories), it might just be the filename.
+      const filePath: string = (file as any).webkitRelativePath || file.name;
+
+      // We want to push entries for each folder in that path too
+      // e.g. "myFolder" and "myFolder/subfolder1" as "folder" type
+      const parts = filePath.split("/").filter(Boolean); // remove empty segments
+      // Build subpaths step by step
+      for (let i = 0; i < parts.length - 1; i++) {
+        const folderPath = parts.slice(0, i + 1).join("/");
+        if (!seenFolders.has(folderPath)) {
+          seenFolders.add(folderPath);
+          entries.push({
+            path: folderPath,
+            type: "folder",
+          });
+        }
       }
-    ).then((r) => r.json());
 
-    if (!presignResp.isLfs) {
-      // LFS not needed -> do the old route with multipart form
-      const formData = new FormData();
-      formData.append("file", file);
-      if (path) formData.append("path", path);
-      await fetch(`${this.baseUrl}/projects/${projectId}/files`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
+      // The last part is the file name itself
+      const fileName = parts[parts.length - 1];
+      const sha256 = await this.calculateSha256(file);
+      const fileKey = `projects/${projectId}/${sha256}`;
+
+      // Push the file entry
+      entries.push({
+        path: filePath,
+        type: "file",
+        fileKey,
+        mimeType: file.type,
+        size: file.size,
+        sha256,
       });
-      return;
     }
 
-    // Upload direct to S3 using the returned presigned URL
-    await fetch(presignResp.presignedUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": file.type,
-        "Content-Length": file.size.toString(),
-      },
-      body: file,
-    });
+    return entries;
+  }
 
-    // 3) Finalize (commit pointer in Gitea)
-    await fetch(`${this.baseUrl}/projects/${projectId}/files/finalize-lfs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        fileKey: presignResp.fileKey,
-        filePath: path || file.name,
-        size: file.size,
-        mimeType: file.type,
-        sha256, // Include hash for verification
-      }),
-    });
+  // ---------------------------------------------------
+  //   Upload files & create documents
+  // ---------------------------------------------------
+  /**
+   * 1) Generate folder/file entries from the provided File array
+   * 2) For each file, compute SHA-256, get presigned URL, and upload to S3
+   * 3) Finally, send the entire list of entries to /projects/:projectId/documentsUpload
+   */
+  public async uploadFiles(
+    projectId: string,
+    files: File[],
+    basePath: string = ""
+  ): Promise<{
+    success: boolean;
+    documents?: any;
+  }> {
+    // 1) Generate the folder and file entries
+    const entries = await this.generateEntriesFromFileList(files, projectId);
+
+    // 2) Upload each file to S3
+    //    We'll match the File object to the doc entry by comparing paths.
+    for (const entry of entries) {
+      if (entry.type === "file" && entry.fileKey) {
+        // Find the actual File object that corresponds to this entry
+        const rawFile = files.find((f) => {
+          const relPath = (f as any).webkitRelativePath || f.name;
+          return relPath === entry.path;
+        });
+        if (!rawFile) {
+          console.warn(
+            `No matching File object found for path: ${entry.path}, skipping.`
+          );
+          continue;
+        }
+
+        // Get a presigned URL from the UploadApi
+        const { url: uploadUrl } = await api.uploads.getPresignedUrl(
+          rawFile.name,
+          rawFile.type,
+          rawFile.size,
+          entry.fileKey
+        );
+
+        // Perform the actual PUT upload to S3
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": rawFile.type || "application/octet-stream",
+          },
+          body: rawFile,
+        });
+
+        if (!putRes.ok) {
+          throw new ApiError(
+            putRes.status,
+            `Failed to upload file ${entry.path} to S3`
+          );
+        }
+      }
+    }
+
+    // 3) Post all entries (folders + files) to your documentsUpload route
+    //    so the back-end can record them in the DB.
+    const payload = {
+      basePath,
+      entries,
+    };
+
+    // Assuming your back-end is expecting this payload at:
+    // POST /projects/:projectId/documentsUpload
+    return this.request<{
+      success: boolean;
+      documents?: any;
+    }>(`/projects/${projectId}/documents`, "POST", payload);
   }
 }
 

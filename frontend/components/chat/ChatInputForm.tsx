@@ -6,7 +6,7 @@ import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
 import { useAtom } from "jotai";
 import { useFileUpload } from "@/hooks/useFileUpload";
-import { modelAtom, selectedProjectFilesAtom } from "@/atoms/chat";
+import { modelAtom, selectedProjectDocsAtom } from "@/atoms/chat";
 import React from "react";
 import { PdfThumbnail } from "../pdf-thumbnail";
 import { Card } from "../ui/card";
@@ -21,8 +21,8 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import ProjectFileExplorer from "../projects/project-file-explorer";
-import { ProjectContent } from "@/types/project";
 import { toast } from "sonner";
+import { DocumentContent } from "@/types/project";
 
 interface ChatInputFormProps {
   onSubmit: (e: React.FormEvent) => void;
@@ -61,8 +61,8 @@ function ChatInputForm(
   const [selectedModel] = useAtom(modelAtom);
   const [focused, setFocused] = useState(true);
   const [showFileExplorer, setShowFileExplorer] = useState(false);
-  const [selectedProjectFiles, setSelectedProjectFiles] = useAtom(
-    selectedProjectFilesAtom
+  const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
+    selectedProjectDocsAtom
   );
 
   const {
@@ -147,18 +147,19 @@ function ChatInputForm(
   }, []);
 
   // Add this before the return statement
-  const handleFileSelect = (item: ProjectContent) => {
+  const handleFileSelect = (item: DocumentContent) => {
     if (item.type === "file") {
       // If the selected model can't handle the file type, return and show toast error message
       if (
         selectedModel.supportedMimeTypes &&
+        item.mimeType &&
         !selectedModel.supportedMimeTypes.includes(item.mimeType)
       ) {
         toast.error(`Selected model does not support ${item.mimeType} files.`);
         return;
       }
 
-      setSelectedProjectFiles((prev) => {
+      setSelectedProjectDocs((prev) => {
         if (prev.find((file) => file.path === item.path)) {
           return prev;
         }
@@ -220,15 +221,15 @@ function ChatInputForm(
               </Dialog>
 
               {/** Selected project files in context */}
-              {selectedProjectFiles.length > 0 && (
+              {selectedProjectDocs.length > 0 && (
                 <div className="flex gap-2 flex-wrap">
-                  {selectedProjectFiles.map((file) => (
+                  {selectedProjectDocs.map((file) => (
                     <div key={file.path} className="flex items-center gap-1">
                       <span className="text-xs">{file.name}</span>
                       <button
                         className="rounded-full bg-accent/20 hover:bg-accent/30"
                         onClick={() =>
-                          setSelectedProjectFiles((prev) =>
+                          setSelectedProjectDocs((prev) =>
                             prev.filter((f) => f.path !== file.path)
                           )
                         }

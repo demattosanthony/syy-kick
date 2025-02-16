@@ -70,8 +70,7 @@ export default Router()
     "/presigned-url",
     auth,
     handle(async (req) => {
-      const { filename, mime_type, size } = req.body;
-      const file_key = `uploads/${Date.now()}-${filename}`;
+      const { filename, mime_type, size, file_key } = req.body;
       const url = s3.presign(file_key, {
         expiresIn: 3600, // 1 hour
         type: mime_type,

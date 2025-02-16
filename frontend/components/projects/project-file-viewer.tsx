@@ -1,26 +1,42 @@
 "use client";
 
-import { FileResponse } from "@/types/project";
+import { DocumentContent } from "@/types/project";
 import MarkdownViewer from "../MarkdownViewer";
 import PdfViewer from "../pdf-viewer";
 import ReactPlayer from "react-player";
 import { ArrowDown, File } from "lucide-react";
+import { useEffect, useState } from "react";
 
-export default function ProjectFileViewer({ file }: { file: FileResponse }) {
-  console.log(file);
-  // Helper function to get the correct source URL
-  const getFileSource = () => {
-    if (file.base64Content) {
-      return `data:${file.type};base64,${file.base64Content}`;
-    }
-    return file.s3Url || "";
-  };
+export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
+  console.log(doc);
 
-  switch (file.type) {
+  const [textContent, setTextContent] = useState<string>("");
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      if (
+        doc.url &&
+        (doc.mimeType === "text/markdown" || doc.mimeType === "text/csv")
+      ) {
+        try {
+          const response = await fetch(doc.url);
+          const text = await response.text();
+          setTextContent(text);
+        } catch (error) {
+          console.error("Error fetching file content:", error);
+          setTextContent("Error loading file content");
+        }
+      }
+    };
+
+    fetchContent();
+  }, [doc.url, doc.mimeType]);
+
+  switch (doc.mimeType) {
     case "application/pdf":
       return (
         <div className="h-full w-full overflow-hidden">
-          <PdfViewer content={file.s3Url || ""} fileName={file.name} />
+          <PdfViewer content={doc.url || ""} fileName={doc.name} />
         </div>
       );
     case "image/jpeg":
@@ -31,8 +47,8 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
       return (
         <div className="h-full w-full flex items-center justify-center">
           <img
-            src={getFileSource()}
-            alt={file.name}
+            src={doc.url}
+            alt={doc.name}
             className="max-h-full max-w-[95%] object-contain"
           />
         </div>
@@ -40,11 +56,11 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
     case "text/markdown":
       return (
         <div className="h-full w-full p-8">
-          <MarkdownViewer content={file.content || ""} />
+          <MarkdownViewer content={textContent || ""} />
         </div>
       );
     case "text/csv":
-      const rows = file.content?.split("\n") || [];
+      const rows = textContent?.split("\n") || [];
       const headerRow = rows[0];
       const bodyRows = rows.slice(1);
 
@@ -90,7 +106,7 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
     case "text/xml":
       return (
         <div className="h-full w-full">
-          <pre className="code-viewer">{file.content}</pre>
+          <pre className="code-viewer">{textContent}</pre>
         </div>
       );
     case "video/mp4":
@@ -102,7 +118,7 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
       return (
         <div className="flex flex-1 w-full ">
           <ReactPlayer
-            url={getFileSource()}
+            url={doc.url}
             width={"auto"}
             height={"100%"}
             style={{
@@ -128,23 +144,23 @@ export default function ProjectFileViewer({ file }: { file: FileResponse }) {
               download it to view it locally.
             </p>
             <a
-              href={getFileSource()}
+              href={doc.url}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              download={file.name}
-              onClick={(e) => {
-                if (file.base64Content) {
-                  e.preventDefault();
-                  const link = document.createElement("a");
-                  link.href = getFileSource();
-                  link.download = file.name;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                }
-              }}
+              download={doc.name}
+              //   onClick={(e) => {
+              //     if (file.base64Content) {
+              //       e.preventDefault();
+              //       const link = document.createElement("a");
+              //       link.href = getFileSource();
+              //       link.download = file.name;
+              //       document.body.appendChild(link);
+              //       link.click();
+              //       document.body.removeChild(link);
+              //     }
+              //   }}
             >
               <ArrowDown className="h-4 w-4 mr-2" />
-              Download {file.name}
+              Download {doc.name}
             </a>
           </div>
         </div>

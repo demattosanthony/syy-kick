@@ -12,21 +12,22 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
-  useProjectFilesQuery,
+  useProjectDocsQuery,
   useDeleteProjectContentMutation,
+  useProjectDocQuery,
 } from "@/queries/queries";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { cn, getRelativeTimeString } from "@/lib/utils";
-import { ProjectContent } from "@/types/project";
+import { DocumentContent } from "@/types/project";
 
 interface ProjectFileExplorerProps {
   projectId: string;
   currentPath?: string;
   variant?: "compact" | "detailed";
   initialOpenPathChain?: string[];
-  onFileSelect?: (item: ProjectContent) => void;
+  onFileSelect?: (item: DocumentContent) => void;
 }
 
 export default function ProjectFileExplorer({
@@ -36,10 +37,12 @@ export default function ProjectFileExplorer({
   initialOpenPathChain,
   onFileSelect,
 }: ProjectFileExplorerProps) {
-  const { data: contents, isLoading } = useProjectFilesQuery(
+  const { data: contents, isLoading } = useProjectDocsQuery(
     projectId,
     currentPath
   );
+
+  console.log(contents);
 
   if (isLoading) {
     return (
@@ -93,12 +96,12 @@ export default function ProjectFileExplorer({
 }
 
 interface FileExplorerItemProps {
-  item: ProjectContent;
+  item: DocumentContent;
   depth?: number;
   projectId: string;
   variant: "compact" | "detailed";
   initialPathChain?: string[];
-  onFileSelect?: (item: ProjectContent) => void;
+  onFileSelect?: (item: DocumentContent) => void;
 }
 
 function FileExplorerItem({
@@ -117,17 +120,15 @@ function FileExplorerItem({
   // If there is a chain and this item’s name matches the first element,
   // then mark it as open by default.
   const shouldAutoOpen =
-    item.type === "dir" &&
+    item.type === "folder" &&
     initialPathChain.length > 0 &&
     initialPathChain[0] === item.name;
   const [isOpen, setIsOpen] = useState(shouldAutoOpen);
 
   // In "compact" mode, we load children only when the folder is open.
-  const { data: childContents } = useProjectFilesQuery(
+  const { data: childContents } = useProjectDocsQuery(
     projectId,
-    variant === "compact" && item.type === "dir" && isOpen
-      ? item.path
-      : undefined
+    variant === "compact" && item.type === "folder" && isOpen ? item.path : ""
   );
 
   const deleteProjectContentMutation = useDeleteProjectContentMutation();
@@ -177,14 +178,14 @@ function FileExplorerItem({
   const handleRowClick = async () => {
     // If there was an onFileSelect callback, call it and return.
     if (variant === "compact" && onFileSelect) {
-      if (item.type === "dir") {
+      if (item.type === "folder") {
         setIsOpen(!isOpen);
       } else onFileSelect(item);
       return;
     }
 
     // Otherwise, navigate to the file or folder.
-    if (item.type === "dir") {
+    if (item.type === "folder") {
       if (variant === "compact") {
         setIsOpen(!isOpen);
       }
@@ -211,7 +212,7 @@ function FileExplorerItem({
         onClick={handleRowClick}
       >
         <div className="flex items-center gap-2 max-w-full">
-          {item.type === "dir" ? (
+          {item.type === "folder" ? (
             <div className="flex items-center gap-1">
               {variant === "compact" && (
                 <div onClick={toggleExpansion}>
@@ -243,7 +244,7 @@ function FileExplorerItem({
         {variant === "detailed" && (
           <div className="flex items-center gap-2">
             <small className="text-sm font-medium leading-none text-muted-foreground">
-              {getRelativeTimeString(item.lastModified)}
+              {getRelativeTimeString(item.updatedAt)}
             </small>
             <Popover>
               <PopoverTrigger asChild>
@@ -280,7 +281,7 @@ function FileExplorerItem({
 
       {/* In compact mode, render children inline if this folder is expanded */}
       {variant === "compact" &&
-        item.type === "dir" &&
+        item.type === "folder" &&
         isOpen &&
         childContents && (
           <div className="divide-y">

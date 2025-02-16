@@ -26,6 +26,7 @@ const SUBSCRIPTION_STATUS = [
 ] as const;
 const SUBSCRIPTION_PLAN = ["free", "pro", "teams", "enterprise"] as const;
 const IDENTITY_PROVIDER = ["google", "saml", "microsoft"] as const;
+const DOCUMENT_TYPE = ["file", "folder"] as const;
 
 // Custom type for bytea columns (pgcrypto extension)
 export const bytea = customType<{
@@ -114,7 +115,6 @@ export const users = pgTable("users", {
 
 export const projects = pgTable("projects", {
   id: uuid("id").primaryKey().defaultRandom(),
-  giteaRepoId: integer("gitea_repo_id").notNull(), // Gitea's internal repo ID
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   visibility: text("visibility", { enum: ["private", "public"] })
@@ -126,6 +126,25 @@ export const projects = pgTable("projects", {
   userId: uuid("user_id").references(() => users.id, {
     onDelete: "cascade",
   }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const documents = pgTable("documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  fileHash: varchar("file_hash", { length: 255 }),
+  type: text("type", { enum: DOCUMENT_TYPE }).notNull(),
+  mimeType: varchar("mime_type", { length: 255 }),
+  path: varchar("path", { length: 255 }).notNull(),
+  fileKey: varchar("file_key", { length: 255 }),
+  parentId: uuid("parent_id").references((): any => documents.id, {
+    onDelete: "cascade",
+  }),
+  projectId: uuid("project_id").references(() => projects.id, {
+    onDelete: "cascade",
+  }),
+  size: integer("size"), // size in bytes
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -208,6 +227,18 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
   messages: many(messages),
   project: one(projects, {
     fields: [threads.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const documentsRelations = relations(documents, ({ one, many }) => ({
+  parent: one(documents, {
+    fields: [documents.parentId],
+    references: [documents.id],
+  }),
+  children: many(documents),
+  project: one(projects, {
+    fields: [documents.projectId],
     references: [projects.id],
   }),
 }));
