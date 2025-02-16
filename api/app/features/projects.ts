@@ -100,6 +100,20 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
 }
 
 async function deleteProject(projectId: string) {
+  // Get all documents associated with this project
+  const docs = await db.query.documents.findMany({
+    where: eq(documents.projectId, projectId),
+  });
+
+  // Delete all files from S3
+  for (const doc of docs) {
+    if (doc.fileKey) {
+      await s3.delete(doc.fileKey);
+    }
+  }
+
+  // Delete all documents and the project from the database
+  await db.delete(documents).where(eq(documents.projectId, projectId));
   await db.delete(projects).where(eq(projects.id, projectId));
 }
 
@@ -211,7 +225,6 @@ export async function getProjectDocs(projectId: string, path: string = "") {
     throw new Error("Failed to fetch project contents");
   }
 }
-
 async function deleteProjectContent(projectId: string, path: string) {
   await getProjectOrThrow(projectId);
 
@@ -229,7 +242,22 @@ async function deleteProjectContent(projectId: string, path: string) {
       throw new Error(`Path '${path}' not found`);
     }
 
-    // Delete all matching documents
+    // Delete files from S3 first
+    for (const doc of docsToDelete) {
+      if (doc.type === "file" && doc.fileKey) {
+        try {
+          await s3.delete(doc.fileKey);
+        } catch (s3Error) {
+          console.error(
+            `Failed to delete file from S3: ${doc.fileKey}`,
+            s3Error
+          );
+          // Continue with other deletions even if one fails
+        }
+      }
+    }
+
+    // Delete all matching documents from database
     await db
       .delete(documents)
       .where(

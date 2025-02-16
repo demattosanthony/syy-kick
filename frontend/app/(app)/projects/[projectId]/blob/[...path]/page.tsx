@@ -13,7 +13,7 @@ export default function Page() {
 
   // Remove the fixed parts of the path to get the file path
   const currentPath = pathname
-    .replace(`/projects/${projectId}/blob/main/`, "")
+    .replace(`/projects/${projectId}/blob/`, "")
     .replace(/^\/+|\/+$/g, ""); // Trim any leading/trailing slashes
 
   const pathArray = currentPath ? currentPath.split("/") : [];

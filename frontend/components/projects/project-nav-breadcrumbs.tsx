@@ -42,7 +42,7 @@ export default function ProjectNavBreadcrumbs({
                   <span className="font-bold">{decodedSegment}</span>
                 ) : (
                   <Link
-                    href={`/projects/${project.id}/tree/main/${pathArray
+                    href={`/projects/${project.id}/tree/${pathArray
                       .slice(0, index + 1)
                       .join("/")}`}
                     className="hover:text-blue-500 hover:underline"

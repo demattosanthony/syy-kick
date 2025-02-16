@@ -1,12 +1,12 @@
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import api from "@/lib/api";
-import { ProjectContent } from "@/types/project";
 import {
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useState } from "react";
 
 export function useMeQuery() {
   return useQuery({
@@ -275,23 +275,27 @@ export function useProjectQuery(projectId: string) {
 
 export function useUploadDocsMutation() {
   const queryClient = useQueryClient();
-  return useMutation({
+  const [progress, setProgress] = useState(0);
+
+  const mutation = useMutation({
     mutationFn: ({ projectId, files }: { projectId: string; files: File[] }) =>
-      api.projects.uploadFiles(projectId, files),
+      api.projects.uploadFiles(projectId, files, "", (progress) => {
+        setProgress(progress);
+      }),
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: ["project-docs", projectId] });
+      setProgress(0);
+    },
+    onError: () => {
+      setProgress(0);
     },
   });
-}
 
-export function useProjectDocsQuery(
-  projectId: string,
-  path?: string,
-  initalContent?: ProjectContent[]
-) {
+  return { ...mutation, progress };
+}
+export function useProjectDocsQuery(projectId: string, path?: string) {
   return useQuery({
     queryKey: ["project-docs", projectId, path],
-    initialData: initalContent,
     queryFn: () => api.projects.getDocuments(projectId, path),
     enabled: !!projectId,
   });

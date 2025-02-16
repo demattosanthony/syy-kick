@@ -442,6 +442,9 @@ class ThreadApi extends ApiRequest {
  * Projects API Module
  */
 class ProjectsApi extends ApiRequest {
+  private readonly LARGE_FILE_THRESHOLD = 100 * 1024 * 1024; // 100MB
+  private readonly CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks for large files
+
   async createProject(data: {
     name: string;
     description?: string;
@@ -605,34 +608,88 @@ class ProjectsApi extends ApiRequest {
     return entries;
   }
 
-  // ---------------------------------------------------
-  //   Upload files & create documents
-  // ---------------------------------------------------
-  /**
-   * 1) Generate folder/file entries from the provided File array
-   * 2) For each file, compute SHA-256, get presigned URL, and upload to S3
-   * 3) Finally, send the entire list of entries to /projects/:projectId/documentsUpload
-   */
+  private async uploadLargeFile(
+    file: File,
+    uploadUrl: string,
+    onProgress?: (loaded: number) => void
+  ): Promise<void> {
+    const chunks = Math.ceil(file.size / this.CHUNK_SIZE);
+
+    for (let i = 0; i < chunks; i++) {
+      const start = i * this.CHUNK_SIZE;
+      const end = Math.min(start + this.CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+
+      const headers = {
+        "Content-Type": file.type || "application/octet-stream",
+        "Content-Range": `bytes ${start}-${end - 1}/${file.size}`,
+      };
+
+      // Implement retry logic for each chunk
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          const response = await fetch(uploadUrl, {
+            method: "PUT",
+            headers,
+            body: chunk,
+          });
+
+          if (!response.ok)
+            throw new Error(`Upload failed with status ${response.status}`);
+          onProgress?.(end);
+          break;
+        } catch (error) {
+          retries--;
+          if (retries === 0) throw error;
+          await new Promise((resolve) =>
+            setTimeout(resolve, (3 - retries) * 1000)
+          );
+        }
+      }
+    }
+  }
+
+  private async uploadRegularFile(
+    file: File,
+    uploadUrl: string,
+    onProgress?: (loaded: number) => void
+  ): Promise<void> {
+    const response = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed with status ${response.status}`);
+    }
+
+    onProgress?.(file.size);
+  }
+
   public async uploadFiles(
     projectId: string,
     files: File[],
-    basePath: string = ""
+    basePath: string = "",
+    onProgress?: (progress: number) => void
   ): Promise<{
     success: boolean;
     documents?: any;
   }> {
-    // 1) Generate the folder and file entries
     const entries = await this.generateEntriesFromFileList(files, projectId);
+    let uploadedBytes = 0;
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
 
-    // 2) Upload each file to S3
-    //    We'll match the File object to the doc entry by comparing paths.
     for (const entry of entries) {
       if (entry.type === "file" && entry.fileKey) {
-        // Find the actual File object that corresponds to this entry
         const rawFile = files.find((f) => {
           const relPath = (f as any).webkitRelativePath || f.name;
           return relPath === entry.path;
         });
+
         if (!rawFile) {
           console.warn(
             `No matching File object found for path: ${entry.path}, skipping.`
@@ -640,7 +697,6 @@ class ProjectsApi extends ApiRequest {
           continue;
         }
 
-        // Get a presigned URL from the UploadApi
         const { url: uploadUrl } = await api.uploads.getPresignedUrl(
           rawFile.name,
           rawFile.type,
@@ -648,33 +704,32 @@ class ProjectsApi extends ApiRequest {
           entry.fileKey
         );
 
-        // Perform the actual PUT upload to S3
-        const putRes = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": rawFile.type || "application/octet-stream",
-          },
-          body: rawFile,
-        });
-
-        if (!putRes.ok) {
+        try {
+          // Choose upload method based on file size
+          if (rawFile.size >= this.LARGE_FILE_THRESHOLD) {
+            await this.uploadLargeFile(rawFile, uploadUrl, (chunkLoaded) => {
+              const currentProgress =
+                ((uploadedBytes + chunkLoaded) / totalBytes) * 100;
+              onProgress?.(currentProgress);
+            });
+          } else {
+            await this.uploadRegularFile(rawFile, uploadUrl, (loaded) => {
+              const currentProgress =
+                ((uploadedBytes + loaded) / totalBytes) * 100;
+              onProgress?.(currentProgress);
+            });
+          }
+          uploadedBytes += rawFile.size;
+        } catch (error: unknown) {
           throw new ApiError(
-            putRes.status,
-            `Failed to upload file ${entry.path} to S3`
+            500,
+            `Failed to upload file ${entry.path}: ${error}`
           );
         }
       }
     }
 
-    // 3) Post all entries (folders + files) to your documentsUpload route
-    //    so the back-end can record them in the DB.
-    const payload = {
-      basePath,
-      entries,
-    };
-
-    // Assuming your back-end is expecting this payload at:
-    // POST /projects/:projectId/documentsUpload
+    const payload = { basePath, entries };
     return this.request<{
       success: boolean;
       documents?: any;

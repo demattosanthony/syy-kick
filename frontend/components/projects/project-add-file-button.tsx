@@ -6,28 +6,34 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useUploadDocsMutation } from "@/queries/queries";
+import { Progress } from "../ui/progress";
+import React from "react";
 
 interface UploadButtonsProps {
   projectId: string;
 }
 
 export function ProjectAddFileButton({ projectId }: UploadButtonsProps) {
-  const { mutateAsync: uploadFiles, isPending } = useUploadDocsMutation();
+  const [open, setOpen] = React.useState(false);
+  const {
+    mutateAsync: uploadFiles,
+    isPending,
+    progress,
+  } = useUploadDocsMutation();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     try {
-      // Convert FileList to an array
       const fileArray = Array.from(files);
-      // Single call to batch upload
       await uploadFiles({ projectId, files: fileArray });
       console.log("Files uploaded successfully");
+      setOpen(false); // Close popover after successful upload
     } catch (error: unknown) {
       console.error("Failed to upload files:", error);
     } finally {
-      e.target.value = ""; // Reset the input so onChange triggers again if needed
+      e.target.value = "";
     }
   };
 
@@ -37,62 +43,74 @@ export function ProjectAddFileButton({ projectId }: UploadButtonsProps) {
 
     try {
       const fileArray = Array.from(files);
-      // Again, a single call to batch upload
       await uploadFiles({ projectId, files: fileArray });
       console.log("Folder uploaded successfully");
+      setOpen(false); // Close popover after successful upload
     } catch (error: unknown) {
       console.error("Failed to upload folder:", error);
     } finally {
       e.target.value = "";
     }
   };
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="default" className="px-2 gap-1">
-          <Plus className="h-3 w-3" />
-          Add file
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-48 p-1">
-        <div className="flex flex-col gap-1">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-2 text-sm"
-          >
-            <label className="flex items-center gap-2 cursor-pointer w-full">
-              <FolderClosed className="h-5 w-5 fill-blue-400 text-blue-400" />
-              <input
-                type="file"
-                // @ts-expect-error webkitdirectory is a non-standard attribute
-                webkitdirectory=""
-                multiple
-                className="hidden"
-                onChange={handleFolderUpload}
-              />
-              Upload folder
-            </label>
+    <div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="default" className="px-2 gap-1">
+            <Plus className="h-3 w-3" />
+            Add file
           </Button>
-          <label>
-            <input
-              type="file"
-              multiple
-              className="hidden"
-              onChange={handleFileUpload}
-            />
+        </PopoverTrigger>
+        <PopoverContent className="w-48 p-1">
+          <div className="flex flex-col gap-1">
             <Button
               variant="ghost"
-              className="w-full justify-start gap-2 text-sm cursor-pointer"
-              asChild
+              className="w-full justify-start gap-2 text-sm"
             >
-              <span>
-                <File className="h-4 w-4 text-muted-foreground" />
-                Upload files
-              </span>
+              <label className="flex items-center gap-2 cursor-pointer w-full">
+                <FolderClosed className="h-5 w-5 fill-blue-400 text-blue-400" />
+                <input
+                  type="file"
+                  // @ts-expect-error webkitdirectory is a non-standard attribute
+                  webkitdirectory=""
+                  multiple
+                  className="hidden"
+                  onChange={handleFolderUpload}
+                />
+                Upload folder
+              </label>
             </Button>
-          </label>
+            <label>
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 text-sm cursor-pointer"
+                asChild
+              >
+                <span>
+                  <File className="h-4 w-4 text-muted-foreground" />
+                  Upload files
+                </span>
+              </Button>
+            </label>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {isPending && (
+        <div className="w-48">
+          <Progress value={progress} className="h-2" />
+          <p className="text-xs text-muted-foreground mt-1">
+            Uploading: {Math.round(progress)}%
+          </p>
         </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }

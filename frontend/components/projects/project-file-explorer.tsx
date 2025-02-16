@@ -115,7 +115,7 @@ function FileExplorerItem({
   const router = useRouter();
   const pathname = window.location.pathname;
   const isSelected =
-    variant === "compact" && pathname.endsWith(`/main/${item.path}`);
+    variant === "compact" && pathname.endsWith(`/${item.path}`);
 
   // If there is a chain and this item’s name matches the first element,
   // then mark it as open by default.
@@ -189,9 +189,9 @@ function FileExplorerItem({
       if (variant === "compact") {
         setIsOpen(!isOpen);
       }
-      router.push(`/projects/${projectId}/tree/main/${item.path}`);
+      router.push(`/projects/${projectId}/tree/${item.path}`);
     } else {
-      router.push(`/projects/${projectId}/blob/main/${item.path}`);
+      router.push(`/projects/${projectId}/blob/${item.path}`);
     }
   };
 

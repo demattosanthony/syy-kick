@@ -8,15 +8,20 @@ import { ArrowDown, File } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
-  console.log(doc);
-
   const [textContent, setTextContent] = useState<string>("");
 
   useEffect(() => {
     const fetchContent = async () => {
       if (
         doc.url &&
-        (doc.mimeType === "text/markdown" || doc.mimeType === "text/csv")
+        (doc.mimeType === "text/markdown" ||
+          doc.mimeType === "text/csv" ||
+          doc.mimeType === "text/plain" ||
+          doc.mimeType === "text/html" ||
+          doc.mimeType === "application/json" ||
+          doc.mimeType === "text/javascript" ||
+          doc.mimeType === "text/typescript" ||
+          doc.mimeType === "text/css")
       ) {
         try {
           const response = await fetch(doc.url);
