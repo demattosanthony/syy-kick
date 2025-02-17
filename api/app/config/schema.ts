@@ -26,6 +26,7 @@ const SUBSCRIPTION_STATUS = [
 ] as const;
 const SUBSCRIPTION_PLAN = ["free", "pro", "teams", "enterprise"] as const;
 const IDENTITY_PROVIDER = ["google", "saml", "microsoft"] as const;
+const DOCUMENT_TYPE = ["file", "folder"] as const;
 
 // Custom type for bytea columns (pgcrypto extension)
 export const bytea = customType<{
@@ -112,6 +113,42 @@ export const users = pgTable("users", {
   systemRole: text("system_role", { enum: ["super_admin"] }), // identify system super admins
 });
 
+export const projects = pgTable("projects", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  visibility: text("visibility", { enum: ["private", "public"] })
+    .default("private")
+    .notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id, {
+    onDelete: "cascade",
+  }),
+  userId: uuid("user_id").references(() => users.id, {
+    onDelete: "cascade",
+  }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const documents = pgTable("documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  fileHash: varchar("file_hash", { length: 255 }),
+  type: text("type", { enum: DOCUMENT_TYPE }).notNull(),
+  mimeType: varchar("mime_type", { length: 255 }),
+  path: varchar("path", { length: 255 }).notNull(),
+  fileKey: varchar("file_key", { length: 255 }),
+  parentId: uuid("parent_id").references((): any => documents.id, {
+    onDelete: "cascade",
+  }),
+  projectId: uuid("project_id").references(() => projects.id, {
+    onDelete: "cascade",
+  }),
+  size: integer("size"), // size in bytes
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Threads table with user association
 export const threads = pgTable("threads", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -124,6 +161,23 @@ export const threads = pgTable("threads", {
   organizationId: uuid("organization_id").references(() => organizations.id, {
     onDelete: "cascade",
   }),
+  projectId: uuid("project_id").references(() => projects.id, {
+    onDelete: "cascade",
+  }),
+});
+
+export const messageAttachments = pgTable("message_attachments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id")
+    .notNull()
+    .references(() => messages.id, { onDelete: "cascade" }),
+  type: text("type", { enum: ["file", "image"] }).notNull(),
+  fileKey: varchar("file_key", { length: 255 }).notNull(),
+  fileName: varchar("file_name", { length: 255 }),
+  mimeType: varchar("mime_type", { length: 255 }),
+  size: integer("size"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Messages table with user association
@@ -138,7 +192,7 @@ export const messages = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role", { enum: MESSAGE_ROLES }).notNull(),
-    content: jsonb("content").notNull(),
+    text: text("text"),
     reasoning: text("reasoning"),
     model: text("model"),
     provider: text("provider"),
@@ -172,6 +226,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   threads: many(threads),
   messages: many(messages),
   organizationMembers: many(organizationMembers),
+  projects: many(projects),
 }));
 
 export const threadsRelations = relations(threads, ({ one, many }) => ({
@@ -184,9 +239,25 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
     references: [organizations.id],
   }),
   messages: many(messages),
+  project: one(projects, {
+    fields: [threads.projectId],
+    references: [projects.id],
+  }),
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const documentsRelations = relations(documents, ({ one, many }) => ({
+  parent: one(documents, {
+    fields: [documents.parentId],
+    references: [documents.id],
+  }),
+  children: many(documents),
+  project: one(projects, {
+    fields: [documents.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const messagesRelations = relations(messages, ({ one, many }) => ({
   thread: one(threads, {
     fields: [messages.threadId],
     references: [threads.id],
@@ -195,7 +266,18 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     fields: [messages.userId],
     references: [users.id],
   }),
+  attachments: many(messageAttachments),
 }));
+
+export const messageAttachmentsRelations = relations(
+  messageAttachments,
+  ({ one }) => ({
+    message: one(messages, {
+      fields: [messageAttachments.messageId],
+      references: [messages.id],
+    }),
+  })
+);
 
 export const toolCallsRelations = relations(toolCalls, ({ one }) => ({
   message: one(messages, {
@@ -244,29 +326,29 @@ export const samlConfigsRelations = relations(samlConfigs, ({ one }) => ({
   }),
 }));
 
-// Types
-type BaseContentPart = {
-  type: (typeof CONTENT_TYPES)[number];
-};
+export const projectsRelations = relations(projects, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [projects.organizationId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [projects.userId],
+    references: [users.id],
+  }),
+}));
 
-type TextContent = BaseContentPart & {
-  type: "text";
-  text: string;
-};
-
-export type FileContent = BaseContentPart & {
+export type MessageAttachment = {
+  id: string;
+  messageId: string;
   type: "file" | "image";
-  data?: string;
-  image?: string;
-  file_metadata: {
-    filename: string;
-    mime_type: string;
-    file_key: string;
-    size?: number;
-  };
+  fileKey: string;
+  fileName?: string;
+  mimeType?: string;
+  size?: number;
+  url?: string;
+  createdAt: Date;
+  updatedAt: Date;
 };
-
-export type ContentPart = TextContent | FileContent;
 
 // Response types
 export type ApiResponse<T> = T | { error: string };

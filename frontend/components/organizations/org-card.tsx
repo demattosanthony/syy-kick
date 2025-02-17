@@ -152,7 +152,8 @@ export default function OrganizationCard({
                     await api.uploads.getPresignedUrl(
                       file.name,
                       file.type,
-                      file.size
+                      file.size,
+                      `uploads/${Date.now()}-${file.name}`
                     );
 
                   const res = await fetch(url, {

@@ -7,6 +7,10 @@ import { useAtom } from "jotai";
 import { useMeQuery } from "@/queries/queries";
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
+import { useWorkspace } from "@/components/sidebar/workspace-context";
+
+// State
+import { initalInputAtom } from "@/atoms/chat";
 
 // Components
 import ConversationStarters from "@/components/ConversationStarters";
@@ -20,8 +24,6 @@ import { toast } from "sonner";
 import ChatInputForm, {
   ChatInputFormRef,
 } from "@/components/chat/ChatInputForm";
-import { initalInputAtom } from "@/atoms/chat";
-import { useWorkspace } from "@/components/sidebar/workspace-context";
 import Rhombicuboctahedron from "@/components/rhombicuboctahedron";
 
 export default function Home() {
@@ -43,6 +45,8 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
+    if (initalInput.trim() === "") return;
+
     // Require login
     if (!user) {
       router.push("/login");
@@ -86,7 +90,7 @@ export default function Home() {
         ) && <PricingDialog />}
 
       <div className="w-full flex flex-1 items-center justify-center">
-        <div className="flex flex-col h-[65%] md:h-[55%] items-center w-full ">
+        <div className="flex flex-col h-[65%] md:h-[50%] items-center w-full ">
           <div className="mb-2 w-[155px] flex items-center justify-center">
             <Rhombicuboctahedron size={155} />
           </div>

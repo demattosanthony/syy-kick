@@ -1,11 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { Provider as JotaiProvider } from "jotai";
-import { ThemeProvider } from "@/components/ThemeProvider";
-import ReactQueryProvider from "./providers";
-import { Toaster } from "@/components/ui/sonner";
+import { Providers } from "./providers";
 import "./globals.css";
-import { WorkspaceProvider } from "@/components/sidebar/workspace-context";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -124,21 +120,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <ReactQueryProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <JotaiProvider>
-              <WorkspaceProvider>
-                <Toaster />
-                {children}
-              </WorkspaceProvider>
-            </JotaiProvider>
-          </ThemeProvider>
-        </ReactQueryProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

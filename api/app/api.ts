@@ -12,6 +12,7 @@ import modelRoutes from "./features/models";
 import threadRoutes from "./features/threads";
 import paymentRoutes, { webhook } from "./features/payments";
 import organizationRoutes from "./features/organizations";
+import projectRoutes from "./features/projects";
 
 export default Router()
   .use("/auth", authRoutes)
@@ -64,12 +65,12 @@ export default Router()
     })
   )
   .use("/organizations", auth, organizationRoutes)
+  .use("/projects", auth, checkSub, projectRoutes)
   .post(
     "/presigned-url",
     auth,
     handle(async (req) => {
-      const { filename, mime_type, size } = req.body;
-      const file_key = `uploads/${Date.now()}-${filename}`;
+      const { filename, mime_type, size, file_key } = req.body;
       const url = s3.presign(file_key, {
         expiresIn: 3600, // 1 hour
         type: mime_type,

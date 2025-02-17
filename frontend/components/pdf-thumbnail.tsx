@@ -19,7 +19,7 @@ export const PdfThumbnail = ({
       // Initialize worker first
       const pdfjs = await import("pdfjs-dist");
 
-      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
       try {
         // Load the PDF
         const loadingTask = pdfjsLib.getDocument(url);
@@ -78,7 +78,7 @@ export const PdfThumbnail = ({
       className="thumbnail-container cursor-pointer transition-all rounded overflow-hidden"
       onClick={() => window.open(url, "_blank")}
     >
-      {loading && <Skeleton className={`h-56 w-[${width}px]`} />}
+      {loading && <Skeleton className="h-56" style={{ width: `${width}px` }} />}
       <canvas ref={canvasRef} style={{ display: loading ? "none" : "block" }} />
     </div>
   );

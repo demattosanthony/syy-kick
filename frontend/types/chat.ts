@@ -1,3 +1,5 @@
+import { Project } from "./project";
+
 export enum MessageRole {
   system = "system",
   user = "user",
@@ -19,12 +21,25 @@ export type MessageContent = {
   };
 };
 
+export type MessageAttachment = {
+  id: string;
+  messageId: string;
+  type: "file" | "image";
+  fileKey: string;
+  url: string;
+  fileName?: string;
+  mimeType?: string;
+  size?: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type ChatMessage = {
   id: string;
   role: MessageRole;
-  content: MessageContent | null;
-  name?: string;
-  createdAt?: string;
+  text: string;
+  createdAt: string;
+  attachments?: MessageAttachment[];
   model?: string;
   provider?: string;
   reasoning?: string;
@@ -41,14 +56,8 @@ export interface Thread {
   createdAt: string;
   updatedAt: string;
   title?: string;
-  messages: {
-    id: string;
-    thread_id: string;
-    role: string;
-    content: MessageContent;
-    createdAt: string;
-    model?: string;
-    provider?: string;
-    reasoning?: string;
-  }[];
+  organizationId?: string;
+  projectId?: string;
+  project?: Project;
+  messages: ChatMessage[];
 }

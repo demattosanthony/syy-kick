@@ -10,6 +10,7 @@ import {
   initalInputAtom,
   instructionsAtom,
   modelAtom,
+  selectedProjectDocsAtom,
   temperatureAtom,
   uploadsAtom,
 } from "@/atoms/chat";
@@ -24,6 +25,8 @@ import { useEffect } from "react";
 // Components
 import ChatInputForm from "@/components/chat/ChatInputForm";
 import ChatMessagesList from "@/components/chat/MessagesList";
+import { Thread } from "@/types/chat";
+import { toast } from "sonner";
 import { useWorkspace } from "../sidebar/workspace-context";
 
 type ExtendedAttachment = Attachment & {
@@ -32,8 +35,10 @@ type ExtendedAttachment = Attachment & {
 
 export default function ThreadPage({
   initalMessages,
+  thread,
 }: {
   initalMessages: Message[];
+  thread?: Thread;
 }) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -47,7 +52,13 @@ export default function ThreadPage({
   const [temperature] = useAtom(temperatureAtom);
   const [instructions] = useAtom(instructionsAtom);
 
+  const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
+    selectedProjectDocsAtom
+  );
+
   const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
 
   const {
     input,
@@ -57,12 +68,9 @@ export default function ThreadPage({
     messages,
     isLoading,
     stop,
+    error,
   } = useChat({
-    api: `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference${
-      activeWorkspace?.type === "organization"
-        ? `?organizationId=${activeWorkspace.id}`
-        : ""
-    }`,
+    api: `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference`,
     credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,
@@ -73,20 +81,24 @@ export default function ThreadPage({
         model: model.name,
         temperature: temperature,
         instructions,
+        organizationId: orgId,
       };
     },
   });
 
   async function processAttachments() {
+    const attachments: ExtendedAttachment[] = [];
+
     // Process uploads
     if (uploads.length > 0) {
-      const attachments: ExtendedAttachment[] = await Promise.all(
+      const uploadAttachments = await Promise.all(
         uploads.map(async (upload) => {
           const { url, file_metadata, viewUrl } =
             await api.uploads.getPresignedUrl(
               upload.file.name,
               upload.file.type,
-              upload.file.size
+              upload.file.size,
+              `uploads/${Date.now()}-${upload.file.name}`
             );
 
           // upload directly to storage
@@ -109,9 +121,26 @@ export default function ThreadPage({
         })
       );
 
-      return attachments;
+      attachments.push(...uploadAttachments);
     }
-    return [];
+
+    // Process selected project docs
+    if (selectedProjectDocs.length > 0) {
+      const docAttachments: ExtendedAttachment[] = selectedProjectDocs
+        .filter((doc): doc is typeof doc & { url: string; fileKey: string } =>
+          Boolean(doc.url && doc.fileKey)
+        )
+        .map((doc) => ({
+          name: doc.name,
+          contentType: doc.mimeType,
+          url: doc.url,
+          file_key: doc.fileKey,
+        }));
+
+      attachments.push(...docAttachments);
+    }
+
+    return attachments;
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -125,6 +154,7 @@ export default function ThreadPage({
 
     // Reset attachments after submit
     setUploads([]);
+    setSelectedProjectDocs([]);
   }
 
   useEffect(() => {
@@ -136,6 +166,7 @@ export default function ThreadPage({
 
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["threads"] }); // Needed so the app sidebar shows the new thread
+        queryClient.invalidateQueries({ queryKey: ["thread", threadId] }); // Needed so the thread page shows the new thread
       }, 2000);
 
       return;
@@ -149,6 +180,12 @@ export default function ThreadPage({
     };
   }, [threadId]);
 
+  useEffect(() => {
+    if (error) {
+      toast.error("An error occurred. Please try again later.");
+    }
+  }, [error]);
+
   return (
     <>
       <ChatMessagesList messages={messages} isLoading={isLoading} />
@@ -161,6 +198,8 @@ export default function ThreadPage({
           onSubmit={onSubmit}
           stop={stop}
           isGenerating={isLoading}
+          showContextSelector={thread?.project !== null}
+          projectId={thread?.project?.id}
         />
       </div>
     </>

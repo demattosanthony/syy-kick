@@ -1,5 +1,6 @@
 import { Thread } from "@/types/chat";
 import { Model } from "@/types/model";
+import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
 
 /**
@@ -14,7 +15,7 @@ class ApiRequest {
 
   protected async request<T>(
     endpoint: string,
-    method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
+    method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" = "GET",
     body?: unknown,
     headers?: HeadersInit
   ): Promise<T> {
@@ -46,6 +47,27 @@ class ApiRequest {
     }
 
     return response.json() as Promise<T>; // Explicitly cast for better type safety
+  }
+
+  protected async uploadFormData<T>(
+    endpoint: string,
+    formData: FormData
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        `Upload failed with status ${response.status}`
+      );
+    }
+
+    return response.json();
   }
 }
 
@@ -332,7 +354,8 @@ class UploadApi extends ApiRequest {
   async getPresignedUrl(
     filename: string,
     mime_type: string,
-    size: number
+    size: number,
+    file_key: string
   ): Promise<{
     url: string;
     viewUrl: string;
@@ -352,7 +375,7 @@ class UploadApi extends ApiRequest {
         file_key: string;
         size: number;
       };
-    }>(`/presigned-url`, "POST", { filename, mime_type, size });
+    }>(`/presigned-url`, "POST", { filename, mime_type, size, file_key });
   }
 }
 
@@ -360,10 +383,14 @@ class UploadApi extends ApiRequest {
  * Thread API Module
  */
 class ThreadApi extends ApiRequest {
-  async createThread(organizationId?: string): Promise<{ id: string }> {
+  async createThread(
+    organizationId?: string,
+    projectId?: string
+  ): Promise<{ id: string }> {
     try {
       return await this.request<{ id: string }>("/threads", "POST", {
         organizationId,
+        projectId,
       });
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 402) {
@@ -412,16 +439,359 @@ class ThreadApi extends ApiRequest {
 }
 
 /**
+ * Projects API Module
+ */
+class ProjectsApi extends ApiRequest {
+  private readonly LARGE_FILE_THRESHOLD = 100 * 1024 * 1024; // 100MB
+  private readonly CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks for large files
+
+  async createProject(data: {
+    name: string;
+    description?: string;
+    organizationId?: string;
+  }): Promise<Project> {
+    return await this.request("/projects", "POST", data);
+  }
+
+  async getProject(
+    projectId: string,
+    organizationId?: string
+  ): Promise<Project> {
+    const queryParams = new URLSearchParams();
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
+    return await this.request(
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
+      }`
+    );
+  }
+
+  async listProjects(
+    organizationId?: string,
+    search?: string
+  ): Promise<Project[]> {
+    const queryParams = new URLSearchParams();
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
+    if (search) {
+      queryParams.append("search", search);
+    }
+    return await this.request(`/projects?${queryParams.toString()}`);
+  }
+
+  async deleteProject(
+    projectId: string,
+    organizationId?: string
+  ): Promise<{ success: boolean }> {
+    const queryParams = new URLSearchParams();
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
+    return await this.request(
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
+      }`,
+      "DELETE"
+    );
+  }
+
+  async getDocuments(
+    projectId: string,
+    path?: string,
+    organizationId?: string
+  ): Promise<DocumentContent[]> {
+    const queryParams = new URLSearchParams();
+    if (path) {
+      queryParams.append("path", path);
+    }
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
+    return await this.request(
+      `/projects/${projectId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
+      }`
+    );
+  }
+
+  async deleteContents(
+    projectId: string,
+    path: string,
+    organizationId?: string
+  ): Promise<{
+    success: boolean;
+  }> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("path", path);
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
+    return await this.request(
+      `/projects/${projectId}/documents?${queryParams.toString()}`,
+      "DELETE"
+    );
+  }
+
+  async updateProject(
+    projectId: string,
+    data: {
+      name?: string;
+      description?: string;
+      organizationId?: string;
+    }
+  ): Promise<Project> {
+    return await this.request(`/projects/${projectId}`, "PATCH", data);
+  }
+
+  /**
+   * Fetches file metadata and content. The server response can include:
+   * - isLfsPointer + s3Url (for large/binary files in S3),
+   * - content (for text files),
+   * - base64Content (for small/binary files directly in Gitea).
+   */
+  async getDocument(
+    projectId: string,
+    path: string,
+    organizationId?: string
+  ): Promise<DocumentContent> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("path", path);
+    if (organizationId) {
+      queryParams.append("organizationId", organizationId);
+    }
+    return await this.request(
+      `/projects/${projectId}/document?${queryParams.toString()}`
+    );
+  }
+
+  // ---------------------------------------------------
+  //         Utility: Calculate SHA-256 of a file
+  // ---------------------------------------------------
+  private async calculateSha256(file: File): Promise<string> {
+    // Use Web Crypto API for better performance than pure JS implementations
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+
+    // Convert hash to hex string
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  // ---------------------------------------------------
+  //   Utility: Generate folder + file entries
+  // ---------------------------------------------------
+  private async generateEntriesFromFileList(
+    files: File[],
+    projectId: string
+  ): Promise<
+    {
+      path: string;
+      type: "folder" | "file";
+      fileKey?: string;
+      mimeType?: string;
+      size?: number;
+      sha256?: string;
+    }[]
+  > {
+    const entries: {
+      path: string;
+      type: "folder" | "file";
+      fileKey?: string;
+      mimeType?: string;
+      size?: number;
+      sha256?: string;
+    }[] = [];
+
+    // We'll track which folders we've seen, so we don't duplicate folder entries
+    const seenFolders = new Set<string>();
+
+    for (const file of files) {
+      // webkitRelativePath includes the nested folder structure
+      // e.g. "myFolder/subfolder1/file.txt".
+      // If the user just selected files (no directories), it might just be the filename.
+      const filePath: string =
+        (file as File & { webkitRelativePath?: string }).webkitRelativePath ||
+        file.name;
+
+      // We want to push entries for each folder in that path too
+      // e.g. "myFolder" and "myFolder/subfolder1" as "folder" type
+      const parts = filePath.split("/").filter(Boolean); // remove empty segments
+      // Build subpaths step by step
+      for (let i = 0; i < parts.length - 1; i++) {
+        const folderPath = parts.slice(0, i + 1).join("/");
+        if (!seenFolders.has(folderPath)) {
+          seenFolders.add(folderPath);
+          entries.push({
+            path: folderPath,
+            type: "folder",
+          });
+        }
+      }
+
+      // The last part is the file name itself
+      const sha256 = await this.calculateSha256(file);
+      const fileKey = `projects/${projectId}/${sha256}`;
+
+      // Push the file entry
+      entries.push({
+        path: filePath,
+        type: "file",
+        fileKey,
+        mimeType: file.type || "application/octet-stream",
+        size: file.size,
+        sha256,
+      });
+    }
+
+    return entries;
+  }
+
+  private async uploadLargeFile(
+    file: File,
+    uploadUrl: string,
+    onProgress?: (loaded: number) => void
+  ): Promise<void> {
+    const chunks = Math.ceil(file.size / this.CHUNK_SIZE);
+
+    for (let i = 0; i < chunks; i++) {
+      const start = i * this.CHUNK_SIZE;
+      const end = Math.min(start + this.CHUNK_SIZE, file.size);
+      const chunk = file.slice(start, end);
+
+      const headers = {
+        "Content-Type": file.type || "application/octet-stream",
+        "Content-Range": `bytes ${start}-${end - 1}/${file.size}`,
+      };
+
+      // Implement retry logic for each chunk
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          const response = await fetch(uploadUrl, {
+            method: "PUT",
+            headers,
+            body: chunk,
+          });
+
+          if (!response.ok)
+            throw new Error(`Upload failed with status ${response.status}`);
+          onProgress?.(end);
+          break;
+        } catch (error) {
+          retries--;
+          if (retries === 0) throw error;
+          await new Promise((resolve) =>
+            setTimeout(resolve, (3 - retries) * 1000)
+          );
+        }
+      }
+    }
+  }
+
+  private async uploadRegularFile(
+    file: File,
+    uploadUrl: string,
+    onProgress?: (loaded: number) => void
+  ): Promise<void> {
+    const response = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed with status ${response.status}`);
+    }
+
+    onProgress?.(file.size);
+  }
+
+  public async uploadFiles(
+    projectId: string,
+    files: File[],
+    basePath: string = "",
+    onProgress?: (progress: number) => void,
+    organizationId?: string
+  ): Promise<{
+    success: boolean;
+  }> {
+    const entries = await this.generateEntriesFromFileList(files, projectId);
+    let uploadedBytes = 0;
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+
+    for (const entry of entries) {
+      if (entry.type === "file" && entry.fileKey) {
+        const rawFile = files.find((f) => {
+          const relPath =
+            (f as File & { webkitRelativePath?: string }).webkitRelativePath ||
+            f.name;
+          return relPath === entry.path;
+        });
+
+        if (!rawFile) {
+          console.warn(
+            `No matching File object found for path: ${entry.path}, skipping.`
+          );
+          continue;
+        }
+
+        const { url: uploadUrl } = await api.uploads.getPresignedUrl(
+          rawFile.name,
+          rawFile.type,
+          rawFile.size,
+          entry.fileKey
+        );
+
+        try {
+          // Choose upload method based on file size
+          if (rawFile.size >= this.LARGE_FILE_THRESHOLD) {
+            await this.uploadLargeFile(rawFile, uploadUrl, (chunkLoaded) => {
+              const currentProgress =
+                ((uploadedBytes + chunkLoaded) / totalBytes) * 100;
+              onProgress?.(currentProgress);
+            });
+          } else {
+            await this.uploadRegularFile(rawFile, uploadUrl, (loaded) => {
+              const currentProgress =
+                ((uploadedBytes + loaded) / totalBytes) * 100;
+              onProgress?.(currentProgress);
+            });
+          }
+          uploadedBytes += rawFile.size;
+        } catch (error: unknown) {
+          throw new ApiError(
+            500,
+            `Failed to upload file ${entry.path}: ${error}`
+          );
+        }
+      }
+    }
+
+    const payload = { basePath, entries, organizationId };
+    return this.request<{
+      success: boolean;
+    }>(`/projects/${projectId}/documents`, "POST", payload);
+  }
+}
+
+/**
  *  Centralized ApiClient class that uses the modules
  */
 class ApiClient {
+  public baseUrl: string;
   auth: AuthApi;
   organizations: OrganizationApi;
   payments: PaymentApi;
   models: ModelApi;
   uploads: UploadApi;
   threads: ThreadApi;
-  public baseUrl: string;
+  projects: ProjectsApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -431,6 +801,7 @@ class ApiClient {
     this.models = new ModelApi(baseUrl);
     this.uploads = new UploadApi(baseUrl);
     this.threads = new ThreadApi(baseUrl);
+    this.projects = new ProjectsApi(baseUrl);
   }
 }
 

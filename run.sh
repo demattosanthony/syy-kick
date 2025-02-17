@@ -24,11 +24,11 @@ done
 echo "Minio is ready!"
 
 # Create MinIO bucket using mc command
-echo "Creating MinIO bucket..."
+echo "Creating MinIO buckets..."
 docker exec minio mc alias set local http://minio:9000 minioadmin minioadmin123
 docker exec minio mc mb local/my-new-bucket --ignore-existing
 docker exec minio mc anonymous set public local/my-new-bucket
-echo "MinIO bucket created!"
+echo "MinIO buckets created!"
 
 trap "echo 'Stopping all processes'; kill $SERVER_PID $NEXTJS_APP_PID 2>/dev/null; docker compose down" EXIT INT TERM
 

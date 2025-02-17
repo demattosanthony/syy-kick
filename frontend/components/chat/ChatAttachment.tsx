@@ -43,12 +43,21 @@ export default function ChatAttachment({
         return (
           <div
             key={`file-${attachment.name}-${index}`}
-            className="flex justify-end"
+            className="flex justify-end mb-4"
           >
             <Link key={index} href={attachment.url || ""} target="_blank">
-              <div className="flex items-center gap-1 cursor-pointer hover:opacity-80">
-                <File className="w-4 h-4" />
-                <span>{attachment.name}</span>
+              <div className="flex flex-col bg-primary text-white dark:text-black rounded-2xl p-3 max-w-[300px] hover:opacity-90 transition-opacity">
+                <div className="flex items-center gap-2 ">
+                  <File className="w-8 h-8" />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium truncate">
+                      {attachment.name}
+                    </span>
+                    <span className="text-xs opacity-75">
+                      {contentType || "Unknown file type"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </Link>
           </div>

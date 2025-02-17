@@ -9,19 +9,37 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { useThreadsQuery } from "@/queries/queries";
+import { useDeleteThreadMutation, useThreadsQuery } from "@/queries/queries";
 import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
-import { ThreadItem } from "./sidebar-thread-item";
+import { SidebarItem } from "./sidebar-item";
+import { useParams, usePathname, useRouter } from "next/navigation";
 
 interface ThreadsListProps {
   user: User;
 }
 
 export function ThreadsList({ user }: ThreadsListProps) {
+  const params = useParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Only set currentThreadId if we're actually on a thread route
+  const currentThreadId = pathname.startsWith("/threads/")
+    ? typeof params?.threadId === "string"
+      ? params.threadId
+      : null
+    : null;
   const { data, isLoading } = useThreadsQuery();
-  const threads = data?.pages[0]?.threads ?? [];
+  const threads = (data?.pages[0]?.threads ?? []).slice(0, 6);
+
+  const deleteThreadMutation = useDeleteThreadMutation();
+
+  const handleThreadDelete = async (id: string) => {
+    await deleteThreadMutation.mutateAsync(id);
+    router.push("/");
+  };
 
   if (threads.length === 0) {
     return null;
@@ -29,7 +47,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
 
   return (
     <SidebarGroup key={"Recents"}>
-      <SidebarGroupLabel>{"Recents"}</SidebarGroupLabel>
+      <SidebarGroupLabel>{"Recent Threads"}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {isLoading
@@ -42,7 +60,17 @@ export function ThreadsList({ user }: ThreadsListProps) {
               ))
             : threads.map(
                 (thread) =>
-                  thread.title && <ThreadItem key={thread.id} thread={thread} />
+                  thread.title && (
+                    <SidebarItem
+                      key={thread.id}
+                      id={thread.id}
+                      title={thread.title}
+                      href={`/threads/${thread.id}`}
+                      currentId={currentThreadId as string}
+                      onDelete={handleThreadDelete}
+                      itemType="thread"
+                    />
+                  )
               )}
 
           {user && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronsUpDown, WandSparkles } from "lucide-react";
+import { Check, WandSparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,19 +63,19 @@ const ModelSelector: React.FC = () => {
           variant="ghost"
           role="combobox"
           aria-expanded={open}
-          className="h-[36px] justify-between gap-0 p-1"
+          className="h-[36px] justify-between gap-0 p-2"
         >
           <div className="flex items-center">
             {selectedModel.provider === "Auto" ? (
-              <WandSparkles className="w-4 h-4 mr-2" />
+              <WandSparkles className="w-4 h-4" />
             ) : (
               getModelImage(selectedModel.provider)
             )}
-            <div className="hidden md:flex truncate ">
+            {/* <div className="hidden md:flex truncate ">
               {selectedModel.name || "Select model..."}
-            </div>
+            </div> */}
           </div>
-          <ChevronsUpDown className="md:ml-2 h-4 w-4 shrink-0 opacity-50" />
+          {/* <ChevronsUpDown className="md:ml-2 h-4 w-4 shrink-0 opacity-50" /> */}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="p-0 ">
@@ -142,8 +142,9 @@ const ModelSelector: React.FC = () => {
                     >
                       <div className="flex items-center">
                         {getModelImage(model.provider)}
-                        <span>{model.name}</span>
+                        <span className="ml-2">{model.name}</span>
                       </div>
+
                       <Check
                         className={cn(
                           "ml-auto h-4 w-4",
@@ -213,9 +214,7 @@ export function getModelImage(provider: string) {
 
   const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
 
-  return (
-    <img src={iconPath} alt={providerName} className="w-5 h-5 mr-2 rounded" />
-  );
+  return <img src={iconPath} alt={providerName} className="w-5 h-5  rounded" />;
 }
 
 export function getModelIconPath(provider: string) {

@@ -68,9 +68,9 @@ const AssistantMessage = (
 ) => {
   return (
     <div className="mb-4 flex flex-col justify-start">
-      <div className="flex gap-1">
-        <div className=" mr-[1px] w-[32px] h-[32px]">
-          <Rhombicuboctahedron size={32} />
+      <div className="flex gap-2">
+        <div className="mr-[1px] w-[32px] h-[32px]">
+          <Rhombicuboctahedron size={32} animate={false} />
         </div>
 
         <div
@@ -134,14 +134,17 @@ import Rhombicuboctahedron from "../rhombicuboctahedron";
 
 const LoadingMessage = React.memo(() => {
   return (
-    <div className="flex gap-2 items-start mb-4">
-      <div className="flex-shrink-0 mt-1 w-[24px] h-[24px]">
-        <Rhombicuboctahedron size={24} animate={true} />
-      </div>
-      <div className="flex items-center gap-1 text-muted-foreground mt-3">
-        <span className="animate-bounce">•</span>
-        <span className="animate-bounce delay-100">•</span>
-        <span className="animate-bounce delay-200">•</span>
+    <div className="mb-4 flex flex-col justify-start">
+      <div className="flex gap-2">
+        <div className="mr-[1px] w-[32px] h-[32px]">
+          <Rhombicuboctahedron size={32} animate={false} />
+        </div>
+
+        <div className="flex items-center gap-1 text-muted-foreground mt-3">
+          <span className="animate-bounce">•</span>
+          <span className="animate-bounce delay-100">•</span>
+          <span className="animate-bounce delay-200">•</span>
+        </div>
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - postgres-network
+      - app-network
 
   mini_io:
     container_name: minio
@@ -35,6 +35,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
 volumes:
   pg_data:
@@ -43,7 +45,5 @@ volumes:
     driver: local
 
 networks:
-  postgres-network:
+  app-network:
     driver: bridge
-  minio_data:
-    driver: local

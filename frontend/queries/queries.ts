@@ -6,11 +6,13 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useState } from "react";
 
 export function useMeQuery() {
   return useQuery({
     queryKey: ["me"],
     queryFn: () => api.auth.me(),
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -39,16 +41,12 @@ export function useThreadsQuery(search?: string) {
 
 export function useThreadQuery(threadId: string, isNewThread: boolean) {
   const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
 
   return useQuery({
-    queryKey: ["thread", threadId, activeWorkspace?.id],
-    queryFn: () =>
-      api.threads.getThread(
-        threadId,
-        activeWorkspace?.type === "organization"
-          ? activeWorkspace.id
-          : undefined
-      ),
+    queryKey: ["thread", threadId, orgId],
+    queryFn: () => api.threads.getThread(threadId, orgId),
     enabled: !isNewThread, // Only fetch if it's not a new thread
     refetchOnWindowFocus: false,
   });
@@ -228,5 +226,159 @@ export function useUpdateOrganizationSeatsMutation() {
     onSuccess: (_, { orgId }) => {
       queryClient.invalidateQueries({ queryKey: ["organization", orgId] });
     },
+  });
+}
+
+export function useProjectsQuery({ search }: { search?: string } = {}) {
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
+  return useQuery({
+    queryKey: ["projects", search, activeWorkspace?.id],
+    queryFn: () => api.projects.listProjects(orgId, search),
+  });
+}
+
+export function useCreateProjectMutation() {
+  const queryClient = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      description: string;
+      organizationId?: string;
+    }) =>
+      api.projects.createProject({
+        ...data,
+        organizationId: orgId,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useDeleteProjectMutation() {
+  const queryClient = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
+  return useMutation({
+    mutationFn: (projectId: string) =>
+      api.projects.deleteProject(projectId, orgId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useProjectQuery(projectId: string) {
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
+  return useQuery({
+    queryKey: ["project", projectId, orgId],
+    queryFn: () => api.projects.getProject(projectId, orgId),
+    enabled: !!projectId,
+  });
+}
+
+export function useUploadDocsMutation() {
+  const queryClient = useQueryClient();
+  const [progress, setProgress] = useState(0);
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
+  const mutation = useMutation({
+    mutationFn: ({ projectId, files }: { projectId: string; files: File[] }) =>
+      api.projects.uploadFiles(
+        projectId,
+        files,
+        "",
+        (progress) => {
+          setProgress(progress);
+        },
+        orgId
+      ),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ["project-docs", projectId] });
+      setProgress(0);
+    },
+    onError: () => {
+      setProgress(0);
+    },
+  });
+
+  return { ...mutation, progress };
+}
+export function useProjectDocsQuery(projectId: string, path?: string) {
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
+  return useQuery({
+    queryKey: ["project-docs", projectId, path, orgId],
+    queryFn: () => api.projects.getDocuments(projectId, path, orgId),
+    enabled: !!projectId,
+  });
+}
+
+export function useDeleteProjectContentMutation() {
+  const queryClient = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
+  return useMutation({
+    mutationFn: ({ projectId, path }: { projectId: string; path: string }) =>
+      api.projects.deleteContents(projectId, path, orgId),
+    onSuccess: (_, { projectId }) => {
+      queryClient.invalidateQueries({ queryKey: ["project-docs", projectId] });
+    },
+  });
+}
+
+export function useUpdateProjectMutation() {
+  const queryClient = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      data,
+    }: {
+      projectId: string;
+      data: { name?: string; description?: string };
+    }) =>
+      api.projects.updateProject(projectId, {
+        ...data,
+        organizationId: orgId,
+      }),
+    onSuccess: (_, { projectId }) => {
+      // Invalidate the specific project query
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      // Invalidate the projects list
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+}
+
+export function useProjectDocQuery(projectId: string, path: string) {
+  const { activeWorkspace } = useWorkspace();
+  const orgId =
+    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
+
+  return useQuery({
+    queryKey: ["project-doc", projectId, path, orgId],
+    queryFn: () => api.projects.getDocument(projectId, path, orgId),
   });
 }

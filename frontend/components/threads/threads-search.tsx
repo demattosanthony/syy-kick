@@ -6,39 +6,50 @@ import { Search } from "lucide-react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-export default function ThreadSearch() {
+interface SearchBarProps {
+  placeholder?: string;
+  debounceMs?: number;
+  className?: string;
+  searchParamKey?: string;
+}
+
+export default function SearchBar({
+  placeholder = "Search...",
+  debounceMs = 300,
+  className = "mb-6",
+  searchParamKey = "search",
+}: SearchBarProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
   const [searchTerm, setSearchTerm] = useState(
-    searchParams.get("search")?.toString() || ""
+    searchParams.get(searchParamKey)?.toString() || ""
   );
-  const debouncedSearchTerm = useDebounce(searchTerm, 300); // 300ms delay
+  const debouncedSearchTerm = useDebounce(searchTerm, debounceMs);
 
   const handleSearch = useCallback(
     (term: string) => {
       const params = new URLSearchParams(searchParams);
       if (term) {
-        params.set("search", term);
+        params.set(searchParamKey, term);
       } else {
-        params.delete("search");
+        params.delete(searchParamKey);
       }
       replace(`${pathname}?${params.toString()}`);
     },
-    [searchParams, pathname, replace]
+    [searchParams, pathname, replace, searchParamKey]
   );
 
-  // Effect to handle the debounced search term
   useEffect(() => {
     handleSearch(debouncedSearchTerm);
   }, [debouncedSearchTerm, handleSearch]);
 
   return (
-    <div className="relative mb-6">
+    <div className={`relative ${className}`}>
       <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4" />
       <Input
         type="search"
-        placeholder="Search..."
+        placeholder={placeholder}
         className="w-full pl-9 py-2 border-none bg-accent"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}

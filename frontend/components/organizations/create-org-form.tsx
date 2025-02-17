@@ -48,7 +48,8 @@ export function CreateOrgForm({
         const { url, file_metadata } = await api.uploads.getPresignedUrl(
           logo.name,
           logo.type,
-          logo.size
+          logo.size,
+          `uploads/${Date.now()}-${logo.name}`
         );
 
         const res = await fetch(url, {
