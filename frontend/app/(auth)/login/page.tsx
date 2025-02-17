@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import Rhombicuboctahedron from "@/components/rhombicuboctahedron";
+import Syyclops3dEye from "@/components/syy-eye";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -68,7 +68,7 @@ export default function LoginPage() {
       <main className="flex flex-col gap-8 items-center w-full justify-center h-[75%]">
         {/** Title and description */}
         <div className="flex flex-col items-center w-[400px] gap-2">
-          <Rhombicuboctahedron size={125} animate={false} />
+          <Syyclops3dEye size={125} animate={false} />
 
           <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">
             Yo! Let&apos;s get started

@@ -1,13 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import Rhombicuboctahedron from "@/components/rhombicuboctahedron";
+import Syyclops3dEye from "@/components/syy-eye";
 
 export default function ErrorPage() {
   return (
     <div className="h-[90%] flex items-center justify-center p-4">
       <div className="text-center space-y-4 items-center flex flex-col">
-        <Rhombicuboctahedron size={125} />
+        <Syyclops3dEye size={125} />
         <h1 className="text-4xl font-bold text-primary">
           Site Under Construction
         </h1>
