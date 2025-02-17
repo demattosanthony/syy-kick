@@ -51,7 +51,7 @@ function ChatInputForm(
     isGenerating,
     stop,
     setInput,
-    showContextSelector,
+    showContextSelector = false,
     projectId,
   }: ChatInputFormProps,
   ref: React.ForwardedRef<ChatInputFormRef>
