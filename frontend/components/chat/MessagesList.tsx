@@ -70,7 +70,7 @@ const AssistantMessage = (
     <div className="mb-4 flex flex-col justify-start">
       <div className="flex gap-2">
         <div className="mr-[1px] w-[32px] h-[32px]">
-          <Rhombicuboctahedron size={32} animate={false} />
+          <Syyclops3dEye size={32} animate={false} />
         </div>
 
         <div
@@ -130,14 +130,14 @@ const UserMessage = ({ message }: { message: Message }) => {
 
 import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
-import Rhombicuboctahedron from "../rhombicuboctahedron";
+import Syyclops3dEye from "../syy-eye";
 
 const LoadingMessage = React.memo(() => {
   return (
     <div className="mb-4 flex flex-col justify-start">
       <div className="flex gap-2">
         <div className="mr-[1px] w-[32px] h-[32px]">
-          <Rhombicuboctahedron size={32} animate={false} />
+          <Syyclops3dEye size={32} animate={false} />
         </div>
 
         <div className="flex items-center gap-1 text-muted-foreground mt-3">

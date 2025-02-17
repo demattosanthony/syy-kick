@@ -10,10 +10,12 @@ export default function STLViewer({
   file,
   size,
   animate = true,
+  color,
 }: {
   file: File | null;
   size: number;
   animate?: boolean;
+  color?: string;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,15 +55,17 @@ export default function STLViewer({
       mountRef.current.appendChild(renderer.domElement);
 
       // Lighting adjustments
-      const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); // Increased intensity
+      const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
       scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Increased intensity
-      directionalLight.position.set(5, 5, 5);
+      // Main light from directly above
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+      directionalLight.position.set(0, 10, 0);
       scene.add(directionalLight);
 
-      const secondaryLight = new THREE.DirectionalLight(0xffffff, 0.8); // Increased intensity
-      secondaryLight.position.set(-5, -5, -5);
+      // Secondary light for some fill from the front
+      const secondaryLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      secondaryLight.position.set(0, 0, 5);
       scene.add(secondaryLight);
 
       controls = new OrbitControls(camera, renderer.domElement);
@@ -88,7 +92,12 @@ export default function STLViewer({
 
           const geometry = loader.parse(stlString);
           const material = new THREE.MeshPhysicalMaterial({
-            color: resolvedTheme === "dark" ? 0xffffff : 0x222222,
+            // Convert hex color string to number if provided, otherwise use theme-based default
+            color: color
+              ? parseInt(color.replace("#", "0x"))
+              : resolvedTheme === "dark"
+              ? 0xffffff
+              : 0x222222,
             metalness: 0.25,
             roughness: 0.5,
             envMapIntensity: 1,
@@ -104,6 +113,9 @@ export default function STLViewer({
           const maxDim = Math.max(size.x, size.y, size.z);
           const scale = 3.5 / maxDim;
           mesh.scale.set(scale, scale, scale);
+
+          // Position the mesh at the center of the scene
+          mesh.position.set(0, 0, 0);
 
           scene.add(mesh);
         } catch (error) {

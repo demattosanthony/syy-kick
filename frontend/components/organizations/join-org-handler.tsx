@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useOrgFromInviteToken } from "@/queries/queries";
-import Rhombicuboctahedron from "../rhombicuboctahedron";
+import Syyclops3dEye from "../syy-eye";
 
 export default function JoinOrgHandler({ token }: { token: string }) {
   const { handleJoinOrg } = useAuth();
@@ -81,7 +81,7 @@ export default function JoinOrgHandler({ token }: { token: string }) {
             className="h-[75px] w-[75px] object-contain"
           />
         ) : (
-          <Rhombicuboctahedron size={155} />
+          <Syyclops3dEye size={155} />
         )}
 
         <div className="flex flex-col items-center w-[400px] gap-2">
