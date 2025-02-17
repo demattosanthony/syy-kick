@@ -2,7 +2,6 @@ import { generateText } from "ai";
 import { MODELS } from "./features/models";
 import { ApiResponse } from "./config/schema";
 import { Request, Response } from "express";
-import mime from "mime-types";
 
 export async function generateThreadTitle(message: string) {
   const { text } = await generateText({
@@ -27,8 +26,3 @@ export const handle =
       } as ApiResponse<T>);
     }
   };
-
-export function getFileMimeType(filename: string): string {
-  // Get MIME type, fallback to 'application/octet-stream' if unknown
-  return mime.lookup(filename) || "application/octet-stream";
-}

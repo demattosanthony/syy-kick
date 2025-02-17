@@ -212,6 +212,7 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
+      supportedMimeTypes: [],
       description:
         "Grok is an AI modeled after the Hitchhiker’s Guide to the Galaxy. It is intended to answer almost anything and, far harder, even suggest what questions to ask!",
     },
@@ -240,6 +241,7 @@ export const togetherAiModels = (
         model: togetherai("deepseek-ai/DeepSeek-R1"),
         middleware: extractReasoningMiddleware({ tagName: "think" }),
       }),
+      supportedMimeTypes: [],
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "deepseek",
@@ -251,6 +253,7 @@ export const togetherAiModels = (
       model: togetherai("deepseek-ai/DeepSeek-V3"),
       supportsToolUse: true,
       supportsStreaming: true,
+      supportedMimeTypes: [],
       provider: "deepseek",
       supportsSystemMessages: true,
       description: `DeepSeek-V3 is an open-source large language model that builds upon LLaMA (Meta’s foundational language model) to enable versatile functionalities such as text generation, code completion, and more. The model is hosted on Together AI and running on USA servers, no data gets shared with DeepSeek or china.`,
@@ -259,6 +262,7 @@ export const togetherAiModels = (
       model: togetherai("meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"),
       supportsToolUse: true,
       supportsStreaming: true,
+      supportedMimeTypes: [],
       provider: "meta",
       supportsSystemMessages: true,
       description:
@@ -279,6 +283,7 @@ export const groqModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsToolUse: false,
       supportsStreaming: true,
       supportsSystemMessages: true,
+      supportedMimeTypes: [],
       provider: "meta",
       description:
         "The Meta Llama 3.3 multilingual large language model (LLM) is a pretrained and instruction tuned generative model in 70B (text in/text out). The Llama 3.3 instruction tuned text only model is optimized for multilingual dialogue use cases and outperforms many of the available open source and closed chat models on common industry benchmarks.",
@@ -300,6 +305,7 @@ export const perplexityModels = (
       supportsToolUse: false,
       supportsStreaming: true,
       provider: "perplexity",
+      supportedMimeTypes: [],
       supportsSystemMessages: true,
       description: "New API offering powered by DeepSeek's reasoning models",
     },
@@ -307,6 +313,7 @@ export const perplexityModels = (
       model: perplexity("sonar-pro"),
       supportsToolUse: false,
       supportsStreaming: true,
+      supportedMimeTypes: [],
       provider: "perplexity",
       supportsSystemMessages: true,
       description:
@@ -318,6 +325,7 @@ export const perplexityModels = (
       supportsStreaming: true,
       provider: "perplexity",
       supportsSystemMessages: true,
+      supportedMimeTypes: [],
       description:
         "Perplexity's lightweight offering with search grounding, quicker and cheaper than Sonar Pro.",
     },
