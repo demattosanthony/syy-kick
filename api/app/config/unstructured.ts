@@ -1,6 +1,11 @@
 import { UnstructuredClient } from "unstructured-client";
 import s3 from "./s3";
 import { Strategy } from "unstructured-client/sdk/models/shared";
+import { embeddingModel, googleEmbeddingModel } from "../features/models";
+import db from "./db";
+import { documentEmbeddings } from "./schema";
+import { CONFIG } from "./constants";
+import { embedMany } from "ai";
 
 const unstructured = new UnstructuredClient({
   serverURL: process.env.UNSTRUCTURED_API_URL,
@@ -56,7 +61,8 @@ const unstructuredApiSupportMimeTypes = [
 export async function processFile(
   fileKey: string,
   fileName: string,
-  mimeType: string
+  mimeType: string,
+  documentId: string
 ) {
   try {
     if (!unstructuredApiSupportMimeTypes.includes(mimeType)) {
@@ -75,21 +81,50 @@ export async function processFile(
           content: fileContent,
           fileName: fileName,
         },
-        strategy: Strategy.Fast,
+        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.Fast,
         splitPdfPage: true,
         splitPdfAllowFailed: true,
         splitPdfConcurrencyLevel: 15,
-        maxCharacters: 1500,
-        combineUnderNChars: 750,
+        maxCharacters: 400,
+        combineUnderNChars: 75,
         coordinates: true,
         includeOrigElements: false,
-        chunkingStrategy: "by_title", // Chunk the document by title
+        chunkingStrategy: "by_title",
       },
     });
 
     if (response.statusCode === 200 && response.elements) {
       // Process the chunked elements as needed
-      console.log("Chunked Elements:", response.elements);
+      console.log("Chunked Elements:");
+
+      const values = response.elements.map((element) =>
+        element.text.trim().replace(/\s+/g, " ")
+      );
+      console.log("Embedding values:", values);
+
+      // Process embeddings in batches of 100
+      const batchSize = 100;
+      let allEmbeddings = [];
+
+      for (let i = 0; i < values.length; i += batchSize) {
+        const batch = values.slice(i, i + batchSize);
+        const { embeddings: batchEmbeddings } = await embedMany({
+          model: googleEmbeddingModel,
+          values: batch,
+        });
+        allEmbeddings.push(...batchEmbeddings);
+      }
+
+      await db.insert(documentEmbeddings).values(
+        response.elements.map((element, i) => ({
+          documentId: documentId,
+          text: element.text,
+          embedding: allEmbeddings[i],
+          metadata: element.metadata,
+        }))
+      );
+
+      console.log("Successfully processed the file:", fileName);
     } else {
       console.error("Failed to process the file:", response);
     }

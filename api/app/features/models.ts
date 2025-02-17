@@ -346,6 +346,13 @@ export const embeddingModel = openai.embedding("text-embedding-3-large", {
   dimensions: 1536,
 });
 
+export const googleEmbeddingModel = google.textEmbeddingModel(
+  "text-embedding-004",
+  {
+    outputDimensionality: 768,
+  }
+);
+
 const ops = {
   listModels: () => {
     return Object.entries(MODELS).map(([modelName, config]) => ({

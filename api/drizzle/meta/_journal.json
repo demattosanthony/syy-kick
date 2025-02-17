@@ -169,6 +169,13 @@
       "when": 1739730137716,
       "tag": "0023_tan_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1739832437753,
+      "tag": "0024_steep_cable",
+      "breakpoints": true
     }
   ]
 }

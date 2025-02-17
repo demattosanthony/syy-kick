@@ -130,6 +130,16 @@ export const projects = pgTable("projects", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const documentEmbeddings = pgTable("document_embeddings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  documentId: uuid("document_id")
+    .notNull()
+    .references(() => documents.id, { onDelete: "cascade" }),
+  text: text("text"),
+  metadata: jsonb("metadata"),
+  embedding: vector("embedding", { dimensions: 768 }),
+});
+
 export const documents = pgTable("documents", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),

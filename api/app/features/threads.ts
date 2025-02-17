@@ -21,6 +21,7 @@ import {
   Message,
   streamText,
 } from "ai";
+import { searchProjectDocuments } from "./projects";
 
 // --------------------------------------------------------
 // 1. Define Zod Schemas
@@ -598,6 +599,38 @@ const ThreadOps = {
       });
 
       const allMessages = dbMessagesToMyMessages(rawMessages);
+
+      if (thread.projectId) {
+        if (message.content) {
+          console.log("Searching project documents for:", message.content);
+          const res = await searchProjectDocuments(
+            thread.projectId,
+            message.content
+          );
+
+          console.log("Search results:", res);
+
+          // Update the last user message with search results
+          const lastUserMessageIndex = allMessages.length - 1;
+          if (lastUserMessageIndex >= 0 && res.length > 0) {
+            const searchContext = res
+              .map(
+                (r) => `
+<document>
+  <source>${r.document.name}</source>
+  <content>${r.text}</content>
+</document>`
+              )
+              .join("\n");
+
+            allMessages[
+              lastUserMessageIndex
+            ].content += `\n\nRelevant project context:\n${searchContext}`;
+          }
+        }
+      }
+
+      console.log("All messages:", allMessages);
 
       // 4) Determine appropriate model
       const modelConfig = await getModelConfig(model, allMessages);
