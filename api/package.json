@@ -18,6 +18,7 @@
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
     "@types/pg": "^8.11.11",
+    "@types/passport-microsoft": "^1.0.3",
     "drizzle-kit": "^0.30.4"
   },
   "peerDependencies": {
@@ -33,9 +34,6 @@
     "@ai-sdk/perplexity": "^0.0.7",
     "@ai-sdk/togetherai": "^0.1.9",
     "@ai-sdk/xai": "^1.1.8",
-    "@types/mime-types": "^2.1.4",
-    "@types/multer": "^1.4.12",
-    "@types/passport-microsoft": "^1.0.3",
     "ai": "^4.1.37",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

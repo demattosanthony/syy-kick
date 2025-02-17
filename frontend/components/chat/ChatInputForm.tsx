@@ -51,7 +51,7 @@ function ChatInputForm(
     isGenerating,
     stop,
     setInput,
-    showContextSelector,
+    showContextSelector = false,
     projectId,
   }: ChatInputFormProps,
   ref: React.ForwardedRef<ChatInputFormRef>
@@ -178,7 +178,7 @@ function ChatInputForm(
       )}
     >
       <form
-        className={`relative flex flex-col flex-1 w-full justify-center p-1`}
+        className={`relative flex flex-col flex-1 w-full justify-center p-2`}
         onSubmit={onSubmit}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

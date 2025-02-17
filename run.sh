@@ -28,14 +28,7 @@ echo "Creating MinIO buckets..."
 docker exec minio mc alias set local http://minio:9000 minioadmin minioadmin123
 docker exec minio mc mb local/my-new-bucket --ignore-existing
 docker exec minio mc anonymous set public local/my-new-bucket
-docker exec minio mc mb local/gitea-lfs --ignore-existing
-docker exec minio mc anonymous set download local/gitea-lfs
 echo "MinIO buckets created!"
-
-# Create Gitea admin account
-echo "Creating Gitea admin account..."
-docker exec --user 1000 gitea gitea admin user create --admin --username admin --password adminpassword --email admin@example.com
-echo "Gitea admin account created!"
 
 trap "echo 'Stopping all processes'; kill $SERVER_PID $NEXTJS_APP_PID 2>/dev/null; docker compose down" EXIT INT TERM
 

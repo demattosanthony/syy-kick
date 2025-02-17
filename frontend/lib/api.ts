@@ -525,7 +525,7 @@ class ProjectsApi extends ApiRequest {
     success: boolean;
   }> {
     const queryParams = new URLSearchParams();
-    queryParams.append("path", encodeURIComponent(path));
+    queryParams.append("path", path);
     if (organizationId) {
       queryParams.append("organizationId", organizationId);
     }
@@ -557,9 +557,8 @@ class ProjectsApi extends ApiRequest {
     path: string,
     organizationId?: string
   ): Promise<DocumentContent> {
-    // URL-encode path to ensure proper handling of spaces, etc.
     const queryParams = new URLSearchParams();
-    queryParams.append("path", encodeURIComponent(path));
+    queryParams.append("path", path);
     if (organizationId) {
       queryParams.append("organizationId", organizationId);
     }

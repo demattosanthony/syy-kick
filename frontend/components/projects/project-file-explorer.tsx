@@ -41,8 +41,6 @@ export default function ProjectFileExplorer({
     currentPath
   );
 
-  console.log("contents", contents);
-
   if (isLoading) {
     return (
       <div className="divide-y">
