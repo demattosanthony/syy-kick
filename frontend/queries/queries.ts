@@ -286,6 +286,7 @@ export function useProjectQuery(projectId: string) {
     queryKey: ["project", projectId, orgId],
     queryFn: () => api.projects.getProject(projectId, orgId),
     enabled: !!projectId,
+    refetchOnWindowFocus: false,
   });
 }
 

@@ -4,6 +4,7 @@ import { and, asc, eq, ilike, isNull, like, or } from "drizzle-orm";
 import { documents, organizations, projects, users } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
+import { processFile } from "../config/unstructured";
 
 const schemas = {
   createProject: z
@@ -566,6 +567,18 @@ const handlers = {
       entries: sortedEntries,
       basePath: validatedData.basePath,
     });
+
+    // Process uploaded files in the background
+    for (const entry of sortedEntries) {
+      if (entry.type === "file" && entry.fileKey) {
+        // Don't await - let it process in background
+        processFile(entry.fileKey, entry.path, entry.mimeType || "").catch(
+          (error) => {
+            console.error(`Error processing file ${entry.path}:`, error);
+          }
+        );
+      }
+    }
 
     res.json(result);
   },

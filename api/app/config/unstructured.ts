@@ -7,14 +7,68 @@ const unstructured = new UnstructuredClient({
   security: {
     apiKeyAuth: process.env.UNSTRUCTURED_API_KEY,
   },
+  // 2 hours in milliseconds
+  timeoutMs: 7200000,
+  retryConfig: {
+    strategy: "backoff",
+    retryConnectionErrors: true,
+    backoff: {
+      initialInterval: 500,
+      maxInterval: 60000,
+      exponent: 1.5,
+      maxElapsedTime: 900000, // 15min*60sec*1000ms = 15 minutes
+    },
+  },
 });
 
-export async function processFile(fileKey: string, fileName: string) {
+const unstructuredApiSupportMimeTypes = [
+  // Plaintext
+  "text/plain", // .txt
+  "message/rfc822", // .eml
+  "application/vnd.ms-outlook", // .msg
+  "application/xml", // .xml
+  "text/html", // .html
+  "text/markdown", // .md
+  "text/x-rst", // .rst
+  "application/json", // .json
+  "application/rtf", // .rtf
+
+  // Images
+  "image/jpeg", // .jpeg
+  "image/png", // .png
+
+  // Documents
+  "application/msword", // .doc
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+  "application/vnd.ms-powerpoint", // .ppt
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
+  "application/pdf", // .pdf
+  "application/vnd.oasis.opendocument.text", // .odt
+  "application/epub+zip", // .epub
+  "text/csv", // .csv
+  "text/tab-separated-values", // .tsv
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+
+  // Zipped
+  "application/gzip", // .gz
+];
+
+export async function processFile(
+  fileKey: string,
+  fileName: string,
+  mimeType: string
+) {
   try {
+    if (!unstructuredApiSupportMimeTypes.includes(mimeType)) {
+      console.log(`Skipping unsupported file type: ${mimeType}`);
+      return;
+    }
+
     // Read the file content
     const fileContent = await s3.file(fileKey).bytes();
 
     // Send the file to the Unstructured API for partitioning
+    console.log("Processing file:", fileName);
     const response = await unstructured.general.partition({
       partitionParameters: {
         files: {
