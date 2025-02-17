@@ -218,23 +218,25 @@ export async function getProjectDocs(projectId: string, path: string = "") {
       })
     );
 
-    // Sort the results GitHub-style
-    return docsWithUrls.sort((a, b) => {
-      // First sort by type (folders first)
-      if (a.type !== b.type) {
-        return a.type === "folder" ? -1 : 1;
-      }
+    // Filter out . files and sort the results GitHub-style
+    return docsWithUrls
+      .filter((doc) => !doc.name.startsWith(".")) // Filter out dot files
+      .sort((a, b) => {
+        // First sort by type (folders first)
+        if (a.type !== b.type) {
+          return a.type === "folder" ? -1 : 1;
+        }
 
-      // Then sort by name (case-insensitive)
-      const nameA = a.name.toLowerCase();
-      const nameB = b.name.toLowerCase();
+        // Then sort by name (case-insensitive)
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
 
-      // Natural sort for numbers (e.g., "file2" comes before "file10")
-      return nameA.localeCompare(nameB, undefined, {
-        numeric: true,
-        sensitivity: "base",
+        // Natural sort for numbers (e.g., "file2" comes before "file10")
+        return nameA.localeCompare(nameB, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
       });
-    });
   } catch (error) {
     throw new Error("Failed to fetch project contents");
   }
