@@ -9,8 +9,11 @@
 
 1. Install Bun js runtime: https://bun.sh/docs/installation
 2. Install and start Docker: https://docs.docker.com/get-docker/
-
-3. Add environment variables as needed.
+3. Install Ghostscript:
+   - Mac: `brew install ghostscript`
+   - Ubuntu/Debian: `sudo apt-get install ghostscript`
+   - Windows: Download installer from https://ghostscript.com/releases/gsdnld.html
+4. Add environment variables as needed.
 
 ```bash
 cd api

@@ -1,6 +1,12 @@
 FROM oven/bun:1.2.0 AS base
 WORKDIR /usr/src/app
 
+# Install ghostscript
+RUN apt-get update && \
+    apt-get install -y ghostscript && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # install dependencies into temp directory
 FROM base AS install
 RUN mkdir -p /temp/dev
