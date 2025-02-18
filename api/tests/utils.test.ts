@@ -5,12 +5,9 @@ import s3 from "../app/config/s3";
 describe("getPdfPageAsImage", () => {
   test("successfully converts PDF page to image", async () => {
     // Create a small test PDF file
-    const s3Key = "test/document.pdf";
-    const testPdf = await Bun.file("./tests/example.pdf").arrayBuffer();
+    const testPdf = await Bun.file("./tests/example.pdf").bytes();
 
-    // Mock the S3 operations
-    await s3.file(s3Key).write(testPdf, { type: "application/pdf" });
-    const result = await getPdfPageAsImage(s3Key, 1);
+    const result = await getPdfPageAsImage(testPdf, 1);
 
     // Verify the result is a non-empty base64 string
     expect(typeof result).toBe("string");

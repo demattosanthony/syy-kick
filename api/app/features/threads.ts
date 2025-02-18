@@ -670,16 +670,25 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
               console.log("Unique documents:", uniqueDocs);
               console.log("\n\n");
 
-              for (const uniqueDoc of uniqueDocs) {
-                if (uniqueDoc.document.mimeType === "application/pdf") {
-                  const pageNumber = (
-                    uniqueDoc.metadata as { page_number?: number }
-                  )?.page_number;
-                  if (pageNumber) {
-                    const image = await getPdfPageAsImage(
-                      uniqueDoc.document.fileKey!,
-                      pageNumber
-                    );
+              let images = [];
+
+              // Can only do mulitmodal tools with claude-3.5-sonnet
+              if (modelConfig.model.modelId.includes("claude-3.5-sonnet")) {
+                for (const uniqueDoc of uniqueDocs) {
+                  if (uniqueDoc.document.mimeType === "application/pdf") {
+                    const pageNumber = (
+                      uniqueDoc.metadata as { page_number?: number }
+                    )?.page_number;
+                    if (pageNumber) {
+                      const pdfBytes = await s3
+                        .file(uniqueDoc.document.fileKey!)
+                        .bytes();
+                      const base64Image = await getPdfPageAsImage(
+                        pdfBytes,
+                        pageNumber
+                      );
+                      images.push(base64Image);
+                    }
                   }
                 }
               }
@@ -696,7 +705,25 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
                 )
                 .join("\n");
 
-              return searchContext;
+              console.log(`LENGTH of images : ${images.length}`);
+
+              return {
+                context: searchContext,
+                images,
+              };
+            },
+            experimental_toToolResultContent(result) {
+              return [
+                ...result.images.map((image) => ({
+                  type: "image" as const,
+                  data: image,
+                  mimeType: "image/png",
+                })),
+                {
+                  type: "text",
+                  text: result.context,
+                },
+              ];
             },
           }),
         };

@@ -29,9 +29,9 @@ export const handle =
   };
 
 export async function getPdfPageAsImage(
-  s3Key: string,
+  pdfBytes: Uint8Array,
   pageNumber: number,
-  options = { format: "png", dpi: 300 }
+  options = { format: "png", dpi: 150 }
 ): Promise<string> {
   // Remove the unnecessary tempDir read
   const tempPdfPath = `/tmp/temp_${Date.now()}.pdf`;
@@ -39,7 +39,6 @@ export async function getPdfPageAsImage(
 
   try {
     // Get PDF from S3 and save to temp file
-    const pdfBytes = await s3.file(s3Key).bytes();
     await Bun.write(tempPdfPath, pdfBytes);
 
     console.log("PDF downloaded to temp file:", tempPdfPath);
@@ -67,15 +66,15 @@ export async function getPdfPageAsImage(
 
     // Read the generated PNG and upload to S3
     const imageBuffer = await Bun.file(tempPngPath).arrayBuffer();
-    const imageS3Key = `${s3Key.replace(".pdf", "")}_page${pageNumber}.png`;
-    await s3.file(imageS3Key).write(imageBuffer, {
-      type: "image/png",
-    });
+    // const imageS3Key = `${s3Key.replace(".pdf", "")}_page${pageNumber}.png`;
+    // await s3.file(imageS3Key).write(imageBuffer, {
+    //   type: "image/png",
+    // });
 
-    console.log(s3.presign(imageS3Key));
+    // console.log(s3.presign(imageS3Key));
 
-    const bytes = await s3.file(imageS3Key).bytes();
-    return Buffer.from(bytes).toString("base64");
+    // const bytes = await s3.file(imageS3Key).bytes();
+    return Buffer.from(imageBuffer).toString("base64");
   } catch (error: any) {
     console.error("Error:", error);
     throw new Error(`Failed to convert PDF page to image: ${error.message}`);
