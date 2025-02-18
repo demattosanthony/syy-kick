@@ -246,10 +246,13 @@ function FileExplorerItem({
               <Tooltip>
                 <TooltipTrigger>
                   <div
-                    className={cn("h-2 w-2 rounded-full", {
-                      "bg-red-500": item.extractionStatus === "failed",
-                      "bg-yellow-500": item.extractionStatus === "pending",
-                      "bg-green-500": item.extractionStatus === "completed",
+                    className={cn("h-2 w-2 rounded-full shadow-md", {
+                      "bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20":
+                        item.extractionStatus === "failed",
+                      "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-yellow-500/20 animate-pulse":
+                        item.extractionStatus === "pending",
+                      "bg-gradient-to-br from-green-600 to-green-800 shadow-green-700/20":
+                        item.extractionStatus === "completed",
                     })}
                   />
                 </TooltipTrigger>

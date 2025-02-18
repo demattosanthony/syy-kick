@@ -91,7 +91,7 @@ export async function processFile(
           content: fileContent,
           fileName: fileName,
         },
-        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.HiRes,
+        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.Fast,
         splitPdfPage: true,
         splitPdfAllowFailed: true,
         splitPdfConcurrencyLevel: 15,

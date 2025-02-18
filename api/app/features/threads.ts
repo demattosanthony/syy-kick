@@ -21,6 +21,7 @@ import { CONFIG } from "../config/constants";
 // ai-related imports
 import { Attachment, CoreMessage, generateObject, streamText, tool } from "ai";
 import { searchProjectDocuments } from "./projects";
+import reranker from "../config/reranker";
 
 // --------------------------------------------------------
 // 1. Define Zod Schemas
@@ -281,8 +282,36 @@ function buildSystemMessage(instructions?: string): string {
     hour12: true,
   });
 
-  let systemMsg = `<assistant_instructions>
-Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it's creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand.
+  let systemMsg = `You are Yo, a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it's creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. Your task is to write an accurate, detailed, and comprehensive answer to a given query using provided search results and following specific guidelines.
+
+1. Read the query carefully and analyze the provided search results.
+
+2. Write your answer directly using the information from the search results. If the search results are empty or unhelpful, answer the query to the best of your ability using your existing knowledge. If you don't know the answer or if the premise of the query is incorrect, explain why.
+
+3. Write a well-formatted answer that's optimized for readability:
+   - Separate your answer into logical sections using level 2 headers (##) for sections and bolding (**) for subsections.
+   - Incorporate a variety of lists, headers, and text to make the answer visually appealing.
+   - Never start your answer with a header.
+   - Use lists, bullet points, and other enumeration devices only sparingly, preferring other formatting methods like headers. Only use lists when there is a clear enumeration to be made
+   - Only use numbered lists when you need to rank items. Otherwise, use bullet points.
+   - Never nest lists or mix ordered and unordered lists.
+   - When comparing items, use a markdown table instead of a list.
+   - Bold specific words for emphasis.
+   - Use markdown code blocks for code snippets, including the language for syntax highlighting.
+   - You may include quotes in markdown to supplement the answer
+
+6. Be concise in your answer. Skip any preamble and provide the answer directly without explaining what you are doing.
+
+<restrictions>
+1. Do not include URLs or links in the answer.
+2. Avoid moralization or hedging language (e.g., "It is important to...", "It is inappropriate...", "It is subjective..."). These phrases waste time.
+3. Avoid repeating copyrighted content verbatim (e.g., song lyrics, news articles, book passages). Only answer with original text.
+4. If the search results do not provide an answer, you should respond with saying that the information is not available.
+5. NEVER use any of the following phrases or similar constructions: "According to the search results", "Based on the search results", "Given the search results", "Based on the given search", "Based on the provided sources", "Based on the provided search results", "from the given search results", "the source provided", "based on the available search results", "the search results indicate", "let me search for". These phrases are waste time because the user is already aware that the answer should come from search results. These phrases are strictly banned from your response.
+</restrictions>
+
+Remember to be accurate, comprehensive, and adhere to all the guidelines provided above.
+
 
 When searching through project documents:
 1. Break down complex queries into multiple focused searches
@@ -296,12 +325,12 @@ For example, if asked about a project's architecture, you might:
 - Finally search for any integration details between components
 </assistant_instructions>
 
-<current_date>
-It is currently: ${dateString}
-</current_date>`;
+<date>
+Current date: ${dateString}
+</date>`;
 
-  if (instructions) {
-    systemMsg += `<user_instructions>${instructions}</user_instructions>`;
+  if (instructions && instructions.length > 0) {
+    systemMsg += `\n\n<personalization>${instructions}</personalization>`;
   }
   return systemMsg;
 }
@@ -482,11 +511,7 @@ async function buildInferenceMessages(
 }
 
 /** Creates search tool if project ID exists */
-function createSearchTool(
-  threadId: string,
-  projectId: string | null,
-  modelConfig: any
-) {
+function createSearchTool(projectId: string | null, modelConfig: any) {
   if (!projectId) return undefined;
 
   return {
@@ -520,9 +545,35 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
         console.log("Searching project documents for: ", query);
         const res = await searchProjectDocuments(projectId, query);
 
+        console.log("Search results:", res.length);
+
+        // Rerank results
+        const rerankedResults = await reranker.rerank(
+          query,
+          res.map((r) => r.text || ""),
+          {
+            topN: 15,
+            returnDocuments: true,
+          }
+        );
+
+        // Create a map of text to original result for lookup
+        const textToResultMap = new Map(res.map((r) => [r.text, r]));
+
+        // Map reranked results back to original result objects with new scores
+        const rerankedWithMetadata = rerankedResults.results
+          //   .filter((reranked) => reranked.relevance_score > 0.45)
+          .map((reranked) => ({
+            ...textToResultMap.get(reranked.document.text)!,
+            similarity: reranked.relevance_score,
+          }));
+
+        console.log("Reranked results:", rerankedResults.results);
+        console.log("Reranked with metadata:", rerankedWithMetadata.length);
+
         const uniqueDocsMap = new Map<string, (typeof res)[0]>();
 
-        for (const result of res) {
+        for (const result of rerankedWithMetadata) {
           const pageNum = (result.metadata as any)?.page_number;
           const key = pageNum
             ? `${result.documentId}_page${pageNum}`
@@ -561,7 +612,7 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
           }
         }
 
-        const searchContext = `<document_context>${res
+        const searchContext = `<document_context>${rerankedWithMetadata
           .map(
             (r) => `
 <document>
@@ -656,8 +707,6 @@ const ThreadOps = {
       },
     });
     if (!thread) return null;
-
-    console.log("Raw thread:", thread);
 
     // Cast the thread to match ThreadWithMessages type
     const typedThread: ThreadWithMessages = {
@@ -828,15 +877,11 @@ const ThreadOps = {
         ? buildSystemMessage(instructions)
         : undefined;
 
-      // 8) Streaming logic
-      //   let reasoning: string | undefined;
-
+      // 8) Create tools for the assistant if project ID exists
       const tools =
         thread.projectId && message.content
-          ? createSearchTool(threadId, thread.projectId, modelConfig)
+          ? createSearchTool(thread.projectId, modelConfig)
           : undefined;
-
-      console.log("Inference messages:", inferenceMsgs);
 
       // Start the streaming from the AI
       const result = streamText({
@@ -856,11 +901,11 @@ const ThreadOps = {
           finishReason,
           reasoning,
         }) => {
-          console.log(`Text: ${text}`);
-          console.log("Tool Calls:", toolCalls);
-          console.log("Tool Results:", toolResults);
-          console.log("Finish Reason:", finishReason);
-          console.log("\n\n\n\n\n");
+          //   console.log(`Text: ${text}`);
+          //   console.log("Tool Calls:", toolCalls);
+          //   console.log("Tool Results:", toolResults);
+          //   console.log("Finish Reason:", finishReason);
+          //   console.log("\n\n\n\n\n");
 
           if (finishReason === "tool-calls") {
             // First create a message for the assistant's tool call
@@ -906,6 +951,8 @@ const ThreadOps = {
                   .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
               }
             }
+
+            return;
           }
 
           if (finishReason === "stop" && text) {
@@ -928,15 +975,6 @@ const ThreadOps = {
             return;
           }
         },
-        // onFinish: ({ text, finishReason, usage, steps }) => {
-        //   console.log(`USAGE: ${usage.totalTokens} tokens used\n\n`);
-
-        //   const toolCalls = steps.flatMap((step) => step.toolCalls || []);
-        //   const toolResults = steps.flatMap((step) => step.toolResults || []);
-
-        //   console.log("Tool Calls:", toolCalls);
-        //   console.log("Tool Results:", toolResults);
-        // },
       });
 
       // Pipe the data out as SSE

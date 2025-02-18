@@ -72,7 +72,7 @@ export default function ProjectPage() {
         </header>
 
         <main className="flex-1 h-full w-full px-4">
-          <Card className="w-full mt-4 shadow-none mb-4 max-h-[calc(100vh-325px)] overflow-y-auto">
+          <Card className="w-full mt-4 shadow-none mb-4 max-h-[calc(100vh-375px)] overflow-y-auto">
             <CardContent className="p-2">
               <ProjectFileExplorer projectId={pid} />
             </CardContent>
