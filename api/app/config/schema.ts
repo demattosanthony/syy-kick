@@ -27,6 +27,12 @@ const SUBSCRIPTION_STATUS = [
 const SUBSCRIPTION_PLAN = ["free", "pro", "teams", "enterprise"] as const;
 const IDENTITY_PROVIDER = ["google", "saml", "microsoft"] as const;
 const DOCUMENT_TYPE = ["file", "folder"] as const;
+const DOCUMENT_EXTRACTION_STATUS = [
+  "pending",
+  "completed",
+  "failed",
+  "skipped",
+] as const;
 
 // Custom type for bytea columns (pgcrypto extension)
 export const bytea = customType<{
@@ -155,6 +161,9 @@ export const documents = pgTable("documents", {
     onDelete: "cascade",
   }),
   size: integer("size"), // size in bytes
+  extractionStatus: text("extraction_status", {
+    enum: DOCUMENT_EXTRACTION_STATUS,
+  }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

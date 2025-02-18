@@ -49,7 +49,7 @@ export default function ProjectPage() {
   };
 
   return (
-    <div className="h-screen w-full flex justify-center overflow-y-auto pt-14">
+    <div className="h-screen w-full flex justify-center pt-14">
       <div className="flex flex-col items-center max-w-3xl w-full flex-1">
         {/* Project Header */}
         <header className="border-b w-full">
@@ -71,8 +71,8 @@ export default function ProjectPage() {
           </div>
         </header>
 
-        <main className="flex-1 h-full w-full px-4 pb-40">
-          <Card className="w-full mt-4 shadow-none mb-4">
+        <main className="flex-1 h-full w-full px-4">
+          <Card className="w-full mt-4 shadow-none mb-4 max-h-[calc(100vh-325px)] overflow-y-auto">
             <CardContent className="p-2">
               <ProjectFileExplorer projectId={pid} />
             </CardContent>

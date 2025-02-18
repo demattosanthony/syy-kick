@@ -1,11 +1,10 @@
-import { describe, test, expect, beforeEach } from "bun:test";
+import { describe, test, expect } from "bun:test";
 import { getPdfPageAsImage } from "../app/utils";
-import s3 from "../app/config/s3";
 
 describe("getPdfPageAsImage", () => {
   test("successfully converts PDF page to image", async () => {
     // Create a small test PDF file
-    const testPdf = await Bun.file("./tests/example.pdf").bytes();
+    const testPdf = await Bun.file("./tests/sample.pdf").bytes();
 
     const result = await getPdfPageAsImage(testPdf, 1);
 

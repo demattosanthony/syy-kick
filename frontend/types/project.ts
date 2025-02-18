@@ -25,4 +25,5 @@ export interface DocumentContent {
   mimeType?: string;
   fileKey?: string;
   size?: number;
+  extractionStatus?: "pending" | "completed" | "failed" | "skipped";
 }

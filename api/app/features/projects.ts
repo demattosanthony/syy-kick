@@ -21,7 +21,7 @@ import {
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
 import { processFile } from "../config/unstructured";
-import { embeddingModel, googleEmbeddingModel } from "./models";
+import { googleEmbeddingModel } from "./models";
 
 const schemas = {
   createProject: z

@@ -20,6 +20,7 @@ import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { cn, getRelativeTimeString } from "@/lib/utils";
 import { DocumentContent } from "@/types/project";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 interface ProjectFileExplorerProps {
   projectId: string;
@@ -240,6 +241,28 @@ function FileExplorerItem({
 
         {variant === "detailed" && (
           <div className="flex items-center gap-2">
+            {/* Extraction Status indicator dot */}
+            {item.extractionStatus && item.extractionStatus !== "skipped" && (
+              <Tooltip>
+                <TooltipTrigger>
+                  <div
+                    className={cn("h-2 w-2 rounded-full", {
+                      "bg-red-500": item.extractionStatus === "failed",
+                      "bg-yellow-500": item.extractionStatus === "pending",
+                      "bg-green-500": item.extractionStatus === "completed",
+                    })}
+                  />
+                </TooltipTrigger>
+                <TooltipContent>
+                  {item.extractionStatus === "failed" && "Extraction Failed"}
+                  {item.extractionStatus === "pending" &&
+                    "Extracting Document Contents"}
+                  {item.extractionStatus === "completed" &&
+                    "Extraction Successful"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+
             <small className="text-sm font-medium leading-none text-muted-foreground">
               {getRelativeTimeString(item.updatedAt)}
             </small>

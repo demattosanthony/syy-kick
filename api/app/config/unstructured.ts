@@ -3,9 +3,10 @@ import s3 from "./s3";
 import { Strategy } from "unstructured-client/sdk/models/shared";
 import { googleEmbeddingModel, MODELS } from "../features/models";
 import db from "./db";
-import { documentEmbeddings } from "./schema";
+import { documentEmbeddings, documents } from "./schema";
 import { CONFIG } from "./constants";
 import { embedMany, generateText } from "ai";
+import { eq } from "drizzle-orm";
 
 const unstructured = new UnstructuredClient({
   serverURL: process.env.UNSTRUCTURED_API_URL,
@@ -67,6 +68,11 @@ export async function processFile(
   try {
     if (!unstructuredApiSupportMimeTypes.includes(mimeType)) {
       console.log(`Skipping unsupported file type: ${mimeType}`);
+
+      await db
+        .update(documents)
+        .set({ extractionStatus: "skipped" })
+        .where(eq(documents.id, documentId));
       return;
     }
 
@@ -75,13 +81,17 @@ export async function processFile(
 
     // Send the file to the Unstructured API for partitioning
     console.log("Processing file:", fileName);
+    await db
+      .update(documents)
+      .set({ extractionStatus: "pending" })
+      .where(eq(documents.id, documentId));
     const response = await unstructured.general.partition({
       partitionParameters: {
         files: {
           content: fileContent,
           fileName: fileName,
         },
-        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.HiRes,
+        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.Fast,
         splitPdfPage: true,
         splitPdfAllowFailed: true,
         splitPdfConcurrencyLevel: 15,
@@ -140,11 +150,19 @@ export async function processFile(
       );
 
       console.log("Successfully processed the file:", fileName);
+      await db
+        .update(documents)
+        .set({ extractionStatus: "completed" })
+        .where(eq(documents.id, documentId));
     } else {
       console.error("Failed to process the file:", response);
     }
   } catch (error) {
     console.error("Error processing the file:", error);
+    await db
+      .update(documents)
+      .set({ extractionStatus: "failed" })
+      .where(eq(documents.id, documentId));
   }
 }
 
@@ -156,7 +174,7 @@ async function generateChunkContext(
   chunk: string
 ): Promise<string> {
   const { text } = await generateText({
-    model: MODELS["claude-3.5-sonnet"].model,
+    model: MODELS["gpt-4o-mini"].model,
     messages: [
       {
         role: "user",
@@ -166,9 +184,9 @@ async function generateChunkContext(
             text: `<document>
 ${fullDocument}
 </document>`,
-            providerOptions: {
-              anthropic: { cacheControl: { type: "ephemeral" } },
-            },
+            // providerOptions: {
+            //   anthropic: { cacheControl: { type: "ephemeral" } },
+            // },
           },
           {
             type: "text",

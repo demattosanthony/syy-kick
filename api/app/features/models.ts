@@ -109,6 +109,17 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "GPT-4o from OpenAI has broad general knowledge and domain expertise allowing it to follow complex instructions in natural language and solve difficult problems accurately. It matches GPT-4 Turbo performance with a faster and cheaper API.",
     },
+    "gpt-4o-mini": {
+      model: openai("gpt-4o-mini"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "openai",
+      supportsSystemMessages: true,
+      maxImageSize: 20 * 1024 * 1024, // 20MB
+      supportedMimeTypes,
+      description:
+        "GPT-4o Mini from OpenAI has broad general knowledge and domain expertise allowing it to follow complex instructions in natural language and solve difficult problems accurately. It matches GPT-4 Turbo performance with a faster and cheaper API.",
+    },
   };
 };
 
