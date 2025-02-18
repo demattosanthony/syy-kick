@@ -35,6 +35,7 @@
     "@ai-sdk/togetherai": "^0.1.9",
     "@ai-sdk/xai": "^1.1.8",
     "ai": "^4.1.41",
+    "canvas": "^3.0.0-rc3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.39.1",
@@ -46,6 +47,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-microsoft": "^2.1.0",
     "passport-saml": "^3.2.4",
+    "pdfjs-dist": "^4.10.38",
     "pg": "^8.13.1",
     "stripe": "^17.6.0",
     "unstructured-client": "^0.20.0"

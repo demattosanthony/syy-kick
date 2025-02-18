@@ -1,11 +1,11 @@
 import { UnstructuredClient } from "unstructured-client";
 import s3 from "./s3";
 import { Strategy } from "unstructured-client/sdk/models/shared";
-import { embeddingModel, googleEmbeddingModel } from "../features/models";
+import { googleEmbeddingModel, MODELS } from "../features/models";
 import db from "./db";
 import { documentEmbeddings } from "./schema";
 import { CONFIG } from "./constants";
-import { embedMany } from "ai";
+import { embedMany, generateText } from "ai";
 
 const unstructured = new UnstructuredClient({
   serverURL: process.env.UNSTRUCTURED_API_URL,
@@ -81,12 +81,12 @@ export async function processFile(
           content: fileContent,
           fileName: fileName,
         },
-        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.Fast,
+        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.HiRes,
         splitPdfPage: true,
         splitPdfAllowFailed: true,
         splitPdfConcurrencyLevel: 15,
-        maxCharacters: 300,
-        combineUnderNChars: 50,
+        maxCharacters: 400,
+        combineUnderNChars: 75,
         overlap: 50,
         coordinates: true,
         includeOrigElements: false,
@@ -95,13 +95,27 @@ export async function processFile(
     });
 
     if (response.statusCode === 200 && response.elements) {
-      // Process the chunked elements as needed
-      console.log("Chunked Elements:");
+      // Get the full document text for context
+      const fullDocumentText = response.elements.map((e) => e.text).join("\n");
 
-      const values = response.elements.map((element) =>
-        element.text.trim().replace(/\s+/g, " ")
+      const contextualizedChunks = await Promise.all(
+        response.elements.map(async (element) => {
+          // Get context for the chunk
+          const context = await generateChunkContext(
+            fullDocumentText,
+            element.text
+          );
+
+          // Combine context with original text
+          return {
+            ...element,
+            text: `${element.text.trim().replace(/\s+/g, " ")}\n\n${context}`,
+          } as typeof element;
+        })
       );
-      console.log("Embedding values:", values);
+
+      const values = contextualizedChunks.map((chunk) => chunk.text);
+      console.log("Embedding contextualized values:", values);
 
       // Process embeddings in batches of 100
       const batchSize = 100;
@@ -117,7 +131,7 @@ export async function processFile(
       }
 
       await db.insert(documentEmbeddings).values(
-        response.elements.map((element, i) => ({
+        contextualizedChunks.map((element, i) => ({
           documentId: documentId,
           text: element.text,
           embedding: allEmbeddings[i],
@@ -135,3 +149,43 @@ export async function processFile(
 }
 
 export default unstructured;
+
+// Helper function to generate context for a chunk using Claude
+async function generateChunkContext(
+  fullDocument: string,
+  chunk: string
+): Promise<string> {
+  const { text } = await generateText({
+    model: MODELS["claude-3.5-sonnet"].model,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `<document>
+${fullDocument}
+</document>`,
+            providerOptions: {
+              anthropic: { cacheControl: { type: "ephemeral" } },
+            },
+          },
+          {
+            type: "text",
+            text: `Here is the chunk we want to situate within the whole document
+<chunk>
+${chunk}
+</chunk>
+
+Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk.
+Answer only with the succinct context and nothing else.`,
+          },
+        ],
+      },
+    ],
+  });
+
+  console.log("Contextual info:", text);
+
+  return text;
+}

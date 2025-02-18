@@ -10,7 +10,7 @@ import db from "../config/db";
 import { messages, threads, messageAttachments } from "../config/schema";
 import { MessageAttachment } from "../config/schema"; // reusing types
 import { embeddingModel, MODELS } from "./models";
-import { handle, generateThreadTitle } from "../utils";
+import { handle, generateThreadTitle, getPdfPageAsImage } from "../utils";
 import { CONFIG } from "../config/constants";
 
 // ai-related imports
@@ -649,7 +649,40 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
                 query
               );
 
-              console.log("Search results:", res.length);
+              console.log("Search results:", res);
+              console.log("\n\n");
+
+              // Get unique documents from results
+              const uniqueDocsMap = new Map<string, (typeof res)[0]>();
+
+              for (const result of res) {
+                const pageNum = (result.metadata as any)?.page_number;
+                const key = pageNum
+                  ? `${result.documentId}_page${pageNum}`
+                  : result.documentId;
+                if (!uniqueDocsMap.has(key)) {
+                  uniqueDocsMap.set(key, result);
+                }
+              }
+
+              const uniqueDocs = Array.from(uniqueDocsMap.values());
+
+              console.log("Unique documents:", uniqueDocs);
+              console.log("\n\n");
+
+              for (const uniqueDoc of uniqueDocs) {
+                if (uniqueDoc.document.mimeType === "application/pdf") {
+                  const pageNumber = (
+                    uniqueDoc.metadata as { page_number?: number }
+                  )?.page_number;
+                  if (pageNumber) {
+                    const image = await getPdfPageAsImage(
+                      uniqueDoc.document.fileKey!,
+                      pageNumber
+                    );
+                  }
+                }
+              }
 
               const searchContext = res
                 .map(
