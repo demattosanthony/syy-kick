@@ -14,7 +14,6 @@ import { customType } from "drizzle-orm/pg-core";
 
 const MESSAGE_ROLES = ["system", "user", "assistant", "tool"] as const;
 const TOOL_CALL_STATUS = ["pending", "completed", "failed"] as const;
-const CONTENT_TYPES = ["text", "image", "file"] as const;
 const SUBSCRIPTION_STATUS = [
   "active",
   "canceled",
@@ -236,7 +235,7 @@ export const toolCalls = pgTable("tool_calls", {
   toolCallId: text("tool_call_id").notNull(),
   args: jsonb("args"),
   status: text("status", { enum: TOOL_CALL_STATUS }).notNull(),
-  result: text("result"),
+  result: jsonb("result"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -287,6 +286,7 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     references: [users.id],
   }),
   attachments: many(messageAttachments),
+  toolCalls: many(toolCalls),
 }));
 
 export const messageAttachmentsRelations = relations(

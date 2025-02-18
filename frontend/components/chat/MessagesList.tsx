@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Check, Copy, Search } from "lucide-react";
+import { Check, Copy, File, Search } from "lucide-react";
 
 interface MessageBubbleProps {
   content: string;
@@ -65,8 +65,6 @@ import { ThinkingDropdown } from "./ThinkingDropdown";
 const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
   <div className="flex flex-col gap-2 my-1">
     <div className="flex flex-col gap-1">
-      <p className="text-xs text-muted-foreground">Searching</p>
-
       <Badge
         key={index}
         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal w-fit"
@@ -89,18 +87,17 @@ const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
     </div>
 
     <div className="flex flex-col gap-1">
-      <p className="text-xs text-muted-foreground">Reading</p>
-
       {tool.result && (
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap max-w-3xl">
           {tool.result.dataForFrontend.map((result: any, idx: number) => (
             <Badge
               key={idx}
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal max-w-[300px] line-clamp-1"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium cursor-pointer w-fit max-w-[300px] "
               variant={"secondary"}
               onClick={() => window.open(result.url, "_blank")}
             >
-              {result.source}
+              <File className="w-3 h-3 min-w-[12px]" />
+              <span className="line-clamp-1">{result.source}</span>
             </Badge>
           ))}
         </div>

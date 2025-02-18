@@ -12,7 +12,7 @@
 3. Install Ghostscript:
    - Mac: `brew install ghostscript`
    - Ubuntu/Debian: `sudo apt-get install ghostscript`
-   - Windows: Download installer from https://ghostscript.com/releases/gsdnld.html
+   - Windows: Download installer from htps://ghostscript.com/releases/gsdnld.html
 4. Add environment variables as needed.
 
 ```bash

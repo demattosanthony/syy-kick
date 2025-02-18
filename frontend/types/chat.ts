@@ -34,12 +34,24 @@ export type MessageAttachment = {
   updatedAt: Date;
 };
 
+export type ChatToolCall = {
+  args: any;
+  createdAt: string;
+  id: string;
+  messageId: string;
+  status: "completed" | "failed" | "pending";
+  toolCallId: string;
+  toolName: string;
+  result?: any;
+};
+
 export type ChatMessage = {
   id: string;
   role: MessageRole;
   text: string;
   createdAt: string;
   attachments?: MessageAttachment[];
+  toolCalls?: ChatToolCall[];
   model?: string;
   provider?: string;
   reasoning?: string;

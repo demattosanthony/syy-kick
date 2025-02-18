@@ -7,21 +7,19 @@ import { sql, desc, and, eq, cosineDistance } from "drizzle-orm";
 
 import s3 from "../config/s3";
 import db from "../config/db";
-import { messages, threads, messageAttachments } from "../config/schema";
+import {
+  messages,
+  threads,
+  messageAttachments,
+  toolCalls as toolCallsTable,
+} from "../config/schema";
 import { MessageAttachment } from "../config/schema"; // reusing types
 import { embeddingModel, MODELS } from "./models";
 import { handle, generateThreadTitle, getPdfPageAsImage } from "../utils";
 import { CONFIG } from "../config/constants";
 
 // ai-related imports
-import {
-  Attachment,
-  CoreMessage,
-  generateObject,
-  Message,
-  streamText,
-  tool,
-} from "ai";
+import { Attachment, CoreMessage, generateObject, streamText, tool } from "ai";
 import { searchProjectDocuments } from "./projects";
 
 // --------------------------------------------------------
@@ -69,7 +67,7 @@ type ExtendedAttachment = Attachment & {
   file_key: string;
 };
 
-type MyMessage = Message & {
+type MyMessage = CoreMessage & {
   experimental_attachments?: ExtendedAttachment[];
 };
 
@@ -162,7 +160,7 @@ async function createMessage(
   // Attempt to embed message content
   try {
     const embeddingResult = await embeddingModel.doEmbed({
-      values: [message.content],
+      values: [message.content as string],
     });
     embedding = embeddingResult.embeddings[0];
   } catch (error) {
@@ -175,7 +173,7 @@ async function createMessage(
     id: messageId,
     threadId,
     role,
-    text: message.content ?? null,
+    text: (message.content as string) ?? null,
     embedding,
     createdAt: new Date(),
   });
@@ -263,7 +261,9 @@ async function maybeGenerateTitle(
   if (!firstUserTextMessage) return;
 
   try {
-    const title = await generateThreadTitle(firstUserTextMessage.content || "");
+    const title = await generateThreadTitle(
+      (firstUserTextMessage.content as string) || ""
+    );
     await db.update(threads).set({ title }).where(eq(threads.id, threadId));
   } catch (error) {
     console.error("Error generating title", error);
@@ -319,6 +319,15 @@ function dbMessagesToMyMessages(
     model: string | null;
     provider: string | null;
     embedding: number[] | null;
+    toolCalls: {
+      id: string;
+      messageId: string;
+      toolName: string;
+      toolCallId: string;
+      args: any;
+      status: "pending" | "completed" | "failed";
+      result: any;
+    }[];
     attachments: {
       id: string;
       messageId: string;
@@ -332,7 +341,10 @@ function dbMessagesToMyMessages(
     }[];
   }[]
 ) {
-  return dbMsgs.map((msg) => {
+  const messages: MyMessage[] = [];
+
+  for (const msg of dbMsgs) {
+    // Process attachments
     const experimental_attachments: ExtendedAttachment[] =
       msg.attachments?.map((att) => ({
         name: att.fileName || undefined,
@@ -341,13 +353,52 @@ function dbMessagesToMyMessages(
         url: s3.file(att.fileKey).presign({ expiresIn: 3600 }),
       })) || [];
 
-    return {
-      id: msg.id,
-      role: msg.role as MyMessage["role"],
-      content: msg.text || "",
-      experimental_attachments,
-    } as MyMessage;
-  });
+    // If message has tool calls, create separate messages for the assistant and tool responses
+    if (msg.toolCalls.length > 0 && msg.role === "assistant") {
+      // Create assistant message with tool calls
+      messages.push({
+        role: "assistant",
+        content: [
+          ...(msg.text ? [{ type: "text" as const, text: msg.text }] : []),
+          ...msg.toolCalls.map((call) => ({
+            type: "tool-call" as const,
+            toolCallId: call.toolCallId,
+            toolName: call.toolName,
+            args: call.args,
+          })),
+        ],
+        experimental_attachments,
+      });
+
+      // Create tool message with results for completed tool calls
+      const completedCalls = msg.toolCalls.filter(
+        (call) => call.status === "completed" && call.result
+      );
+
+      if (completedCalls.length > 0) {
+        messages.push({
+          id: `${msg.id}_tool_results`,
+          role: "tool",
+          content: completedCalls.map((call) => ({
+            type: "tool-result",
+            toolCallId: call.toolCallId,
+            toolName: call.toolName,
+            result: call.result.result,
+          })),
+        } as MyMessage);
+      }
+    } else {
+      // Regular message without tool calls
+      messages.push({
+        id: msg.id,
+        role: msg.role,
+        content: msg.text || "",
+        experimental_attachments,
+      } as MyMessage);
+    }
+  }
+
+  return messages;
 }
 
 /**
@@ -375,8 +426,30 @@ async function buildInferenceMessages(
   for (const msg of filteredMessages) {
     const chunks = [];
 
-    // Main text
-    if (msg.content) {
+    // Handle different content types
+    if (Array.isArray(msg.content)) {
+      // Handle tool calls and results
+      for (const item of msg.content) {
+        if (item.type === "text") {
+          chunks.push({ type: "text", text: item.text });
+        } else if (item.type === "tool-call") {
+          chunks.push({
+            type: "tool-call",
+            toolCallId: item.toolCallId,
+            toolName: item.toolName,
+            args: item.args,
+          });
+        } else if (item.type === "tool-result") {
+          chunks.push({
+            type: "tool-result",
+            toolCallId: item.toolCallId,
+            toolName: item.toolName,
+            result: item.result,
+          });
+        }
+      }
+    } else if (msg.content) {
+      // Handle simple text content
       chunks.push({ type: "text", text: msg.content });
     }
 
@@ -575,6 +648,7 @@ const ThreadOps = {
           },
           with: {
             attachments: true,
+            toolCalls: true,
           },
         },
         project: true,
@@ -582,6 +656,8 @@ const ThreadOps = {
       },
     });
     if (!thread) return null;
+
+    console.log("Raw thread:", thread);
 
     // Cast the thread to match ThreadWithMessages type
     const typedThread: ThreadWithMessages = {
@@ -722,7 +798,6 @@ const ThreadOps = {
         await createMessage(req.dbUser!.id, threadId, "user", {
           content: message.content || "",
           experimental_attachments: message.experimental_attachments as any,
-          id: message.id || crypto.randomUUID(),
           role: message.role as any,
         });
       }
@@ -731,7 +806,7 @@ const ThreadOps = {
       const rawMessages = await db.query.messages.findMany({
         where: eq(messages.threadId, threadId),
         orderBy: messages.createdAt,
-        with: { attachments: true },
+        with: { attachments: true, toolCalls: true },
       });
 
       const allMessages = dbMessagesToMyMessages(rawMessages);
@@ -754,36 +829,14 @@ const ThreadOps = {
         : undefined;
 
       // 8) Streaming logic
-      let aiResponse = "";
-      let reasoning: string | undefined;
-
-      // Save the AI response once the client disconnects or the response ends
-      req.on("close", async () => {
-        const responseEmbedding = await embeddingModel.doEmbed({
-          values: [aiResponse],
-        });
-
-        // Persist the assistant's response
-        await db.insert(messages).values({
-          userId: req.dbUser!.id,
-          id: crypto.randomUUID(),
-          threadId,
-          role: "assistant",
-          text: aiResponse,
-          reasoning,
-          createdAt: new Date(),
-          model,
-          embedding: responseEmbedding.embeddings[0],
-          provider: modelConfig.provider,
-        });
-
-        res.end();
-      });
+      //   let reasoning: string | undefined;
 
       const tools =
         thread.projectId && message.content
           ? createSearchTool(threadId, thread.projectId, modelConfig)
           : undefined;
+
+      console.log("Inference messages:", inferenceMsgs);
 
       // Start the streaming from the AI
       const result = streamText({
@@ -796,20 +849,84 @@ const ThreadOps = {
         toolCallStreaming: true,
         system: systemMessage,
         maxTokens: maxTokens,
-        onChunk: ({ chunk }) => {
-          if (chunk.type === "text-delta") {
-            aiResponse += chunk.textDelta;
-          } else if (chunk.type === "reasoning") {
-            if (!reasoning) reasoning = "";
-            reasoning += chunk.textDelta;
-          }
-        },
-        onStepFinish: ({ toolCalls, toolResults, text, finishReason }) => {
+        onStepFinish: async ({
+          toolCalls,
+          toolResults,
+          text,
+          finishReason,
+          reasoning,
+        }) => {
           console.log(`Text: ${text}`);
           console.log("Tool Calls:", toolCalls);
           console.log("Tool Results:", toolResults);
           console.log("Finish Reason:", finishReason);
           console.log("\n\n\n\n\n");
+
+          if (finishReason === "tool-calls") {
+            // First create a message for the assistant's tool call
+            const toolCallMessage = await db
+              .insert(messages)
+              .values({
+                userId: req.dbUser!.id,
+                threadId,
+                role: "assistant",
+                text,
+                reasoning,
+                model,
+                provider: modelConfig.provider,
+              })
+              .returning();
+
+            // Then persist each tool call and its result
+            for (const toolCall of toolCalls) {
+              const toolCallId = crypto.randomUUID();
+              await db.insert(toolCallsTable).values({
+                id: toolCallId,
+                messageId: toolCallMessage[0].id,
+                toolName: toolCall.toolName,
+                toolCallId: toolCall.toolCallId,
+                args: toolCall.args,
+                status: "pending",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+
+              // Find matching result for this tool call
+              const result = toolResults.find(
+                (r) => r.toolCallId === toolCall.toolCallId
+              );
+              if (result) {
+                await db
+                  .update(toolCallsTable)
+                  .set({
+                    status: "completed",
+                    result: result.result,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
+              }
+            }
+          }
+
+          if (finishReason === "stop" && text) {
+            const responseEmbedding = await embeddingModel.doEmbed({
+              values: [text],
+            });
+            // Persist the assistant's response
+            await db.insert(messages).values({
+              userId: req.dbUser!.id,
+              id: crypto.randomUUID(),
+              threadId,
+              role: "assistant",
+              text: text,
+              reasoning,
+              createdAt: new Date(),
+              model,
+              embedding: responseEmbedding.embeddings[0],
+              provider: modelConfig.provider,
+            });
+            return;
+          }
         },
         // onFinish: ({ text, finishReason, usage, steps }) => {
         //   console.log(`USAGE: ${usage.totalTokens} tokens used\n\n`);
