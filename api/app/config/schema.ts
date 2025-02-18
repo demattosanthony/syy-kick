@@ -232,8 +232,9 @@ export const toolCalls = pgTable("tool_calls", {
   messageId: uuid("message_id")
     .notNull()
     .references(() => messages.id, { onDelete: "cascade" }),
-  functionName: text("function_name").notNull(),
-  functionArguments: text("function_arguments"),
+  toolName: text("function_name").notNull(),
+  toolCallId: text("tool_call_id").notNull(),
+  args: jsonb("args"),
   status: text("status", { enum: TOOL_CALL_STATUS }).notNull(),
   result: text("result"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

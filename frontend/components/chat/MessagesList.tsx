@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Search } from "lucide-react";
 
 interface MessageBubbleProps {
   content: string;
@@ -62,14 +62,52 @@ import { Message } from "ai/react";
 import MarkdownViewer from "../MarkdownViewer";
 import { ThinkingDropdown } from "./ThinkingDropdown";
 
-const formatToolName = (name: string): string => {
-  switch (name) {
-    case "search_documents":
-      return "Search Documents";
-    default:
-      return name;
-  }
-};
+const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
+  <div className="flex flex-col gap-2 my-1">
+    <div className="flex flex-col gap-1">
+      <p className="text-xs text-muted-foreground">Searching</p>
+
+      <Badge
+        key={index}
+        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal w-fit"
+        variant={"secondary"}
+      >
+        <Search className="w-3 h-3" />
+        {tool.args?.query}
+        {tool.state === "call" && (
+          <span className="inline-flex">
+            <span className="animate-bounce">.</span>
+            <span className="animate-bounce delay-100">.</span>
+            <span className="animate-bounce delay-200">.</span>
+          </span>
+        )}
+        {/* {tool.state === "result" && <span className="text-green-500">✓</span>} */}
+        {tool.state === "partial-call" && (
+          <span className="text-yellow-500">⋯</span>
+        )}
+      </Badge>
+    </div>
+
+    <div className="flex flex-col gap-1">
+      <p className="text-xs text-muted-foreground">Reading</p>
+
+      {tool.result && (
+        <div className="flex gap-1">
+          {tool.result.dataForFrontend.map((result: any, idx: number) => (
+            <Badge
+              key={idx}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal max-w-[300px] line-clamp-1"
+              variant={"secondary"}
+              onClick={() => window.open(result.url, "_blank")}
+            >
+              {result.source}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+);
 
 const AssistantMessage = ({
   message,
@@ -79,7 +117,7 @@ const AssistantMessage = ({
   showEye: boolean;
 }) => {
   return (
-    <div className="mb-4 flex flex-col justify-start">
+    <div className="my-2 flex flex-col justify-start">
       <div className="flex gap-2">
         <div className="mr-[1px] w-[32px] h-[32px]">
           {showEye ? <Syyclops3dEye size={32} animate={false} /> : null}
@@ -101,31 +139,16 @@ const AssistantMessage = ({
             </ThinkingDropdown>
           )}
 
-          {message.toolInvocations?.map((tool, index) => (
-            <div
-              key={index}
-              className="mb-2 flex items-center gap-2 text-sm text-muted-foreground"
-            >
-              <span className="font-medium">
-                {formatToolName(tool.toolName)}
-                {tool.state === "call" && (
-                  <span className="ml-1 inline-flex">
-                    <span className="animate-bounce">.</span>
-                    <span className="animate-bounce delay-100">.</span>
-                    <span className="animate-bounce delay-200">.</span>
-                  </span>
-                )}
-              </span>
-              {tool.state === "result" && (
-                <span className="text-green-500">✓</span>
-              )}
-              {tool.state === "partial-call" && (
-                <span className="text-yellow-500">⋯</span>
-              )}
-            </div>
-          ))}
-
           <MarkdownViewer content={message.content || ""} />
+
+          {message.toolInvocations?.map(
+            (tool, index) =>
+              tool.toolName === "search_documents" && (
+                <div key={index} className="flex flex-wrap">
+                  <ToolInvocation tool={tool} index={index} />
+                </div>
+              )
+          )}
         </div>
       </div>
     </div>
@@ -167,6 +190,8 @@ const UserMessage = ({ message }: { message: Message }) => {
 import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
 import Syyclops3dEye from "../syy-eye";
+import { Badge } from "../ui/badge";
+import Link from "next/link";
 
 const LoadingMessage = React.memo(() => {
   return (

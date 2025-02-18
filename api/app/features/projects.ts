@@ -538,6 +538,7 @@ export async function searchProjectDocuments(
       documentId: documentEmbeddings.documentId,
       text: documentEmbeddings.text,
       metadata: documentEmbeddings.metadata,
+      fileKey: documents.fileKey,
       similarity: sql<number>`1 - (${cosineDistance(
         documentEmbeddings.embedding,
         queryEmbedding

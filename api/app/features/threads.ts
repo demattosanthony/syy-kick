@@ -408,6 +408,130 @@ async function buildInferenceMessages(
   return messagesForCore;
 }
 
+/** Creates search tool if project ID exists */
+function createSearchTool(
+  threadId: string,
+  projectId: string | null,
+  modelConfig: any
+) {
+  if (!projectId) return undefined;
+
+  return {
+    search_documents: tool({
+      description: `Searches project documents and returns relevant matches based on semantic meaning rather than exact keywords.
+
+You can and should use this tool multiple times to gather comprehensive information. Each search can focus on different aspects of the user's question.
+
+Input: A text query describing what you're looking for
+Output: List of matching documents with:
+- Document ID and name
+- Relevant text snippet
+- Similarity score
+
+Best Practices:
+1. Use multiple targeted searches to build comprehensive context
+2. Start broad, then narrow down based on initial findings
+3. Cross-reference information across documents
+4. Search until you have complete context for your answer
+
+Example Search Flow:
+1. "system architecture overview"
+2. "authentication implementation details"
+3. "specific component integration"
+
+Results are ranked by relevance. Multiple searches are encouraged for thorough research.`,
+      parameters: z.object({
+        query: z.string(),
+      }),
+      execute: async ({ query }) => {
+        console.log("Searching project documents for: ", query);
+        const res = await searchProjectDocuments(projectId, query);
+
+        const uniqueDocsMap = new Map<string, (typeof res)[0]>();
+
+        for (const result of res) {
+          const pageNum = (result.metadata as any)?.page_number;
+          const key = pageNum
+            ? `${result.documentId}_page${pageNum}`
+            : result.documentId;
+          if (!uniqueDocsMap.has(key)) {
+            uniqueDocsMap.set(key, result);
+          }
+        }
+
+        const uniqueDocs = Array.from(uniqueDocsMap.values());
+        let images = [];
+
+        // Can only do mulitmodal tools with claude-3.5-sonnet
+        if (modelConfig.model.modelId.includes("claude-3-5-sonnet")) {
+          for (const uniqueDoc of uniqueDocs) {
+            if (uniqueDoc.document.mimeType === "application/pdf") {
+              const pageNumber = (
+                uniqueDoc.metadata as { page_number?: number }
+              )?.page_number;
+              if (pageNumber) {
+                const pdfBytes = await s3
+                  .file(uniqueDoc.document.fileKey!)
+                  .bytes();
+                const base64Image = await getPdfPageAsImage(
+                  pdfBytes,
+                  pageNumber
+                );
+                images.push(base64Image);
+              }
+            } else if (uniqueDoc.document.mimeType?.includes("image")) {
+              const base64Image = await generateAttachmentData(
+                uniqueDoc.document.fileKey!
+              );
+              images.push(base64Image);
+            }
+          }
+        }
+
+        const searchContext = `<document_context>${res
+          .map(
+            (r) => `
+<document>
+  <document_id>${r.document.id}</document_id>
+  <source>${r.document.name}</source>
+  <snippet>${r.text}</snippet>
+  <score>${r.similarity}</score>
+</document>`
+          )
+          .join("\n")}
+</document_context>`;
+
+        return {
+          context: searchContext,
+          images,
+
+          // Format data thats easy for frontend to use
+          dataForFrontend: uniqueDocs.map((doc) => ({
+            document_id: doc.document.id,
+            source: doc.document.name,
+            snippet: doc.text,
+            url: (doc.document as any).url,
+            score: doc.similarity,
+          })),
+        };
+      },
+      experimental_toToolResultContent(result) {
+        return [
+          ...result.images.map((image) => ({
+            type: "image" as const,
+            data: image,
+            mimeType: "image/png",
+          })),
+          {
+            type: "text",
+            text: result.context,
+          },
+        ];
+      },
+    }),
+  };
+}
+
 // --------------------------------------------------------
 // 4. Main Service for Threads (Ops)
 // --------------------------------------------------------
@@ -612,123 +736,6 @@ const ThreadOps = {
 
       const allMessages = dbMessagesToMyMessages(rawMessages);
 
-      let tools;
-
-      if (thread.projectId && message.content) {
-        tools = {
-          search_documents: tool({
-            description: `Searches project documents and returns relevant matches based on semantic meaning rather than exact keywords.
-
-You can and should use this tool multiple times to gather comprehensive information. Each search can focus on different aspects of the user's question.
-
-Input: A text query describing what you're looking for
-Output: List of matching documents with:
-- Document ID and name
-- Relevant text snippet
-- Similarity score
-
-Best Practices:
-1. Use multiple targeted searches to build comprehensive context
-2. Start broad, then narrow down based on initial findings
-3. Cross-reference information across documents
-4. Search until you have complete context for your answer
-
-Example Search Flow:
-1. "system architecture overview"
-2. "authentication implementation details"
-3. "specific component integration"
-
-Results are ranked by relevance. Multiple searches are encouraged for thorough research.`,
-            parameters: z.object({
-              query: z.string(),
-            }),
-            execute: async ({ query }) => {
-              console.log("Searching project documents for: ", query);
-              const res = await searchProjectDocuments(
-                thread.projectId as string,
-                query
-              );
-
-              console.log("Search results:", res);
-              console.log("\n\n");
-
-              // Get unique documents from results
-              const uniqueDocsMap = new Map<string, (typeof res)[0]>();
-
-              for (const result of res) {
-                const pageNum = (result.metadata as any)?.page_number;
-                const key = pageNum
-                  ? `${result.documentId}_page${pageNum}`
-                  : result.documentId;
-                if (!uniqueDocsMap.has(key)) {
-                  uniqueDocsMap.set(key, result);
-                }
-              }
-
-              const uniqueDocs = Array.from(uniqueDocsMap.values());
-
-              console.log("Unique documents:", uniqueDocs);
-              console.log("\n\n");
-
-              let images = [];
-
-              // Can only do mulitmodal tools with claude-3.5-sonnet
-              if (modelConfig.model.modelId.includes("claude-3.5-sonnet")) {
-                for (const uniqueDoc of uniqueDocs) {
-                  if (uniqueDoc.document.mimeType === "application/pdf") {
-                    const pageNumber = (
-                      uniqueDoc.metadata as { page_number?: number }
-                    )?.page_number;
-                    if (pageNumber) {
-                      const pdfBytes = await s3
-                        .file(uniqueDoc.document.fileKey!)
-                        .bytes();
-                      const base64Image = await getPdfPageAsImage(
-                        pdfBytes,
-                        pageNumber
-                      );
-                      images.push(base64Image);
-                    }
-                  }
-                }
-              }
-
-              const searchContext = res
-                .map(
-                  (r) => `
-<document>
-  <document_id>${r.document.id}</document_id>
-  <source>${r.document.name}</source>
-  <snippet>${r.text}</snippet>
-  <score>${r.similarity}</score>
-</document>`
-                )
-                .join("\n");
-
-              console.log(`LENGTH of images : ${images.length}`);
-
-              return {
-                context: searchContext,
-                images,
-              };
-            },
-            experimental_toToolResultContent(result) {
-              return [
-                ...result.images.map((image) => ({
-                  type: "image" as const,
-                  data: image,
-                  mimeType: "image/png",
-                })),
-                {
-                  type: "text",
-                  text: result.context,
-                },
-              ];
-            },
-          }),
-        };
-      }
-
       // 4) Determine appropriate model
       const modelConfig = await getModelConfig(model, allMessages);
 
@@ -773,6 +780,11 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
         res.end();
       });
 
+      const tools =
+        thread.projectId && message.content
+          ? createSearchTool(threadId, thread.projectId, modelConfig)
+          : undefined;
+
       // Start the streaming from the AI
       const result = streamText({
         model: modelConfig.model,
@@ -792,6 +804,22 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
             reasoning += chunk.textDelta;
           }
         },
+        onStepFinish: ({ toolCalls, toolResults, text, finishReason }) => {
+          console.log(`Text: ${text}`);
+          console.log("Tool Calls:", toolCalls);
+          console.log("Tool Results:", toolResults);
+          console.log("Finish Reason:", finishReason);
+          console.log("\n\n\n\n\n");
+        },
+        // onFinish: ({ text, finishReason, usage, steps }) => {
+        //   console.log(`USAGE: ${usage.totalTokens} tokens used\n\n`);
+
+        //   const toolCalls = steps.flatMap((step) => step.toolCalls || []);
+        //   const toolResults = steps.flatMap((step) => step.toolResults || []);
+
+        //   console.log("Tool Calls:", toolCalls);
+        //   console.log("Tool Results:", toolResults);
+        // },
       });
 
       // Pipe the data out as SSE

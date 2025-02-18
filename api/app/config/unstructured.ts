@@ -91,7 +91,7 @@ export async function processFile(
           content: fileContent,
           fileName: fileName,
         },
-        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.Fast,
+        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.HiRes,
         splitPdfPage: true,
         splitPdfAllowFailed: true,
         splitPdfConcurrencyLevel: 15,
@@ -140,14 +140,24 @@ export async function processFile(
         allEmbeddings.push(...batchEmbeddings);
       }
 
-      await db.insert(documentEmbeddings).values(
-        contextualizedChunks.map((element, i) => ({
-          documentId: documentId,
-          text: element.text,
-          embedding: allEmbeddings[i],
-          metadata: element.metadata,
-        }))
-      );
+      // Validate that we have matching numbers of chunks and embeddings
+      if (contextualizedChunks.length !== allEmbeddings.length) {
+        throw new Error(
+          `Mismatch between chunks (${contextualizedChunks.length}) and embeddings (${allEmbeddings.length})`
+        );
+      }
+
+      // Only proceed with database insertion if we have chunks to process
+      if (contextualizedChunks.length > 0) {
+        await db.insert(documentEmbeddings).values(
+          contextualizedChunks.map((element, i) => ({
+            documentId: documentId,
+            text: element.text,
+            embedding: allEmbeddings[i],
+            metadata: element.metadata,
+          }))
+        );
+      }
 
       console.log("Successfully processed the file:", fileName);
       await db
