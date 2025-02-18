@@ -74,6 +74,7 @@ export default function ThreadPage({
     credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,
+    maxSteps: 6,
     experimental_prepareRequestBody({ messages, id }) {
       return {
         message: messages[messages.length - 1],
@@ -83,6 +84,9 @@ export default function ThreadPage({
         instructions,
         organizationId: orgId,
       };
+    },
+    async onToolCall({ toolCall }) {
+      console.log("Tool call", toolCall);
     },
   });
 

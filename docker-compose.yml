@@ -38,14 +38,14 @@ services:
     networks:
       - app-network
 
-  # unstructured-api:
-  #   image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
-  #   ports:
-  #     - "8000:8000"
-  #   platform: linux/amd64
-  #   restart: unless-stopped
-  #   networks:
-  #     - app-network
+  unstructured-api:
+    image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
+    ports:
+      - "8000:8000"
+    platform: linux/amd64
+    restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   pg_data:
