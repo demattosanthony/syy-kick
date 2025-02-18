@@ -20,6 +20,7 @@ import {
   generateObject,
   Message,
   streamText,
+  tool,
 } from "ai";
 import { searchProjectDocuments } from "./projects";
 
@@ -281,7 +282,7 @@ function buildSystemMessage(instructions?: string): string {
   });
 
   let systemMsg = `<assistant_instructions>
-Your name is Yo. You are a multi-disciplinary engineer... 
+Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it’s creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand.
 </assistant_instructions>
 
 <current_date>
@@ -600,37 +601,54 @@ const ThreadOps = {
 
       const allMessages = dbMessagesToMyMessages(rawMessages);
 
-      if (thread.projectId) {
-        if (message.content) {
-          console.log("Searching project documents for:", message.content);
-          const res = await searchProjectDocuments(
-            thread.projectId,
-            message.content
-          );
+      let tools;
 
-          console.log("Search results:", res);
+      if (thread.projectId && message.content) {
+        tools = {
+          search_documents: tool({
+            description: `Searches project documents and returns relevant matches based on semantic meaning rather than exact keywords.
 
-          // Update the last user message with search results
-          const lastUserMessageIndex = allMessages.length - 1;
-          if (lastUserMessageIndex >= 0 && res.length > 0) {
-            const searchContext = res
-              .map(
-                (r) => `
+Input:
+- A text query describing what you're looking for
+
+Returns a list of matching documents, each containing:
+- The document ID and name
+- A relevant text snippet from the document
+- A similarity score showing how well it matches
+
+Example query:
+"performance optimization techniques"
+
+The tool will return the most relevant documents, ranked by how well they match the query's meaning.`,
+            parameters: z.object({
+              query: z.string(),
+            }),
+            execute: async ({ query }) => {
+              console.log("Searching project documents for: ", query);
+              const res = await searchProjectDocuments(
+                thread.projectId as string,
+                query
+              );
+
+              console.log("Search results:", res.length);
+
+              const searchContext = res
+                .map(
+                  (r) => `
 <document>
+  <document_id>${r.document.id}</document_id>
   <source>${r.document.name}</source>
-  <content>${r.text}</content>
+  <snippet>${r.text}</snippet>
+  <score>${r.similarity}</score>
 </document>`
-              )
-              .join("\n");
+                )
+                .join("\n");
 
-            allMessages[
-              lastUserMessageIndex
-            ].content += `\n\nRelevant project context:\n${searchContext}`;
-          }
-        }
+              return searchContext;
+            },
+          }),
+        };
       }
-
-      console.log("All messages:", allMessages);
 
       // 4) Determine appropriate model
       const modelConfig = await getModelConfig(model, allMessages);
@@ -655,9 +673,17 @@ const ThreadOps = {
 
       // Save the AI response once the client disconnects or the response ends
       req.on("close", async () => {
-        const responseEmbedding = await embeddingModel.doEmbed({
-          values: [aiResponse],
+        console.log("Client disconnected", {
+          aiResponseLength: aiResponse?.length || 0,
+          hasReasoning: !!reasoning,
         });
+
+        let responseEmbedding;
+        if (aiResponse) {
+          responseEmbedding = await embeddingModel.doEmbed({
+            values: [aiResponse],
+          });
+        }
 
         // Persist the assistant's response
         await db.insert(messages).values({
@@ -669,34 +695,54 @@ const ThreadOps = {
           reasoning,
           createdAt: new Date(),
           model,
-          embedding: responseEmbedding.embeddings[0],
+          embedding: responseEmbedding ? responseEmbedding.embeddings[0] : null,
           provider: modelConfig.provider,
         });
 
         res.end();
       });
 
-      // Start the streaming from the AI
-      const result = streamText({
+      console.log("Starting inference stream...");
+      console.log("Tools config:", tools ? "Available" : "None");
+      console.log("Model config:", {
         model: modelConfig.model,
-        messages: inferenceMsgs as CoreMessage[],
-        temperature,
-        system: systemMessage,
-        maxTokens: maxTokens,
-        onChunk: ({ chunk }) => {
-          if (chunk.type === "text-delta") {
-            aiResponse += chunk.textDelta;
-          } else if (chunk.type === "reasoning") {
-            if (!reasoning) reasoning = "";
-            reasoning += chunk.textDelta;
-          }
-        },
+        systemMessage: !!systemMessage,
+        messageCount: inferenceMsgs.length,
       });
 
-      // Pipe the data out as SSE
-      return result.pipeDataStreamToResponse(res, {
-        sendReasoning: true,
-      });
+      try {
+        // Start the streaming from the AI
+        const result = streamText({
+          model: modelConfig.model,
+          messages: inferenceMsgs as CoreMessage[],
+          temperature,
+          tools: tools ? tools : undefined,
+          maxSteps: tools ? 6 : undefined,
+          toolChoice: "auto",
+          toolCallStreaming: true,
+          system: systemMessage,
+          maxTokens: maxTokens,
+          onChunk: ({ chunk }) => {
+            console.log("Received chunk type:", chunk.type);
+            if (chunk.type === "text-delta") {
+              aiResponse += chunk.textDelta;
+            } else if (chunk.type === "reasoning") {
+              if (!reasoning) reasoning = "";
+              reasoning += chunk.textDelta;
+            }
+          },
+        });
+
+        console.log("Stream initialized successfully");
+
+        // Pipe the data out as SSE
+        return result.pipeDataStreamToResponse(res, {
+          sendReasoning: true,
+        });
+      } catch (streamError) {
+        console.error("Error during streaming:", streamError);
+        throw streamError; // Re-throw to be caught by outer catch block
+      }
     } catch (error) {
       console.error("Error in inference:", error);
       res.status(500).json({
