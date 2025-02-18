@@ -63,14 +63,18 @@ import { Message } from "ai/react";
 import MarkdownViewer from "../MarkdownViewer";
 import { ThinkingDropdown } from "./ThinkingDropdown";
 
-const AssistantMessage = (
-  { message }: { message: Message } // Removed React.memo
-) => {
+const AssistantMessage = ({
+  message,
+  showEye,
+}: {
+  message: Message;
+  showEye: boolean;
+}) => {
   return (
     <div className="mb-4 flex flex-col justify-start">
       <div className="flex gap-2">
         <div className="mr-[1px] w-[32px] h-[32px]">
-          <Syyclops3dEye size={32} animate={false} />
+          {showEye ? <Syyclops3dEye size={32} animate={false} /> : null}
         </div>
 
         <div
@@ -88,6 +92,15 @@ const AssistantMessage = (
               <MarkdownViewer content={message.reasoning || ""} />
             </ThinkingDropdown>
           )}
+
+          {message.toolInvocations?.map((tool, index) => (
+            <div key={index} className="mb-2 text-sm text-muted-foreground">
+              <span className="font-medium">{tool.toolName}</span>
+              <span className="ml-2 px-2 py-1 bg-muted rounded-md">
+                {tool.state}
+              </span>
+            </div>
+          ))}
 
           <MarkdownViewer content={message.content || ""} />
         </div>
@@ -170,13 +183,22 @@ const ChatMessagesList = React.memo(
       <div className="flex-1 w-full h-full relative">
         <div className="absolute inset-0 overflow-y-auto">
           <div className="max-w-[840px] mx-auto pt-20 p-4">
-            {messages.map((message, index) =>
-              message.role === MessageRole.user ? (
+            {messages.map((message, index) => {
+              const nextMessage = messages[index + 1];
+              const showEye =
+                message.role !== MessageRole.user &&
+                (!nextMessage || nextMessage.role === MessageRole.user);
+
+              return message.role === MessageRole.user ? (
                 <UserMessage key={index} message={message} />
               ) : (
-                <AssistantMessage key={index} message={message} />
-              )
-            )}
+                <AssistantMessage
+                  key={index}
+                  message={message}
+                  showEye={showEye}
+                />
+              );
+            })}
             {showLoadingState && <LoadingMessage />}
           </div>
         </div>

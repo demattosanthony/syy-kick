@@ -282,7 +282,18 @@ function buildSystemMessage(instructions?: string): string {
   });
 
   let systemMsg = `<assistant_instructions>
-Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it’s creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand.
+Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it's creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand.
+
+When searching through project documents:
+1. Break down complex queries into multiple focused searches
+2. Search iteratively, using information from previous searches to refine new searches
+3. Don't hesitate to perform multiple searches to gather comprehensive context
+4. Synthesize information from all relevant searches in your response
+
+For example, if asked about a project's architecture, you might:
+- First search for high-level architecture documents
+- Then search for specific components mentioned in those documents
+- Finally search for any integration details between components
 </assistant_instructions>
 
 <current_date>
@@ -608,18 +619,26 @@ const ThreadOps = {
           search_documents: tool({
             description: `Searches project documents and returns relevant matches based on semantic meaning rather than exact keywords.
 
-Input:
-- A text query describing what you're looking for
+You can and should use this tool multiple times to gather comprehensive information. Each search can focus on different aspects of the user's question.
 
-Returns a list of matching documents, each containing:
-- The document ID and name
-- A relevant text snippet from the document
-- A similarity score showing how well it matches
+Input: A text query describing what you're looking for
+Output: List of matching documents with:
+- Document ID and name
+- Relevant text snippet
+- Similarity score
 
-Example query:
-"performance optimization techniques"
+Best Practices:
+1. Use multiple targeted searches to build comprehensive context
+2. Start broad, then narrow down based on initial findings
+3. Cross-reference information across documents
+4. Search until you have complete context for your answer
 
-The tool will return the most relevant documents, ranked by how well they match the query's meaning.`,
+Example Search Flow:
+1. "system architecture overview"
+2. "authentication implementation details"
+3. "specific component integration"
+
+Results are ranked by relevance. Multiple searches are encouraged for thorough research.`,
             parameters: z.object({
               query: z.string(),
             }),
@@ -673,17 +692,9 @@ The tool will return the most relevant documents, ranked by how well they match 
 
       // Save the AI response once the client disconnects or the response ends
       req.on("close", async () => {
-        console.log("Client disconnected", {
-          aiResponseLength: aiResponse?.length || 0,
-          hasReasoning: !!reasoning,
+        const responseEmbedding = await embeddingModel.doEmbed({
+          values: [aiResponse],
         });
-
-        let responseEmbedding;
-        if (aiResponse) {
-          responseEmbedding = await embeddingModel.doEmbed({
-            values: [aiResponse],
-          });
-        }
 
         // Persist the assistant's response
         await db.insert(messages).values({
@@ -695,54 +706,38 @@ The tool will return the most relevant documents, ranked by how well they match 
           reasoning,
           createdAt: new Date(),
           model,
-          embedding: responseEmbedding ? responseEmbedding.embeddings[0] : null,
+          embedding: responseEmbedding.embeddings[0],
           provider: modelConfig.provider,
         });
 
         res.end();
       });
 
-      console.log("Starting inference stream...");
-      console.log("Tools config:", tools ? "Available" : "None");
-      console.log("Model config:", {
+      // Start the streaming from the AI
+      const result = streamText({
         model: modelConfig.model,
-        systemMessage: !!systemMessage,
-        messageCount: inferenceMsgs.length,
+        messages: inferenceMsgs as CoreMessage[],
+        temperature,
+        tools: tools ? tools : undefined,
+        maxSteps: tools ? 6 : undefined,
+        toolChoice: "auto",
+        toolCallStreaming: true,
+        system: systemMessage,
+        maxTokens: maxTokens,
+        onChunk: ({ chunk }) => {
+          if (chunk.type === "text-delta") {
+            aiResponse += chunk.textDelta;
+          } else if (chunk.type === "reasoning") {
+            if (!reasoning) reasoning = "";
+            reasoning += chunk.textDelta;
+          }
+        },
       });
 
-      try {
-        // Start the streaming from the AI
-        const result = streamText({
-          model: modelConfig.model,
-          messages: inferenceMsgs as CoreMessage[],
-          temperature,
-          tools: tools ? tools : undefined,
-          maxSteps: tools ? 6 : undefined,
-          toolChoice: "auto",
-          toolCallStreaming: true,
-          system: systemMessage,
-          maxTokens: maxTokens,
-          onChunk: ({ chunk }) => {
-            console.log("Received chunk type:", chunk.type);
-            if (chunk.type === "text-delta") {
-              aiResponse += chunk.textDelta;
-            } else if (chunk.type === "reasoning") {
-              if (!reasoning) reasoning = "";
-              reasoning += chunk.textDelta;
-            }
-          },
-        });
-
-        console.log("Stream initialized successfully");
-
-        // Pipe the data out as SSE
-        return result.pipeDataStreamToResponse(res, {
-          sendReasoning: true,
-        });
-      } catch (streamError) {
-        console.error("Error during streaming:", streamError);
-        throw streamError; // Re-throw to be caught by outer catch block
-      }
+      // Pipe the data out as SSE
+      return result.pipeDataStreamToResponse(res, {
+        sendReasoning: true,
+      });
     } catch (error) {
       console.error("Error in inference:", error);
       res.status(500).json({
