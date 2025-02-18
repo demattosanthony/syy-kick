@@ -34,7 +34,6 @@ const MessageBubble = (
       <div
         className="
           break-words
-          break-all
           whitespace-pre-wrap
           w-full
           overflow-hidden
@@ -62,6 +61,15 @@ const MessageBubble = (
 import { Message } from "ai/react";
 import MarkdownViewer from "../MarkdownViewer";
 import { ThinkingDropdown } from "./ThinkingDropdown";
+
+const formatToolName = (name: string): string => {
+  switch (name) {
+    case "search_documents":
+      return "Search Documents";
+    default:
+      return name;
+  }
+};
 
 const AssistantMessage = ({
   message,
@@ -94,11 +102,26 @@ const AssistantMessage = ({
           )}
 
           {message.toolInvocations?.map((tool, index) => (
-            <div key={index} className="mb-2 text-sm text-muted-foreground">
-              <span className="font-medium">{tool.toolName}</span>
-              <span className="ml-2 px-2 py-1 bg-muted rounded-md">
-                {tool.state}
+            <div
+              key={index}
+              className="mb-2 flex items-center gap-2 text-sm text-muted-foreground"
+            >
+              <span className="font-medium">
+                {formatToolName(tool.toolName)}
+                {tool.state === "call" && (
+                  <span className="ml-1 inline-flex">
+                    <span className="animate-bounce">.</span>
+                    <span className="animate-bounce delay-100">.</span>
+                    <span className="animate-bounce delay-200">.</span>
+                  </span>
+                )}
               </span>
+              {tool.state === "result" && (
+                <span className="text-green-500">✓</span>
+              )}
+              {tool.state === "partial-call" && (
+                <span className="text-yellow-500">⋯</span>
+              )}
             </div>
           ))}
 
