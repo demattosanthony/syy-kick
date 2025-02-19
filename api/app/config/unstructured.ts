@@ -91,7 +91,7 @@ export async function processFile(
           content: fileContent,
           fileName: fileName,
         },
-        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.Fast,
+        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.HiRes,
         splitPdfPage: true,
         splitPdfAllowFailed: true,
         splitPdfConcurrencyLevel: 15,
@@ -100,7 +100,7 @@ export async function processFile(
         overlap: 50,
         coordinates: true,
         includeOrigElements: false,
-        chunkingStrategy: "by_title",
+        chunkingStrategy: "by_similarity",
       },
     });
 
