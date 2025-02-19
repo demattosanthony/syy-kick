@@ -14,7 +14,7 @@ import {
   toolCalls as toolCallsTable,
 } from "../config/schema";
 import { MessageAttachment } from "../config/schema"; // reusing types
-import { embeddingModel, MODELS } from "./models";
+import { embeddingModel, ModelConfig, MODELS } from "./models";
 import { handle, generateThreadTitle, getPdfPageAsImage } from "../utils";
 import { CONFIG } from "../config/constants";
 
@@ -513,7 +513,7 @@ async function buildInferenceMessages(
 }
 
 /** Creates search tool if project ID exists */
-function createSearchTool(projectId: string | null, modelConfig: any) {
+function createSearchTool(projectId: string | null, modelConfig: ModelConfig) {
   if (!projectId) return undefined;
 
   return {
@@ -588,7 +588,7 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
         const uniqueDocs = Array.from(uniqueDocsMap.values());
         let images = [];
 
-        // Can only do mulitmodal tools with claude-3.5-sonnet
+        // Can only do mulitmodal tools with claude-3.5-sonnet for now
         if (modelConfig.model.modelId.includes("claude-3-5-sonnet")) {
           for (const uniqueDoc of uniqueDocs) {
             if (uniqueDoc.document.mimeType === "application/pdf") {
@@ -614,6 +614,7 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
           }
         }
 
+        // Convert to search context XML
         const searchContext = `<document_context>${rerankedWithMetadata
           .map(
             (r) => `
@@ -638,6 +639,7 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
             snippet: doc.text,
             url: (doc.document as any).url,
             score: doc.similarity,
+            page: (doc.metadata as any)?.page_number,
           })),
         };
       },

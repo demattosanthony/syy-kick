@@ -1,31 +1,52 @@
-import { Check, Loader2 } from "lucide-react";
+import { File, Search } from "lucide-react";
+import { Badge } from "../ui/badge";
 
-export default function ToolCallResultComponent({
-  toolCall,
-}: {
-  toolCall: {
-    status: string;
-  };
-}) {
-  const isPending = toolCall.status === "pending";
+const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
+  <div className="flex flex-col gap-2 border-2 p-3 rounded-lg">
+    {/* Search Query Section */}
+    <div className="flex items-center gap-1">
+      <Search className="w-3 h-3 text-muted-foreground" />
+      <span className="text-sm text-muted-foreground">Searching for:</span>
+      <span className="font-medium">{tool.args?.query}</span>
 
-  return (
-    <div className="flex flex-col gap-2 w-full flex-1">
-      <div className="w-full flex">
-        <div className="flex pb-4 gap-2">
-          {isPending ? (
-            <div className="flex">
-              <Loader2 className="h-5 w-5 text-primary animate-spin mr-2" />
-              <p className="text-sm text-primary/80">Searching the web...</p>
-            </div>
-          ) : (
-            <div className="flex">
-              <Check className="h-5 w-5 text-primary mr-2" />
-              <p className="text-sm text-primary/80">Finished web search</p>
-            </div>
-          )}
+      {/* Status Indicator */}
+      {(tool.state === "partial-call" || tool.state === "call") && (
+        <span className="ml-1">
+          <span className="inline-block animate-bounce delay-0 text-2xl">
+            .
+          </span>
+          <span className="inline-block animate-bounce delay-100 text-2xl">
+            .
+          </span>
+          <span className="inline-block animate-bounce delay-200 text-2xl">
+            .
+          </span>
+        </span>
+      )}
+    </div>
+
+    {/* Results Section */}
+    {tool.result && (
+      <div className="flex flex-col gap-2">
+        <div className="text-sm text-muted-foreground">
+          Found {tool.result.dataForFrontend.length} relevant sources:
+        </div>
+        <div className="flex gap-2 flex-wrap max-w-3xl">
+          {tool.result.dataForFrontend.map((result: any, idx: number) => (
+            <Badge
+              key={idx}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium cursor-pointer w-fit max-w-[200px] bg-secondary/70"
+              variant={"secondary"}
+              onClick={() => window.open(result.url, "_blank")}
+            >
+              <File className="w-3 h-3 min-w-[12px]" />
+              <span className="truncate">{result.source}</span>
+            </Badge>
+          ))}
         </div>
       </div>
-    </div>
-  );
-}
+    )}
+  </div>
+);
+
+export default ToolInvocation;

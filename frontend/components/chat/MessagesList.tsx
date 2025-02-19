@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Check, Copy, File, Search } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 
 interface MessageBubbleProps {
   content: string;
@@ -62,50 +62,6 @@ import { Message } from "ai/react";
 import MarkdownViewer from "../MarkdownViewer";
 import { ThinkingDropdown } from "./ThinkingDropdown";
 
-const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
-  <div className="flex flex-col gap-2 my-1">
-    <div className="flex flex-col gap-1">
-      <Badge
-        key={index}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal w-fit"
-        variant={"secondary"}
-      >
-        <Search className="w-3 h-3" />
-        {tool.args?.query}
-        {tool.state === "call" && (
-          <span className="inline-flex">
-            <span className="animate-bounce">.</span>
-            <span className="animate-bounce delay-100">.</span>
-            <span className="animate-bounce delay-200">.</span>
-          </span>
-        )}
-        {/* {tool.state === "result" && <span className="text-green-500">✓</span>} */}
-        {tool.state === "partial-call" && (
-          <span className="text-yellow-500">⋯</span>
-        )}
-      </Badge>
-    </div>
-
-    <div className="flex flex-col gap-1">
-      {tool.result && (
-        <div className="flex gap-1 flex-wrap max-w-3xl">
-          {tool.result.dataForFrontend.map((result: any, idx: number) => (
-            <Badge
-              key={idx}
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium cursor-pointer w-fit max-w-[300px] "
-              variant={"secondary"}
-              onClick={() => window.open(result.url, "_blank")}
-            >
-              <File className="w-3 h-3 min-w-[12px]" />
-              <span className="line-clamp-1">{result.source}</span>
-            </Badge>
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
-);
-
 const AssistantMessage = ({
   message,
   showEye,
@@ -115,7 +71,7 @@ const AssistantMessage = ({
 }) => {
   return (
     <div className="my-2 flex flex-col justify-start">
-      <div className="flex gap-2">
+      <div className="flex">
         <div className="mr-[1px] w-[32px] h-[32px]">
           {showEye ? <Syyclops3dEye size={32} animate={false} /> : null}
         </div>
@@ -136,16 +92,16 @@ const AssistantMessage = ({
             </ThinkingDropdown>
           )}
 
-          <MarkdownViewer content={message.content || ""} />
+          <div className="flex flex-col gap-2">
+            {message.toolInvocations?.map(
+              (tool, index) =>
+                tool.toolName === "search_documents" && (
+                  <ToolInvocation tool={tool} index={index} key={index} />
+                )
+            )}
 
-          {message.toolInvocations?.map(
-            (tool, index) =>
-              tool.toolName === "search_documents" && (
-                <div key={index} className="flex flex-wrap">
-                  <ToolInvocation tool={tool} index={index} />
-                </div>
-              )
-          )}
+            {message.content && <MarkdownViewer content={message.content} />}
+          </div>
         </div>
       </div>
     </div>
@@ -187,8 +143,7 @@ const UserMessage = ({ message }: { message: Message }) => {
 import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
 import Syyclops3dEye from "../syy-eye";
-import { Badge } from "../ui/badge";
-import Link from "next/link";
+import ToolInvocation from "./ToolCallResult";
 
 const LoadingMessage = React.memo(() => {
   return (
