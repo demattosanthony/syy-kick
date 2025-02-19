@@ -23,6 +23,11 @@ import { ThreadsList } from "./sidebar-threads-list";
 import { ThreadsLink } from "./threads-link";
 import { SidebarProjectsList } from "./sidebar-projects-list";
 import { ProjectsButton } from "./projects-button";
+import { DropdownMenuGroup } from "../ui/dropdown-menu";
+import { Button } from "../ui/button";
+import { useAtom } from "jotai";
+import { pricingPlanDialogOpenAtom } from "../PricingDialog";
+import { useWorkspace } from "./workspace-context";
 
 export function AppSidebar({
   user,
@@ -30,6 +35,8 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & { user: User }) {
   const { state } = useSidebar();
   const isMobile = useIsMobile();
+  const [, setShowPricingPlanDialog] = useAtom(pricingPlanDialogOpenAtom);
+  const { activeWorkspace } = useWorkspace();
 
   return (
     <Sidebar collapsible={"icon"} {...props}>
@@ -71,6 +78,25 @@ export function AppSidebar({
         {state === "collapsed" && !isMobile && (
           <SidebarTrigger className="w-full" />
         )}
+
+        {state === "expanded" &&
+          user.subscriptionStatus !== "active" &&
+          activeWorkspace?.type === "personal" && (
+            <DropdownMenuGroup>
+              <Button
+                className="w-full"
+                variant={"default"}
+                onClick={(e) => {
+                  console.log("Upgrade to Pro");
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowPricingPlanDialog(true);
+                }}
+              >
+                Upgrade to Pro
+              </Button>
+            </DropdownMenuGroup>
+          )}
 
         <NavUser user={user} />
       </SidebarFooter>
