@@ -48,6 +48,7 @@
     "passport-saml": "^3.2.4",
     "pg": "^8.13.1",
     "stripe": "^17.6.0",
+    "tiktoken": "^1.0.20",
     "unstructured-client": "^0.20.0"
   }
 }

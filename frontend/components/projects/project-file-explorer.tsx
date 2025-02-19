@@ -237,34 +237,36 @@ function FileExplorerItem({
           <span className="text-sm hover:underline hover:text-blue-500 truncate">
             {item.name}
           </span>
+          {item.processingJob && (
+            <Tooltip>
+              <TooltipTrigger>
+                <div
+                  className={cn("h-2 w-2 rounded-full shadow-md", {
+                    "bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20":
+                      item.processingJob.status === "failed",
+                    "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-yellow-500/20 animate-pulse":
+                      item.processingJob.status === "pending" ||
+                      item.processingJob.status === "processing",
+                    "bg-gradient-to-br from-green-600 to-green-800 shadow-green-700/20":
+                      item.processingJob.status === "completed",
+                  })}
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                {item.processingJob.status === "failed" && "Extraction Failed"}
+                {(item.processingJob.status === "pending" ||
+                  item.processingJob.status === "processing") &&
+                  "Extracting Document Contents"}
+                {item.processingJob.status === "completed" &&
+                  "Extraction Successful"}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         {variant === "detailed" && (
           <div className="flex items-center gap-2">
             {/* Extraction Status indicator dot */}
-            {item.extractionStatus && item.extractionStatus !== "skipped" && (
-              <Tooltip>
-                <TooltipTrigger>
-                  <div
-                    className={cn("h-2 w-2 rounded-full shadow-md", {
-                      "bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20":
-                        item.extractionStatus === "failed",
-                      "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-yellow-500/20 animate-pulse":
-                        item.extractionStatus === "pending",
-                      "bg-gradient-to-br from-green-600 to-green-800 shadow-green-700/20":
-                        item.extractionStatus === "completed",
-                    })}
-                  />
-                </TooltipTrigger>
-                <TooltipContent>
-                  {item.extractionStatus === "failed" && "Extraction Failed"}
-                  {item.extractionStatus === "pending" &&
-                    "Extracting Document Contents"}
-                  {item.extractionStatus === "completed" &&
-                    "Extraction Successful"}
-                </TooltipContent>
-              </Tooltip>
-            )}
 
             <small className="text-sm font-medium leading-none text-muted-foreground">
               {getRelativeTimeString(item.updatedAt)}

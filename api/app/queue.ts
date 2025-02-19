@@ -1,4 +1,4 @@
-import { eq, and, lte, sql } from "drizzle-orm";
+import { eq, and, lte, inArray } from "drizzle-orm";
 import { documentProcessingJobs } from "./config/schema";
 import db from "./config/db";
 import { processFile } from "./config/unstructured";
@@ -21,10 +21,8 @@ export async function addToQueue(data: {
 }
 
 async function processNextBatch() {
-  // Use a transaction to safely get and lock jobs
   return await db.transaction(async (tx) => {
-    // Get next batch of jobs with FOR UPDATE SKIP LOCKED
-    // This prevents multiple servers/processes from picking up the same jobs
+    // Query pending jobs in a transaction
     const jobs = await tx
       .select()
       .from(documentProcessingJobs)
@@ -45,16 +43,21 @@ async function processNextBatch() {
 
     if (jobs.length === 0) return;
 
-    // Mark selected jobs as processing
+    // Mark them as processing
     await tx
       .update(documentProcessingJobs)
       .set({
         status: "processing",
         processAfter: new Date(),
       })
-      .where(sql`id = ANY(ARRAY[${jobs.map((j) => j.id)}]::integer[])`);
+      .where(
+        inArray(
+          documentProcessingJobs.id,
+          jobs.map((j) => j.id)
+        )
+      );
 
-    // Process jobs outside transaction
+    // Process each job (outside the transaction)
     for (const job of jobs) {
       processJob(job).catch(console.error);
     }
@@ -124,9 +127,6 @@ export function startQueue() {
   // Cleanup old jobs daily
   setInterval(cleanupOldJobs, 24 * 60 * 60 * 1000);
 }
-
-// Start the queue
-startQueue();
 
 export const queue = {
   addToQueue,
