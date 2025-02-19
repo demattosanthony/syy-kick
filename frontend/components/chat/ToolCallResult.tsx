@@ -1,8 +1,15 @@
 import { File, Search } from "lucide-react";
 import { Badge } from "../ui/badge";
+import { cn } from "@/lib/utils";
 
 const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
-  <div className="flex flex-col gap-2 border p-3 bg-card rounded-xl my-1">
+  <div
+    className={cn(
+      "flex flex-col gap-2 border p-3 bg-card rounded-xl my-1",
+      (tool.state === "partial-call" || tool.state === "call") &&
+        "animate-border-pulse"
+    )}
+  >
     {/* Search Query Section */}
     <div className="flex items-center gap-1">
       <Search className="w-3 h-3 text-muted-foreground" />
@@ -12,7 +19,7 @@ const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
       </span>
 
       {/* Status Indicator */}
-      {(tool.state === "partial-call" || tool.state === "call") && (
+      {/* {(tool.state === "partial-call" || tool.state === "call") && (
         <span className="ml-1">
           <span className="inline-block animate-bounce delay-0 text-2xl">
             .
@@ -24,7 +31,7 @@ const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
             .
           </span>
         </span>
-      )}
+      )} */}
     </div>
 
     {/* Results Section */}
@@ -39,7 +46,12 @@ const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
               key={idx}
               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium cursor-pointer w-fit max-w-[200px] bg-secondary/70"
               variant={"secondary"}
-              onClick={() => window.open(result.url, "_blank")}
+              onClick={() =>
+                window.open(
+                  result.url + (result.page ? `#page=${result.page}` : ""),
+                  "_blank"
+                )
+              }
             >
               <File className="w-3 h-3 min-w-[12px]" />
               <span className="truncate">{result.source}</span>
