@@ -10,9 +10,12 @@ interface MessageBubbleProps {
   copied?: boolean;
 }
 
-const MessageBubble = (
-  { content, isUser, onCopy, copied }: MessageBubbleProps // Removed React.memo
-) => (
+const MessageBubble = ({
+  content,
+  isUser,
+  onCopy,
+  copied,
+}: MessageBubbleProps) => (
   <div
     className={`group mb-4 flex w-full ${
       isUser ? "justify-end" : "justify-start"
@@ -72,7 +75,7 @@ const AssistantMessage = ({
   return (
     <div className="my-2 flex flex-col justify-start">
       <div className="flex">
-        <div className="mr-[1px] w-[32px] h-[32px]">
+        <div className="mr-2 w-[32px] h-[32px]">
           {showEye ? <Syyclops3dEye size={32} animate={false} /> : null}
         </div>
 
@@ -92,6 +95,8 @@ const AssistantMessage = ({
             </ThinkingDropdown>
           )}
 
+          {message.content && <MarkdownViewer content={message.content} />}
+
           <div className="flex flex-col gap-2">
             {message.toolInvocations?.map(
               (tool, index) =>
@@ -99,8 +104,6 @@ const AssistantMessage = ({
                   <ToolInvocation tool={tool} index={index} key={index} />
                 )
             )}
-
-            {message.content && <MarkdownViewer content={message.content} />}
           </div>
         </div>
       </div>
@@ -124,7 +127,7 @@ const UserMessage = ({ message }: { message: Message }) => {
   };
 
   return (
-    <div className="mb-4 ">
+    <div className="mb-4">
       {message.experimental_attachments?.map((attachment, idx) => (
         <ChatAttachment key={idx} attachment={attachment} />
       ))}

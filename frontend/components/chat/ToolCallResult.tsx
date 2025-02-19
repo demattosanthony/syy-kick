@@ -2,12 +2,14 @@ import { File, Search } from "lucide-react";
 import { Badge } from "../ui/badge";
 
 const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
-  <div className="flex flex-col gap-2 border-2 p-3 rounded-lg">
+  <div className="flex flex-col gap-2 border p-3 bg-card rounded-xl my-1">
     {/* Search Query Section */}
     <div className="flex items-center gap-1">
       <Search className="w-3 h-3 text-muted-foreground" />
       <span className="text-sm text-muted-foreground">Searching for:</span>
-      <span className="font-medium">{tool.args?.query}</span>
+      <span className="font-medium max-w-[500px] truncate">
+        {tool.args?.query}
+      </span>
 
       {/* Status Indicator */}
       {(tool.state === "partial-call" || tool.state === "call") && (

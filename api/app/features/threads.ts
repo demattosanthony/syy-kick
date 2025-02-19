@@ -211,7 +211,7 @@ async function getModelConfig(model: string, messages: MyMessage[]) {
   });
 
   if (hasMediaContent) {
-    return MODELS["gemini-2.0-flash"];
+    return MODELS["claude-3.5-sonnet"];
   }
 
   // If there's no media, classify conversation to pick a model
@@ -242,7 +242,7 @@ ${conversationText}`,
 
   const type = object.request_type;
   if (type === "coding") return MODELS["claude-3.5-sonnet"];
-  if (type === "type_1_thinking") return MODELS["gemini-2.0-flash"];
+  if (type === "type_1_thinking") return MODELS["gpt-4o"];
   if (type === "type_2_thinking") return MODELS["o1"];
   if (type === "web_search") return MODELS["sonar-pro"];
 
