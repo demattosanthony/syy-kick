@@ -4,6 +4,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  serial,
   text,
   timestamp,
   uuid,
@@ -26,12 +27,6 @@ const SUBSCRIPTION_STATUS = [
 const SUBSCRIPTION_PLAN = ["free", "pro", "teams", "enterprise"] as const;
 const IDENTITY_PROVIDER = ["google", "saml", "microsoft"] as const;
 const DOCUMENT_TYPE = ["file", "folder"] as const;
-const DOCUMENT_EXTRACTION_STATUS = [
-  "pending",
-  "completed",
-  "failed",
-  "skipped",
-] as const;
 
 // Custom type for bytea columns (pgcrypto extension)
 export const bytea = customType<{
@@ -160,11 +155,28 @@ export const documents = pgTable("documents", {
     onDelete: "cascade",
   }),
   size: integer("size"), // size in bytes
-  extractionStatus: text("extraction_status", {
-    enum: DOCUMENT_EXTRACTION_STATUS,
-  }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const documentProcessingJobs = pgTable("document_processing_jobs", {
+  id: serial("id").primaryKey(),
+  documentId: uuid("document_id")
+    .notNull()
+    .references(() => documents.id, { onDelete: "cascade" }),
+  fileKey: text("file_key").notNull(),
+  fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  status: text("status", {
+    enum: ["pending", "processing", "completed", "failed"],
+  })
+    .notNull()
+    .default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(3),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").defaultNow(),
+  processAfter: timestamp("process_after").defaultNow(),
 });
 
 // Threads table with user association
@@ -273,6 +285,10 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
   project: one(projects, {
     fields: [documents.projectId],
     references: [projects.id],
+  }),
+  processingJob: one(documentProcessingJobs, {
+    fields: [documents.id],
+    references: [documentProcessingJobs.documentId],
   }),
 }));
 

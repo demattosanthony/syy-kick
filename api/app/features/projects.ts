@@ -20,8 +20,8 @@ import {
 } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
-import { processFile } from "../config/unstructured";
 import { googleEmbeddingModel } from "./models";
+import { queue } from "../queue";
 
 const schemas = {
   createProject: z
@@ -191,6 +191,7 @@ async function getProject(projectId: string) {
 
   return project;
 }
+
 export async function getProjectDocs(projectId: string, path: string = "") {
   await getProjectOrThrow(projectId);
 
@@ -220,6 +221,9 @@ export async function getProjectDocs(projectId: string, path: string = "") {
           ? isNull(documents.parentId)
           : eq(documents.parentId, parentId)
       ),
+      with: {
+        processingJob: true,
+      },
       orderBy: [asc(documents.type), asc(documents.name)],
     });
 
@@ -256,6 +260,7 @@ export async function getProjectDocs(projectId: string, path: string = "") {
         });
       });
   } catch (error) {
+    console.log("Error getting project contents:", error);
     throw new Error("Failed to fetch project contents");
   }
 }
@@ -499,12 +504,12 @@ async function createFolderStructure(
   // Process uploaded files in the background
   for (const doc of createdDocs) {
     if (doc.type === "file" && doc.fileKey) {
-      // Don't await - let it process in background
-      processFile(doc.fileKey, doc.path, doc.mimeType || "", doc.id).catch(
-        (error) => {
-          console.error(`Error processing file ${doc.path}:`, error);
-        }
-      );
+      await queue.addToQueue({
+        fileKey: doc.fileKey,
+        fileName: doc.path,
+        mimeType: doc.mimeType || "",
+        documentId: doc.id,
+      });
     }
   }
 

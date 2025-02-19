@@ -22,7 +22,7 @@ const unstructured = new UnstructuredClient({
       initialInterval: 500,
       maxInterval: 60000,
       exponent: 1.5,
-      maxElapsedTime: 900000, // 15min*60sec*1000ms = 15 minutes
+      maxElapsedTime: 1800000, // 30min*60sec*1000ms = 30 minutes
     },
   },
 });
@@ -69,10 +69,10 @@ export async function processFile(
     if (!unstructuredApiSupportMimeTypes.includes(mimeType)) {
       console.log(`Skipping unsupported file type: ${mimeType}`);
 
-      await db
-        .update(documents)
-        .set({ extractionStatus: "skipped" })
-        .where(eq(documents.id, documentId));
+      //   await db
+      //     .update(documents)
+      //     .set({ extractionStatus: "skipped" })
+      //     .where(eq(documents.id, documentId));
       return;
     }
 
@@ -81,23 +81,24 @@ export async function processFile(
 
     // Send the file to the Unstructured API for partitioning
     console.log("Processing file:", fileName);
-    await db
-      .update(documents)
-      .set({ extractionStatus: "pending" })
-      .where(eq(documents.id, documentId));
+    // await db
+    //   .update(documents)
+    //   .set({ extractionStatus: "pending" })
+    //   .where(eq(documents.id, documentId));
+
     const response = await unstructured.general.partition({
       partitionParameters: {
         files: {
           content: fileContent,
           fileName: fileName,
         },
-        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.HiRes,
+        strategy: CONFIG.__prod__ ? Strategy.Auto : Strategy.Fast,
         splitPdfPage: true,
         splitPdfAllowFailed: true,
         splitPdfConcurrencyLevel: 15,
         maxCharacters: 400,
         combineUnderNChars: 75,
-        overlap: 50,
+        overlap: 20,
         coordinates: true,
         includeOrigElements: false,
         chunkingStrategy: "by_similarity",
@@ -160,23 +161,21 @@ export async function processFile(
       }
 
       console.log("Successfully processed the file:", fileName);
-      await db
-        .update(documents)
-        .set({ extractionStatus: "completed" })
-        .where(eq(documents.id, documentId));
+      //   await db
+      //     .update(documents)
+      //     .set({ extractionStatus: "completed" })
+      //     .where(eq(documents.id, documentId));
     } else {
       console.error("Failed to process the file:", response);
     }
   } catch (error) {
     console.error("Error processing the file:", error);
-    await db
-      .update(documents)
-      .set({ extractionStatus: "failed" })
-      .where(eq(documents.id, documentId));
+    // await db
+    //   .update(documents)
+    //   .set({ extractionStatus: "failed" })
+    //   .where(eq(documents.id, documentId));
   }
 }
-
-export default unstructured;
 
 // Helper function to generate context for a chunk using Claude
 async function generateChunkContext(
@@ -217,3 +216,5 @@ Answer only with the succinct context and nothing else.`,
 
   return text;
 }
+
+export default unstructured;
