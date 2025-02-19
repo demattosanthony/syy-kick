@@ -29,14 +29,11 @@ import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import { User } from "@/types/user";
 import { Button } from "../ui/button";
-import { useAtom } from "jotai";
-import { pricingPlanDialogOpenAtom } from "../PricingDialog";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { useWorkspace } from "./workspace-context";
 
 export function NavUser({ user }: { user: User }) {
-  const [, setShowPricingPlanDialog] = useAtom(pricingPlanDialogOpenAtom);
   const { isMobile } = useSidebar();
   const { logOut } = useAuth();
   const { setTheme } = useTheme();
@@ -51,7 +48,6 @@ export function NavUser({ user }: { user: User }) {
       window.location.href = url;
     } catch (error) {
       console.error("Error:", error);
-      // You might want to show an error toast here
     } finally {
       //   setIsLoading(false);
     }
@@ -107,34 +103,18 @@ export function NavUser({ user }: { user: User }) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
 
-            {activeWorkspace?.type === "personal" && (
-              <>
-                {user.subscriptionStatus !== "active" ? (
-                  <DropdownMenuGroup>
-                    <Button
-                      className="w-full"
-                      variant={"default"}
-                      onClick={(e) => {
-                        console.log("Upgrade to Pro");
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setShowPricingPlanDialog(true);
-                      }}
-                    >
-                      Upgrade to Pro
-                    </Button>
-                  </DropdownMenuGroup>
-                ) : (
+            {user.subscriptionStatus === "active" &&
+              activeWorkspace?.type === "personal" && (
+                <>
                   <DropdownMenuGroup>
                     <DropdownMenuItem onClick={handleBillingPortal}>
                       <CreditCard />
                       Billing
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
-                )}
-                <DropdownMenuSeparator />
-              </>
-            )}
+                  <DropdownMenuSeparator />
+                </>
+              )}
 
             <DropdownMenuGroup>
               <Link href="/settings">
