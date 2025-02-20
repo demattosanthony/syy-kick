@@ -270,10 +270,8 @@ export function OrganizationSettings({ orgId }: { orgId: string }) {
                             role: newRole,
                           },
                           {
-                            onError: (error: any) => {
-                              toast.error(
-                                error?.message || "Failed to update member role"
-                              );
+                            onError: () => {
+                              toast.error("Can not update this member's role");
                             },
                           }
                         );
