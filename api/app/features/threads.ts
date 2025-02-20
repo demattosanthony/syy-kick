@@ -592,10 +592,12 @@ async function buildInferenceMessages(
   return messagesForCore;
 }
 
-type SimplifiedDocument = {
+type DocumentSearchToolResult = {
   documentId: string;
+  path: string;
   documentName: string;
   text: string | null;
+  projectId: string;
   similarity: number;
   pageNumber?: number;
   mimeType?: string | null;
@@ -603,7 +605,7 @@ type SimplifiedDocument = {
 };
 
 /** Converts reranked search results to XML format for AI consumption */
-function convertResultsToXml(docs: SimplifiedDocument[]): string {
+function convertResultsToXml(docs: DocumentSearchToolResult[]): string {
   return `<document_context>${docs
     .map(
       (doc) => `
@@ -619,8 +621,10 @@ function convertResultsToXml(docs: SimplifiedDocument[]): string {
 }
 
 /** Extracts unique documents, treating PDF pages as separate docs */
-function getUniqueDocuments(docs: SimplifiedDocument[]): SimplifiedDocument[] {
-  const uniqueDocsMap = new Map<string, SimplifiedDocument>();
+function getUniqueDocuments(
+  docs: DocumentSearchToolResult[]
+): DocumentSearchToolResult[] {
+  const uniqueDocsMap = new Map<string, DocumentSearchToolResult>();
   for (const doc of docs) {
     const key = doc.pageNumber
       ? `${doc.documentId}_page${doc.pageNumber}`
@@ -633,7 +637,7 @@ function getUniqueDocuments(docs: SimplifiedDocument[]): SimplifiedDocument[] {
 }
 
 /** Processes a PDF document and returns its page as an image data URL */
-async function processPdfDocument(doc: SimplifiedDocument): Promise<{
+async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
   fileKey: string;
   imageData: string;
 } | null> {
@@ -693,7 +697,7 @@ async function processPdfDocument(doc: SimplifiedDocument): Promise<{
 }
 
 /** Processes documents and returns image data URLs for supported types */
-async function processDocumentImages(docs: SimplifiedDocument[]): Promise<
+async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
   {
     fileKey: string;
     imageData: string; // s3 url or base64
@@ -772,11 +776,13 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
         const textToResultMap = new Map(res.map((r) => [r.text, r]));
 
         // Map reranked results to simplified schema
-        const simplifiedDocs: SimplifiedDocument[] =
+        const simplifiedDocs: DocumentSearchToolResult[] =
           rerankedResults.results.map((reranked) => {
             const originalDoc = textToResultMap.get(reranked.document.text)!;
             return {
               documentId: originalDoc.document.id,
+              projectId: projectId,
+              path: originalDoc.document.path,
               documentName: originalDoc.document.name,
               text: originalDoc.text,
               similarity: reranked.relevance_score,
@@ -810,6 +816,8 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
           // Format data thats easy for frontend to use
           dataForFrontend: uniqueDocs.map((doc) => ({
             document_id: doc.documentId,
+            path: doc.path,
+            projectId: doc.projectId,
             source: doc.documentName,
             snippet: doc.text,
             score: doc.similarity,
@@ -1052,8 +1060,6 @@ const ThreadOps = {
         allMessages,
         modelConfig
       );
-
-      console.log("Inference messages:", inferenceMsgs);
 
       // 7) Create tools for the assistant if project ID exists
       const tools =

@@ -237,7 +237,8 @@ function FileExplorerItem({
           <span className="text-sm hover:underline hover:text-blue-500 truncate">
             {item.name}
           </span>
-          {item.processingJob && (
+
+          {item.processingJob && variant === "detailed" && (
             <Tooltip>
               <TooltipTrigger>
                 <div

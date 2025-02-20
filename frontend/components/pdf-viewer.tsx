@@ -15,6 +15,7 @@ import useDebounce from "@/hooks/useDebounce";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/zoom/lib/styles/index.css";
 import "@react-pdf-viewer/search/lib/styles/index.css";
+import { useSearchParams } from "next/navigation";
 
 function PdfViewer({
   content,
@@ -23,9 +24,13 @@ function PdfViewer({
   content: string;
   fileName: string;
 }) {
+  const searchParams = useSearchParams();
+
   const { resolvedTheme } = useTheme();
   const [searchQuery, setSearchQuery] = React.useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  const page = searchParams.get("page");
 
   // Helper function to force a download
   const handleDownload = async (fileUrl: string) => {
@@ -140,6 +145,7 @@ function PdfViewer({
               theme={resolvedTheme === "dark" ? "dark" : "light"}
               plugins={[zoomPluginInstance, searchPluginInstance]}
               defaultScale={1}
+              initialPage={page ? parseInt(page) : undefined}
             />
           </div>
         </Worker>
