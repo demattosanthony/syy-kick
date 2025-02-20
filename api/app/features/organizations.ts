@@ -1,5 +1,5 @@
 import { Request, Response, Router } from "express";
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import z from "zod";
 import db from "../config/db";
 import {
@@ -266,6 +266,47 @@ const ops = {
 
     return token;
   },
+
+  async updateMemberRole(orgId: string, userId: string, newRole: Role) {
+    // 1. Fetch membership record we want to update.
+    const membership = await db.query.organizationMembers.findFirst({
+      where: sql`organization_id = ${orgId} AND user_id = ${userId}`,
+    });
+
+    if (!membership) {
+      throw new Error(
+        "Member not found or does not belong to this organization."
+      );
+    }
+
+    // 2. Fetch the *earliest* owner record to identify the original org creator.
+    const [firstOwner] = await db.query.organizationMembers.findMany({
+      where: eq(organizationMembers.organizationId, orgId),
+      orderBy: asc(organizationMembers.createdAt),
+      limit: 1,
+    });
+
+    // 3. If the user we are trying to update is that *very first* owner and
+    //    we are attempting to set them to "member", block the operation.
+    if (
+      firstOwner &&
+      firstOwner.userId === userId &&
+      firstOwner.role === "owner" &&
+      newRole === "member"
+    ) {
+      throw new Error(
+        "You cannot downgrade the original organization creator from owner to member."
+      );
+    }
+
+    // 4. Otherwise, perform the role update.
+    await db
+      .update(organizationMembers)
+      .set({ role: newRole, updatedAt: new Date() })
+      .where(sql`id = ${membership.id}`);
+
+    return true;
+  },
 };
 
 // Request Handlers
@@ -383,6 +424,25 @@ const handle = {
       res.status(500).json({ error: "Failed to update seats" });
     }
   },
+
+  async updateMemberRole(req: Request, res: Response) {
+    try {
+      const { role } = req.body;
+      // Basic zod check or manual check to ensure role is owner/member
+      if (role !== "owner" && role !== "member") {
+        res.status(400).json({ error: "Invalid role" });
+        return;
+      }
+
+      const orgId = req.params.id;
+      const userId = req.params.userId;
+
+      await ops.updateMemberRole(orgId, userId, role);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  },
 };
 
 // Router
@@ -394,6 +454,7 @@ export default Router()
   .delete("/:id", isOrgOwner, handle.delete)
   .get("/:id/members", isOrgOwner, handle.listMembers)
   .delete("/:id/members/:userId", isOrgOwner, handle.removeMember)
+  .put("/:id/members/:userId/role", isOrgOwner, handle.updateMemberRole)
   .get("/:id/invite", isOrgOwner, handle.getInvite)
   .post("/:id/invite/reset", isOrgOwner, handle.resetInvite)
   .post("/:id/seats/validate", isOrgOwner, handle.validateSeatUpdate)
