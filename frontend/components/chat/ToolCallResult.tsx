@@ -10,7 +10,7 @@ const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => {
     <div
       key={index}
       className={cn(
-        "flex flex-col gap-2 border p-3 bg-card rounded-xl my-1",
+        "flex flex-col gap-2 border-2 p-3 bg-card rounded-xl my-1",
         (tool.state === "partial-call" || tool.state === "call") &&
           "animate-border-pulse"
       )}
@@ -22,21 +22,6 @@ const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => {
         <span className="font-medium max-w-[500px] truncate">
           {tool.args?.query}
         </span>
-
-        {/* Status Indicator */}
-        {/* {(tool.state === "partial-call" || tool.state === "call") && (
-        <span className="ml-1">
-          <span className="inline-block animate-bounce delay-0 text-2xl">
-            .
-          </span>
-          <span className="inline-block animate-bounce delay-100 text-2xl">
-            .
-          </span>
-          <span className="inline-block animate-bounce delay-200 text-2xl">
-            .
-          </span>
-        </span>
-      )} */}
       </div>
 
       {/* Results Section */}

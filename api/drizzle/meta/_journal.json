@@ -211,6 +211,13 @@
       "when": 1740084581272,
       "tag": "0029_perfect_maginty",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1740090003520,
+      "tag": "0030_stiff_pixie",
+      "breakpoints": true
     }
   ]
 }

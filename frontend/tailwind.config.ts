@@ -69,7 +69,7 @@ const config: Config = {
       keyframes: {
         "border-pulse": {
           "0%, 100%": { borderColor: "transparent" },
-          "50%": { borderColor: "black" },
+          "50%": { borderColor: "hsl(var(--border))" },
         },
       },
       animation: {

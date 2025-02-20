@@ -139,6 +139,8 @@ export const documentEmbeddings = pgTable("document_embeddings", {
   text: text("text"),
   metadata: jsonb("metadata"),
   embedding: vector("embedding", { dimensions: 768 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const documents = pgTable("documents", {

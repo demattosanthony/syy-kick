@@ -7,16 +7,6 @@ const unstructured = new UnstructuredClient({
   },
   // 2 hours in milliseconds
   timeoutMs: 7200000,
-  retryConfig: {
-    strategy: "backoff",
-    retryConnectionErrors: true,
-    backoff: {
-      initialInterval: 500,
-      maxInterval: 60000,
-      exponent: 1.5,
-      maxElapsedTime: 1800000, // 30min*60sec*1000ms = 30 minutes
-    },
-  },
 });
 
 // Define supported extensions:

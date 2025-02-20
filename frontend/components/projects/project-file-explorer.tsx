@@ -203,7 +203,7 @@ function FileExplorerItem({
     <div>
       <div
         className={cn(
-          "group flex items-center justify-between p-2 cursor-pointer rounded",
+          "group flex items-center justify-between p-2 cursor-pointer rounded-lg",
           isSelected ? "bg-muted/50" : "hover:bg-muted/50"
         )}
         style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}

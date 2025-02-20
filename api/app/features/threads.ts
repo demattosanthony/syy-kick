@@ -1057,7 +1057,7 @@ const ThreadOps = {
         messages: inferenceMsgs,
         temperature,
         tools: tools ? tools : undefined,
-        maxSteps: tools ? 3 : undefined,
+        maxSteps: tools ? 8 : undefined,
         toolChoice: "auto",
         toolCallStreaming: true,
         maxTokens: maxTokens,
