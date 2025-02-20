@@ -7,6 +7,9 @@ const CONCURRENT_JOBS = 5;
 const POLLING_INTERVAL = 10000; // 10 seconds
 const MAX_ATTEMPTS = 2;
 
+// Track active jobs
+let activeJobs = new Set<number>();
+
 export async function addToQueue(data: {
   fileKey: string;
   fileName: string;
@@ -21,21 +24,20 @@ export async function addToQueue(data: {
 }
 
 /**
- * Synchronize job processing to ensure only one batch (up to 5)
+ * Synchronize job processing to ensure only one batch (up to CONCURRENT_JOBS)
  * is run at a time.
  */
 let isProcessingBatch = false;
 async function processNextBatch() {
-  // Don't pick up a new batch if we're still
-  // processing a previous one.
-  if (isProcessingBatch) {
+  // Only pick up new jobs if we're below the concurrent limit
+  if (activeJobs.size >= CONCURRENT_JOBS) {
     return;
   }
-  isProcessingBatch = true;
 
   try {
     return await db.transaction(async (tx) => {
-      // Query up to CONCURRENT_JOBS pending jobs in a transaction
+      // Query enough jobs to fill up to CONCURRENT_JOBS
+      const slotsAvailable = CONCURRENT_JOBS - activeJobs.size;
       const jobs = await tx
         .select()
         .from(documentProcessingJobs)
@@ -49,7 +51,7 @@ async function processNextBatch() {
             )
           )
         )
-        .limit(CONCURRENT_JOBS)
+        .limit(slotsAvailable)
         .$dynamic()
         .prepare(`FOR UPDATE SKIP LOCKED`)
         .execute();
@@ -70,9 +72,15 @@ async function processNextBatch() {
           )
         );
 
-      // Process each job outside the transaction—await them
-      // so that the next batch won't start until these 5 are done
-      await Promise.all(jobs.map((job) => processJob(job)));
+      // Process each job independently
+      jobs.forEach((job) => {
+        activeJobs.add(job.id);
+        processJob(job).finally(() => {
+          activeJobs.delete(job.id);
+          // Try to process more jobs when one finishes
+          processNextBatch();
+        });
+      });
     });
   } finally {
     isProcessingBatch = false;
