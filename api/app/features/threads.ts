@@ -12,6 +12,7 @@ import {
   threads,
   messageAttachments,
   toolCalls as toolCallsTable,
+  documentThumbnails,
 } from "../config/schema";
 import { MessageAttachment } from "../config/schema"; // reusing types
 import { embeddingModel, ModelConfig, MODELS } from "./models";
@@ -165,6 +166,9 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
             snippet: doc.text,
             score: doc.similarity,
             page: doc.pageNumber,
+            url: doc.fileKey
+              ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+              : undefined,
           })),
         },
       };
@@ -520,6 +524,15 @@ async function buildInferenceMessages(
 
   // Transform each message into an array of chunks: text, image, or file
   const messagesForCore: CoreMessage[] = [];
+
+  // If model supports system messages, add a system message at the start
+  if (modelConfig.supportsSystemMessages) {
+    messagesForCore.push({
+      role: "system",
+      content: buildSystemMessage(),
+    });
+  }
+
   for (const msg of filteredMessages) {
     const chunks = [];
 
@@ -629,30 +642,49 @@ async function processPdfDocument(doc: SimplifiedDocument): Promise<{
       return null;
     }
 
+    // Check if thumbnail already exists
+    const existingThumbnail = await db.query.documentThumbnails.findFirst({
+      where: and(
+        eq(documentThumbnails.documentId, doc.documentId),
+        eq(documentThumbnails.pageNumber, doc.pageNumber)
+      ),
+    });
+
+    if (existingThumbnail) {
+      // Return existing thumbnail
+      return {
+        fileKey: existingThumbnail.fileKey,
+        imageData: await generateAttachmentData(existingThumbnail.fileKey),
+      };
+    }
+
     // Fetch and convert PDF page to image
     const pdfBytes = await s3.file(doc.fileKey).bytes();
     const base64Image = await getPdfPageAsImage(pdfBytes, doc.pageNumber);
 
     // Store converted image
-    const imageKey = `search-tool-pdf-images/${doc.documentId}_page${doc.pageNumber}.png`;
+    const imageKey = `document-thumbnails/${doc.documentId}_page${doc.pageNumber}.png`;
     await s3
       .file(imageKey)
       .write(Buffer.from(base64Image, "base64"), { type: "image/png" });
 
-    // In local dev, return base64 image
-    if (!CONFIG.__prod__) {
-      return {
-        fileKey: imageKey,
-        imageData: base64Image,
-      };
-    }
+    // Save thumbnail reference in database
+    await db.insert(documentThumbnails).values({
+      documentId: doc.documentId,
+      pageNumber: doc.pageNumber,
+      fileKey: imageKey,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     return {
       fileKey: imageKey,
-      imageData: s3.file(imageKey).presign({
-        expiresIn: 3600,
-        method: "GET",
-      }),
+      imageData: !CONFIG.__prod__
+        ? base64Image
+        : s3.file(imageKey).presign({
+            expiresIn: 3600,
+            method: "GET",
+          }),
     };
   } catch (error) {
     console.error("Error processing PDF document:", error);
@@ -782,6 +814,9 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
             snippet: doc.text,
             score: doc.similarity,
             page: doc.pageNumber,
+            url: doc.fileKey
+              ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+              : undefined,
           })),
         };
       },
@@ -1020,12 +1055,7 @@ const ThreadOps = {
 
       console.log("Inference messages:", inferenceMsgs);
 
-      // 7) Build system message (if the chosen model supports system messages)
-      const systemMessage = modelConfig.supportsSystemMessages
-        ? buildSystemMessage(instructions)
-        : undefined;
-
-      // 8) Create tools for the assistant if project ID exists
+      // 7) Create tools for the assistant if project ID exists
       const tools =
         thread.projectId && message.content
           ? createSearchTool(thread.projectId, modelConfig)
@@ -1034,13 +1064,12 @@ const ThreadOps = {
       // Start the streaming from the AI
       const result = streamText({
         model: modelConfig.model,
-        messages: inferenceMsgs as CoreMessage[],
+        messages: inferenceMsgs,
         temperature,
         tools: tools ? tools : undefined,
         maxSteps: tools ? 6 : undefined,
         toolChoice: "auto",
         toolCallStreaming: true,
-        system: systemMessage,
         maxTokens: maxTokens,
         onStepFinish: async ({
           toolCalls,

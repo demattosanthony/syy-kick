@@ -73,20 +73,3 @@ class JinaReranker {
 const reranker = new JinaReranker();
 
 export default reranker;
-
-// const query = "What is artificial intelligence?";
-// const documents = [
-//   "AI is a branch of computer science.",
-//   "Artificial intelligence involves machine learning.",
-//   "AI systems can perform tasks that typically require human intelligence.",
-// ];
-
-// try {
-//   const results = await reranker.rerank(query, documents, {
-//     topN: 2,
-//     returnDocuments: true,
-//   });
-//   console.log(results);
-// } catch (error) {
-//   console.error("Reranking failed:", error);
-// }

@@ -7,6 +7,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
   vector,
@@ -178,6 +179,18 @@ export const documentProcessingJobs = pgTable("document_processing_jobs", {
   createdAt: timestamp("created_at").defaultNow(),
   processAfter: timestamp("process_after").defaultNow(),
 });
+
+export const documentThumbnails = pgTable("document_thumbnails", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  documentId: uuid("document_id")
+    .notNull()
+    .references(() => documents.id, { onDelete: "cascade" }),
+  fileKey: text("file_key").notNull(),
+  pageNumber: integer("page_number"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+export type DocumentThumbnail = typeof documentThumbnails.$inferSelect;
 
 // Threads table with user association
 export const threads = pgTable("threads", {
