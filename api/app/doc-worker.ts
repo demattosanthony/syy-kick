@@ -8,14 +8,26 @@ startQueue();
 // Handle shutdown signals
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received. Stopping queue...");
-  freeEncoders();
-  await stopQueue();
-  console.log("Queue stopped.");
+  try {
+    await stopQueue();
+    freeEncoders();
+    console.log("Queue stopped successfully.");
+  } catch (error) {
+    console.error("Error during shutdown:", error);
+  } finally {
+    process.exit(0);
+  }
 });
 
 process.on("SIGINT", async () => {
   console.log("SIGINT received. Stopping queue...");
-  freeEncoders();
-  await stopQueue();
-  console.log("Queue stopped.");
+  try {
+    await stopQueue();
+    freeEncoders();
+    console.log("Queue stopped successfully.");
+  } catch (error) {
+    console.error("Error during shutdown:", error);
+  } finally {
+    process.exit(0);
+  }
 });

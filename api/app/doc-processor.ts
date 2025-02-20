@@ -24,8 +24,13 @@ function getEncoder(modelName: TiktokenModel) {
 
 export function freeEncoders() {
   for (const enc of encoderCache.values()) {
-    enc.free();
+    try {
+      enc.free();
+    } catch (error) {
+      console.warn("Error while freeing encoder:", error);
+    }
   }
+  encoderCache.clear(); // Clear the cache after freeing
 }
 
 export async function processFile(
