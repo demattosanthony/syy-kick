@@ -118,7 +118,7 @@ async function generateAttachmentData(
   // In local dev, we might return a base64 data URI
   if (!CONFIG.__prod__) {
     const buffer = Buffer.from(new Uint8Array(await metadata.arrayBuffer()));
-    return `data:${contentType};base64,${buffer.toString("base64")}`;
+    return `${buffer.toString("base64")}`;
   }
   // In production, generate an actual presigned URL
   return metadata.presign({
@@ -154,7 +154,7 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
     msg.attachments = await processAttachments(msg.attachments);
 
     msg.toolCalls = msg.toolCalls?.map((call) => {
-      const uniqueDocs = getUniqueDocuments(call.result);
+      const uniqueDocs = getUniqueDocuments(call.result.reankedDocs);
 
       return {
         ...call,
@@ -439,22 +439,32 @@ async function dbMessagesToMyMessages(
           completedCalls.map(async (call) => {
             // If model is claude 3.5 sonnet, get images of any pdfs or images
             if (selectedModelName.includes("claude-3.5-sonnet")) {
-              const uniqueDocs = getUniqueDocuments(call.result);
-              const images = await processDocumentImages(uniqueDocs);
+              const images: {
+                fileKey: string;
+              }[] = call.result.images;
+
+              const imagesData = await Promise.all(
+                images.map(async (image) => {
+                  return {
+                    type: "image" as const,
+                    data: await generateAttachmentData(
+                      image.fileKey,
+                      "image/png"
+                    ),
+                    mimeType: "image/png",
+                  };
+                })
+              );
 
               return {
                 type: "tool-result",
                 toolCallId: call.toolCallId,
                 toolName: call.toolName,
                 experimental_content: [
-                  ...images.map((image) => ({
-                    type: "image" as const,
-                    data: image,
-                    mimeType: "image/png",
-                  })),
+                  ...imagesData,
                   {
                     type: "text" as const,
-                    text: convertResultsToXml(call.result),
+                    text: convertResultsToXml(call.result.reankedDocs),
                   },
                 ],
               };
@@ -464,7 +474,7 @@ async function dbMessagesToMyMessages(
               type: "tool-result",
               toolCallId: call.toolCallId,
               toolName: call.toolName,
-              result: convertResultsToXml(call.result),
+              result: convertResultsToXml(call.result.reankedDocs),
             };
           })
         );
@@ -617,7 +627,10 @@ function getUniqueDocuments(
 }
 
 /** Processes a PDF document and returns its page as an image data URL */
-async function processPdfDocument(doc: RankedDocument): Promise<string | null> {
+async function processPdfDocument(doc: RankedDocument): Promise<{
+  fileKey: string;
+  imageData: string;
+} | null> {
   try {
     const pageNumber = doc.metadata?.page_number;
     if (!pageNumber || !doc.document.fileKey) {
@@ -628,21 +641,27 @@ async function processPdfDocument(doc: RankedDocument): Promise<string | null> {
     const pdfBytes = await s3.file(doc.document.fileKey).bytes();
     const base64Image = await getPdfPageAsImage(pdfBytes, pageNumber);
 
-    // In local dev, return base64 image
-    if (!CONFIG.__prod__) {
-      return base64Image;
-    }
-
     // Store converted image
     const imageKey = `search-tool-pdf-images/${doc.document.id}_page${pageNumber}.png`;
     await s3
       .file(imageKey)
       .write(Buffer.from(base64Image, "base64"), { type: "image/png" });
 
-    return s3.file(imageKey).presign({
-      expiresIn: 3600,
-      method: "GET",
-    });
+    // In local dev, return base64 image
+    if (!CONFIG.__prod__) {
+      return {
+        fileKey: imageKey,
+        imageData: base64Image,
+      };
+    }
+
+    return {
+      fileKey: imageKey,
+      imageData: s3.file(imageKey).presign({
+        expiresIn: 3600,
+        method: "GET",
+      }),
+    };
   } catch (error) {
     console.error("Error processing PDF document:", error);
     return null;
@@ -650,19 +669,31 @@ async function processPdfDocument(doc: RankedDocument): Promise<string | null> {
 }
 
 /** Processes documents and returns image data URLs for supported types */
-async function processDocumentImages(
-  docs: RankedDocument[]
-): Promise<string[]> {
-  const results = [];
+async function processDocumentImages(docs: RankedDocument[]): Promise<
+  {
+    fileKey: string;
+    imageData: string; // s3 url or base64
+  }[]
+> {
+  const results: {
+    fileKey: string;
+    imageData: string;
+  }[] = [];
+
   for (const doc of docs) {
-    let result = null;
     if (doc.document.mimeType === "application/pdf") {
-      result = await processPdfDocument(doc);
+      const result = await processPdfDocument(doc);
+
+      if (result) {
+        results.push(result);
+      }
     } else if (doc.document.mimeType?.includes("image")) {
-      result = await generateAttachmentData(doc.document.fileKey!);
-    }
-    if (result !== null) {
-      results.push(result);
+      const result = await generateAttachmentData(doc.document.fileKey!);
+
+      results.push({
+        fileKey: doc.document.fileKey!,
+        imageData: result,
+      });
     }
   }
   return results;
@@ -736,7 +767,10 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
 
         // Generate images from the pdf pages and regular image files
         // Can only do mulitmodal tools with claude-3.5-sonnet for now
-        let images: string[] = [];
+        let images: {
+          fileKey: string;
+          imageData: string; // s3 url or base64
+        }[] = [];
         if (modelConfig.model.modelId.includes("claude-3-5-sonnet")) {
           images = await processDocumentImages(uniqueDocs);
         }
@@ -761,7 +795,7 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
         return [
           ...result.images.map((image) => ({
             type: "image" as const,
-            data: image,
+            data: image.imageData,
             mimeType: "image/png",
           })),
           {
@@ -1060,12 +1094,18 @@ const ThreadOps = {
               const result = toolResults.find(
                 (r) => r.toolCallId === toolCall.toolCallId
               );
+
               if (result) {
                 await db
                   .update(toolCallsTable)
                   .set({
                     status: "completed",
-                    result: result.result.rerankedDocs,
+                    result: {
+                      reankedDocs: result.result.rerankedDocs,
+                      images: result.result.images.map((image) => ({
+                        fileKey: image.fileKey,
+                      })),
+                    },
                     updatedAt: new Date(),
                   })
                   .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));

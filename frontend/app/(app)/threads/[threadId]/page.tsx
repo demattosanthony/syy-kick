@@ -14,8 +14,6 @@ export default function ThreadsPage() {
 
   const { data: thread } = useThreadQuery(threadId, isNew);
 
-  console.log(thread);
-
   const initalMessages = useMemo(() => {
     if (isNew) return [];
 
