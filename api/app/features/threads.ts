@@ -92,6 +92,14 @@ type ThreadWithMessages = {
     createdAt: Date;
     attachments: MessageAttachment[];
     content?: any;
+    toolCalls?: {
+      args: any;
+      id: string;
+      result: any;
+      status: string;
+      toolName: string;
+      toolCallId: string;
+    }[];
   }[];
   project?: any;
   organization?: any;
@@ -144,7 +152,26 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
   if (!thread) return null;
   for (const msg of thread.messages) {
     msg.attachments = await processAttachments(msg.attachments);
+
+    msg.toolCalls = msg.toolCalls?.map((call) => {
+      const uniqueDocs = getUniqueDocuments(call.result);
+
+      return {
+        ...call,
+        result: {
+          dataForFrontend: uniqueDocs.map((doc) => ({
+            document_id: doc.document.id,
+            source: doc.document.name,
+            snippet: doc.text,
+            url: (doc.document as any).url,
+            score: doc.similarity,
+            page: (doc.metadata as any)?.page_number,
+          })),
+        },
+      };
+    });
   }
+
   return thread;
 }
 
@@ -338,7 +365,7 @@ Current date: ${dateString}
 }
 
 /** Utility to transform raw DB messages into MyMessage objects. */
-function dbMessagesToMyMessages(
+async function dbMessagesToMyMessages(
   dbMsgs: {
     id: string;
     createdAt: Date;
@@ -370,7 +397,8 @@ function dbMessagesToMyMessages(
       createdAt: Date;
       updatedAt: Date;
     }[];
-  }[]
+  }[],
+  selectedModelName: string
 ) {
   const messages: MyMessage[] = [];
 
@@ -407,15 +435,44 @@ function dbMessagesToMyMessages(
       );
 
       if (completedCalls.length > 0) {
+        const processedResults = await Promise.all(
+          completedCalls.map(async (call) => {
+            // If model is claude 3.5 sonnet, get images of any pdfs or images
+            if (selectedModelName.includes("claude-3.5-sonnet")) {
+              const uniqueDocs = getUniqueDocuments(call.result);
+              const images = await processDocumentImages(uniqueDocs);
+
+              return {
+                type: "tool-result",
+                toolCallId: call.toolCallId,
+                toolName: call.toolName,
+                experimental_content: [
+                  ...images.map((image) => ({
+                    type: "image" as const,
+                    data: image,
+                    mimeType: "image/png",
+                  })),
+                  {
+                    type: "text" as const,
+                    text: convertResultsToXml(call.result),
+                  },
+                ],
+              };
+            }
+
+            return {
+              type: "tool-result",
+              toolCallId: call.toolCallId,
+              toolName: call.toolName,
+              result: convertResultsToXml(call.result),
+            };
+          })
+        );
+
         messages.push({
           id: `${msg.id}_tool_results`,
           role: "tool",
-          content: completedCalls.map((call) => ({
-            type: "tool-result",
-            toolCallId: call.toolCallId,
-            toolName: call.toolName,
-            result: call.result.result,
-          })),
+          content: processedResults,
         } as MyMessage);
       }
     } else {
@@ -476,6 +533,7 @@ async function buildInferenceMessages(
             toolCallId: item.toolCallId,
             toolName: item.toolName,
             result: item.result,
+            experimental_content: item.experimental_content,
           });
         }
       }
@@ -510,6 +568,104 @@ async function buildInferenceMessages(
   }
 
   return messagesForCore;
+}
+
+type RankedDocument = {
+  document: {
+    id: string;
+    name: string;
+    mimeType?: string | null;
+    fileKey?: string | null;
+  };
+  documentId: string;
+  text: string | null;
+  similarity: number;
+  metadata?: { page_number?: number };
+};
+
+/** Converts reranked search results to XML format for AI consumption */
+function convertResultsToXml(rerankedWithMetadata: RankedDocument[]): string {
+  return `<document_context>${rerankedWithMetadata
+    .map(
+      (r) => `
+<document>
+  <document_id>${r.document.id}</document_id>
+  <source>${r.document.name}</source>
+  <snippet>${r.text}</snippet>
+  <score>${r.similarity}</score>
+</document>`
+    )
+    .join("\n")}
+</document_context>`;
+}
+
+/** Extracts unique documents from reranked results, treating PDF pages as separate docs */
+function getUniqueDocuments(
+  rerankedWithMetadata: RankedDocument[]
+): RankedDocument[] {
+  const uniqueDocsMap = new Map<string, RankedDocument>();
+  for (const result of rerankedWithMetadata) {
+    const pageNum = result.metadata?.page_number;
+    const key = pageNum
+      ? `${result.documentId}_page${pageNum}`
+      : result.documentId;
+    if (!uniqueDocsMap.has(key)) {
+      uniqueDocsMap.set(key, result);
+    }
+  }
+  return Array.from(uniqueDocsMap.values());
+}
+
+/** Processes a PDF document and returns its page as an image data URL */
+async function processPdfDocument(doc: RankedDocument): Promise<string | null> {
+  try {
+    const pageNumber = doc.metadata?.page_number;
+    if (!pageNumber || !doc.document.fileKey) {
+      return null;
+    }
+
+    // Fetch and convert PDF page to image
+    const pdfBytes = await s3.file(doc.document.fileKey).bytes();
+    const base64Image = await getPdfPageAsImage(pdfBytes, pageNumber);
+
+    // In local dev, return base64 image
+    if (!CONFIG.__prod__) {
+      return base64Image;
+    }
+
+    // Store converted image
+    const imageKey = `search-tool-pdf-images/${doc.document.id}_page${pageNumber}.png`;
+    await s3
+      .file(imageKey)
+      .write(Buffer.from(base64Image, "base64"), { type: "image/png" });
+
+    return s3.file(imageKey).presign({
+      expiresIn: 3600,
+      method: "GET",
+    });
+  } catch (error) {
+    console.error("Error processing PDF document:", error);
+    return null;
+  }
+}
+
+/** Processes documents and returns image data URLs for supported types */
+async function processDocumentImages(
+  docs: RankedDocument[]
+): Promise<string[]> {
+  const results = [];
+  for (const doc of docs) {
+    let result = null;
+    if (doc.document.mimeType === "application/pdf") {
+      result = await processPdfDocument(doc);
+    } else if (doc.document.mimeType?.includes("image")) {
+      result = await generateAttachmentData(doc.document.fileKey!);
+    }
+    if (result !== null) {
+      results.push(result);
+    }
+  }
+  return results;
 }
 
 /** Creates search tool if project ID exists */
@@ -563,73 +719,31 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
         const textToResultMap = new Map(res.map((r) => [r.text, r]));
 
         // Map reranked results back to original result objects with new scores
-        const rerankedWithMetadata = rerankedResults.results.map(
-          (reranked) => ({
-            ...textToResultMap.get(reranked.document.text)!,
-            similarity: reranked.relevance_score,
-          })
-        );
+        const rerankedWithMetadata: RankedDocument[] =
+          rerankedResults.results.map(
+            (reranked) =>
+              ({
+                ...textToResultMap.get(reranked.document.text)!,
+                similarity: reranked.relevance_score,
+              } as RankedDocument)
+          );
 
-        // console.log("Reranked results:", rerankedResults.results);
-        console.log("Reranked with metadata:", rerankedWithMetadata.length);
+        console.log("Reranked results legnth:", rerankedWithMetadata.length);
 
-        const uniqueDocsMap = new Map<string, (typeof res)[0]>();
+        // Use the typed helper functions
+        const uniqueDocs = getUniqueDocuments(rerankedWithMetadata);
+        const searchContext = convertResultsToXml(rerankedWithMetadata);
 
-        for (const result of rerankedWithMetadata) {
-          const pageNum = (result.metadata as any)?.page_number;
-          const key = pageNum
-            ? `${result.documentId}_page${pageNum}`
-            : result.documentId;
-          if (!uniqueDocsMap.has(key)) {
-            uniqueDocsMap.set(key, result);
-          }
-        }
-
-        const uniqueDocs = Array.from(uniqueDocsMap.values());
-        let images = [];
-
+        // Generate images from the pdf pages and regular image files
         // Can only do mulitmodal tools with claude-3.5-sonnet for now
+        let images: string[] = [];
         if (modelConfig.model.modelId.includes("claude-3-5-sonnet")) {
-          for (const uniqueDoc of uniqueDocs) {
-            if (uniqueDoc.document.mimeType === "application/pdf") {
-              const pageNumber = (
-                uniqueDoc.metadata as { page_number?: number }
-              )?.page_number;
-              if (pageNumber) {
-                const pdfBytes = await s3
-                  .file(uniqueDoc.document.fileKey!)
-                  .bytes();
-                const base64Image = await getPdfPageAsImage(
-                  pdfBytes,
-                  pageNumber
-                );
-                images.push(base64Image);
-              }
-            } else if (uniqueDoc.document.mimeType?.includes("image")) {
-              const base64Image = await generateAttachmentData(
-                uniqueDoc.document.fileKey!
-              );
-              images.push(base64Image);
-            }
-          }
+          images = await processDocumentImages(uniqueDocs);
         }
-
-        // Convert to search context XML
-        const searchContext = `<document_context>${rerankedWithMetadata
-          .map(
-            (r) => `
-<document>
-  <document_id>${r.document.id}</document_id>
-  <source>${r.document.name}</source>
-  <snippet>${r.text}</snippet>
-  <score>${r.similarity}</score>
-</document>`
-          )
-          .join("\n")}
-</document_context>`;
 
         return {
           context: searchContext,
+          rerankedDocs: rerankedWithMetadata,
           images,
 
           // Format data thats easy for frontend to use
@@ -862,7 +976,7 @@ const ThreadOps = {
         with: { attachments: true, toolCalls: true },
       });
 
-      const allMessages = dbMessagesToMyMessages(rawMessages);
+      const allMessages = await dbMessagesToMyMessages(rawMessages, model);
 
       // 4) Determine appropriate model
       const modelConfig = await getModelConfig(model, allMessages);
@@ -875,6 +989,8 @@ const ThreadOps = {
         allMessages,
         modelConfig
       );
+
+      console.log("Inference messages:", inferenceMsgs);
 
       // 7) Build system message (if the chosen model supports system messages)
       const systemMessage = modelConfig.supportsSystemMessages
@@ -949,7 +1065,7 @@ const ThreadOps = {
                   .update(toolCallsTable)
                   .set({
                     status: "completed",
-                    result: result.result,
+                    result: result.result.rerankedDocs,
                     updatedAt: new Date(),
                   })
                   .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
