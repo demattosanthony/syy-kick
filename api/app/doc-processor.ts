@@ -67,9 +67,9 @@ export async function processFile(
         splitPdfPage: true,
         splitPdfAllowFailed: true,
         splitPdfConcurrencyLevel: 15,
-        maxCharacters: 1024,
-        combineUnderNChars: 100,
-        overlap: 20,
+        maxCharacters: 1200,
+        combineUnderNChars: 500,
+        overlap: 200,
         coordinates: true,
         includeOrigElements: false,
         chunkingStrategy: "by_title",
@@ -81,17 +81,33 @@ export async function processFile(
       const fullDocumentText = response.elements.map((e) => e.text).join("\n");
 
       const chunks = response.elements;
-      const contextualizedChunks = (await Promise.all(
-        chunks.map(async (chunk, index) => {
-          const contexts = await generateChunkContextBatch(fullDocumentText, [
-            chunk.text,
-          ]);
-          return {
-            ...chunk,
-            text: `${chunk.text.trim().replace(/\s+/g, " ")}\n\n${contexts[0]}`,
-          };
-        })
-      )) as typeof chunks;
+
+      // Attempt to generate contextual data for each chunk. If fails just fallback to the original chunk.
+      let contextualizedChunks: typeof chunks;
+      try {
+        contextualizedChunks = await Promise.all(
+          chunks.map(async (chunk, index) => {
+            const contexts = await generateChunkContextBatch(fullDocumentText, [
+              chunk.text,
+            ]);
+            return {
+              ...chunk,
+              text: `${chunk.text.trim().replace(/\s+/g, " ")}\n\n${
+                contexts[0]
+              }`,
+            };
+          })
+        );
+      } catch (error) {
+        console.warn(
+          "Failed to contextualize chunks, falling back to original chunks:",
+          error
+        );
+        contextualizedChunks = chunks.map((chunk) => ({
+          ...chunk,
+          text: chunk.text.trim().replace(/\s+/g, " "),
+        }));
+      }
 
       const values = contextualizedChunks.map((chunk) => chunk.text);
       console.log("Embedding contextualized values:", values);

@@ -74,7 +74,7 @@ export default function ThreadPage({
     credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,
-    maxSteps: 6,
+    maxSteps: 3,
     experimental_prepareRequestBody({ messages, id }) {
       return {
         message: messages[messages.length - 1],

@@ -312,7 +312,8 @@ function buildSystemMessage(instructions?: string): string {
     hour12: true,
   });
 
-  let systemMsg = `You are Yo, a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it's creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. Your task is to write an accurate, detailed, and comprehensive answer to a given query using provided search results and following specific guidelines.
+  let systemMsg = `You are Yo, a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it's creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. Your task is to write an accurate, detailed, and comprehensive answer to a given query using provided search results and following specific guidelines. 
+Follow these instructions to formulate your answer:
 
 1. Read the query carefully and analyze the provided search results.
 
@@ -344,25 +345,12 @@ function buildSystemMessage(instructions?: string): string {
 
 Remember to be accurate, comprehensive, and adhere to all the guidelines provided above.
 
-
-When searching through project documents:
-1. Break down complex queries into multiple focused searches
-2. Search iteratively, using information from previous searches to refine new searches
-3. Don't hesitate to perform multiple searches to gather comprehensive context
-4. Synthesize information from all relevant searches in your response
-
-For example, if asked about a project's architecture, you might:
-- First search for high-level architecture documents
-- Then search for specific components mentioned in those documents
-- Finally search for any integration details between components
-</assistant_instructions>
-
 <date>
 Current date: ${dateString}
 </date>`;
 
   if (instructions && instructions.length > 0) {
-    systemMsg += `\n\n<personalization>${instructions}</personalization>`;
+    systemMsg += `\n<personalization>${instructions}</personalization>`;
   }
   return systemMsg;
 }
@@ -731,28 +719,24 @@ function createSearchTool(projectId: string | null, modelConfig: ModelConfig) {
 
   return {
     search_documents: tool({
-      description: `Searches project documents and returns relevant matches based on semantic meaning rather than exact keywords.
+      description: `Provides semantic search against project documents, returning relevant passages with optional PDF/image previews.
 
-You can and should use this tool multiple times to gather comprehensive information. Each search can focus on different aspects of the user's question.
+Usage:
+    1. Supply a short text query highlighting what you're looking for.
+    2. This tool employs semantic matching, returning documents scored by relevance.
+    3. Make multiple separate search calls with different queries to gather comprehensive information:
+       - Break down complex questions into multiple focused searches
+       - Try alternative phrasings to find different relevant passages
+       - Use follow-up searches to dive deeper into specific aspects
+       - Each search call can surface new, relevant information
 
-Input: A text query describing what you're looking for
-Output: List of matching documents with:
-- Document ID and name
-- Relevant text snippet
-- Similarity score
+Returns:
+    - Document metadata (ID, name, path, mimeType)
+    - Relevant text snippets
+    - Relevance scores
+    - Optional page previews (PDF/images) if enabled
 
-Best Practices:
-1. Use multiple targeted searches to build comprehensive context
-2. Start broad, then narrow down based on initial findings
-3. Cross-reference information across documents
-4. Search until you have complete context for your answer
-
-Example Search Flow:
-1. "system architecture overview"
-2. "authentication implementation details"
-3. "specific component integration"
-
-Results are ranked by relevance. Multiple searches are encouraged for thorough research.`,
+Keep individual queries concise and targeted. Multiple focused searches are more effective than a single broad query.`,
       parameters: z.object({
         query: z.string(),
       }),
@@ -1073,7 +1057,7 @@ const ThreadOps = {
         messages: inferenceMsgs,
         temperature,
         tools: tools ? tools : undefined,
-        maxSteps: tools ? 6 : undefined,
+        maxSteps: tools ? 3 : undefined,
         toolChoice: "auto",
         toolCallStreaming: true,
         maxTokens: maxTokens,
