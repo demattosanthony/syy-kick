@@ -154,18 +154,17 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
     msg.attachments = await processAttachments(msg.attachments);
 
     msg.toolCalls = msg.toolCalls?.map((call) => {
-      const uniqueDocs = getUniqueDocuments(call.result.reankedDocs);
+      const uniqueDocs = getUniqueDocuments(call.result.docs);
 
       return {
         ...call,
         result: {
           dataForFrontend: uniqueDocs.map((doc) => ({
-            document_id: doc.document.id,
-            source: doc.document.name,
+            document_id: doc.documentId,
+            source: doc.documentName,
             snippet: doc.text,
-            url: (doc.document as any).url,
             score: doc.similarity,
-            page: (doc.metadata as any)?.page_number,
+            page: doc.pageNumber,
           })),
         },
       };
@@ -464,7 +463,7 @@ async function dbMessagesToMyMessages(
                   ...imagesData,
                   {
                     type: "text" as const,
-                    text: convertResultsToXml(call.result.reankedDocs),
+                    text: convertResultsToXml(call.result.docs),
                   },
                 ],
               };
@@ -474,7 +473,7 @@ async function dbMessagesToMyMessages(
               type: "tool-result",
               toolCallId: call.toolCallId,
               toolName: call.toolName,
-              result: convertResultsToXml(call.result.reankedDocs),
+              result: convertResultsToXml(call.result.docs),
             };
           })
         );
@@ -580,69 +579,62 @@ async function buildInferenceMessages(
   return messagesForCore;
 }
 
-type RankedDocument = {
-  document: {
-    id: string;
-    name: string;
-    mimeType?: string | null;
-    fileKey?: string | null;
-  };
+type SimplifiedDocument = {
   documentId: string;
+  documentName: string;
   text: string | null;
   similarity: number;
-  metadata?: { page_number?: number };
+  pageNumber?: number;
+  mimeType?: string | null;
+  fileKey?: string | null;
 };
 
 /** Converts reranked search results to XML format for AI consumption */
-function convertResultsToXml(rerankedWithMetadata: RankedDocument[]): string {
-  return `<document_context>${rerankedWithMetadata
+function convertResultsToXml(docs: SimplifiedDocument[]): string {
+  return `<document_context>${docs
     .map(
-      (r) => `
+      (doc) => `
 <document>
-  <document_id>${r.document.id}</document_id>
-  <source>${r.document.name}</source>
-  <snippet>${r.text}</snippet>
-  <score>${r.similarity}</score>
+  <document_id>${doc.documentId}</document_id>
+  <source>${doc.documentName}</source>
+  <snippet>${doc.text}</snippet>
+  <score>${doc.similarity}</score>
 </document>`
     )
     .join("\n")}
 </document_context>`;
 }
 
-/** Extracts unique documents from reranked results, treating PDF pages as separate docs */
-function getUniqueDocuments(
-  rerankedWithMetadata: RankedDocument[]
-): RankedDocument[] {
-  const uniqueDocsMap = new Map<string, RankedDocument>();
-  for (const result of rerankedWithMetadata) {
-    const pageNum = result.metadata?.page_number;
-    const key = pageNum
-      ? `${result.documentId}_page${pageNum}`
-      : result.documentId;
+/** Extracts unique documents, treating PDF pages as separate docs */
+function getUniqueDocuments(docs: SimplifiedDocument[]): SimplifiedDocument[] {
+  const uniqueDocsMap = new Map<string, SimplifiedDocument>();
+  for (const doc of docs) {
+    const key = doc.pageNumber
+      ? `${doc.documentId}_page${doc.pageNumber}`
+      : doc.documentId;
     if (!uniqueDocsMap.has(key)) {
-      uniqueDocsMap.set(key, result);
+      uniqueDocsMap.set(key, doc);
     }
   }
   return Array.from(uniqueDocsMap.values());
 }
 
 /** Processes a PDF document and returns its page as an image data URL */
-async function processPdfDocument(doc: RankedDocument): Promise<{
+async function processPdfDocument(doc: SimplifiedDocument): Promise<{
   fileKey: string;
   imageData: string;
 } | null> {
   try {
-    const pageNumber = doc.metadata?.page_number;
-    if (!pageNumber || !doc.document.fileKey) {
+    if (!doc.pageNumber || !doc.fileKey) {
       return null;
     }
 
     // Fetch and convert PDF page to image
-    const pdfBytes = await s3.file(doc.document.fileKey).bytes();
-    const base64Image = await getPdfPageAsImage(pdfBytes, pageNumber);
+    const pdfBytes = await s3.file(doc.fileKey).bytes();
+    const base64Image = await getPdfPageAsImage(pdfBytes, doc.pageNumber);
 
     // Store converted image
-    const imageKey = `search-tool-pdf-images/${doc.document.id}_page${pageNumber}.png`;
+    const imageKey = `search-tool-pdf-images/${doc.documentId}_page${doc.pageNumber}.png`;
     await s3
       .file(imageKey)
       .write(Buffer.from(base64Image, "base64"), { type: "image/png" });
@@ -669,7 +661,7 @@ async function processPdfDocument(doc: RankedDocument): Promise<{
 }
 
 /** Processes documents and returns image data URLs for supported types */
-async function processDocumentImages(docs: RankedDocument[]): Promise<
+async function processDocumentImages(docs: SimplifiedDocument[]): Promise<
   {
     fileKey: string;
     imageData: string; // s3 url or base64
@@ -681,17 +673,15 @@ async function processDocumentImages(docs: RankedDocument[]): Promise<
   }[] = [];
 
   for (const doc of docs) {
-    if (doc.document.mimeType === "application/pdf") {
+    if (doc.mimeType === "application/pdf") {
       const result = await processPdfDocument(doc);
-
       if (result) {
         results.push(result);
       }
-    } else if (doc.document.mimeType?.includes("image")) {
-      const result = await generateAttachmentData(doc.document.fileKey!);
-
+    } else if (doc.mimeType?.includes("image") && doc.fileKey) {
+      const result = await generateAttachmentData(doc.fileKey);
       results.push({
-        fileKey: doc.document.fileKey!,
+        fileKey: doc.fileKey,
         imageData: result,
       });
     }
@@ -749,27 +739,32 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
         // Create a map of text to original result for lookup
         const textToResultMap = new Map(res.map((r) => [r.text, r]));
 
-        // Map reranked results back to original result objects with new scores
-        const rerankedWithMetadata: RankedDocument[] =
-          rerankedResults.results.map(
-            (reranked) =>
-              ({
-                ...textToResultMap.get(reranked.document.text)!,
-                similarity: reranked.relevance_score,
-              } as RankedDocument)
-          );
+        // Map reranked results to simplified schema
+        const simplifiedDocs: SimplifiedDocument[] =
+          rerankedResults.results.map((reranked) => {
+            const originalDoc = textToResultMap.get(reranked.document.text)!;
+            return {
+              documentId: originalDoc.document.id,
+              documentName: originalDoc.document.name,
+              text: originalDoc.text,
+              similarity: reranked.relevance_score,
+              pageNumber: (originalDoc.metadata as { page_number?: number })
+                ?.page_number,
+              mimeType: originalDoc.document.mimeType,
+              fileKey: originalDoc.document.fileKey,
+            };
+          });
 
-        console.log("Reranked results legnth:", rerankedWithMetadata.length);
+        console.log("Simplified docs length:", simplifiedDocs.length);
 
-        // Use the typed helper functions
-        const uniqueDocs = getUniqueDocuments(rerankedWithMetadata);
-        const searchContext = convertResultsToXml(rerankedWithMetadata);
+        // Use the typed helper functions with simplified schema
+        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
+        const searchContext = convertResultsToXml(simplifiedDocs);
 
-        // Generate images from the pdf pages and regular image files
-        // Can only do mulitmodal tools with claude-3.5-sonnet for now
+        // Generate images if supported by model
         let images: {
           fileKey: string;
-          imageData: string; // s3 url or base64
+          imageData: string;
         }[] = [];
         if (modelConfig.model.modelId.includes("claude-3-5-sonnet")) {
           images = await processDocumentImages(uniqueDocs);
@@ -777,17 +772,16 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
 
         return {
           context: searchContext,
-          rerankedDocs: rerankedWithMetadata,
+          docs: simplifiedDocs,
           images,
 
           // Format data thats easy for frontend to use
           dataForFrontend: uniqueDocs.map((doc) => ({
-            document_id: doc.document.id,
-            source: doc.document.name,
+            document_id: doc.documentId,
+            source: doc.documentName,
             snippet: doc.text,
-            url: (doc.document as any).url,
             score: doc.similarity,
-            page: (doc.metadata as any)?.page_number,
+            page: doc.pageNumber,
           })),
         };
       },
@@ -1101,7 +1095,7 @@ const ThreadOps = {
                   .set({
                     status: "completed",
                     result: {
-                      reankedDocs: result.result.rerankedDocs,
+                      docs: result.result.docs,
                       images: result.result.images.map((image) => ({
                         fileKey: image.fileKey,
                       })),

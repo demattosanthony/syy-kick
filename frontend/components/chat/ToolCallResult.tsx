@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
   <div
+    key={index}
     className={cn(
       "flex flex-col gap-2 border p-3 bg-card rounded-xl my-1",
       (tool.state === "partial-call" || tool.state === "call") &&
@@ -52,9 +53,17 @@ const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => (
                   "_blank"
                 )
               }
+              title={`${result.source}${
+                result.page ? ` (page ${result.page})` : ""
+              }`}
             >
-              <File className="w-3 h-3 min-w-[12px]" />
-              <span className="truncate">{result.source}</span>
+              <File className="w-4 h-4 min-w-[12px]" />
+              <div className="flex flex-col w-full truncate">
+                <span className="truncate">{result.source}</span>
+                {result.page && (
+                  <span className="text-xs opacity-75">Page {result.page}</span>
+                )}
+              </div>
             </Badge>
           ))}
         </div>
