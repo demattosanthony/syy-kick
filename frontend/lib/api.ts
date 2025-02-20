@@ -299,6 +299,21 @@ class OrganizationApi extends ApiRequest {
       { seats }
     );
   }
+
+  /**
+   * Change the role of a member within an organization
+   */
+  async updateMemberRole(
+    organizationId: string,
+    userId: string,
+    role: "owner" | "member"
+  ): Promise<{ success: boolean; error?: string }> {
+    return await this.request<{ success: boolean; error?: string }>(
+      `/organizations/${organizationId}/members/${userId}/role`,
+      "PUT",
+      { role }
+    );
+  }
 }
 
 /**

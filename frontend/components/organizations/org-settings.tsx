@@ -8,6 +8,7 @@ import {
   useOrgQuery,
   useRemoveOrganizationMemberMutation,
   useResetOrganizationInviteTokenMutation,
+  useUpdateOrganizationMemberRoleMutation,
   useUpdateOrganizationMutation,
 } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -35,12 +36,21 @@ import {
   AlertDialogTrigger,
 } from "../ui/alert-dialog";
 import OrgManageSeats from "./org-manage-seats";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 export function OrganizationSettings({ orgId }: { orgId: string }) {
   const { data: user } = useMeQuery();
   const { data: org } = useOrgQuery(orgId);
   const updateOrgMutation = useUpdateOrganizationMutation();
   const { data: members } = useOrganizationMembersQuery(orgId);
+
+  const updateMemberRoleMutation = useUpdateOrganizationMemberRoleMutation();
 
   const { data: inviteLinkData } = useOrganizationInviteTokenQuery(orgId);
   const regenerateTokenLinkMutation = useResetOrganizationInviteTokenMutation();
@@ -243,7 +253,43 @@ export function OrganizationSettings({ orgId }: { orgId: string }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm capitalize">{member.role}</span>
+                  {/* Role Select Dropdown */}
+                  {member.user.id === user?.id ? (
+                    // If it's the current user, just show their role as text
+                    <span className="text-sm capitalize px-3 py-2">
+                      {member.role}
+                    </span>
+                  ) : (
+                    <Select
+                      value={member.role}
+                      onValueChange={(newRole: "owner" | "member") => {
+                        updateMemberRoleMutation.mutate(
+                          {
+                            organizationId: orgId,
+                            userId: member.user.id,
+                            role: newRole,
+                          },
+                          {
+                            onError: () => {
+                              toast.error("Can not update this member's role");
+                            },
+                            onSuccess: () => {
+                              toast.success("Member role updated successfully");
+                            },
+                          }
+                        );
+                      }}
+                    >
+                      <SelectTrigger className="w-[110px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="owner">Owner</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+
                   {member.user.id !== user?.id && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -289,7 +335,8 @@ export function OrganizationSettings({ orgId }: { orgId: string }) {
                                     toast.success(
                                       "Member removed successfully"
                                     );
-                                  } catch {
+                                  } catch (error) {
+                                    console.log(error);
                                     toast.error("Failed to remove member");
                                   }
                                 }}
