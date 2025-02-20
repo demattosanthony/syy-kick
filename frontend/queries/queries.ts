@@ -208,6 +208,7 @@ export function useOrgQuery(orgId: string) {
   return useQuery({
     queryKey: ["organization", orgId],
     queryFn: () => api.organizations.getOrg(orgId),
+    refetchOnWindowFocus: false,
   });
 }
 
