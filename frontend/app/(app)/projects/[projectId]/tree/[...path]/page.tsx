@@ -13,7 +13,7 @@ export default function Page() {
   const currentPath = pathArray.length ? pathArray.join("/") : "";
 
   const rightContent = (
-    <Card className="max-h-full">
+    <Card className="max-h-full overflow-y-auto">
       <CardContent className="p-2">
         <ProjectFileExplorer
           projectId={projectId}

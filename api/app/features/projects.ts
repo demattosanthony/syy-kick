@@ -20,8 +20,8 @@ import {
 } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
-import { googleEmbeddingModel } from "./models";
-import { queue } from "../queue";
+import { googleEmbeddingModel, smallOpenaiEmbeddingModel } from "./models";
+import { queue } from "../doc-job-queue";
 
 const schemas = {
   createProject: z
@@ -453,6 +453,16 @@ async function createFolderStructure(
       ? normalizePath(`${data.basePath}/${normalizedEntryPath}`)
       : normalizedEntryPath;
 
+    // Extract the final name (file or folder name)
+    const finalName = fullPath.split("/").pop()!;
+
+    // Skip hidden files/folders, i.e., any whose final name begins with "."
+    if (finalName.startsWith(".")) {
+      // You can log or handle this any way you prefer
+      console.log(`Skipping hidden file/folder: ${fullPath}`);
+      continue;
+    }
+
     // If we've already processed this path in the same request, skip
     if (createdThisRun.has(fullPath)) {
       continue;
@@ -532,7 +542,7 @@ export async function searchProjectDocuments(
   await getProjectOrThrow(projectId);
 
   // Get the embedding for the search query
-  const { embeddings } = await googleEmbeddingModel.doEmbed({
+  const { embeddings } = await smallOpenaiEmbeddingModel.doEmbed({
     values: [query],
   });
   const queryEmbedding = embeddings[0];

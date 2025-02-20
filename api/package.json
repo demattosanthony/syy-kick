@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun run --watch app/server.ts",
     "start": "bun run app/server.ts",
+    "doc-worker": "bun run app/doc-worker.ts",
     "build": "bun build app/server.ts --target bun",
     "mig": "drizzle-kit generate"
   },
@@ -42,6 +43,7 @@
     "gitea-js": "^1.23.0",
     "jsonwebtoken": "^9.0.2",
     "mime-types": "^2.1.35",
+    "p-limit": "^6.2.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-microsoft": "^2.1.0",

@@ -545,7 +545,7 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
       }),
       execute: async ({ query }) => {
         console.log("Searching project documents for: ", query);
-        const res = await searchProjectDocuments(projectId, query);
+        const res = await searchProjectDocuments(projectId, query, 80);
 
         console.log("Search results:", res.length);
 
@@ -554,7 +554,7 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
           query,
           res.map((r) => r.text || ""),
           {
-            topN: 15,
+            topN: 20,
             returnDocuments: true,
           }
         );
@@ -563,14 +563,14 @@ Results are ranked by relevance. Multiple searches are encouraged for thorough r
         const textToResultMap = new Map(res.map((r) => [r.text, r]));
 
         // Map reranked results back to original result objects with new scores
-        const rerankedWithMetadata = rerankedResults.results
-          //   .filter((reranked) => reranked.relevance_score > 0.45)
-          .map((reranked) => ({
+        const rerankedWithMetadata = rerankedResults.results.map(
+          (reranked) => ({
             ...textToResultMap.get(reranked.document.text)!,
             similarity: reranked.relevance_score,
-          }));
+          })
+        );
 
-        console.log("Reranked results:", rerankedResults.results);
+        // console.log("Reranked results:", rerankedResults.results);
         console.log("Reranked with metadata:", rerankedWithMetadata.length);
 
         const uniqueDocsMap = new Map<string, (typeof res)[0]>();
