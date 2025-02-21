@@ -164,8 +164,10 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
             document_id: doc.documentId,
             source: doc.documentName,
             snippet: doc.text,
+            path: doc.path,
             score: doc.similarity,
             page: doc.pageNumber,
+            projectId: doc.projectId,
             url: doc.fileKey
               ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
               : undefined,
@@ -1044,6 +1046,8 @@ const ThreadOps = {
         allMessages,
         modelConfig
       );
+
+      //   console.log("Inference messages:", inferenceMsgs);
 
       // 7) Create tools for the assistant if project ID exists
       const tools =

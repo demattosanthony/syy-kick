@@ -568,7 +568,7 @@ export async function searchProjectDocuments(
         sql`1 - (${cosineDistance(
           documentEmbeddings.embedding,
           queryEmbedding
-        )}) > 0.50`
+        )}) > 0.45`
       )
     )
     .orderBy(

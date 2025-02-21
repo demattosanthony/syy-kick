@@ -413,5 +413,6 @@ export function useProjectDocQuery(projectId: string, path: string) {
   return useQuery({
     queryKey: ["project-doc", projectId, path, orgId],
     queryFn: () => api.projects.getDocument(projectId, path, orgId),
+    refetchOnWindowFocus: false,
   });
 }

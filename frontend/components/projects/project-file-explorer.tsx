@@ -228,7 +228,7 @@ function FileExplorerItem({
               )}
             </div>
           ) : (
-            <span className={`${variant === "compact" ? "ml-[20px]" : ""} w-4`}>
+            <span className={`${variant === "compact" ? "ml-[2px]" : ""} w-4`}>
               {getFileIcon(item.name) || (
                 <File className="h-4 w-4 text-muted-foreground" />
               )}

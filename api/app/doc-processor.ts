@@ -63,13 +63,13 @@ export async function processFile(
           content: fileContent,
           fileName: fileName,
         },
-        strategy: CONFIG.__prod__ ? Strategy.HiRes : Strategy.Fast,
+        strategy: CONFIG.__prod__ ? Strategy.HiRes : Strategy.HiRes,
         splitPdfPage: true,
         splitPdfAllowFailed: true,
         splitPdfConcurrencyLevel: 15,
-        maxCharacters: 1200,
+        maxCharacters: 900,
         combineUnderNChars: 500,
-        overlap: 200,
+        overlap: 150,
         coordinates: true,
         includeOrigElements: false,
         chunkingStrategy: "by_title",
@@ -186,10 +186,12 @@ async function generateChunkContextBatch(
                 { type: "text", text: `<document>\n${context}\n</document>` },
                 {
                   type: "text",
-                  text: `Here is the chunk we want to situate within the local context of the document:
+                  text: `This document is related to HVAC (Heating, Ventilation, and Air Conditioning), building engineering, and architecture. 
+
+Here is the chunk we want to situate within the local context of the document:
 <chunk>\n${batch[idx]}\n</chunk>
 
-Please provide a short, succinct context to situate this chunk within the overall document for improving search retrieval. Answer only with the short context and nothing else.`,
+Please provide a short, succinct context to situate this chunk within the overall document, focusing on any relevant HVAC systems, building engineering specifications, architectural elements, or technical requirements. Consider aspects like mechanical systems, building codes, design specifications, and engineering standards when providing context. Answer only with the short context and nothing else.`,
                 },
               ],
             },

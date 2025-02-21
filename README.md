@@ -1,9 +1,9 @@
 ## What is this
 
-- chat with any of the top llms
-- avoid subscription lock in
-- pay by consumption
-- own your data (don't really want openai to own my memory)
+- github for engineers (specifically buildings)
+- replit collaboration and Ai type features
+- better QA QC processes
+- automated workflows
 
 ## Get started
 
