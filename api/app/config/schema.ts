@@ -130,6 +130,7 @@ export const projects = pgTable("projects", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+export type Project = typeof projects.$inferSelect;
 
 export const documentEmbeddings = pgTable("document_embeddings", {
   id: uuid("id").primaryKey().defaultRandom(),

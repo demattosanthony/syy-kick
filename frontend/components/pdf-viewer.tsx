@@ -86,10 +86,9 @@ const PdfViewer = React.memo(function PdfViewer({
         <Worker workerUrl="/pdf.worker.min.js">
           <div className="absolute inset-0">
             <div className="flex items-center justify-between px-4 py-2">
-              {/* Left area: search bar */}
               <div />
 
-              {/* Right area: download + zoom controls */}
+              {/* Right area: search + download + zoom controls */}
               <div className="flex items-center gap-2">
                 <Input
                   type="text"

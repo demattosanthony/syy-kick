@@ -13,6 +13,7 @@ import {
   messageAttachments,
   toolCalls as toolCallsTable,
   documentThumbnails,
+  Project,
 } from "../config/schema";
 import { MessageAttachment } from "../config/schema"; // reusing types
 import { embeddingModel, ModelConfig, MODELS } from "./models";
@@ -290,7 +291,7 @@ async function maybeGenerateTitle(
 }
 
 /** Constructs a "system" style message, appending user instructions if they exist. */
-function buildSystemMessage(instructions?: string): string {
+function buildSystemMessage(instructions?: string, project?: Project): string {
   const dateString = new Date().toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -340,6 +341,11 @@ Current date: ${dateString}
   if (instructions && instructions.length > 0) {
     systemMsg += `\n<personalization>${instructions}</personalization>`;
   }
+
+  if (project) {
+    systemMsg += `\n<current_proejct>\n${project.name}\n</current_proejct>\n\n Use search tool to help you find relevant information for this specific engineering project.`;
+  }
+
   return systemMsg;
 }
 

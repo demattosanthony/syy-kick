@@ -160,18 +160,18 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
-    // "gemini-2.0-pro": {
-    //   model: google("gemini-2.0-pro-exp-02-05"),
-    //   supportsToolUse: true,
-    //   supportsStreaming: true,
-    //   provider: "google",
-    //   supportsSystemMessages: true,
-    //   supportedMimeTypes,
-    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-    //   maxFileSize: 50 * 1024 * 1024, // 50MB
-    //   description:
-    //     "Gemini 2.0 Pro is a robust model from Google, well-suited for a variety of tasks including text generation, translation, and code completion. It supports tool use, streaming, image and PDF inputs, making it a versatile option for many applications.",
-    // },
+    "gemini-2.0-pro": {
+      model: google("gemini-2.0-pro-exp-02-05"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "google",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+      maxFileSize: 50 * 1024 * 1024, // 50MB
+      description:
+        "Gemini 2.0 Pro is a robust model from Google, well-suited for a variety of tasks including text generation, translation, and code completion. It supports tool use, streaming, image and PDF inputs, making it a versatile option for many applications.",
+    },
     "gemini-2.0-flash": {
       model: google("gemini-2.0-flash"),
       supportsToolUse: true,
@@ -286,12 +286,9 @@ export const groqModels = (apiKey?: string): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
   return {
-    "llama-3.3-70b": {
-      model: wrapLanguageModel({
-        model: groq("deepseek-r1-distill-llama-70b"),
-        middleware: extractReasoningMiddleware({ tagName: "think" }),
-      }),
-      supportsToolUse: false,
+    "llama-3": {
+      model: groq("deepseek-r1-distill-llama-70b"),
+      supportsToolUse: true,
       supportsStreaming: true,
       supportsSystemMessages: true,
       supportedMimeTypes: [],
@@ -350,7 +347,7 @@ export const MODELS: Record<string, ModelConfig> = {
   ...xAiModels(process.env.XAI_API_KEY),
   //   ...togetherAiModels(process.env.TOGETHER_AI_API_KEY),
   //   ...groqModels(process.env.GROQ_API_KEY),
-  ...perplexityModels(process.env.PPLX_API_KEY),
+  //   ...perplexityModels(process.env.PPLX_API_KEY),
 };
 
 export const embeddingModel = openai.embedding("text-embedding-3-large", {
