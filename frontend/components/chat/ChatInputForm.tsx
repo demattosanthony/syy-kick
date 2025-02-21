@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Paperclip, SendHorizonal, StopCircle, X } from "lucide-react";
+import { Loader2, Paperclip, SendHorizonal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";

@@ -64,6 +64,7 @@ const MessageBubble = ({
 import { Message } from "ai/react";
 import MarkdownViewer from "../MarkdownViewer";
 import { ThinkingDropdown } from "./ThinkingDropdown";
+import SearchDocumentsTool from "./ToolCallResult";
 
 const AssistantMessage = ({
   message,
@@ -101,7 +102,7 @@ const AssistantMessage = ({
             {message.toolInvocations?.map(
               (tool, index) =>
                 tool.toolName === "search_documents" && (
-                  <ToolInvocation tool={tool} index={index} key={index} />
+                  <SearchDocumentsTool tool={tool} index={index} key={index} />
                 )
             )}
           </div>
@@ -146,7 +147,6 @@ const UserMessage = ({ message }: { message: Message }) => {
 import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
 import Syyclops3dEye from "../syy-eye";
-import ToolInvocation from "./ToolCallResult";
 
 const LoadingMessage = React.memo(() => {
   return (

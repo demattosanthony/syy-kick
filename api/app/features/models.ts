@@ -160,18 +160,18 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
-    "gemini-2.0-pro": {
-      model: google("gemini-2.0-pro-exp-02-05"),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      description:
-        "Gemini 2.0 Pro is a robust model from Google, well-suited for a variety of tasks including text generation, translation, and code completion. It supports tool use, streaming, image and PDF inputs, making it a versatile option for many applications.",
-    },
+    // "gemini-2.0-pro": {
+    //   model: google("gemini-2.0-pro-exp-02-05"),
+    //   supportsToolUse: true,
+    //   supportsStreaming: true,
+    //   provider: "google",
+    //   supportsSystemMessages: true,
+    //   supportedMimeTypes,
+    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+    //   maxFileSize: 50 * 1024 * 1024, // 50MB
+    //   description:
+    //     "Gemini 2.0 Pro is a robust model from Google, well-suited for a variety of tasks including text generation, translation, and code completion. It supports tool use, streaming, image and PDF inputs, making it a versatile option for many applications.",
+    // },
     "gemini-2.0-flash": {
       model: google("gemini-2.0-flash"),
       supportsToolUse: true,
@@ -198,18 +198,18 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "Gemini 2.0 Flash Online enhances the speed of Gemini 2.0 Flash with the ability to access real-time information through search grounding. It's perfect for tasks that require up-to-date data and fast responses, while also supporting tool use, streaming, image and PDF inputs.",
     },
-    "gemini-2.0-flash-thinking": {
-      model: google("gemini-2.0-flash-thinking-exp-01-21"),
-      supportsToolUse: false,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      description:
-        "Gemini 2.0 Flash Thinking is an experimental model trained to expose its reasoning process in responses. By making its thinking process explicit, this model demonstrates enhanced reasoning capabilities compared to other Gemini 2.0 Flash models.",
-    },
+    // "gemini-2.0-flash-thinking": {
+    //   model: google("gemini-2.0-flash-thinking-exp-01-21"),
+    //   supportsToolUse: false,
+    //   supportsStreaming: true,
+    //   provider: "google",
+    //   supportsSystemMessages: true,
+    //   supportedMimeTypes,
+    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+    //   maxFileSize: 50 * 1024 * 1024, // 50MB
+    //   description:
+    //     "Gemini 2.0 Flash Thinking is an experimental model trained to expose its reasoning process in responses. By making its thinking process explicit, this model demonstrates enhanced reasoning capabilities compared to other Gemini 2.0 Flash models.",
+    // },
   };
 };
 
@@ -348,8 +348,8 @@ export const MODELS: Record<string, ModelConfig> = {
   ...openaiModels(process.env.OPENAI_API_KEY),
   ...googleModels(process.env.GOOGLE_GENERATIVE_AI_API_KEY),
   ...xAiModels(process.env.XAI_API_KEY),
-  ...togetherAiModels(process.env.TOGETHER_AI_API_KEY),
-  ...groqModels(process.env.GROQ_API_KEY),
+  //   ...togetherAiModels(process.env.TOGETHER_AI_API_KEY),
+  //   ...groqModels(process.env.GROQ_API_KEY),
   ...perplexityModels(process.env.PPLX_API_KEY),
 };
 

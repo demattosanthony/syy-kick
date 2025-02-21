@@ -252,34 +252,20 @@ async function getModelConfig(model: string, messages: MyMessage[]) {
     .join("\n\n");
 
   const { object } = await generateObject({
-    prompt: `Based on the conversation below, classify the type of request into:
-- web_search
-- coding
-- type_1_thinking
-- type_2_thinking
+    prompt: `Based on the conversation below, determine if this requires web search capabilities:
 
 Conversation:
 
 ${conversationText}`,
     schema: z.object({
-      request_type: z.enum([
-        "web_search",
-        "coding",
-        "type_1_thinking",
-        "type_2_thinking",
-      ]),
+      requires_web_search: z.boolean(),
     }),
-    model: MODELS["claude-3.5-sonnet"].model,
+    model: MODELS["claude-3.5-haiku"].model,
   });
 
-  const type = object.request_type;
-  if (type === "coding") return MODELS["claude-3.5-sonnet"];
-  if (type === "type_1_thinking") return MODELS["gpt-4o"];
-  if (type === "type_2_thinking") return MODELS["o1"];
-  if (type === "web_search") return MODELS["sonar-pro"];
-
-  // Fallback
-  return MODELS[object.request_type];
+  return object.requires_web_search
+    ? MODELS["sonar-pro"]
+    : MODELS["claude-3.5-sonnet"];
 }
 
 /** Generates a thread title from the first user message if it doesn’t already exist. */

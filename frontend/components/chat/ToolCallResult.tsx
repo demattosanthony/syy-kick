@@ -2,8 +2,15 @@ import { File, Search } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import React from "react";
+import { ToolInvocation } from "ai";
 
-const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => {
+const SearchDocumentsTool = ({
+  tool,
+  index,
+}: {
+  tool: ToolInvocation;
+  index: number;
+}) => {
   const [showAll, setShowAll] = React.useState(false);
 
   return (
@@ -25,15 +32,22 @@ const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => {
       </div>
 
       {/* Results Section */}
-      {tool.result && (
+      {tool.state === "result" && tool.result && (
         <div className="flex flex-col gap-2">
           <div className="text-sm text-muted-foreground">
             Found {tool.result.dataForFrontend.length} relevant sources:
           </div>
           <div className="flex gap-2 flex-wrap max-w-3xl">
-            {tool.result.dataForFrontend
-              .slice(0, showAll ? undefined : 3)
-              .map((result: any, idx: number) => (
+            {tool.result.dataForFrontend.slice(0, showAll ? undefined : 3).map(
+              (
+                result: {
+                  path: string;
+                  projectId: string;
+                  page?: number;
+                  source: string;
+                },
+                idx: number
+              ) => (
                 <Badge
                   key={idx}
                   className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal cursor-pointer w-fit max-w-[200px] hover:bg-secondary/60"
@@ -60,7 +74,8 @@ const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => {
                     )}
                   </div>
                 </Badge>
-              ))}
+              )
+            )}
             {!showAll && tool.result.dataForFrontend.length > 3 && (
               <Badge
                 className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal cursor-pointer"
@@ -77,4 +92,4 @@ const ToolInvocation = ({ tool, index }: { tool: any; index: number }) => {
   );
 };
 
-export default ToolInvocation;
+export default SearchDocumentsTool;
