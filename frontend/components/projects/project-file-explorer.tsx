@@ -238,6 +238,7 @@ function FileExplorerItem({
             {item.name}
           </span>
 
+          {/* Extraction Status indicator dot */}
           {item.processingJob && variant === "detailed" && (
             <Tooltip>
               <TooltipTrigger>
@@ -267,8 +268,6 @@ function FileExplorerItem({
 
         {variant === "detailed" && (
           <div className="flex items-center gap-2">
-            {/* Extraction Status indicator dot */}
-
             <small className="text-sm font-medium leading-none text-muted-foreground">
               {getRelativeTimeString(item.updatedAt)}
             </small>

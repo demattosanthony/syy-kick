@@ -85,9 +85,6 @@ export default function ThreadPage({
         organizationId: orgId,
       };
     },
-    async onToolCall({ toolCall }) {
-      console.log("Tool call", toolCall);
-    },
   });
 
   async function processAttachments() {
