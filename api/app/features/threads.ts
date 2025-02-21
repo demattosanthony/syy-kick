@@ -24,6 +24,7 @@ import { CONFIG } from "../config/constants";
 import { Attachment, CoreMessage, generateObject, streamText, tool } from "ai";
 import { searchProjectDocuments } from "./projects";
 import reranker from "../config/reranker";
+import exa from "../config/exa";
 
 // --------------------------------------------------------
 // 1. Define Zod Schemas
@@ -292,11 +293,10 @@ Follow these instructions to formulate your answer:
 7. If the user provides enough context like files or images in the prompt and you don't need to search for additional information, you can provide the answer directly.
 
 <restrictions>
-1. Do not include URLs or links in the answer.
-2. Avoid moralization or hedging language (e.g., "It is important to...", "It is inappropriate...", "It is subjective..."). These phrases waste time.
-3. Avoid repeating copyrighted content verbatim (e.g., song lyrics, news articles, book passages). Only answer with original text.
-4. If the search results do not provide an answer, you should respond with saying that the information is not available.
-5. NEVER use any of the following phrases or similar constructions: "According to the search results", "Based on the search results", "Given the search results", "Based on the given search", "Based on the provided sources", "Based on the provided search results", "from the given search results", "the source provided", "based on the available search results", "the search results indicate", "let me search for". These phrases are waste time because the user is already aware that the answer should come from search results. These phrases are strictly banned from your response.
+1. Avoid moralization or hedging language (e.g., "It is important to...", "It is inappropriate...", "It is subjective..."). These phrases waste time.
+2. Avoid repeating copyrighted content verbatim (e.g., song lyrics, news articles, book passages). Only answer with original text.
+3. If the search results do not provide an answer, you should respond with saying that the information is not available.
+4. NEVER use any of the following phrases or similar constructions: "According to the search results", "Based on the search results", "Given the search results", "Based on the given search", "Based on the provided sources", "Based on the provided search results", "from the given search results", "the source provided", "based on the available search results", "the search results indicate", "let me search for". These phrases are waste time because the user is already aware that the answer should come from search results. These phrases are strictly banned from your response.
 </restrictions>
 
 Remember to be accurate, comprehensive, and adhere to all the guidelines provided above.
@@ -787,6 +787,23 @@ Keep individual queries concise and targeted. Multiple focused searches are more
         ];
       },
     }),
+
+    web_search: tool({
+      description: `Perform an Exa search given an input query and retrieve a list of relevant results as links, optionally including the full text and/or highlights of the content.`,
+      parameters: z.object({
+        query: z.string(),
+      }),
+      execute: async ({ query }) => {
+        console.log("Searching Exa for: ", query);
+        const results = await exa.searchAndContents(query, {
+          text: true,
+        });
+
+        console.log("Results: ", results.results);
+
+        return JSON.stringify(results.results, null, 2);
+      },
+    }),
   };
 }
 
@@ -1072,16 +1089,17 @@ const ThreadOps = {
                 (r) => r.toolCallId === toolCall.toolCallId
               );
 
-              if (result) {
+              if (result && toolCall.toolName === "search_documents") {
                 await db
                   .update(toolCallsTable)
                   .set({
                     status: "completed",
                     result: {
-                      docs: result.result.docs,
-                      images: result.result.images.map((image) => ({
-                        fileKey: image.fileKey,
-                      })),
+                      docs: (result.result as any).docs,
+                      images:
+                        (result.result as any).images?.map((image: any) => ({
+                          fileKey: image.fileKey,
+                        })) || [],
                     },
                     updatedAt: new Date(),
                   })
