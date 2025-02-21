@@ -233,40 +233,7 @@ async function getModelConfig(model: string, messages: MyMessage[]) {
     return MODELS[model];
   }
 
-  // Check for PDFs or images in attachments or messages
-  const hasMediaContent = messages.some((msg) => {
-    return msg.experimental_attachments?.some((attachment) => {
-      return (
-        attachment.contentType?.includes("pdf") ||
-        attachment.contentType?.includes("image")
-      );
-    });
-  });
-
-  if (hasMediaContent) {
-    return MODELS["claude-3.5-sonnet"];
-  }
-
-  // If there's no media, classify conversation to pick a model
-  const conversationText = messages
-    .map((m) => `${m.role}: ${m.content}`)
-    .join("\n\n");
-
-  const { object } = await generateObject({
-    prompt: `Based on the conversation below, determine if this requires web search capabilities:
-
-Conversation:
-
-${conversationText}`,
-    schema: z.object({
-      requires_web_search: z.boolean(),
-    }),
-    model: MODELS["claude-3.5-haiku"].model,
-  });
-
-  return object.requires_web_search
-    ? MODELS["sonar-pro"]
-    : MODELS["claude-3.5-sonnet"];
+  return MODELS["claude-3.5-sonnet"];
 }
 
 /** Generates a thread title from the first user message if it doesn’t already exist. */
@@ -1029,6 +996,7 @@ const ThreadOps = {
 
       // 4) Determine appropriate model
       const modelConfig = await getModelConfig(model, allMessages);
+      console.log("Selected model:", modelConfig);
 
       // 5) Generate a thread title if missing
       await maybeGenerateTitle(threadId, allMessages, thread.title);
