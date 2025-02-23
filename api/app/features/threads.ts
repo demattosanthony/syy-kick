@@ -117,17 +117,8 @@ async function generateAttachmentData(
   contentType?: string
 ): Promise<string> {
   const metadata = s3.file(fileKey);
-  // In local dev, we might return a base64 data URI
-  if (!CONFIG.__prod__) {
-    const buffer = Buffer.from(new Uint8Array(await metadata.arrayBuffer()));
-    return `${buffer.toString("base64")}`;
-  }
-  // In production, generate an actual presigned URL
-  return metadata.presign({
-    acl: "public-read",
-    expiresIn: 3600,
-    method: "GET",
-  });
+  const buffer = Buffer.from(new Uint8Array(await metadata.arrayBuffer()));
+  return buffer.toString("base64");
 }
 
 /** Adds presigned URLs (or base64 data) to each attachment. */
