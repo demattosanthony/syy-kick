@@ -632,12 +632,7 @@ async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
 
     return {
       fileKey: imageKey,
-      imageData: !CONFIG.__prod__
-        ? base64Image
-        : s3.file(imageKey).presign({
-            expiresIn: 3600,
-            method: "GET",
-          }),
+      imageData: base64Image,
     };
   } catch (error) {
     console.error("Error processing PDF document:", error);
