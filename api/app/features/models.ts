@@ -118,7 +118,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       maxImageSize: 20 * 1024 * 1024, // 20MB
       supportedMimeTypes,
       description:
-        "GPT-4o Mini from OpenAI has broad general knowledge and domain expertise allowing it to follow complex instructions in natural language and solve difficult problems accurately. It matches GPT-4 Turbo performance with a faster and cheaper API.",
+        "GPT-4o mini from OpenAI is their most advanced and cost-efficient small model. It is multi-modal (accepting text or image inputs and outputting text) and has higher intelligence than gpt-3.5-turbo but is just as fast.",
     },
   };
 };
