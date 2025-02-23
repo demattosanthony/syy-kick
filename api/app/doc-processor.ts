@@ -225,11 +225,11 @@ Please provide a short, succinct context to situate this chunk within the overal
 
 /**
  * Returns local context around `chunk` (found in `fullText`) that stays under `maxTokens`.
- * Uses tiktoken to measure precise token count for a given model (default gpt-3.5-turbo).
+ * Uses tiktoken to measure precise token count for a given model (default gpt-4o-mini).
  *
  * @param fullText - The entire text of the document.
  * @param chunk - The specific chunk we want to situate in context.
- * @param modelName - The tiktoken-compatible model name (e.g., "gpt-3.5-turbo").
+ * @param modelName - The tiktoken-compatible model name (e.g., "gpt-4o-mini").
  * @param maxTokens - Maximum allowed tokens for the returned substring (default 128,000).
  * @returns A substring of `fullText`, centered around `chunk`, that is under `maxTokens` tokens.
  */
@@ -294,7 +294,7 @@ export function getLocalContextTiktoken(
  * If `text` already fits, returns the entire text. Otherwise, returns a leading portion
  * that fits in `maxTokens`. (You could do more sophisticated middle trimming if desired.)
  */
-function substringToMaxTokens(
+export function substringToMaxTokens(
   text: string,
   modelName: TiktokenModel,
   maxTokens: number,
@@ -311,7 +311,7 @@ function substringToMaxTokens(
 }
 
 /** Sanitize text to remove unwanted characters and control codes */
-function sanitizeText(text: string): string {
+export function sanitizeText(text: string): string {
   // Remove null bytes
   text = text.replace(/\0/g, "");
 
