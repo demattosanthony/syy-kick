@@ -184,20 +184,20 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
     },
-    "gemini-2.0-flash-online": {
-      model: google("gemini-2.0-flash", {
-        useSearchGrounding: true,
-      }),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      description:
-        "Gemini 2.0 Flash Online enhances the speed of Gemini 2.0 Flash with the ability to access real-time information through search grounding. It's perfect for tasks that require up-to-date data and fast responses, while also supporting tool use, streaming, image and PDF inputs.",
-    },
+    // "gemini-2.0-flash-online": {
+    //   model: google("gemini-2.0-flash", {
+    //     useSearchGrounding: true,
+    //   }),
+    //   supportsToolUse: true,
+    //   supportsStreaming: true,
+    //   provider: "google",
+    //   supportsSystemMessages: true,
+    //   supportedMimeTypes,
+    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+    //   maxFileSize: 50 * 1024 * 1024, // 50MB
+    //   description:
+    //     "Gemini 2.0 Flash Online enhances the speed of Gemini 2.0 Flash with the ability to access real-time information through search grounding. It's perfect for tasks that require up-to-date data and fast responses, while also supporting tool use, streaming, image and PDF inputs.",
+    // },
     // "gemini-2.0-flash-thinking": {
     //   model: google("gemini-2.0-flash-thinking-exp-01-21"),
     //   supportsToolUse: false,

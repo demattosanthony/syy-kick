@@ -109,7 +109,16 @@ export async function processFile(
         }));
       }
 
-      const values = contextualizedChunks.map((chunk) => chunk.text);
+      // Sanitize the text before processing
+      const sanitizedChunks = contextualizedChunks.map((chunk) => ({
+        ...chunk,
+        text: sanitizeText(chunk.text),
+        metadata: chunk.metadata
+          ? sanitizeText(JSON.stringify(chunk.metadata))
+          : null,
+      }));
+
+      const values = sanitizedChunks.map((chunk) => chunk.text);
       console.log("Embedding contextualized values:", values);
 
       // Process embeddings in batches of 100
@@ -126,16 +135,16 @@ export async function processFile(
       }
 
       // Validate that we have matching numbers of chunks and embeddings
-      if (contextualizedChunks.length !== allEmbeddings.length) {
+      if (sanitizedChunks.length !== allEmbeddings.length) {
         throw new Error(
-          `Mismatch between chunks (${contextualizedChunks.length}) and embeddings (${allEmbeddings.length})`
+          `Mismatch between chunks (${sanitizedChunks.length}) and embeddings (${allEmbeddings.length})`
         );
       }
 
       // Only proceed with database insertion if we have chunks to process
-      if (contextualizedChunks.length > 0) {
+      if (sanitizedChunks.length > 0) {
         await db.insert(documentEmbeddings).values(
-          contextualizedChunks.map((element, i) => ({
+          sanitizedChunks.map((element, i) => ({
             documentId: documentId,
             text: element.text,
             embedding: allEmbeddings[i],
@@ -299,4 +308,21 @@ function substringToMaxTokens(
   }
 
   return new TextDecoder().decode(enc.decode(tokens.slice(0, maxTokens)));
+}
+
+/** Sanitize text to remove unwanted characters and control codes */
+function sanitizeText(text: string): string {
+  // Remove null bytes
+  text = text.replace(/\0/g, "");
+
+  // Replace invalid UTF-8 characters with a replacement character
+  text = text.replace(/[\uFFFD\uFFFE\uFFFF]/g, "");
+
+  // Normalize Unicode characters
+  text = text.normalize("NFKC");
+
+  // Remove any other control characters except newlines and tabs
+  text = text.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, "");
+
+  return text.trim();
 }
