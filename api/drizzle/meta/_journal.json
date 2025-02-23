@@ -169,6 +169,55 @@
       "when": 1739730137716,
       "tag": "0023_tan_skin",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1739832437753,
+      "tag": "0024_steep_cable",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1739900554099,
+      "tag": "0025_nappy_union_jack",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1739909091117,
+      "tag": "0026_windy_frog_thor",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1739999421354,
+      "tag": "0027_fantastic_risque",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1740000760907,
+      "tag": "0028_freezing_firelord",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1740084581272,
+      "tag": "0029_perfect_maginty",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1740090003520,
+      "tag": "0030_stiff_pixie",
+      "breakpoints": true
     }
   ]
 }

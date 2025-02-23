@@ -318,6 +318,7 @@ export function useProjectQuery(projectId: string) {
     queryKey: ["project", projectId, orgId],
     queryFn: () => api.projects.getProject(projectId, orgId),
     enabled: !!projectId,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -359,6 +360,17 @@ export function useProjectDocsQuery(projectId: string, path?: string) {
     queryKey: ["project-docs", projectId, path, orgId],
     queryFn: () => api.projects.getDocuments(projectId, path, orgId),
     enabled: !!projectId,
+    // Refetch every 15 seconds while the query is active, if any of the docs are processing
+    refetchInterval: (query) =>
+      query.state.data?.some(
+        (doc) =>
+          doc.processingJob?.status === "processing" ||
+          doc.processingJob?.status === "pending"
+      )
+        ? 15000
+        : false,
+    // Stop refetching when the window/tab is not focused
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -412,5 +424,6 @@ export function useProjectDocQuery(projectId: string, path: string) {
   return useQuery({
     queryKey: ["project-doc", projectId, path, orgId],
     queryFn: () => api.projects.getDocument(projectId, path, orgId),
+    refetchOnWindowFocus: false,
   });
 }

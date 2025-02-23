@@ -10,9 +10,12 @@ interface MessageBubbleProps {
   copied?: boolean;
 }
 
-const MessageBubble = (
-  { content, isUser, onCopy, copied }: MessageBubbleProps // Removed React.memo
-) => (
+const MessageBubble = ({
+  content,
+  isUser,
+  onCopy,
+  copied,
+}: MessageBubbleProps) => (
   <div
     className={`group mb-4 flex w-full ${
       isUser ? "justify-end" : "justify-start"
@@ -34,7 +37,6 @@ const MessageBubble = (
       <div
         className="
           break-words
-          break-all
           whitespace-pre-wrap
           w-full
           overflow-hidden
@@ -62,15 +64,20 @@ const MessageBubble = (
 import { Message } from "ai/react";
 import MarkdownViewer from "../MarkdownViewer";
 import { ThinkingDropdown } from "./ThinkingDropdown";
+import SearchDocumentsTool from "./ToolCallResult";
 
-const AssistantMessage = (
-  { message }: { message: Message } // Removed React.memo
-) => {
+const AssistantMessage = ({
+  message,
+  showEye,
+}: {
+  message: Message;
+  showEye: boolean;
+}) => {
   return (
-    <div className="mb-4 flex flex-col justify-start">
-      <div className="flex gap-2">
-        <div className="mr-[1px] w-[32px] h-[32px]">
-          <Syyclops3dEye size={32} animate={false} />
+    <div className="my-2 flex flex-col justify-start">
+      <div className="flex">
+        <div className="mr-2 w-[32px] h-[32px]">
+          {showEye ? <Syyclops3dEye size={32} animate={false} /> : null}
         </div>
 
         <div
@@ -89,7 +96,16 @@ const AssistantMessage = (
             </ThinkingDropdown>
           )}
 
-          <MarkdownViewer content={message.content || ""} />
+          {message.content && <MarkdownViewer content={message.content} />}
+
+          <div className="flex flex-col gap-2">
+            {message.toolInvocations?.map(
+              (tool, index) =>
+                tool.toolName === "search_documents" && (
+                  <SearchDocumentsTool tool={tool} index={index} key={index} />
+                )
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -112,7 +128,7 @@ const UserMessage = ({ message }: { message: Message }) => {
   };
 
   return (
-    <div className="mb-4 ">
+    <div className="mb-4">
       {message.experimental_attachments?.map((attachment, idx) => (
         <ChatAttachment key={idx} attachment={attachment} />
       ))}
@@ -164,19 +180,32 @@ const ChatMessagesList = React.memo(
     // Example: show loading after the user's last message
     const lastMessage = messages[messages.length - 1];
     const showLoadingState =
-      isLoading && lastMessage?.role === MessageRole.user;
+      isLoading &&
+      (lastMessage?.role === MessageRole.user ||
+        (lastMessage.role === "assistant" &&
+          lastMessage.toolInvocations?.length));
 
     return (
       <div className="flex-1 w-full h-full relative">
         <div className="absolute inset-0 overflow-y-auto">
           <div className="max-w-[840px] mx-auto pt-20 p-4">
-            {messages.map((message, index) =>
-              message.role === MessageRole.user ? (
+            {messages.map((message, index) => {
+              const nextMessage = messages[index + 1];
+              const showEye =
+                message.role !== MessageRole.user &&
+                (!nextMessage || nextMessage.role === MessageRole.user) &&
+                !message.toolInvocations?.length;
+
+              return message.role === MessageRole.user ? (
                 <UserMessage key={index} message={message} />
               ) : (
-                <AssistantMessage key={index} message={message} />
-              )
-            )}
+                <AssistantMessage
+                  key={index}
+                  message={message}
+                  showEye={showEye}
+                />
+              );
+            })}
             {showLoadingState && <LoadingMessage />}
           </div>
         </div>

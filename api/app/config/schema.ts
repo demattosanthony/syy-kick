@@ -4,8 +4,10 @@ import {
   integer,
   jsonb,
   pgTable,
+  serial,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
   vector,
@@ -14,7 +16,6 @@ import { customType } from "drizzle-orm/pg-core";
 
 const MESSAGE_ROLES = ["system", "user", "assistant", "tool"] as const;
 const TOOL_CALL_STATUS = ["pending", "completed", "failed"] as const;
-const CONTENT_TYPES = ["text", "image", "file"] as const;
 const SUBSCRIPTION_STATUS = [
   "active",
   "canceled",
@@ -129,6 +130,19 @@ export const projects = pgTable("projects", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+export type Project = typeof projects.$inferSelect;
+
+export const documentEmbeddings = pgTable("document_embeddings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  documentId: uuid("document_id")
+    .notNull()
+    .references(() => documents.id, { onDelete: "cascade" }),
+  text: text("text"),
+  metadata: jsonb("metadata"),
+  embedding: vector("embedding", { dimensions: 768 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const documents = pgTable("documents", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -148,6 +162,38 @@ export const documents = pgTable("documents", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const documentProcessingJobs = pgTable("document_processing_jobs", {
+  id: serial("id").primaryKey(),
+  documentId: uuid("document_id")
+    .notNull()
+    .references(() => documents.id, { onDelete: "cascade" }),
+  fileKey: text("file_key").notNull(),
+  fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  status: text("status", {
+    enum: ["pending", "processing", "completed", "failed"],
+  })
+    .notNull()
+    .default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(3),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").defaultNow(),
+  processAfter: timestamp("process_after").defaultNow(),
+});
+
+export const documentThumbnails = pgTable("document_thumbnails", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  documentId: uuid("document_id")
+    .notNull()
+    .references(() => documents.id, { onDelete: "cascade" }),
+  fileKey: text("file_key").notNull(),
+  pageNumber: integer("page_number"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+export type DocumentThumbnail = typeof documentThumbnails.$inferSelect;
 
 // Threads table with user association
 export const threads = pgTable("threads", {
@@ -213,10 +259,11 @@ export const toolCalls = pgTable("tool_calls", {
   messageId: uuid("message_id")
     .notNull()
     .references(() => messages.id, { onDelete: "cascade" }),
-  functionName: text("function_name").notNull(),
-  functionArguments: text("function_arguments"),
+  toolName: text("function_name").notNull(),
+  toolCallId: text("tool_call_id").notNull(),
+  args: jsonb("args"),
   status: text("status", { enum: TOOL_CALL_STATUS }).notNull(),
-  result: text("result"),
+  result: jsonb("result"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -255,6 +302,10 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
     fields: [documents.projectId],
     references: [projects.id],
   }),
+  processingJob: one(documentProcessingJobs, {
+    fields: [documents.id],
+    references: [documentProcessingJobs.documentId],
+  }),
 }));
 
 export const messagesRelations = relations(messages, ({ one, many }) => ({
@@ -267,6 +318,7 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     references: [users.id],
   }),
   attachments: many(messageAttachments),
+  toolCalls: many(toolCalls),
 }));
 
 export const messageAttachmentsRelations = relations(

@@ -1,0 +1,2 @@
+ALTER TABLE "document_embeddings" ADD COLUMN "created_at" timestamp DEFAULT now() NOT NULL;--> statement-breakpoint
+ALTER TABLE "document_embeddings" ADD COLUMN "updated_at" timestamp DEFAULT now() NOT NULL;

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { File } from "lucide-react";
 import { PdfThumbnail } from "../pdf-thumbnail";
 import { useMemo } from "react";
+import { Dialog, DialogContent, DialogTrigger } from "../ui/dialog";
+import { DialogTitle } from "@radix-ui/react-dialog";
 
 export default function ChatAttachment({
   attachment,
@@ -16,18 +18,33 @@ export default function ChatAttachment({
     switch (true) {
       case contentType.startsWith("image"):
         return (
-          <div
-            key={`img-${attachment.name}-${index}`}
-            className="flex justify-end mb-4 cursor-pointer"
-            onClick={() => window.open(attachment.url || "", "_blank")}
-          >
-            <img
-              key={index}
-              src={attachment.url}
-              alt="user attachment"
-              className="overflow-hidden rounded-lg h-52 max-w-[400px] object-contain"
-            />
-          </div>
+          <>
+            <Dialog>
+              <DialogTrigger asChild>
+                <div
+                  key={`img-${attachment.name}-${index}`}
+                  className="flex justify-end mb-4 cursor-pointer"
+                >
+                  <img
+                    key={index}
+                    src={attachment.url}
+                    alt="user attachment"
+                    className="overflow-hidden rounded-lg h-52 max-w-[400px] object-contain"
+                  />
+                </div>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl p-0 m-0 overflow-hidden text-secondary">
+                <DialogTitle className="hidden" />
+                <div className="relative w-full h-full overflow-auto">
+                  <img
+                    src={attachment.url}
+                    alt="user attachment"
+                    className="w-full object-contain"
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
         );
 
       case contentType === "application/pdf":

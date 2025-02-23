@@ -26,22 +26,10 @@ export const AUTO_MODEL_CONFIG = {
     "image/png",
     "image/webp",
     "image/gif",
-    "image/heic",
-    "image/heif",
     "application/pdf",
-    "application/x-javascript",
-    "text/javascript",
-    "application/x-python",
-    "text/python",
-    "text/plain",
-    "text/html",
-    "text/md",
-    "text/csv",
-    "text/xml",
-    "text/rtf",
   ],
-  maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-  maxFileSize: 50 * 1024 * 1024, // 50MB
+  maxImageSize: 5 * 1024 * 1024, // 5MB
+  maxFileSize: 32 * 1024 * 1024, // 32MB
 };
 
 export const SONAR_PRO_CONFIG = {

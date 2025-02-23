@@ -16,11 +16,12 @@ export default function ProjectsHeader() {
   const { data: project } = useProjectQuery(pid);
 
   // Return null if we're not in a project path or if project data isn't available
-  if (!isProjectPath || !project) return null;
+  if (!isProjectPath) return null;
 
   return (
     <div className="h-14 flex items-center justify-between w-full px-4">
-      <ProjectNavBreadcrumbs project={project} />
+      <div>{project && <ProjectNavBreadcrumbs project={project} />}</div>
+
       <ProjectAddFileButton projectId={pid} />
     </div>
   );

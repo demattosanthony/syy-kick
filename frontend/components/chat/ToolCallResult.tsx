@@ -1,31 +1,96 @@
-import { Check, Loader2 } from "lucide-react";
+import { File, Search } from "lucide-react";
+import { Badge } from "../ui/badge";
+import { cn } from "@/lib/utils";
+import React from "react";
+import { ToolInvocation } from "ai";
 
-export default function ToolCallResultComponent({
-  toolCall,
+const SearchDocumentsTool = ({
+  tool,
+  index,
 }: {
-  toolCall: {
-    status: string;
-  };
-}) {
-  const isPending = toolCall.status === "pending";
+  tool: ToolInvocation;
+  index: number;
+}) => {
+  const [showAll, setShowAll] = React.useState(false);
 
   return (
-    <div className="flex flex-col gap-2 w-full flex-1">
-      <div className="w-full flex">
-        <div className="flex pb-4 gap-2">
-          {isPending ? (
-            <div className="flex">
-              <Loader2 className="h-5 w-5 text-primary animate-spin mr-2" />
-              <p className="text-sm text-primary/80">Searching the web...</p>
-            </div>
-          ) : (
-            <div className="flex">
-              <Check className="h-5 w-5 text-primary mr-2" />
-              <p className="text-sm text-primary/80">Finished web search</p>
-            </div>
-          )}
-        </div>
+    <div
+      key={index}
+      className={cn(
+        "flex flex-col gap-2 border-2 p-3 bg-card rounded-xl my-1",
+        (tool.state === "partial-call" || tool.state === "call") &&
+          "animate-border-pulse"
+      )}
+    >
+      {/* Search Query Section */}
+      <div className="flex items-center gap-1">
+        <Search className="w-3 h-3 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Searching for:</span>
+        <span className="font-medium max-w-[500px] truncate">
+          {tool.args?.query}
+        </span>
       </div>
+
+      {/* Results Section */}
+      {tool.state === "result" && tool.result && (
+        <div className="flex flex-col gap-2">
+          <div className="text-sm text-muted-foreground">
+            Found {tool.result.dataForFrontend.length} relevant{" "}
+            {tool.result.dataForFrontend.length === 1 ? "source" : "sources"}:
+          </div>
+          <div className="flex gap-2 flex-wrap max-w-3xl">
+            {tool.result.dataForFrontend.slice(0, showAll ? undefined : 3).map(
+              (
+                result: {
+                  path: string;
+                  projectId: string;
+                  page?: number;
+                  source: string;
+                },
+                idx: number
+              ) => (
+                <Badge
+                  key={idx}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal cursor-pointer w-fit max-w-[200px] hover:bg-secondary/60"
+                  variant={"secondary"}
+                  onClick={() => {
+                    window.open(
+                      `/projects/${result.projectId}/blob/${result.path}${
+                        result.page ? `?page=${result.page}` : ""
+                      }`,
+                      "_blank"
+                    );
+                  }}
+                  title={`${result.source}${
+                    result.page ? ` (page ${result.page})` : ""
+                  }`}
+                >
+                  <File className="w-4 h-4 min-w-[12px]" />
+                  <div className="flex flex-col w-full truncate">
+                    <span className="truncate">{result.source}</span>
+                    {result.page && (
+                      <span className="text-xs opacity-75">
+                        Page {result.page}
+                      </span>
+                    )}
+                  </div>
+                </Badge>
+              )
+            )}
+            {!showAll && tool.result.dataForFrontend.length > 3 && (
+              <Badge
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-normal cursor-pointer"
+                variant="secondary"
+                onClick={() => setShowAll(true)}
+              >
+                +{tool.result.dataForFrontend.length - 3} more
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default SearchDocumentsTool;

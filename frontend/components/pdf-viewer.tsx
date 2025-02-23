@@ -15,17 +15,28 @@ import useDebounce from "@/hooks/useDebounce";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/zoom/lib/styles/index.css";
 import "@react-pdf-viewer/search/lib/styles/index.css";
+import { useSearchParams } from "next/navigation";
 
-function PdfViewer({
+const PdfViewer = React.memo(function PdfViewer({
   content,
   fileName,
 }: {
   content: string;
   fileName: string;
 }) {
+  const searchParams = useSearchParams();
+
   const { resolvedTheme } = useTheme();
   const [searchQuery, setSearchQuery] = React.useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  const page = searchParams.get("page");
+
+  // Move plugin instantiation to the top level
+  const zoomPluginInstance = zoomPlugin({
+    enableShortcuts: true,
+  });
+  const searchPluginInstance = searchPlugin();
 
   // Helper function to force a download
   const handleDownload = async (fileUrl: string) => {
@@ -58,12 +69,6 @@ function PdfViewer({
     }
   };
 
-  // Instantiate plugins
-  const zoomPluginInstance = zoomPlugin({
-    enableShortcuts: true,
-  });
-  const searchPluginInstance = searchPlugin();
-
   // Update the search when the debounced value changes
   React.useEffect(() => {
     if (debouncedSearchQuery) {
@@ -80,12 +85,10 @@ function PdfViewer({
       {content && (
         <Worker workerUrl="/pdf.worker.min.js">
           <div className="absolute inset-0">
-            {/* Header bar */}
             <div className="flex items-center justify-between px-4 py-2">
-              {/* Left area: search bar */}
               <div />
 
-              {/* Right area: download + zoom controls */}
+              {/* Right area: search + download + zoom controls */}
               <div className="flex items-center gap-2">
                 <Input
                   type="text"
@@ -103,49 +106,45 @@ function PdfViewer({
                   <FileDown />
                 </Button>
 
-                {zoomPluginInstance && (
-                  <>
-                    <zoomPluginInstance.ZoomOut>
-                      {(props: RenderZoomOutProps) => (
-                        <Button
-                          onClick={props.onClick}
-                          variant="ghost"
-                          size="icon"
-                          className="rounded-full"
-                        >
-                          <ZoomOutIcon />
-                        </Button>
-                      )}
-                    </zoomPluginInstance.ZoomOut>
-                    <zoomPluginInstance.ZoomIn>
-                      {(props: RenderZoomInProps) => (
-                        <Button
-                          onClick={props.onClick}
-                          variant="ghost"
-                          size="icon"
-                          className="rounded-full"
-                        >
-                          <ZoomInIcon />
-                        </Button>
-                      )}
-                    </zoomPluginInstance.ZoomIn>
-                  </>
-                )}
+                <zoomPluginInstance.ZoomOut>
+                  {(props: RenderZoomOutProps) => (
+                    <Button
+                      onClick={props.onClick}
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full"
+                    >
+                      <ZoomOutIcon />
+                    </Button>
+                  )}
+                </zoomPluginInstance.ZoomOut>
+                <zoomPluginInstance.ZoomIn>
+                  {(props: RenderZoomInProps) => (
+                    <Button
+                      onClick={props.onClick}
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full"
+                    >
+                      <ZoomInIcon />
+                    </Button>
+                  )}
+                </zoomPluginInstance.ZoomIn>
               </div>
             </div>
 
-            {/* PDF Viewer */}
             <Viewer
               fileUrl={content}
               theme={resolvedTheme === "dark" ? "dark" : "light"}
               plugins={[zoomPluginInstance, searchPluginInstance]}
-              defaultScale={1}
+              // viewer page is 0-indexed, so subtract 1 from the query param
+              initialPage={page ? parseInt(page) - 1 : undefined}
             />
           </div>
         </Worker>
       )}
     </div>
   );
-}
+});
 
 export default PdfViewer;

@@ -1,6 +1,6 @@
 "use client";
 
-import { Paperclip, SendHorizonal, StopCircle, X } from "lucide-react";
+import { Loader2, Paperclip, SendHorizonal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
@@ -173,7 +173,7 @@ function ChatInputForm(
   return (
     <Card
       className={cn(
-        "relative flex flex-col h-auto min-h-[105px] max-h-[450px] w-full mx-auto max-w-[750px] p-0 rounded-2xl",
+        "relative flex flex-col h-auto min-h-[105px] max-h-[450px] w-full mx-auto max-w-[750px] p-0 rounded-2xl bg-background",
         focused && !isMobile ? "shadow-md" : "shadow-none"
       )}
     >
@@ -334,13 +334,17 @@ function ChatInputForm(
             onClick={(e) => {
               e.preventDefault();
               if (isGenerating && stop) {
-                stop();
+                // stop();
               } else {
                 onSubmit(e);
               }
             }}
           >
-            {isGenerating ? <StopCircle /> : <SendHorizonal />}
+            {isGenerating ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <SendHorizonal />
+            )}
           </Button>
         </div>
       </form>

@@ -7,20 +7,23 @@ import { sql, desc, and, eq, cosineDistance } from "drizzle-orm";
 
 import s3 from "../config/s3";
 import db from "../config/db";
-import { messages, threads, messageAttachments } from "../config/schema";
+import {
+  messages,
+  threads,
+  messageAttachments,
+  toolCalls as toolCallsTable,
+  documentThumbnails,
+  Project,
+} from "../config/schema";
 import { MessageAttachment } from "../config/schema"; // reusing types
-import { embeddingModel, MODELS } from "./models";
-import { handle, generateThreadTitle } from "../utils";
+import { embeddingModel, ModelConfig, MODELS } from "./models";
+import { handle, generateThreadTitle, getPdfPageAsImage } from "../utils";
 import { CONFIG } from "../config/constants";
 
 // ai-related imports
-import {
-  Attachment,
-  CoreMessage,
-  generateObject,
-  Message,
-  streamText,
-} from "ai";
+import { Attachment, CoreMessage, generateObject, streamText, tool } from "ai";
+import { searchProjectDocuments } from "./projects";
+import reranker from "../config/reranker";
 
 // --------------------------------------------------------
 // 1. Define Zod Schemas
@@ -67,7 +70,7 @@ type ExtendedAttachment = Attachment & {
   file_key: string;
 };
 
-type MyMessage = Message & {
+type MyMessage = CoreMessage & {
   experimental_attachments?: ExtendedAttachment[];
 };
 
@@ -91,6 +94,14 @@ type ThreadWithMessages = {
     createdAt: Date;
     attachments: MessageAttachment[];
     content?: any;
+    toolCalls?: {
+      args: any;
+      id: string;
+      result: any;
+      status: string;
+      toolName: string;
+      toolCallId: string;
+    }[];
   }[];
   project?: any;
   organization?: any;
@@ -109,7 +120,7 @@ async function generateAttachmentData(
   // In local dev, we might return a base64 data URI
   if (!CONFIG.__prod__) {
     const buffer = Buffer.from(new Uint8Array(await metadata.arrayBuffer()));
-    return `data:${contentType};base64,${buffer.toString("base64")}`;
+    return `${buffer.toString("base64")}`;
   }
   // In production, generate an actual presigned URL
   return metadata.presign({
@@ -143,7 +154,30 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
   if (!thread) return null;
   for (const msg of thread.messages) {
     msg.attachments = await processAttachments(msg.attachments);
+
+    msg.toolCalls = msg.toolCalls?.map((call) => {
+      const uniqueDocs = getUniqueDocuments(call.result.docs);
+
+      return {
+        ...call,
+        result: {
+          dataForFrontend: uniqueDocs.map((doc) => ({
+            document_id: doc.documentId,
+            source: doc.documentName,
+            snippet: doc.text,
+            path: doc.path,
+            score: doc.similarity,
+            page: doc.pageNumber,
+            projectId: doc.projectId,
+            url: doc.fileKey
+              ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+              : undefined,
+          })),
+        },
+      };
+    });
   }
+
   return thread;
 }
 
@@ -160,7 +194,7 @@ async function createMessage(
   // Attempt to embed message content
   try {
     const embeddingResult = await embeddingModel.doEmbed({
-      values: [message.content],
+      values: [message.content as string],
     });
     embedding = embeddingResult.embeddings[0];
   } catch (error) {
@@ -173,7 +207,7 @@ async function createMessage(
     id: messageId,
     threadId,
     role,
-    text: message.content ?? null,
+    text: (message.content as string) ?? null,
     embedding,
     createdAt: new Date(),
   });
@@ -199,54 +233,7 @@ async function getModelConfig(model: string, messages: MyMessage[]) {
     return MODELS[model];
   }
 
-  // Check for PDFs or images in attachments or messages
-  const hasMediaContent = messages.some((msg) => {
-    return msg.experimental_attachments?.some((attachment) => {
-      return (
-        attachment.contentType?.includes("pdf") ||
-        attachment.contentType?.includes("image")
-      );
-    });
-  });
-
-  if (hasMediaContent) {
-    return MODELS["gemini-2.0-pro"];
-  }
-
-  // If there's no media, classify conversation to pick a model
-  const conversationText = messages
-    .map((m) => `${m.role}: ${m.content}`)
-    .join("\n\n");
-
-  const { object } = await generateObject({
-    prompt: `Based on the conversation below, classify the type of request into:
-- web_search
-- coding
-- type_1_thinking
-- type_2_thinking
-
-Conversation:
-
-${conversationText}`,
-    schema: z.object({
-      request_type: z.enum([
-        "web_search",
-        "coding",
-        "type_1_thinking",
-        "type_2_thinking",
-      ]),
-    }),
-    model: MODELS["claude-3.5-sonnet"].model,
-  });
-
-  const type = object.request_type;
-  if (type === "coding") return MODELS["claude-3.5-sonnet"];
-  if (type === "type_1_thinking") return MODELS["gpt-4o"];
-  if (type === "type_2_thinking") return MODELS["o1"];
-  if (type === "web_search") return MODELS["sonar-pro"];
-
-  // Fallback
-  return MODELS[object.request_type];
+  return MODELS["claude-3.5-sonnet"];
 }
 
 /** Generates a thread title from the first user message if it doesn’t already exist. */
@@ -261,7 +248,9 @@ async function maybeGenerateTitle(
   if (!firstUserTextMessage) return;
 
   try {
-    const title = await generateThreadTitle(firstUserTextMessage.content || "");
+    const title = await generateThreadTitle(
+      (firstUserTextMessage.content as string) || ""
+    );
     await db.update(threads).set({ title }).where(eq(threads.id, threadId));
   } catch (error) {
     console.error("Error generating title", error);
@@ -269,7 +258,7 @@ async function maybeGenerateTitle(
 }
 
 /** Constructs a "system" style message, appending user instructions if they exist. */
-function buildSystemMessage(instructions?: string): string {
+function buildSystemMessage(instructions?: string, project?: Project): string {
   const dateString = new Date().toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -279,22 +268,64 @@ function buildSystemMessage(instructions?: string): string {
     hour12: true,
   });
 
-  let systemMsg = `<assistant_instructions>
-Your name is Yo. You are a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it’s creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. You combine technical depth with a friendly, professional, and accessible tone, making you both brilliant and approachable. When responding, use markdown formatting. Make your explanations straightforward, insightful, and easy to understand.
-</assistant_instructions>
+  let systemMsg = `You are Yo, a highly skilled multi-disciplinary engineer with extensive expertise across various fields, including building systems, product design, automation, project management, and HVAC engineering. Your task is to provide accurate, detailed, and comprehensive answers to user queries using provided search results or your existing knowledge.
 
 <current_date>
-It is currently: ${dateString}
-</current_date>`;
+${dateString}
+</current_date>
 
-  if (instructions) {
-    systemMsg += `<user_instructions>${instructions}</user_instructions>`;
+Instructions:
+
+1. Read the query carefully and analyze what the user is asking for. Sometimes they may treat it like a google search query, or more of a chat message. Your goal is to provide a concise and accurate response.
+
+2. For project-specific questions:
+   - Use the search tool to find relevant information and context from project documents
+   - Make multiple focused searches to gather comprehensive information
+   - Synthesize information from search results to provide accurate, contextual answers
+   - If search results don't provide sufficient information, clearly state what's missing
+
+3. Structure your answer for optimal readability:
+   - Separate your answer into logical sections using level 2 headers (##) for sections and bolding (**) for subsections.
+   - Incorporate a variety of lists, headers, and text to make the answer visually appealing.
+   - Never start your answer with a header.
+   - Incorporate tables for comparisons or data presentation
+   - Use lists, bullet points, and other enumeration devices only sparingly, preferring other formatting methods like headers. Only use lists when there is a clear enumeration to be made
+   - Only use numbered lists when you need to rank items. Otherwise, use bullet points.
+   - Never nest lists or mix ordered and unordered lists.
+   - When comparing items, use a markdown table instead of a list.
+   - Bold specific words for emphasis.
+   - Use code blocks with language specification for code snippets
+   - You may include quotes in markdown to supplement the answer
+
+6. Be concise in your answer. Skip any preamble and provide the answer directly without explaining what you are doing.
+
+7. If the user provides sufficient context (e.g., files or images) in the prompt, you may answer directly without searching for additional information.
+
+<restrictions>
+1. Do not include URLs or links in the answer.
+2. Avoid moralization or hedging language (e.g., "It is important to...", "It is inappropriate...", "It is subjective..."). These phrases waste time.
+3. Avoid repeating copyrighted content verbatim (e.g., song lyrics, news articles, book passages). Only answer with original text.
+4. If the search results do not provide an answer, you should respond with saying that the information is not available.
+5. NEVER use any of the following phrases or similar constructions: "According to the search results", "Based on the search results", "Given the search results", "Based on the given search", "Based on the provided sources", "Based on the provided search results", "from the given search results", "the source provided", "based on the available search results", "the search results indicate", "let me search for". These phrases are waste time because the user is already aware that the answer should come from search results. These phrases are strictly banned from your response.
+</restrictions>
+
+Remember to prioritize accuracy, comprehensiveness, and adherence to all guidelines provided.`;
+
+  if (instructions && instructions.length > 0) {
+    systemMsg += `\n<personalization>${instructions}</personalization>`;
   }
+
+  if (project) {
+    systemMsg += `\n<current_project>\n${project.name}${
+      project.description ? `\n${project.description}` : ""
+    }\n</current_project>`;
+  }
+
   return systemMsg;
 }
 
 /** Utility to transform raw DB messages into MyMessage objects. */
-function dbMessagesToMyMessages(
+async function dbMessagesToMyMessages(
   dbMsgs: {
     id: string;
     createdAt: Date;
@@ -306,6 +337,15 @@ function dbMessagesToMyMessages(
     model: string | null;
     provider: string | null;
     embedding: number[] | null;
+    toolCalls: {
+      id: string;
+      messageId: string;
+      toolName: string;
+      toolCallId: string;
+      args: any;
+      status: "pending" | "completed" | "failed";
+      result: any;
+    }[];
     attachments: {
       id: string;
       messageId: string;
@@ -317,9 +357,13 @@ function dbMessagesToMyMessages(
       createdAt: Date;
       updatedAt: Date;
     }[];
-  }[]
+  }[],
+  selectedModelName: string
 ) {
-  return dbMsgs.map((msg) => {
+  const messages: MyMessage[] = [];
+
+  for (const msg of dbMsgs) {
+    // Process attachments
     const experimental_attachments: ExtendedAttachment[] =
       msg.attachments?.map((att) => ({
         name: att.fileName || undefined,
@@ -328,13 +372,91 @@ function dbMessagesToMyMessages(
         url: s3.file(att.fileKey).presign({ expiresIn: 3600 }),
       })) || [];
 
-    return {
-      id: msg.id,
-      role: msg.role as MyMessage["role"],
-      content: msg.text || "",
-      experimental_attachments,
-    } as MyMessage;
-  });
+    // If message has tool calls, create separate messages for the assistant and tool responses
+    if (msg.toolCalls.length > 0 && msg.role === "assistant") {
+      // Create assistant message with tool calls
+      messages.push({
+        role: "assistant",
+        content: [
+          ...(msg.text ? [{ type: "text" as const, text: msg.text }] : []),
+          ...msg.toolCalls.map((call) => ({
+            type: "tool-call" as const,
+            toolCallId: call.toolCallId,
+            toolName: call.toolName,
+            args: call.args,
+          })),
+        ],
+        experimental_attachments,
+      });
+
+      // Create tool message with results for completed tool calls
+      const completedCalls = msg.toolCalls.filter(
+        (call) => call.status === "completed" && call.result
+      );
+
+      if (completedCalls.length > 0) {
+        const processedResults = await Promise.all(
+          completedCalls.map(async (call) => {
+            // If model is claude 3.5 sonnet, get images of any pdfs or images
+            if (selectedModelName.includes("claude-3.5-sonnet")) {
+              const images: {
+                fileKey: string;
+              }[] = call.result.images;
+
+              const imagesData = await Promise.all(
+                images.map(async (image) => {
+                  return {
+                    type: "image" as const,
+                    data: await generateAttachmentData(
+                      image.fileKey,
+                      "image/png"
+                    ),
+                    mimeType: "image/png",
+                  };
+                })
+              );
+
+              return {
+                type: "tool-result",
+                toolCallId: call.toolCallId,
+                toolName: call.toolName,
+                experimental_content: [
+                  ...imagesData,
+                  {
+                    type: "text" as const,
+                    text: convertResultsToXml(call.result.docs),
+                  },
+                ],
+              };
+            }
+
+            return {
+              type: "tool-result",
+              toolCallId: call.toolCallId,
+              toolName: call.toolName,
+              result: convertResultsToXml(call.result.docs),
+            };
+          })
+        );
+
+        messages.push({
+          id: `${msg.id}_tool_results`,
+          role: "tool",
+          content: processedResults,
+        } as MyMessage);
+      }
+    } else {
+      // Regular message without tool calls
+      messages.push({
+        id: msg.id,
+        role: msg.role,
+        content: msg.text || "",
+        experimental_attachments,
+      } as MyMessage);
+    }
+  }
+
+  return messages;
 }
 
 /**
@@ -346,7 +468,8 @@ async function buildInferenceMessages(
   modelConfig: {
     supportedMimeTypes?: string[];
     supportsSystemMessages?: boolean;
-  }
+  },
+  project?: Project
 ): Promise<CoreMessage[]> {
   // Filter out any attachments that the model doesn’t support
   const filteredMessages = allMessages.filter((msg) => {
@@ -359,11 +482,43 @@ async function buildInferenceMessages(
 
   // Transform each message into an array of chunks: text, image, or file
   const messagesForCore: CoreMessage[] = [];
+
+  // If model supports system messages, add a system message at the start
+  if (modelConfig.supportsSystemMessages) {
+    messagesForCore.push({
+      role: "system",
+      content: buildSystemMessage(undefined, project),
+    });
+  }
+
   for (const msg of filteredMessages) {
     const chunks = [];
 
-    // Main text
-    if (msg.content) {
+    // Handle different content types
+    if (Array.isArray(msg.content)) {
+      // Handle tool calls and results
+      for (const item of msg.content) {
+        if (item.type === "text") {
+          chunks.push({ type: "text", text: item.text });
+        } else if (item.type === "tool-call") {
+          chunks.push({
+            type: "tool-call",
+            toolCallId: item.toolCallId,
+            toolName: item.toolName,
+            args: item.args,
+          });
+        } else if (item.type === "tool-result") {
+          chunks.push({
+            type: "tool-result",
+            toolCallId: item.toolCallId,
+            toolName: item.toolName,
+            result: item.result,
+            experimental_content: item.experimental_content,
+          });
+        }
+      }
+    } else if (msg.content) {
+      // Handle simple text content
       chunks.push({ type: "text", text: msg.content });
     }
 
@@ -393,6 +548,255 @@ async function buildInferenceMessages(
   }
 
   return messagesForCore;
+}
+
+type DocumentSearchToolResult = {
+  documentId: string;
+  path: string;
+  documentName: string;
+  text: string | null;
+  projectId: string;
+  similarity: number;
+  pageNumber?: number;
+  mimeType?: string | null;
+  fileKey?: string | null;
+};
+
+/** Converts reranked search results to XML format for AI consumption */
+function convertResultsToXml(docs: DocumentSearchToolResult[]): string {
+  return `<document_context>${docs
+    .map(
+      (doc) => `
+<document>
+  <document_id>${doc.documentId}</document_id>
+  <source>${doc.documentName}</source>
+  <snippet>${doc.text}</snippet>
+  <score>${doc.similarity}</score>
+</document>`
+    )
+    .join("\n")}
+</document_context>`;
+}
+
+/** Extracts unique documents, treating PDF pages as separate docs */
+function getUniqueDocuments(
+  docs: DocumentSearchToolResult[]
+): DocumentSearchToolResult[] {
+  const uniqueDocsMap = new Map<string, DocumentSearchToolResult>();
+  for (const doc of docs) {
+    const key = doc.pageNumber
+      ? `${doc.documentId}_page${doc.pageNumber}`
+      : doc.documentId;
+    if (!uniqueDocsMap.has(key)) {
+      uniqueDocsMap.set(key, doc);
+    }
+  }
+  return Array.from(uniqueDocsMap.values());
+}
+
+/** Processes a PDF document and returns its page as an image data URL */
+async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
+  fileKey: string;
+  imageData: string;
+} | null> {
+  try {
+    if (!doc.pageNumber || !doc.fileKey) {
+      return null;
+    }
+
+    // Check if thumbnail already exists
+    const existingThumbnail = await db.query.documentThumbnails.findFirst({
+      where: and(
+        eq(documentThumbnails.documentId, doc.documentId),
+        eq(documentThumbnails.pageNumber, doc.pageNumber)
+      ),
+    });
+
+    if (existingThumbnail) {
+      // Return existing thumbnail
+      return {
+        fileKey: existingThumbnail.fileKey,
+        imageData: await generateAttachmentData(existingThumbnail.fileKey),
+      };
+    }
+
+    // Fetch and convert PDF page to image
+    const pdfBytes = await s3.file(doc.fileKey).bytes();
+    const base64Image = await getPdfPageAsImage(pdfBytes, doc.pageNumber);
+
+    // Store converted image
+    const imageKey = `document-thumbnails/${doc.documentId}_page${doc.pageNumber}.png`;
+    await s3
+      .file(imageKey)
+      .write(Buffer.from(base64Image, "base64"), { type: "image/png" });
+
+    // Save thumbnail reference in database
+    await db.insert(documentThumbnails).values({
+      documentId: doc.documentId,
+      pageNumber: doc.pageNumber,
+      fileKey: imageKey,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    return {
+      fileKey: imageKey,
+      imageData: !CONFIG.__prod__
+        ? base64Image
+        : s3.file(imageKey).presign({
+            expiresIn: 3600,
+            method: "GET",
+          }),
+    };
+  } catch (error) {
+    console.error("Error processing PDF document:", error);
+    return null;
+  }
+}
+
+/** Processes documents and returns image data URLs for supported types */
+async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
+  {
+    fileKey: string;
+    imageData: string; // s3 url or base64
+  }[]
+> {
+  const results: {
+    fileKey: string;
+    imageData: string;
+  }[] = [];
+
+  for (const doc of docs) {
+    if (doc.mimeType === "application/pdf") {
+      const result = await processPdfDocument(doc);
+      if (result) {
+        results.push(result);
+      }
+    } else if (doc.mimeType?.includes("image") && doc.fileKey) {
+      const result = await generateAttachmentData(doc.fileKey);
+      results.push({
+        fileKey: doc.fileKey,
+        imageData: result,
+      });
+    }
+  }
+  return results;
+}
+
+/** Creates search tool if project ID exists */
+function createSearchTool(projectId: string | null, modelConfig: ModelConfig) {
+  if (!projectId) return undefined;
+
+  return {
+    search_documents: tool({
+      description: `Provides semantic search against project documents, returning relevant passages with optional PDF/image previews.
+
+Usage:
+    1. Supply a short text query highlighting what you're looking for.
+    2. This tool employs semantic matching, returning documents scored by relevance.
+    3. Make multiple separate search calls with different queries to gather comprehensive information:
+       - Break down complex questions into multiple focused searches
+       - Try alternative phrasings to find different relevant passages
+       - Use follow-up searches to dive deeper into specific aspects
+       - Each search call can surface new, relevant information
+
+Returns:
+    - Document metadata (ID, name, path, mimeType)
+    - Relevant text snippets
+    - Relevance scores
+    - Optional page previews (PDF/images) if enabled
+
+Keep individual queries concise and targeted. Multiple focused searches are more effective than a single broad query.`,
+      parameters: z.object({
+        query: z.string(),
+      }),
+      execute: async ({ query }) => {
+        console.log("Searching project documents for: ", query);
+        const res = await searchProjectDocuments(projectId, query, 80);
+
+        console.log("Search results:", res.length);
+
+        // Rerank results
+        const rerankedResults = await reranker.rerank(
+          query,
+          res.map((r) => r.text || ""),
+          {
+            topN: 20,
+            returnDocuments: true,
+          }
+        );
+
+        // Create a map of text to original result for lookup
+        const textToResultMap = new Map(res.map((r) => [r.text, r]));
+
+        // Map reranked results to simplified schema
+        const simplifiedDocs: DocumentSearchToolResult[] =
+          rerankedResults.results.map((reranked) => {
+            const originalDoc = textToResultMap.get(reranked.document.text)!;
+            return {
+              documentId: originalDoc.document.id,
+              projectId: projectId,
+              path: originalDoc.document.path,
+              documentName: originalDoc.document.name,
+              text: originalDoc.text,
+              similarity: reranked.relevance_score,
+              pageNumber: (originalDoc.metadata as { page_number?: number })
+                ?.page_number,
+              mimeType: originalDoc.document.mimeType,
+              fileKey: originalDoc.document.fileKey,
+            };
+          });
+
+        console.log("Simplified docs length:", simplifiedDocs.length);
+
+        // Use the typed helper functions with simplified schema
+        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
+        const searchContext = convertResultsToXml(simplifiedDocs);
+
+        // Generate images if supported by model
+        let images: {
+          fileKey: string;
+          imageData: string;
+        }[] = [];
+        if (modelConfig.model.modelId.includes("claude-3-5-sonnet")) {
+          images = await processDocumentImages(uniqueDocs);
+        }
+
+        return {
+          context: searchContext,
+          docs: simplifiedDocs,
+          images,
+
+          // Format data thats easy for frontend to use
+          dataForFrontend: uniqueDocs.map((doc) => ({
+            document_id: doc.documentId,
+            path: doc.path,
+            projectId: doc.projectId,
+            source: doc.documentName,
+            snippet: doc.text,
+            score: doc.similarity,
+            page: doc.pageNumber,
+            url: doc.fileKey
+              ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+              : undefined,
+          })),
+        };
+      },
+      experimental_toToolResultContent(result) {
+        return [
+          ...result.images.map((image) => ({
+            type: "image" as const,
+            data: image.imageData,
+            mimeType: "image/png",
+          })),
+          {
+            type: "text",
+            text: result.context,
+          },
+        ];
+      },
+    }),
+  };
 }
 
 // --------------------------------------------------------
@@ -438,6 +842,7 @@ const ThreadOps = {
           },
           with: {
             attachments: true,
+            toolCalls: true,
           },
         },
         project: true,
@@ -585,7 +990,6 @@ const ThreadOps = {
         await createMessage(req.dbUser!.id, threadId, "user", {
           content: message.content || "",
           experimental_attachments: message.experimental_attachments as any,
-          id: message.id || crypto.randomUUID(),
           role: message.role as any,
         });
       }
@@ -594,10 +998,10 @@ const ThreadOps = {
       const rawMessages = await db.query.messages.findMany({
         where: eq(messages.threadId, threadId),
         orderBy: messages.createdAt,
-        with: { attachments: true },
+        with: { attachments: true, toolCalls: true },
       });
 
-      const allMessages = dbMessagesToMyMessages(rawMessages);
+      const allMessages = await dbMessagesToMyMessages(rawMessages, model);
 
       // 4) Determine appropriate model
       const modelConfig = await getModelConfig(model, allMessages);
@@ -608,54 +1012,113 @@ const ThreadOps = {
       // 6) Prepare messages for inference
       const inferenceMsgs = await buildInferenceMessages(
         allMessages,
-        modelConfig
+        modelConfig,
+        thread.project
       );
 
-      // 7) Build system message (if the chosen model supports system messages)
-      const systemMessage = modelConfig.supportsSystemMessages
-        ? buildSystemMessage(instructions)
-        : undefined;
+      //   console.log("Inference messages:", inferenceMsgs);
 
-      // 8) Streaming logic
-      let aiResponse = "";
-      let reasoning: string | undefined;
-
-      // Save the AI response once the client disconnects or the response ends
-      req.on("close", async () => {
-        const responseEmbedding = await embeddingModel.doEmbed({
-          values: [aiResponse],
-        });
-
-        // Persist the assistant's response
-        await db.insert(messages).values({
-          userId: req.dbUser!.id,
-          id: crypto.randomUUID(),
-          threadId,
-          role: "assistant",
-          text: aiResponse,
-          reasoning,
-          createdAt: new Date(),
-          model,
-          embedding: responseEmbedding.embeddings[0],
-          provider: modelConfig.provider,
-        });
-
-        res.end();
-      });
+      // 7) Create tools for the assistant if project ID exists
+      const tools =
+        thread.projectId && message.content
+          ? createSearchTool(thread.projectId, modelConfig)
+          : undefined;
 
       // Start the streaming from the AI
       const result = streamText({
         model: modelConfig.model,
-        messages: inferenceMsgs as CoreMessage[],
+        messages: inferenceMsgs,
         temperature,
-        system: systemMessage,
+        tools: tools ? tools : undefined,
+        maxSteps: tools ? 8 : undefined,
+        toolChoice: "auto",
+        toolCallStreaming: true,
         maxTokens: maxTokens,
-        onChunk: ({ chunk }) => {
-          if (chunk.type === "text-delta") {
-            aiResponse += chunk.textDelta;
-          } else if (chunk.type === "reasoning") {
-            if (!reasoning) reasoning = "";
-            reasoning += chunk.textDelta;
+        onStepFinish: async ({
+          toolCalls,
+          toolResults,
+          text,
+          finishReason,
+          reasoning,
+        }) => {
+          //   console.log(`Text: ${text}`);
+          //   console.log("Tool Calls:", toolCalls);
+          //   console.log("Tool Results:", toolResults);
+          //   console.log("Finish Reason:", finishReason);
+          //   console.log("\n\n\n\n\n");
+
+          if (finishReason === "tool-calls") {
+            // First create a message for the assistant's tool call
+            const toolCallMessage = await db
+              .insert(messages)
+              .values({
+                userId: req.dbUser!.id,
+                threadId,
+                role: "assistant",
+                text,
+                reasoning,
+                model,
+                provider: modelConfig.provider,
+              })
+              .returning();
+
+            // Then persist each tool call and its result
+            for (const toolCall of toolCalls) {
+              const toolCallId = crypto.randomUUID();
+              await db.insert(toolCallsTable).values({
+                id: toolCallId,
+                messageId: toolCallMessage[0].id,
+                toolName: toolCall.toolName,
+                toolCallId: toolCall.toolCallId,
+                args: toolCall.args,
+                status: "pending",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
+
+              // Find matching result for this tool call
+              const result = toolResults.find(
+                (r) => r.toolCallId === toolCall.toolCallId
+              );
+
+              if (result) {
+                await db
+                  .update(toolCallsTable)
+                  .set({
+                    status: "completed",
+                    result: {
+                      docs: result.result.docs,
+                      images: result.result.images.map((image) => ({
+                        fileKey: image.fileKey,
+                      })),
+                    },
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
+              }
+            }
+
+            return;
+          }
+
+          if (finishReason === "stop" && text) {
+            const responseEmbedding = await embeddingModel.doEmbed({
+              values: [text],
+            });
+            // Persist the assistant's response
+            await db.insert(messages).values({
+              userId: req.dbUser!.id,
+              id: crypto.randomUUID(),
+              threadId,
+              role: "assistant",
+              text: text,
+              reasoning,
+              createdAt: new Date(),
+              model,
+              embedding: responseEmbedding.embeddings[0],
+              provider: modelConfig.provider,
+            });
+            return;
           }
         },
       });

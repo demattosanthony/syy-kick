@@ -63,7 +63,7 @@ const ModelSelector: React.FC = () => {
           variant="ghost"
           role="combobox"
           aria-expanded={open}
-          className="h-[36px] justify-between gap-0 p-2"
+          className="h-8 justify-between gap-0 p-2"
         >
           <div className="flex items-center">
             {selectedModel.provider === "Auto" ? (

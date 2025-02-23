@@ -1,16 +1,19 @@
 ## What is this
 
-- chat with any of the top llms
-- avoid subscription lock in
-- pay by consumption
-- own your data (don't really want openai to own my memory)
+- github for engineers (specifically buildings)
+- replit collaboration and Ai type features
+- better QA QC processes
+- automated workflows
 
 ## Get started
 
 1. Install Bun js runtime: https://bun.sh/docs/installation
 2. Install and start Docker: https://docs.docker.com/get-docker/
-
-3. Add environment variables as needed.
+3. Install Ghostscript:
+   - Mac: `brew install ghostscript`
+   - Ubuntu/Debian: `sudo apt-get install ghostscript`
+   - Windows: Download installer from htps://ghostscript.com/releases/gsdnld.html
+4. Add environment variables as needed.
 
 ```bash
 cd api

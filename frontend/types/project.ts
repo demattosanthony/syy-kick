@@ -13,6 +13,15 @@ export interface Project {
   user?: User;
 }
 
+interface DocumentProcessingJob {
+  attempts: number;
+  createdAt: string;
+  id: number;
+  lastError: string;
+  processAfter: string;
+  status: "pending" | "processing" | "completed" | "failed";
+}
+
 export interface DocumentContent {
   id: string;
   name: string;
@@ -25,4 +34,5 @@ export interface DocumentContent {
   mimeType?: string;
   fileKey?: string;
   size?: number;
+  processingJob?: DocumentProcessingJob;
 }

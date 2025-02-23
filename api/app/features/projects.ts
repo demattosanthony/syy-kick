@@ -1,9 +1,28 @@
 import z from "zod";
 import db from "../config/db";
-import { and, asc, eq, ilike, isNull, like, or } from "drizzle-orm";
-import { documents, organizations, projects, users } from "../config/schema";
+import {
+  and,
+  asc,
+  cosineDistance,
+  eq,
+  ilike,
+  isNull,
+  like,
+  or,
+  sql,
+} from "drizzle-orm";
+import {
+  documentEmbeddings,
+  documents,
+  organizations,
+  projects,
+  users,
+} from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
+import { smallOpenaiEmbeddingModel } from "./models";
+import { queue } from "../doc-job-queue";
+import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
 
 const schemas = {
   createProject: z
@@ -173,6 +192,7 @@ async function getProject(projectId: string) {
 
   return project;
 }
+
 export async function getProjectDocs(projectId: string, path: string = "") {
   await getProjectOrThrow(projectId);
 
@@ -202,6 +222,9 @@ export async function getProjectDocs(projectId: string, path: string = "") {
           ? isNull(documents.parentId)
           : eq(documents.parentId, parentId)
       ),
+      with: {
+        processingJob: true,
+      },
       orderBy: [asc(documents.type), asc(documents.name)],
     });
 
@@ -209,7 +232,7 @@ export async function getProjectDocs(projectId: string, path: string = "") {
     const docsWithUrls = await Promise.all(
       docs.map(async (doc) => {
         if (doc.type === "file" && doc.fileKey) {
-          const url = await s3.presign(doc.fileKey, {
+          const url = s3.presign(doc.fileKey, {
             expiresIn: 60 * 60, // 1 hour
           });
           return { ...doc, url };
@@ -238,6 +261,7 @@ export async function getProjectDocs(projectId: string, path: string = "") {
         });
       });
   } catch (error) {
+    console.log("Error getting project contents:", error);
     throw new Error("Failed to fetch project contents");
   }
 }
@@ -419,6 +443,7 @@ async function createFolderStructure(
 ) {
   // Keep track of any paths created this run to avoid re-inserting
   const createdThisRun = new Set<string>();
+  const createdDocs: any[] = [];
 
   for (const entry of data.entries) {
     // 1. Normalize the incoming path
@@ -428,6 +453,16 @@ async function createFolderStructure(
     const fullPath = data.basePath
       ? normalizePath(`${data.basePath}/${normalizedEntryPath}`)
       : normalizedEntryPath;
+
+    // Extract the final name (file or folder name)
+    const finalName = fullPath.split("/").pop()!;
+
+    // Skip hidden files/folders, i.e., any whose final name begins with "."
+    if (finalName.startsWith(".")) {
+      // You can log or handle this any way you prefer
+      console.log(`Skipping hidden file/folder: ${fullPath}`);
+      continue;
+    }
 
     // If we've already processed this path in the same request, skip
     if (createdThisRun.has(fullPath)) {
@@ -453,27 +488,123 @@ async function createFolderStructure(
     }
 
     // 5. Insert the folder or file
-    await db.insert(documents).values({
-      name: fullPath.split("/").pop()!,
-      type: entry.type,
-      path: fullPath,
-      parentId,
-      projectId,
-      ...(entry.type === "file"
-        ? {
-            fileKey: entry.fileKey,
-            size: entry.size,
-            mimeType: entry.mimeType,
-            fileHash: entry.sha256,
-          }
-        : {}),
-    });
+    const [newDoc] = await db
+      .insert(documents)
+      .values({
+        name: fullPath.split("/").pop()!,
+        type: entry.type,
+        path: fullPath,
+        parentId,
+        projectId,
+        ...(entry.type === "file"
+          ? {
+              fileKey: entry.fileKey,
+              size: entry.size,
+              mimeType: entry.mimeType,
+              fileHash: entry.sha256,
+            }
+          : {}),
+      })
+      .returning();
 
     // Mark this path as created
     createdThisRun.add(fullPath);
+    createdDocs.push(newDoc);
+  }
+
+  // Process uploaded files in the background
+  for (const doc of createdDocs) {
+    const extension = doc.name.toLowerCase().match(/\.[^.]*$/)?.[0];
+    if (
+      doc.type === "file" &&
+      doc.fileKey &&
+      ALLOWED_UNSTRUCTURED_EXTENSIONS.includes(extension)
+    ) {
+      await queue.addToQueue({
+        fileKey: doc.fileKey,
+        fileName: doc.path,
+        mimeType: doc.mimeType || "",
+        documentId: doc.id,
+      });
+    }
   }
 
   return { success: true };
+}
+
+/**
+ * Search for documents within a project using semantic search
+ * @param projectId The project to search within
+ * @param query The search query
+ * @param limit Maximum number of results to return
+ * @returns Array of documents with their similarity scores
+ */
+export async function searchProjectDocuments(
+  projectId: string,
+  query: string,
+  limit: number = 20
+) {
+  // First verify the project exists
+  await getProjectOrThrow(projectId);
+
+  // Get the embedding for the search query
+  const { embeddings } = await smallOpenaiEmbeddingModel.doEmbed({
+    values: [query],
+  });
+  const queryEmbedding = embeddings[0];
+
+  // Search for similar documents using vector similarity
+  const results = await db
+    .select({
+      documentId: documentEmbeddings.documentId,
+      text: documentEmbeddings.text,
+      metadata: documentEmbeddings.metadata,
+      fileKey: documents.fileKey,
+      similarity: sql<number>`1 - (${cosineDistance(
+        documentEmbeddings.embedding,
+        queryEmbedding
+      )})`.as("similarity"),
+      document: documents,
+    })
+    .from(documentEmbeddings)
+    .innerJoin(documents, eq(documents.id, documentEmbeddings.documentId))
+    .where(
+      and(
+        eq(documents.projectId, projectId),
+        sql`1 - (${cosineDistance(
+          documentEmbeddings.embedding,
+          queryEmbedding
+        )}) > 0.45`
+      )
+    )
+    .orderBy(
+      sql`1 - (${cosineDistance(
+        documentEmbeddings.embedding,
+        queryEmbedding
+      )}) DESC`
+    )
+    .limit(limit);
+
+  // Add presigned URLs for files that need them
+  const resultsWithUrls = await Promise.all(
+    results.map(async (result) => {
+      if (result.document.fileKey) {
+        const url = s3.presign(result.document.fileKey, {
+          expiresIn: 60 * 60, // 1 hour
+        });
+        return {
+          ...result,
+          document: {
+            ...result.document,
+            url,
+          },
+        };
+      }
+      return result;
+    })
+  );
+
+  return resultsWithUrls;
 }
 
 // Route handlers

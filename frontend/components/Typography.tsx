@@ -2,7 +2,7 @@ import React from "react";
 
 export function TypographyH1({ children }: { children: React.ReactNode }) {
   return (
-    <h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-5xl">
+    <h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-5xl my-1">
       {children}
     </h1>
   );
@@ -82,14 +82,12 @@ export function TypographyList({
   children,
   ...props
 }: React.HTMLAttributes<HTMLUListElement>) {
-  // Ensure children is always an array
-  const childrenArray = React.Children.toArray(children);
-
   return (
-    <ul className="mb-2 ml-6 list-disc [&>li]:mt-2 text-base" {...props}>
-      {childrenArray.map((child, index) => (
-        <React.Fragment key={index}>{child}</React.Fragment>
-      ))}
+    <ul
+      className="mb-2 ml-6 list-disc [&>li]:mt-2 text-base marker:text-foreground"
+      {...props}
+    >
+      {children}
     </ul>
   );
 }
@@ -98,14 +96,13 @@ export function TypographyOrderedList({
   children,
   ...props
 }: React.HTMLAttributes<HTMLOListElement>) {
-  // Ensure children is always an array
-  const childrenArray = React.Children.toArray(children);
-
   return (
-    <ol className="my-2 ml-6 list-decimal [&>li]:mt-2 text-base" {...props}>
-      {childrenArray.map((child, index) => (
-        <React.Fragment key={index}>{child}</React.Fragment>
-      ))}
+    <ol
+      className="my-2 ml-6 list-decimal [&>li]:mt-2 text-base marker:text-foreground"
+      style={{ counterReset: "list-item" }}
+      {...props}
+    >
+      {children}
     </ol>
   );
 }

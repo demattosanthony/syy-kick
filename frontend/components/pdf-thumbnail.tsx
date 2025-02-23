@@ -6,9 +6,11 @@ import * as pdfjsLib from "pdfjs-dist";
 export const PdfThumbnail = ({
   url,
   width = 200,
+  pageNumber = 1,
 }: {
   url: string;
   width?: number;
+  pageNumber?: number;
 }) => {
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -25,8 +27,8 @@ export const PdfThumbnail = ({
         const loadingTask = pdfjsLib.getDocument(url);
         const pdf = await loadingTask.promise;
 
-        // Get first page
-        const page = await pdf.getPage(1);
+        // Get specified page instead of always first page
+        const page = await pdf.getPage(pageNumber);
 
         // Set scale for thumbnail with higher DPI for sharper rendering
         const viewport = page.getViewport({ scale: 1 });
@@ -71,7 +73,7 @@ export const PdfThumbnail = ({
     return () => {
       isMounted = false;
     };
-  }, [url, width]);
+  }, [url, width, pageNumber]);
 
   return (
     <div

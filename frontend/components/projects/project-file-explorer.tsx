@@ -20,6 +20,7 @@ import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { cn, getRelativeTimeString } from "@/lib/utils";
 import { DocumentContent } from "@/types/project";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 interface ProjectFileExplorerProps {
   projectId: string;
@@ -202,7 +203,7 @@ function FileExplorerItem({
     <div>
       <div
         className={cn(
-          "group flex items-center justify-between p-2 cursor-pointer rounded",
+          "group flex items-center justify-between p-2 cursor-pointer rounded-lg",
           isSelected ? "bg-muted/50" : "hover:bg-muted/50"
         )}
         style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
@@ -227,7 +228,7 @@ function FileExplorerItem({
               )}
             </div>
           ) : (
-            <span className={`${variant === "compact" ? "ml-[20px]" : ""} w-4`}>
+            <span className={`${variant === "compact" ? "ml-[2px]" : ""} w-4`}>
               {getFileIcon(item.name) || (
                 <File className="h-4 w-4 text-muted-foreground" />
               )}
@@ -236,6 +237,33 @@ function FileExplorerItem({
           <span className="text-sm hover:underline hover:text-blue-500 truncate">
             {item.name}
           </span>
+
+          {/* Extraction Status indicator dot */}
+          {item.processingJob && variant === "detailed" && (
+            <Tooltip>
+              <TooltipTrigger>
+                <div
+                  className={cn("h-2 w-2 rounded-full shadow-md", {
+                    "bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20":
+                      item.processingJob.status === "failed",
+                    "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-yellow-500/20 animate-pulse":
+                      item.processingJob.status === "pending" ||
+                      item.processingJob.status === "processing",
+                    "bg-gradient-to-br from-green-600 to-green-800 shadow-green-700/20":
+                      item.processingJob.status === "completed",
+                  })}
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                {item.processingJob.status === "failed" && "Extraction Failed"}
+                {(item.processingJob.status === "pending" ||
+                  item.processingJob.status === "processing") &&
+                  "Extracting Document Contents"}
+                {item.processingJob.status === "completed" &&
+                  "Extraction Successful"}
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         {variant === "detailed" && (
