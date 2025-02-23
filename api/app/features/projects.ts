@@ -20,8 +20,9 @@ import {
 } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
-import { googleEmbeddingModel, smallOpenaiEmbeddingModel } from "./models";
+import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
+import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
 
 const schemas = {
   createProject: z
@@ -513,7 +514,12 @@ async function createFolderStructure(
 
   // Process uploaded files in the background
   for (const doc of createdDocs) {
-    if (doc.type === "file" && doc.fileKey) {
+    const extension = doc.name.toLowerCase().match(/\.[^.]*$/)?.[0];
+    if (
+      doc.type === "file" &&
+      doc.fileKey &&
+      ALLOWED_UNSTRUCTURED_EXTENSIONS.includes(extension)
+    ) {
       await queue.addToQueue({
         fileKey: doc.fileKey,
         fileName: doc.path,

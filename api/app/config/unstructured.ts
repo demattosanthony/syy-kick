@@ -10,7 +10,7 @@ const unstructured = new UnstructuredClient({
 });
 
 // Define supported extensions:
-export const unstructuredApiSupportExtensions = [
+export const ALLOWED_UNSTRUCTURED_EXTENSIONS = [
   ".abw",
   ".bmp",
   ".csv",

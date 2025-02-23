@@ -1,14 +1,14 @@
 import { embedMany, generateText } from "ai";
 import { CONFIG } from "./config/constants";
 import s3 from "./config/s3";
-import unstructured, {
-  unstructuredApiSupportExtensions,
-} from "./config/unstructured";
 import { Strategy } from "unstructured-client/sdk/models/shared";
 import { MODELS, smallOpenaiEmbeddingModel } from "./features/models";
 import { documentEmbeddings } from "./config/schema";
 import db from "./config/db";
 import { encoding_for_model, TiktokenModel } from "tiktoken";
+import unstructured, {
+  ALLOWED_UNSTRUCTURED_EXTENSIONS,
+} from "./config/unstructured";
 
 const encoderCache = new Map<
   TiktokenModel,
@@ -47,7 +47,7 @@ export async function processFile(
     })();
 
     // Now check by extension instead:
-    if (!unstructuredApiSupportExtensions.includes(extension)) {
+    if (!ALLOWED_UNSTRUCTURED_EXTENSIONS.includes(extension)) {
       console.log(`Skipping unsupported file extension: ${extension}`);
       throw new Error(`Unsupported file extension: ${extension}`);
     }

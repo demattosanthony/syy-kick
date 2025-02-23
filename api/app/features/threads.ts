@@ -310,7 +310,7 @@ Current date: ${dateString}
   }
 
   if (project) {
-    systemMsg += `\n<current_proejct>\n${project.name}\n</current_proejct>\n\n Use search tool to help you find relevant information for this specific engineering project.`;
+    systemMsg += `\n\nUse search tool to help you find relevant information for this specific engineering project. When user asks a question, they are referring to this project.\n<project>\n${project.name}\n</project>`;
   }
 
   return systemMsg;
@@ -460,7 +460,8 @@ async function buildInferenceMessages(
   modelConfig: {
     supportedMimeTypes?: string[];
     supportsSystemMessages?: boolean;
-  }
+  },
+  project?: Project
 ): Promise<CoreMessage[]> {
   // Filter out any attachments that the model doesn’t support
   const filteredMessages = allMessages.filter((msg) => {
@@ -478,7 +479,7 @@ async function buildInferenceMessages(
   if (modelConfig.supportsSystemMessages) {
     messagesForCore.push({
       role: "system",
-      content: buildSystemMessage(),
+      content: buildSystemMessage(undefined, project),
     });
   }
 
@@ -996,7 +997,6 @@ const ThreadOps = {
 
       // 4) Determine appropriate model
       const modelConfig = await getModelConfig(model, allMessages);
-      console.log("Selected model:", modelConfig);
 
       // 5) Generate a thread title if missing
       await maybeGenerateTitle(threadId, allMessages, thread.title);
@@ -1004,7 +1004,8 @@ const ThreadOps = {
       // 6) Prepare messages for inference
       const inferenceMsgs = await buildInferenceMessages(
         allMessages,
-        modelConfig
+        modelConfig,
+        thread.project
       );
 
       //   console.log("Inference messages:", inferenceMsgs);

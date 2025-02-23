@@ -35,7 +35,8 @@ const SearchDocumentsTool = ({
       {tool.state === "result" && tool.result && (
         <div className="flex flex-col gap-2">
           <div className="text-sm text-muted-foreground">
-            Found {tool.result.dataForFrontend.length} relevant sources:
+            Found {tool.result.dataForFrontend.length} relevant{" "}
+            {tool.result.dataForFrontend.length === 1 ? "source" : "sources"}:
           </div>
           <div className="flex gap-2 flex-wrap max-w-3xl">
             {tool.result.dataForFrontend.slice(0, showAll ? undefined : 3).map(
