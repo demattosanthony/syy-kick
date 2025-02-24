@@ -41,10 +41,7 @@ export async function processFile(
 ) {
   try {
     // Determine extension (fallback to empty if no '.'):
-    const extension = (() => {
-      const dotIndex = fileName.lastIndexOf(".");
-      return dotIndex > -1 ? fileName.slice(dotIndex).toLowerCase() : "";
-    })();
+    const extension = fileName.split(".").pop()?.toLowerCase() || "";
 
     // Now check by extension instead:
     if (!ALLOWED_UNSTRUCTURED_EXTENSIONS.includes(extension)) {
@@ -80,6 +77,11 @@ export async function processFile(
       throw new Error("Failed to partition file");
     }
 
+    console.log(
+      "Received response from Unstructured API:",
+      response.elements.length
+    );
+    console.log("CSV Response elements:", response.csvElements?.length);
     // Prepare chunks and full document text
     const chunks = response.elements.map((e) => ({
       ...e,
@@ -91,6 +93,9 @@ export async function processFile(
     const contextualizedChunks = await addContextToChunks(
       fullDocumentText,
       chunks
+    );
+    console.log(
+      `Finished contextualizing ${contextualizedChunks.length} chunks`
     );
 
     // Generate embeddings in batches
@@ -113,6 +118,10 @@ export async function processFile(
         `Mismatch between chunks (${contextualizedChunks.length}) and embeddings (${allEmbeddings.length})`
       );
     }
+
+    console.log(
+      "Generated embeddings for all chunks, about to insert into database"
+    );
 
     // Insert into database if there are chunks
     if (contextualizedChunks.length > 0) {
@@ -147,6 +156,7 @@ async function addContextToChunks(
   const contextualizedChunks = [];
 
   for (let i = 0; i < chunks.length; i += batchSize) {
+    console.log(`Processing batch starting at index ${i}`);
     const batch = chunks.slice(i, i + batchSize);
 
     try {
@@ -159,6 +169,7 @@ async function addContextToChunks(
             90_000,
             encoder
           );
+          console.log(`Situated chunk in local context`);
           const { text: context } = await generateText({
             model: MODELS["gpt-4o-mini"].model,
             messages: [
@@ -222,6 +233,7 @@ export function getLocalContextTiktoken(
   maxTokens = 128_000,
   encoder?: ReturnType<typeof encoding_for_model>
 ): string {
+  console.log(`Started getLocalContextTiktoken at ${new Date().toISOString()}`);
   const enc = encoder || getEncoder(modelName);
   const index = fullText.indexOf(chunk);
 
@@ -292,6 +304,10 @@ export function getLocalContextTiktoken(
     // Stop if no more can be added
     if (!added) break;
   }
+
+  console.log(
+    `Finished getLocalContextTiktoken at ${new Date().toISOString()}`
+  );
 
   return bestSubstring;
 }

@@ -4,45 +4,58 @@
 
 @layer base {
   :root {
-    /* Pure white to soft grey backgrounds */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 15%;
-    /* Slightly whiter for cards to stand out */
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 15%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 15%;
-    /* Softer black for primary */
-    --primary: 0 0% 20%;
-    --primary-foreground: 0 0% 98%;
-    /* Light grey secondary */
-    --secondary: 0 0% 94%;
-    --secondary-foreground: 0 0% 20%;
-    /* Muted greys */
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    /* Accent greys */
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 20%;
-    /* Keep destructive red */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    /* Subtle grey borders and inputs */
-    --border: 0 0% 92%;
-    --input: 0 0% 92%;
-    --ring: 0 0% 20%;
-    --radius: 0.75rem;
-    /* Sidebar with pure greys */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Soft off-white background for a warm, minimal feel */
+    --background: 60 20% 98%;
+    --foreground: 0 0% 20%; /* Darker grey for text, still soft */
 
-    --theme-color: #ffffff;
+    /* Slightly elevated cards with a faint warmth */
+    --card: 60 15% 99%;
+    --card-foreground: 0 0% 20%;
+
+    /* Popovers match the card vibe */
+    --popover: 60 15% 99%;
+    --popover-foreground: 0 0% 20%;
+
+    /* Primary as a muted charcoal, subtle but distinct */
+    --primary: 0 0% 25%;
+    --primary-foreground: 0 0% 95%; /* Near-white for contrast */
+
+    /* Secondary as a faint warm grey */
+    --secondary: 60 10% 94%;
+    --secondary-foreground: 0 0% 25%;
+
+    /* Muted tones for backgrounds or dividers */
+    --muted: 60 10% 96%;
+    --muted-foreground: 0 0% 40%; /* Softer grey for secondary text */
+
+    /* Accent keeps it minimal with a light warm tone */
+    --accent: 60 10% 95%;
+    --accent-foreground: 0 0% 25%;
+
+    /* Destructive stays red but softened slightly */
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 95%;
+
+    /* Borders and inputs as faint warm-grey lines */
+    --border: 60 10% 90%;
+    --input: 60 10% 90%;
+    --ring: 0 0% 30%; /* Slightly darker ring for focus states */
+
+    /* Keep the radius gentle */
+    --radius: 0.75rem;
+
+    /* Sidebar with a clean, minimal look */
+    --sidebar-background: 60 15% 97%;
+    --sidebar-foreground: 0 0% 25%;
+    --sidebar-primary: 0 0% 20%;
+    --sidebar-primary-foreground: 0 0% 95%;
+    --sidebar-accent: 60 10% 94%;
+    --sidebar-accent-foreground: 0 0% 25%;
+    --sidebar-border: 60 10% 92%;
+    --sidebar-ring: 0 0% 30%;
+
+    /* Theme color as a clean off-white */
+    --theme-color: #fafaf0;
   }
 
   .dark {
@@ -151,6 +164,7 @@
   border: none !important;
   padding: 0 !important;
   outline: none !important;
+  background-color: hsl(var(--card)) !important;
 }
 
 .dark .rpv-core__viewer-page,

@@ -20,7 +20,7 @@ export function AnimatedGreeting({ name }: AnimatedGreetingProps) {
   };
 
   const greetingText = name ? `${getGreeting()}, ${name}` : getGreeting();
-  const assistText = "What's your next challenge?";
+  const assistText = "How can I help you today?";
 
   useEffect(() => {
     setIsAnimated(true);
