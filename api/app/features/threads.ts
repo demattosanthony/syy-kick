@@ -649,31 +649,35 @@ async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
 async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
   {
     fileKey: string;
-    imageData: string; // s3 url or base64
+    imageData: string;
     mimeType: string;
   }[]
 > {
-  const results: {
-    fileKey: string;
-    imageData: string;
-    mimeType: string;
-  }[] = [];
-
-  for (const doc of docs) {
-    if (doc.mimeType === "application/pdf") {
-      const result = await processPdfDocument(doc);
-      if (result) {
-        results.push(result);
+  // Process all documents in parallel
+  const processingPromises = docs.map(async (doc) => {
+    try {
+      if (doc.mimeType === "application/pdf") {
+        return await processPdfDocument(doc);
+      } else if (doc.mimeType?.includes("image") && doc.fileKey) {
+        const imageData = await generateAttachmentData(doc.fileKey);
+        return {
+          fileKey: doc.fileKey,
+          imageData,
+          mimeType: doc.mimeType,
+        };
       }
-    } else if (doc.mimeType?.includes("image") && doc.fileKey) {
-      const result = await generateAttachmentData(doc.fileKey);
-      results.push({
-        fileKey: doc.fileKey,
-        imageData: result,
-        mimeType: doc.mimeType,
-      });
+      return null;
+    } catch (error) {
+      console.error("Error processing document:", error);
+      return null;
     }
-  }
+  });
+
+  // Wait for all processing to complete and filter out nulls
+  const results = (await Promise.all(processingPromises)).filter(
+    (result): result is NonNullable<typeof result> => result !== null
+  );
+
   return results;
 }
 
