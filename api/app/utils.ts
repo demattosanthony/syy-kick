@@ -31,7 +31,7 @@ export const handle =
 export async function getPdfPageAsImage(
   pdfBytes: Uint8Array,
   pageNumber: number,
-  options = { format: "png", dpi: 150 }
+  options = { format: "png", dpi: 96 }
 ): Promise<string> {
   // Remove the unnecessary tempDir read
   const uniqueId = crypto.randomUUID();
