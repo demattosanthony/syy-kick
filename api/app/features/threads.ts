@@ -1,5 +1,3 @@
-// threads.ts
-
 import { Router, Request, Response } from "express";
 import z from "zod";
 import crypto from "crypto";
@@ -15,15 +13,15 @@ import {
   documentThumbnails,
   Project,
 } from "../config/schema";
-import { MessageAttachment } from "../config/schema"; // reusing types
+import { MessageAttachment } from "../config/schema";
 import { embeddingModel, ModelConfig, MODELS } from "./models";
 import { handle, generateThreadTitle, getPdfPageAsImage } from "../utils";
-import { CONFIG } from "../config/constants";
 
 // ai-related imports
-import { Attachment, CoreMessage, generateObject, streamText, tool } from "ai";
+import { Attachment, CoreMessage, streamText, tool } from "ai";
 import { searchProjectDocuments } from "./projects";
 import reranker from "../config/reranker";
+import { CONFIG } from "../config/constants";
 
 // --------------------------------------------------------
 // 1. Define Zod Schemas
@@ -114,8 +112,13 @@ type ThreadWithMessages = {
 /** Generates presigned URL or returns raw data depending on environment. */
 async function generateAttachmentData(
   fileKey: string,
-  contentType?: string
+  contentType?: string,
+  s3UrlAllowed?: boolean
 ): Promise<string> {
+  if (s3UrlAllowed && CONFIG.__prod__) {
+    return s3.file(fileKey).presign({ expiresIn: 3600 });
+  }
+
   const metadata = s3.file(fileKey);
   const buffer = Buffer.from(new Uint8Array(await metadata.arrayBuffer()));
   return buffer.toString("base64");
@@ -219,7 +222,7 @@ async function createMessage(
 }
 
 /** Determines which model to use. "Auto" triggers classification logic. */
-async function getModelConfig(model: string, messages: MyMessage[]) {
+async function getModelConfig(model: string) {
   if (model !== "Auto") {
     return MODELS[model];
   }
@@ -349,7 +352,7 @@ async function dbMessagesToMyMessages(
       updatedAt: Date;
     }[];
   }[],
-  selectedModelName: string
+  selectedModel: ModelConfig
 ) {
   const messages: MyMessage[] = [];
 
@@ -389,20 +392,18 @@ async function dbMessagesToMyMessages(
         const processedResults = await Promise.all(
           completedCalls.map(async (call) => {
             // If model is claude 3.5 sonnet, get images of any pdfs or images
-            if (selectedModelName.includes("claude-3.5-sonnet")) {
+            if (selectedModel.model.modelId.includes("claude-3-5-sonnet")) {
               const images: {
                 fileKey: string;
+                mimeType: string;
               }[] = call.result.images;
 
               const imagesData = await Promise.all(
                 images.map(async (image) => {
                   return {
                     type: "image" as const,
-                    data: await generateAttachmentData(
-                      image.fileKey,
-                      "image/png"
-                    ),
-                    mimeType: "image/png",
+                    data: await generateAttachmentData(image.fileKey),
+                    mimeType: image.mimeType,
                   };
                 })
               );
@@ -518,7 +519,8 @@ async function buildInferenceMessages(
       for (const att of msg.experimental_attachments) {
         const data = await generateAttachmentData(
           att.file_key,
-          att.contentType
+          att.contentType,
+          true
         );
         if (att.contentType?.includes("image")) {
           chunks.push({
@@ -555,7 +557,7 @@ type DocumentSearchToolResult = {
 
 /** Converts reranked search results to XML format for AI consumption */
 function convertResultsToXml(docs: DocumentSearchToolResult[]): string {
-  return `<document_context>${docs
+  return `<documents_context>${docs
     .map(
       (doc) => `
 <document>
@@ -565,8 +567,8 @@ function convertResultsToXml(docs: DocumentSearchToolResult[]): string {
   <score>${doc.similarity}</score>
 </document>`
     )
-    .join("\n")}
-</document_context>`;
+    .join("\n\n")}
+</documents_context>`;
 }
 
 /** Extracts unique documents, treating PDF pages as separate docs */
@@ -589,6 +591,7 @@ function getUniqueDocuments(
 async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
   fileKey: string;
   imageData: string;
+  mimeType: string;
 } | null> {
   try {
     if (!doc.pageNumber || !doc.fileKey) {
@@ -608,6 +611,7 @@ async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
       return {
         fileKey: existingThumbnail.fileKey,
         imageData: await generateAttachmentData(existingThumbnail.fileKey),
+        mimeType: "image/png",
       };
     }
 
@@ -633,6 +637,7 @@ async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
     return {
       fileKey: imageKey,
       imageData: base64Image,
+      mimeType: "image/png",
     };
   } catch (error) {
     console.error("Error processing PDF document:", error);
@@ -645,11 +650,13 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
   {
     fileKey: string;
     imageData: string; // s3 url or base64
+    mimeType: string;
   }[]
 > {
   const results: {
     fileKey: string;
     imageData: string;
+    mimeType: string;
   }[] = [];
 
   for (const doc of docs) {
@@ -663,6 +670,7 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
       results.push({
         fileKey: doc.fileKey,
         imageData: result,
+        mimeType: doc.mimeType,
       });
     }
   }
@@ -743,6 +751,7 @@ Keep individual queries concise and targeted. Multiple focused searches are more
         let images: {
           fileKey: string;
           imageData: string;
+          mimeType: string;
         }[] = [];
         if (modelConfig.model.modelId.includes("claude-3-5-sonnet")) {
           images = await processDocumentImages(uniqueDocs);
@@ -773,7 +782,7 @@ Keep individual queries concise and targeted. Multiple focused searches are more
           ...result.images.map((image) => ({
             type: "image" as const,
             data: image.imageData,
-            mimeType: "image/png",
+            mimeType: image.mimeType,
           })),
           {
             type: "text",
@@ -987,10 +996,13 @@ const ThreadOps = {
         with: { attachments: true, toolCalls: true },
       });
 
-      const allMessages = await dbMessagesToMyMessages(rawMessages, model);
-
       // 4) Determine appropriate model
-      const modelConfig = await getModelConfig(model, allMessages);
+      const modelConfig = await getModelConfig(model);
+
+      const allMessages = await dbMessagesToMyMessages(
+        rawMessages,
+        modelConfig
+      );
 
       // 5) Generate a thread title if missing
       await maybeGenerateTitle(threadId, allMessages, thread.title);
@@ -1001,8 +1013,6 @@ const ThreadOps = {
         modelConfig,
         thread.project
       );
-
-      //   console.log("Inference messages:", inferenceMsgs);
 
       // 7) Create tools for the assistant if project ID exists
       const tools =
@@ -1027,12 +1037,6 @@ const ThreadOps = {
           finishReason,
           reasoning,
         }) => {
-          //   console.log(`Text: ${text}`);
-          //   console.log("Tool Calls:", toolCalls);
-          //   console.log("Tool Results:", toolResults);
-          //   console.log("Finish Reason:", finishReason);
-          //   console.log("\n\n\n\n\n");
-
           if (finishReason === "tool-calls") {
             // First create a message for the assistant's tool call
             const toolCallMessage = await db
@@ -1076,6 +1080,7 @@ const ThreadOps = {
                       docs: result.result.docs,
                       images: result.result.images.map((image) => ({
                         fileKey: image.fileKey,
+                        mimeType: image.mimeType,
                       })),
                     },
                     updatedAt: new Date(),
@@ -1087,6 +1092,7 @@ const ThreadOps = {
             return;
           }
 
+          // Create a message for the assistant's response
           if (finishReason === "stop" && text) {
             const responseEmbedding = await embeddingModel.doEmbed({
               values: [text],

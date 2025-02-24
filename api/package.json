@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun run --watch app/server.ts",
     "start": "bun run app/server.ts",
+    "doc-worker-dev": "bun run --watch app/doc-worker.ts",
     "doc-worker": "bun run app/doc-worker.ts",
     "build": "bun build app/server.ts --target bun",
     "mig": "drizzle-kit generate"
