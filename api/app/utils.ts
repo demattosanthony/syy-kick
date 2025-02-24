@@ -34,8 +34,9 @@ export async function getPdfPageAsImage(
   options = { format: "png", dpi: 150 }
 ): Promise<string> {
   // Remove the unnecessary tempDir read
-  const tempPdfPath = `/tmp/temp_${Date.now()}.pdf`;
-  const tempPngPath = `/tmp/temp_${Date.now()}.png`;
+  const uniqueId = crypto.randomUUID();
+  const tempPdfPath = `/tmp/pdf_${uniqueId}.pdf`;
+  const tempPngPath = `/tmp/png_${uniqueId}.png`;
 
   try {
     // Get PDF from S3 and save to temp file
@@ -66,14 +67,7 @@ export async function getPdfPageAsImage(
 
     // Read the generated PNG and upload to S3
     const imageBuffer = await Bun.file(tempPngPath).arrayBuffer();
-    // const imageS3Key = `${s3Key.replace(".pdf", "")}_page${pageNumber}.png`;
-    // await s3.file(imageS3Key).write(imageBuffer, {
-    //   type: "image/png",
-    // });
 
-    // console.log(s3.presign(imageS3Key));
-
-    // const bytes = await s3.file(imageS3Key).bytes();
     return Buffer.from(imageBuffer).toString("base64");
   } catch (error: any) {
     console.error("Error:", error);
@@ -81,10 +75,10 @@ export async function getPdfPageAsImage(
   } finally {
     // Clean up temporary files
     try {
-      await Bun.write(tempPdfPath, ""); // Clear file
-      await Bun.write(tempPngPath, ""); // Clear file
-      await Bun.spawn(["rm", tempPdfPath]).exited;
-      await Bun.spawn(["rm", tempPngPath]).exited;
+      await Promise.all([
+        Bun.spawn(["rm", "-f", tempPdfPath]).exited,
+        Bun.spawn(["rm", "-f", tempPngPath]).exited,
+      ]);
     } catch (error) {
       console.error("Error cleaning up temporary files:", error);
     }
