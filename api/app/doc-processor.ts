@@ -41,7 +41,8 @@ export async function processFile(
 ) {
   try {
     // Determine extension (fallback to empty if no '.'):
-    const extension = fileName.split(".").pop()?.toLowerCase() || "";
+    const extension = "." + (fileName.split(".").pop()?.toLowerCase() || "");
+    console.log(`Processing file with extension: ${extension}`);
 
     // Now check by extension instead:
     if (!ALLOWED_UNSTRUCTURED_EXTENSIONS.includes(extension)) {
