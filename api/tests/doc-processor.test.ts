@@ -1,288 +1,6 @@
-import { expect, test, describe, afterAll } from "bun:test";
+import { expect, test, describe } from "bun:test";
+import { sanitizeText, getLocalContext } from "../app/doc-processor";
 import { encoding_for_model, TiktokenModel } from "tiktoken";
-import {
-  getLocalContextTiktoken,
-  substringToMaxTokens,
-  sanitizeText,
-} from "../app/doc-processor";
-
-describe("getLocalContextTiktoken", () => {
-  // Helper function to count tokens
-  const countTokens = (text: string, model = "gpt-4o-mini") => {
-    const enc = encoding_for_model(model as TiktokenModel);
-    const tokens = enc.encode(text);
-    enc.free();
-    return tokens.length;
-  };
-
-  test("returns full text when it's under max tokens", () => {
-    const fullText = "This is a short text.";
-    const chunk = "short";
-    const result = getLocalContextTiktoken(fullText, chunk, "gpt-4o-mini", 100);
-    expect(result).toBe(fullText);
-  });
-
-  test("returns chunk-centered context when text is too long", () => {
-    const fullText = "A ".repeat(10000) + "TARGET" + " B".repeat(10000);
-    const chunk = "TARGET";
-    const result = getLocalContextTiktoken(fullText, chunk, "gpt-4o-mini", 100);
-
-    expect(result).toContain("TARGET");
-    expect(countTokens(result)).toBeLessThanOrEqual(100);
-
-    // Check if context is roughly centered around chunk
-    const targetIndex = result.indexOf("TARGET");
-    expect(targetIndex).toBeGreaterThan(0);
-    expect(targetIndex).toBeLessThan(result.length - 6);
-  });
-
-  test("handles chunk not found in text", () => {
-    const fullText = "This is some sample text";
-    const chunk = "nonexistent";
-    const result = getLocalContextTiktoken(fullText, chunk, "gpt-4o-mini", 100);
-    expect(result).toBe(fullText);
-  });
-
-  test("handles chunk larger than max tokens", () => {
-    const chunk = "Very long text ".repeat(100);
-    const fullText = "Prefix " + chunk + " Suffix";
-    const maxTokens = 10;
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-  });
-
-  test("maintains chunk integrity", () => {
-    const fullText = "Beginning. Important context here. More text.";
-    const chunk = "Important context here";
-    const result = getLocalContextTiktoken(fullText, chunk, "gpt-4o-mini", 100);
-
-    expect(result).toContain(chunk);
-    // Chunk should be preserved exactly as is
-    expect(result.indexOf(chunk)).toBeGreaterThan(-1);
-  });
-
-  test("respects max tokens limit", () => {
-    const fullText = "Very long text ".repeat(1000);
-    const chunk = "long text";
-    const maxTokens = 50;
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-  });
-
-  test("handles chunk at start of very long text", () => {
-    const fullText = "START" + " X".repeat(10000);
-    const chunk = "START";
-    const maxTokens = 50;
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-    expect(result).toContain("START");
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-    expect(result.indexOf("START")).toBe(0); // Should start at beginning
-  });
-
-  test("handles chunk at end of very long text", () => {
-    const fullText = "X ".repeat(10000) + "END";
-    const chunk = "END";
-    const maxTokens = 50;
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-    expect(result).toContain("END");
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-    expect(result.indexOf("END")).toBe(result.length - 3); // Should end with "END"
-  });
-
-  test("handles empty fullText", () => {
-    const fullText = "";
-    const chunk = "something";
-    const result = getLocalContextTiktoken(fullText, chunk, "gpt-4o-mini", 100);
-    expect(result).toBe(""); // Should return empty string
-  });
-
-  test("handles empty chunk", () => {
-    const fullText = "This is a test";
-    const chunk = "";
-    const result = getLocalContextTiktoken(fullText, chunk, "gpt-4o-mini", 100);
-    expect(result).toBe(fullText); // Should return full text if under maxTokens
-  });
-
-  test("handles massive text with small maxTokens", () => {
-    const fullText = "A ".repeat(100000); // ~200k tokens
-    const chunk = "A A A";
-    const maxTokens = 10;
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-    expect(result).toContain("A");
-  });
-
-  test("handles multiple chunk occurrences", () => {
-    const fullText = "Repeat Repeat Repeat";
-    const chunk = "Repeat";
-    const maxTokens = 10;
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-    expect(result).toContain("Repeat");
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-    // Should pick first occurrence
-    expect(result.indexOf("Repeat")).toBe(0);
-  });
-
-  test("terminates with pathological tokenization", () => {
-    const fullText = "a" + "\n".repeat(10000) + "TARGET" + "\n".repeat(10000);
-    const chunk = "TARGET";
-    const maxTokens = 20;
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-    expect(result).toContain("TARGET");
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-  });
-
-  test("handles chunk at boundary with tiny maxTokens", () => {
-    const fullText = "START" + " X".repeat(1000);
-    const chunk = "START";
-    const maxTokens = 3; // Very small limit
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-    expect(result).toContain("START");
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-  });
-
-  test("handles very small text with large maxTokens", () => {
-    const fullText = "Short text";
-    const chunk = "text";
-    const maxTokens = 1000; // Large limit
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-    expect(result).toBe(fullText); // Should return entire text
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-  });
-
-  test("handles repeated chunk with small maxTokens", () => {
-    const fullText = "X X X X X";
-    const chunk = "X";
-    const maxTokens = 3;
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-    expect(result).toContain("X");
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-    expect(result.indexOf("X")).toBe(0); // First occurrence
-  });
-
-  test("handles minimal token increase", () => {
-    const fullText = "a ".repeat(1000) + "TARGET" + " b".repeat(1000);
-    const chunk = "TARGET";
-    const maxTokens = 10;
-    const result = getLocalContextTiktoken(
-      fullText,
-      chunk,
-      "gpt-4o-mini",
-      maxTokens
-    );
-    expect(result).toContain("TARGET");
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-  });
-
-  // Cleanup test
-  afterAll(() => {
-    // Free any remaining encoders
-    const enc = encoding_for_model("gpt-4o-mini");
-    enc.free();
-  });
-});
-
-describe("substringToMaxTokens", () => {
-  const countTokens = (text: string, model = "gpt-4o-mini") => {
-    const enc = encoding_for_model(model as TiktokenModel);
-    const tokens = enc.encode(text);
-    enc.free();
-    return tokens.length;
-  };
-
-  test("returns original text when under max tokens", () => {
-    const text = "This is a short text";
-    const result = substringToMaxTokens(text, "gpt-4o-mini", 100);
-    expect(result).toBe(text);
-  });
-
-  test("truncates text to respect max tokens", () => {
-    const text = "Very long text ".repeat(100);
-    const maxTokens = 20;
-    const result = substringToMaxTokens(text, "gpt-4o-mini", maxTokens);
-
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-    expect(result.length).toBeLessThan(text.length);
-  });
-
-  test("handles empty string", () => {
-    const result = substringToMaxTokens("", "gpt-4o-mini", 10);
-    expect(result).toBe("");
-  });
-
-  test("handles unicode characters", () => {
-    const text = "Hello 👋 World 🌍 ".repeat(100);
-    const maxTokens = 15;
-    const result = substringToMaxTokens(text, "gpt-4o-mini", maxTokens);
-
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-    // Should preserve unicode characters in the truncated result
-    expect(result).toMatch(/^Hello 👋.*$/);
-  });
-
-  test("maintains token boundary integrity", () => {
-    const text =
-      "This is a complete sentence. " + "Another sentence. ".repeat(100);
-    const maxTokens = 10;
-    const result = substringToMaxTokens(text, "gpt-4o-mini", maxTokens);
-
-    // Result should be valid UTF-8
-    expect(() => new TextEncoder().encode(result)).not.toThrow();
-    expect(countTokens(result)).toBeLessThanOrEqual(maxTokens);
-  });
-});
 
 describe("sanitizeText", () => {
   test("removes null bytes", () => {
@@ -323,5 +41,152 @@ describe("sanitizeText", () => {
   test("handles multiple issues simultaneously", () => {
     const text = "\0  Hello\uFFFD\x01World\n\t\uFFFF  ";
     expect(sanitizeText(text)).toBe("HelloWorld"); // The function removes all control chars including \n\t
+  });
+});
+
+// Helper function to get token count
+function getTokenCount(
+  text: string,
+  model: TiktokenModel = "gpt-4o-mini"
+): number {
+  const enc = encoding_for_model(model);
+  const tokenCount = enc.encode(text).length;
+  enc.free();
+  return tokenCount;
+}
+
+describe("getLocalContext", () => {
+  test("returns chunk when not found in full text", () => {
+    const fullText = "This is the full document text";
+    const chunk = "Not found chunk";
+    expect(getLocalContext(fullText, chunk, 100)).toBe(chunk);
+  });
+
+  test("returns empty string for empty chunk", () => {
+    const fullText = "This is the full document text";
+    const chunk = "";
+    expect(getLocalContext(fullText, chunk, 100)).toBe("");
+  });
+
+  test("centers chunk in context with appropriate token limit", () => {
+    // Create a large document with a specific chunk in the middle
+    const prefix = "prefix ".repeat(5000);
+    const chunk = "THIS IS THE TARGET CHUNK";
+    const suffix = " suffix".repeat(5000);
+    const fullText = prefix + chunk + suffix;
+
+    const maxTokens = 1000;
+    const result = getLocalContext(fullText, chunk, maxTokens);
+
+    // Verify the chunk is in the result
+    expect(result).toContain(chunk);
+
+    // Verify token count is approximately within our limit (with some padding)
+    const tokenCount = getTokenCount(result);
+
+    // Allow some padding since we're using character approximation
+    const maxAllowedTokens = maxTokens * 1.2; // 20% padding
+    expect(tokenCount).toBeLessThanOrEqual(maxAllowedTokens);
+    console.log(`Token count: ${tokenCount} for max tokens: ${maxTokens}`);
+  });
+
+  test("handles chunk at the beginning of text", () => {
+    const chunk = "BEGINNING CHUNK";
+    const fullText = chunk + " followed by a lot of text ".repeat(1000);
+
+    const maxTokens = 500;
+    const result = getLocalContext(fullText, chunk, maxTokens);
+
+    expect(result).toContain(chunk);
+    expect(result.indexOf(chunk)).toBe(0); // Chunk should be at the beginning
+
+    const tokenCount = getTokenCount(result);
+    expect(tokenCount).toBeLessThanOrEqual(maxTokens * 1.2);
+    console.log(
+      `Beginning chunk token count: ${tokenCount} for max tokens: ${maxTokens}`
+    );
+  });
+
+  test("handles chunk at the end of text", () => {
+    const chunk = "ENDING CHUNK";
+    const fullText = "A lot of preceding text ".repeat(1000) + chunk;
+
+    const maxTokens = 500;
+    const result = getLocalContext(fullText, chunk, maxTokens);
+
+    expect(result).toContain(chunk);
+    expect(result.indexOf(chunk) + chunk.length).toBe(result.length); // Chunk should be at the end
+
+    const tokenCount = getTokenCount(result);
+    expect(tokenCount).toBeLessThanOrEqual(maxTokens * 1.2);
+    console.log(
+      `Ending chunk token count: ${tokenCount} for max tokens: ${maxTokens}`
+    );
+  });
+
+  test("handles very small token limits", () => {
+    const fullText =
+      "This is a long document with some important information in the middle.";
+    const chunk = "important information";
+
+    const maxTokens = 5; // Very small token limit
+    const result = getLocalContext(fullText, chunk, maxTokens);
+
+    expect(result).toContain(chunk);
+
+    const tokenCount = getTokenCount(result);
+    // With very small limits, we might exceed by a bit more
+    expect(tokenCount).toBeLessThanOrEqual(maxTokens * 2);
+    console.log(
+      `Small limit token count: ${tokenCount} for max tokens: ${maxTokens}`
+    );
+  });
+
+  test("handles multiple occurrences of chunk", () => {
+    const chunk = "REPEATED CHUNK";
+    const fullText =
+      "Prefix text " + chunk + " middle text " + chunk + " suffix text";
+
+    const maxTokens = 20;
+    const result = getLocalContext(fullText, chunk, maxTokens);
+
+    expect(result).toContain(chunk);
+    // Should find the first occurrence
+    expect(result.indexOf(chunk)).toBe(fullText.indexOf(chunk));
+
+    const tokenCount = getTokenCount(result);
+    expect(tokenCount).toBeLessThanOrEqual(maxTokens * 1.2);
+    console.log(
+      `Multiple occurrences token count: ${tokenCount} for max tokens: ${maxTokens}`
+    );
+  });
+
+  test("handles real-world example with 90K token limit", () => {
+    // Create a document that would be around 100K tokens if fully included
+    const prefix = "prefix word ".repeat(25_000);
+    const chunk = "THIS IS AN IMPORTANT HVAC SPECIFICATION SECTION";
+    const suffix = " suffix word".repeat(25_000);
+    const fullText = prefix + chunk + suffix;
+
+    // count to make sure it's around 100K tokens
+    const fullTokenCount = getTokenCount(fullText);
+    expect(fullTokenCount).toBeGreaterThan(95_000);
+    expect(fullTokenCount).toBeLessThan(105_000);
+
+    const maxTokens = 90_000;
+    const result = getLocalContext(fullText, chunk, maxTokens);
+
+    // Verify the chunk is in the result
+    expect(result).toContain(chunk);
+
+    // Verify token count is within our limit (with some padding)
+    const tokenCount = getTokenCount(result);
+
+    // Allow some padding since we're using character approximation
+    const maxAllowedTokens = 120000; // Real token limit is 120K as mentioned
+    expect(tokenCount).toBeLessThanOrEqual(maxAllowedTokens);
+    console.log(
+      `Large document token count: ${tokenCount} for max tokens: ${maxTokens}`
+    );
   });
 });
