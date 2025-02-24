@@ -34,7 +34,7 @@
     "@react-three/fiber": "9.0.0-rc.1",
     "@tanstack/react-query": "^5.64.1",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "ai": "^4.1.11",
+    "ai": "^4.1.46",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.0",

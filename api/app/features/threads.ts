@@ -227,7 +227,7 @@ async function getModelConfig(model: string) {
     return MODELS[model];
   }
 
-  return MODELS["claude-3.5-sonnet"];
+  return MODELS["claude-3.7-sonnet"];
 }
 
 /** Generates a thread title from the first user message if it doesn’t already exist. */
@@ -391,8 +391,8 @@ async function dbMessagesToMyMessages(
       if (completedCalls.length > 0) {
         const processedResults = await Promise.all(
           completedCalls.map(async (call) => {
-            // If model is claude 3.5 sonnet, get images of any pdfs or images
-            if (selectedModel.model.modelId.includes("claude-3-5-sonnet")) {
+            // If model is claude 3.7 sonnet, get images of any pdfs or images
+            if (selectedModel.model.modelId.includes("claude-3.7-sonnet")) {
               const images: {
                 fileKey: string;
                 mimeType: string;
@@ -757,7 +757,7 @@ Keep individual queries concise and targeted. Multiple focused searches are more
           imageData: string;
           mimeType: string;
         }[] = [];
-        if (modelConfig.model.modelId.includes("claude-3-5-sonnet")) {
+        if (modelConfig.model.modelId.includes("claude-3-7-sonnet")) {
           images = await processDocumentImages(uniqueDocs);
         }
 
@@ -849,6 +849,8 @@ const ThreadOps = {
       },
     });
     if (!thread) return null;
+
+    // console.log("Thread found:", thread);
 
     // Cast the thread to match ThreadWithMessages type
     const typedThread: ThreadWithMessages = {
@@ -1041,6 +1043,14 @@ const ThreadOps = {
           finishReason,
           reasoning,
         }) => {
+          //   console.log("Tool calls:", toolCalls);
+          //   console.log("Tool results:", toolResults.length);
+          //   console.log("Finish reason:", finishReason);
+          //   console.log("Text:", text);
+          //   console.log("Reasoning:", reasoning);
+
+          //   console.log("\n\n\n");
+
           if (finishReason === "tool-calls") {
             // First create a message for the assistant's tool call
             const toolCallMessage = await db
@@ -1101,6 +1111,7 @@ const ThreadOps = {
             const responseEmbedding = await embeddingModel.doEmbed({
               values: [text],
             });
+
             // Persist the assistant's response
             await db.insert(messages).values({
               userId: req.dbUser!.id,
