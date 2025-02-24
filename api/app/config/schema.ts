@@ -74,6 +74,7 @@ export const organizationInvites = pgTable("organization_invites", {
   token: text("token").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
+export type Organization = typeof organizations.$inferSelect;
 
 export const samlConfigs = pgTable("saml_configs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -113,6 +114,7 @@ export const users = pgTable("users", {
   }).default("free"),
   systemRole: text("system_role", { enum: ["super_admin"] }), // identify system super admins
 });
+export type User = typeof users.$inferSelect;
 
 export const projects = pgTable("projects", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -211,6 +213,13 @@ export const threads = pgTable("threads", {
     onDelete: "cascade",
   }),
 });
+export type Thread = typeof threads.$inferSelect;
+export type ThreadWithRelations = Thread & {
+  messages: Message[];
+  project?: Project;
+  organization?: Organization;
+  user: User;
+};
 
 export const messageAttachments = pgTable("message_attachments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -252,6 +261,7 @@ export const messages = pgTable(
     ),
   ]
 );
+export type Message = typeof messages.$inferSelect;
 
 // Tool calls table
 export const toolCalls = pgTable("tool_calls", {

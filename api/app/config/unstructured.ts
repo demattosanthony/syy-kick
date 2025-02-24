@@ -6,7 +6,7 @@ const unstructured = new UnstructuredClient({
     apiKeyAuth: process.env.UNSTRUCTURED_API_KEY,
   },
   // 2 hours in milliseconds
-  timeoutMs: 7200000,
+  //   timeoutMs: 7200000,
 });
 
 // Define supported extensions:

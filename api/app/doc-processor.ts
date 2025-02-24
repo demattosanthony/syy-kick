@@ -72,7 +72,7 @@ export async function processFile(
         overlap: 200,
         coordinates: true,
         includeOrigElements: false,
-        chunkingStrategy: "basic",
+        chunkingStrategy: "by_title",
       },
     });
 
