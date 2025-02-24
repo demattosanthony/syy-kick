@@ -5,17 +5,17 @@ import {
   RenderZoomOutProps,
   zoomPlugin,
 } from "@react-pdf-viewer/zoom";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
 import { FileDown, ZoomInIcon, ZoomOutIcon } from "lucide-react";
 import { searchPlugin } from "@react-pdf-viewer/search";
 import React from "react";
 import useDebounce from "@/hooks/useDebounce";
+import { useSearchParams } from "next/navigation";
 
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/zoom/lib/styles/index.css";
 import "@react-pdf-viewer/search/lib/styles/index.css";
-import { useSearchParams } from "next/navigation";
 
 const PdfViewer = React.memo(function PdfViewer({
   content,

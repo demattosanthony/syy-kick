@@ -3,7 +3,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism, SyntaxHighlighterProps } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Check, Copy } from "lucide-react";
 import {
+  TypographyInlineCode,
   TypographyH1,
   TypographyH2,
   TypographyH3,
@@ -11,16 +13,14 @@ import {
   TypographyP,
   TypographyBlockquote,
   TypographyTable,
+  TypographyTr,
   TypographyTh,
   TypographyTd,
-  TypographyTr,
   TypographyList,
-  TypographyLi,
-  TypographyInlineCode,
   TypographyOrderedList,
-} from "./Typography";
-import { Check, Copy } from "lucide-react";
-import { Button } from "./ui/button";
+  TypographyLi,
+} from "../Typography";
+import { Button } from "../ui/button";
 
 const SyntaxHighlighter =
   Prism as typeof React.Component<SyntaxHighlighterProps>;
