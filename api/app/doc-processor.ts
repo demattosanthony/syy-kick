@@ -76,87 +76,58 @@ export async function processFile(
       },
     });
 
-    if (response.statusCode === 200 && response.elements) {
-      // Get the full document text for context
-      const fullDocumentText = response.elements.map((e) => e.text).join("\n");
-
-      const chunks = response.elements;
-
-      // Attempt to generate contextual data for each chunk. If fails just fallback to the original chunk.
-      let contextualizedChunks: typeof chunks;
-      try {
-        contextualizedChunks = await Promise.all(
-          chunks.map(async (chunk, index) => {
-            const contexts = await generateChunkContextBatch(fullDocumentText, [
-              chunk.text,
-            ]);
-            return {
-              ...chunk,
-              text: `${chunk.text.trim().replace(/\s+/g, " ")}\n\n${
-                contexts[0]
-              }`,
-            };
-          })
-        );
-      } catch (error) {
-        console.warn(
-          "Failed to contextualize chunks, falling back to original chunks:",
-          error
-        );
-        contextualizedChunks = chunks.map((chunk) => ({
-          ...chunk,
-          text: chunk.text.trim().replace(/\s+/g, " "),
-        }));
-      }
-
-      // Sanitize the text before processing
-      const sanitizedChunks = contextualizedChunks.map((chunk) => ({
-        ...chunk,
-        text: sanitizeText(chunk.text),
-        metadata: chunk.metadata
-          ? sanitizeText(JSON.stringify(chunk.metadata))
-          : null,
-      }));
-
-      const values = sanitizedChunks.map((chunk) => chunk.text);
-      console.log("Embedding contextualized values:", values);
-
-      // Process embeddings in batches of 100
-      const batchSize = 100;
-      let allEmbeddings = [];
-
-      for (let i = 0; i < values.length; i += batchSize) {
-        const batch = values.slice(i, i + batchSize);
-        const { embeddings: batchEmbeddings } = await embedMany({
-          model: smallOpenaiEmbeddingModel,
-          values: batch,
-        });
-        allEmbeddings.push(...batchEmbeddings);
-      }
-
-      // Validate that we have matching numbers of chunks and embeddings
-      if (sanitizedChunks.length !== allEmbeddings.length) {
-        throw new Error(
-          `Mismatch between chunks (${sanitizedChunks.length}) and embeddings (${allEmbeddings.length})`
-        );
-      }
-
-      // Only proceed with database insertion if we have chunks to process
-      if (sanitizedChunks.length > 0) {
-        await db.insert(documentEmbeddings).values(
-          sanitizedChunks.map((element, i) => ({
-            documentId: documentId,
-            text: element.text,
-            embedding: allEmbeddings[i],
-            metadata: element.metadata,
-          }))
-        );
-      }
-
-      console.log("Successfully processed the file:", fileName);
-    } else {
-      console.error("Failed to process the file:", response);
+    if (response.statusCode !== 200 || !response.elements) {
+      throw new Error("Failed to partition file");
     }
+
+    // Prepare chunks and full document text
+    const chunks = response.elements.map((e) => ({
+      ...e,
+      text: sanitizeText(e.text),
+    })) as typeof response.elements;
+    const fullDocumentText = chunks.map((c) => c.text).join("\n");
+
+    // Add context to chunks
+    const contextualizedChunks = await addContextToChunks(
+      fullDocumentText,
+      chunks
+    );
+
+    // Generate embeddings in batches
+    const values = contextualizedChunks.map((c) => c.text);
+    console.log("Embedding contextualized values:", values);
+    const batchSize = 100;
+    let allEmbeddings = [];
+
+    for (let i = 0; i < values.length; i += batchSize) {
+      const batch = values.slice(i, i + batchSize);
+      const { embeddings } = await embedMany({
+        model: smallOpenaiEmbeddingModel,
+        values: batch,
+      });
+      allEmbeddings.push(...embeddings);
+    }
+
+    if (contextualizedChunks.length !== allEmbeddings.length) {
+      throw new Error(
+        `Mismatch between chunks (${contextualizedChunks.length}) and embeddings (${allEmbeddings.length})`
+      );
+    }
+
+    // Insert into database if there are chunks
+    if (contextualizedChunks.length > 0) {
+      await db.insert(documentEmbeddings).values(
+        contextualizedChunks.map((chunk, i) => ({
+          documentId,
+          text: chunk.text,
+          embedding: allEmbeddings[i],
+          metadata:
+            "metadata" in chunk && chunk.metadata ? chunk.metadata : null,
+        }))
+      );
+    }
+
+    console.log("Successfully processed the file:", fileName);
   } catch (error) {
     console.error(`Failed to process the file: ${error}`);
     throw new Error(`Failed to process the file: ${error}`);
@@ -164,63 +135,74 @@ export async function processFile(
 }
 
 // Helper function to generate context for a chunk using GPT
-async function generateChunkContextBatch(
+async function addContextToChunks(
   fullDocument: string,
-  chunks: string[],
-  batchSize = 5
-): Promise<string[]> {
-  const results: string[] = [];
+  chunks: {
+    [k: string]: any;
+  }[]
+) {
   const encoder = getEncoder("gpt-4o-mini");
+  const batchSize = 5; // Process 5 chunks at a time to stay under API limits
+  const delayMs = 200; // 200ms delay between batches to avoid rate limiting
+  const contextualizedChunks = [];
 
   for (let i = 0; i < chunks.length; i += batchSize) {
     const batch = chunks.slice(i, i + batchSize);
-    const contexts = batch.map((chunk) =>
-      getLocalContextTiktoken(
-        fullDocument,
-        chunk,
-        "gpt-4o-mini",
-        90_000,
-        encoder
-      )
-    );
 
-    const batchPromises = contexts.map(async (context, idx) => {
-      try {
-        const { text } = await generateText({
-          model: MODELS["gpt-4o-mini"].model,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: `<document>\n${context}\n</document>` },
-                {
-                  type: "text",
-                  text: `This document is related to HVAC (Heating, Ventilation, and Air Conditioning), building engineering, and architecture. 
+    try {
+      const batchResults = await Promise.all(
+        batch.map(async (chunk) => {
+          const localContext = getLocalContextTiktoken(
+            fullDocument,
+            chunk.text,
+            "gpt-4o-mini",
+            90_000,
+            encoder
+          );
+          const { text: context } = await generateText({
+            model: MODELS["gpt-4o-mini"].model,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: `<document>\n${localContext}\n</document>`,
+                  },
+                  {
+                    type: "text",
+                    text: `This document is related to HVAC, building engineering, and architecture.\n\n<chunk>\n${chunk.text}\n</chunk>\n\nProvide a short context to situate this chunk within the document. Consider aspects such as:
+- Equipment specifications, operation procedures, or maintenance instructions
+- Building systems and infrastructure
+- Facility spaces, assets, or components
+- Installation, testing, or commissioning details
+- Safety procedures or compliance requirements
+- Warranty or maintenance schedules
+Answer only with the short context and nothing else.`,
+                  },
+                ],
+              },
+            ],
+          });
+          return { ...chunk, text: `${chunk.text}\n\n${context}` };
+        })
+      );
+      contextualizedChunks.push(...batchResults);
+    } catch (error) {
+      console.warn(
+        `Failed to add context to batch starting at index ${i}, using original chunks:`,
+        error
+      );
+      contextualizedChunks.push(...batch); // Fallback to original chunks for this batch
+    }
 
-Here is the chunk we want to situate within the local context of the document:
-<chunk>\n${batch[idx]}\n</chunk>
-
-Please provide a short, succinct context to situate this chunk within the overall document, focusing on any relevant HVAC systems, building engineering specifications, architectural elements, or technical requirements. Consider aspects like mechanical systems, building codes, design specifications, and engineering standards when providing context. Answer only with the short context and nothing else.`,
-                },
-              ],
-            },
-          ],
-        });
-        return text;
-      } catch (error) {
-        console.error(
-          `Failed to generate context for chunk ${i + idx}:`,
-          error
-        );
-        return "";
-      }
-    });
-
-    const batchResults = await Promise.all(batchPromises);
-    results.push(...batchResults);
+    // Add delay between batches (skip delay on the last batch)
+    if (i + batchSize < chunks.length) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
   }
 
-  return results;
+  return contextualizedChunks;
 }
 
 /**
@@ -252,14 +234,16 @@ export function getLocalContextTiktoken(
     return substringToMaxTokens(chunk, modelName, maxTokens, enc);
   }
 
-  // Use binary search to find the optimal context window
   let start = index;
   let end = index + chunk.length;
   let bestSubstring = chunk;
+  let currentTokens = chunkTokens;
 
-  const expandContext = (currentSize: number): boolean => {
-    const nextStart = Math.max(0, start - currentSize);
-    const nextEnd = Math.min(fullText.length, end + currentSize);
+  // Initial expansion with larger steps
+  let step = 500;
+  while (true) {
+    const nextStart = Math.max(0, start - step);
+    const nextEnd = Math.min(fullText.length, end + step);
     const candidate = fullText.slice(nextStart, nextEnd);
     const tokenCount = enc.encode(candidate).length;
 
@@ -267,22 +251,46 @@ export function getLocalContextTiktoken(
       bestSubstring = candidate;
       start = nextStart;
       end = nextEnd;
-      return true;
-    }
-    return false;
-  };
-
-  // Binary search for the largest context window that fits
-  let low = 0;
-  let high = Math.min(index, fullText.length - (index + chunk.length));
-
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    if (expandContext(mid)) {
-      low = mid + 1;
+      currentTokens = tokenCount;
     } else {
-      high = mid - 1;
+      break;
     }
+    if (start === 0 && end === fullText.length) break;
+  }
+
+  // Fine-tuning with smaller steps
+  step = 10; // Reduced step size for precision
+  while (currentTokens < maxTokens) {
+    let added = false;
+
+    // Try expanding left
+    if (start > 0) {
+      const nextStart = Math.max(0, start - step);
+      const candidateLeft = fullText.slice(nextStart, end);
+      const tokenCountLeft = enc.encode(candidateLeft).length;
+      if (tokenCountLeft <= maxTokens) {
+        bestSubstring = candidateLeft;
+        start = nextStart;
+        currentTokens = tokenCountLeft;
+        added = true;
+      }
+    }
+
+    // Try expanding right
+    if (end < fullText.length) {
+      const nextEnd = Math.min(fullText.length, end + step);
+      const candidateRight = fullText.slice(start, nextEnd);
+      const tokenCountRight = enc.encode(candidateRight).length;
+      if (tokenCountRight <= maxTokens) {
+        bestSubstring = candidateRight;
+        end = nextEnd;
+        currentTokens = tokenCountRight;
+        added = true;
+      }
+    }
+
+    // Stop if no more can be added
+    if (!added) break;
   }
 
   return bestSubstring;
