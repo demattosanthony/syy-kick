@@ -87,24 +87,28 @@ const AssistantMessage = ({
             bg-background
             break-words
             mt-[1px]
+            flex flex-col
+            gap-2
           "
         >
-          {message.reasoning && (
-            <ThinkingDropdown>
-              <MarkdownViewer content={message.reasoning || ""} />
-            </ThinkingDropdown>
-          )}
-
-          {message.content && <MarkdownViewer content={message.content} />}
-
-          <div className="flex flex-col gap-2">
-            {message.toolInvocations?.map(
-              (tool, index) =>
-                tool.toolName === "search_documents" && (
-                  <SearchDocumentsTool tool={tool} index={index} key={index} />
-                )
-            )}
-          </div>
+          {message.parts?.map((part, index) => {
+            switch (part.type) {
+              case "text":
+                return <MarkdownViewer content={part.text} key={index} />;
+              case "reasoning":
+                return (
+                  <ThinkingDropdown key={index}>
+                    <MarkdownViewer content={part.reasoning || ""} />
+                  </ThinkingDropdown>
+                );
+              case "tool-invocation":
+                return (
+                  <SearchDocumentsTool tool={part.toolInvocation} key={index} />
+                );
+              default:
+                return null;
+            }
+          })}
         </div>
       </div>
     </div>
