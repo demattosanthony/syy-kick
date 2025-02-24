@@ -1,4 +1,4 @@
-import STLViewer from "./stl-viewer";
+import STLViewer from "./viewers/stl-viewer";
 import React from "react";
 import { cn } from "@/lib/utils";
 import { useStlLoader } from "@/hooks/useStlLoader";

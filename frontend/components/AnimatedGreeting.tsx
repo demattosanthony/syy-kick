@@ -20,7 +20,7 @@ export function AnimatedGreeting({ name }: AnimatedGreetingProps) {
   };
 
   const greetingText = name ? `${getGreeting()}, ${name}` : getGreeting();
-  const assistText = "What's your next challenge?";
+  const assistText = "How can I help you today?";
 
   useEffect(() => {
     setIsAnimated(true);
@@ -29,7 +29,7 @@ export function AnimatedGreeting({ name }: AnimatedGreetingProps) {
   return (
     <div className="flex flex-col gal-1 items-center">
       <h3
-        className="scroll-m-20 text-3xl md:text-5xl font-medium text-center tracking-wide overflow-hidden"
+        className="scroll-m-20 text-3xl md:text-5xl font-medium text-center tracking-normal overflow-hidden"
         aria-label={greetingText}
       >
         <AnimatePresence>
@@ -64,7 +64,7 @@ export function AnimatedGreeting({ name }: AnimatedGreetingProps) {
           </motion.span>
         </AnimatePresence>
       </h3>
-      <div className="text-lg font-normal text-center tracking-wide overflow-hidden">
+      <div className="text-lg font-normal text-center tracking-normal overflow-hidden">
         <AnimatePresence>
           <motion.span
             style={{

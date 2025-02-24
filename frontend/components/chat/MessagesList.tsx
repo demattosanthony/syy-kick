@@ -62,7 +62,6 @@ const MessageBubble = ({
 );
 
 import { Message } from "ai/react";
-import MarkdownViewer from "../MarkdownViewer";
 import { ThinkingDropdown } from "./ThinkingDropdown";
 import SearchDocumentsTool from "./ToolCallResult";
 
@@ -147,6 +146,7 @@ const UserMessage = ({ message }: { message: Message }) => {
 import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
 import Syyclops3dEye from "../syy-eye";
+import MarkdownViewer from "../viewers/markdown-viewer";
 
 const LoadingMessage = React.memo(() => {
   return (

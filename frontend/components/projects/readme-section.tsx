@@ -1,7 +1,7 @@
 "use client";
 
-import MarkdownViewer from "../MarkdownViewer";
 import { Card, CardContent } from "../ui/card";
+import MarkdownViewer from "../viewers/markdown-viewer";
 
 export function ReadmeSection({ content }: { content: string }) {
   return (
