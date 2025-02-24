@@ -171,7 +171,14 @@ async function addContextToChunks(
                   },
                   {
                     type: "text",
-                    text: `This document is related to HVAC, building engineering, and architecture.\n\n<chunk>\n${chunk.text}\n</chunk>\n\nProvide a short context to situate this chunk within the document, focusing on HVAC systems, building engineering, or architectural elements.`,
+                    text: `This document is related to HVAC, building engineering, and architecture.\n\n<chunk>\n${chunk.text}\n</chunk>\n\nProvide a short context to situate this chunk within the document. Consider aspects such as:
+- Equipment specifications, operation procedures, or maintenance instructions
+- Building systems and infrastructure
+- Facility spaces, assets, or components
+- Installation, testing, or commissioning details
+- Safety procedures or compliance requirements
+- Warranty or maintenance schedules
+Answer only with the short context and nothing else.`,
                   },
                 ],
               },
