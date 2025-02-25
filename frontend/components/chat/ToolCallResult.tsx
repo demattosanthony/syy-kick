@@ -186,9 +186,16 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
 
           <AnimatePresence initial={false}>
             <motion.div className="flex flex-col gap-2 max-w-3xl" layout>
-              {tool.result
-                .slice(0, showAll ? undefined : 2)
-                .map((result: any, idx: number) => (
+              {tool.result.slice(0, showAll ? undefined : 2).map(
+                (
+                  result: {
+                    url: string;
+                    title: string;
+                    text: string;
+                    favicon?: string;
+                  },
+                  idx: number
+                ) => (
                   <motion.div
                     key={`result-${idx}`}
                     initial={{ opacity: 0, y: 10 }}
@@ -221,7 +228,8 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                       </div>
                     </Badge>
                   </motion.div>
-                ))}
+                )
+              )}
 
               {!showAll && resultCount > 3 && (
                 <motion.div

@@ -397,7 +397,10 @@ async function dbMessagesToMyMessages(
         const processedResults = await Promise.all(
           completedCalls.map(async (call) => {
             // If model is claude 3.7 sonnet, get images of any pdfs or images
-            if (selectedModel.model.modelId.includes("claude-3.7-sonnet")) {
+            if (
+              selectedModel.model.modelId.includes("claude-3.7-sonnet") &&
+              call.toolName === "search_project_information"
+            ) {
               const images: {
                 fileKey: string;
                 mimeType: string;
@@ -431,7 +434,10 @@ async function dbMessagesToMyMessages(
               type: "tool-result",
               toolCallId: call.toolCallId,
               toolName: call.toolName,
-              result: convertResultsToXml(call.result.docs),
+              result:
+                call.toolName === "search_project_information"
+                  ? convertResultsToXml(call.result.docs)
+                  : call.result,
             };
           })
         );
