@@ -151,6 +151,7 @@ import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
 import Syyclops3dEye from "../syy-eye";
 import MarkdownViewer from "../viewers/markdown-viewer";
+import { motion } from "framer-motion";
 
 const LoadingMessage = React.memo(() => {
   return (
@@ -160,15 +161,31 @@ const LoadingMessage = React.memo(() => {
           <Syyclops3dEye size={32} animate={false} />
         </div>
 
-        <div className="flex items-center gap-1 text-muted-foreground mt-3">
-          <span className="animate-bounce">•</span>
-          <span className="animate-bounce delay-100">•</span>
-          <span className="animate-bounce delay-200">•</span>
+        <div className="flex items-center rounded-lg bg-background">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            {[0, 1, 2].map((index) => (
+              <motion.span
+                key={index}
+                className="inline-block w-2 h-2 rounded-full bg-current"
+                initial={{ opacity: 0.3, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  duration: 0.6,
+                  repeat: Infinity,
+                  repeatType: "reverse",
+                  delay: index * 0.2,
+                }}
+              >
+                &nbsp;
+              </motion.span>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 });
+
 LoadingMessage.displayName = "LoadingMessage";
 
 // Memo helps to prevent unnecessary re-renders. Fixes issue when lots of messages and user types in chat input form is laggy
@@ -180,9 +197,6 @@ const ChatMessagesList = React.memo(
         container.scrollTop = container.scrollHeight;
       }
     }, [messages.length]);
-
-    // Example: show loading after the user's last message
-    const showLoadingState = isLoading;
 
     return (
       <div className="flex-1 w-full h-full relative">
@@ -205,7 +219,7 @@ const ChatMessagesList = React.memo(
                 />
               );
             })}
-            {showLoadingState && <LoadingMessage />}
+            {isLoading && <LoadingMessage />}
           </div>
         </div>
       </div>
