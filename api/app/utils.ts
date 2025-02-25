@@ -67,7 +67,7 @@ export async function getPdfPageAsImage(
 
     // Resize the image if needed using ImageMagick
     const resizeProc = Bun.spawn([
-      "magick",
+      "convert",
       tempPngPath,
       "-resize",
       `${options.maxDimension}x${options.maxDimension}>`, // Only shrink if larger
