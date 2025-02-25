@@ -2,7 +2,6 @@ import { Router, Request, Response } from "express";
 import z from "zod";
 import crypto from "crypto";
 import { sql, desc, and, eq, cosineDistance } from "drizzle-orm";
-
 import s3 from "../config/s3";
 import db from "../config/db";
 import {
@@ -1149,7 +1148,6 @@ const ThreadOps = {
                   })
                   .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
               } else if (result && toolCall.toolName === "web_search") {
-                console.log("Web search result:", result.result);
                 await db
                   .update(toolCallsTable)
                   .set({

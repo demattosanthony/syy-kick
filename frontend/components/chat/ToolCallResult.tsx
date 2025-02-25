@@ -187,7 +187,7 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
           <AnimatePresence initial={false}>
             <motion.div className="flex flex-col gap-2 max-w-3xl" layout>
               {tool.result
-                .slice(0, showAll ? undefined : 3)
+                .slice(0, showAll ? undefined : 2)
                 .map((result: any, idx: number) => (
                   <motion.div
                     key={`result-${idx}`}
