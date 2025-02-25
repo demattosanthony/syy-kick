@@ -1016,7 +1016,7 @@ const ThreadOps = {
         allMessages,
         modelConfig,
         thread.project,
-        instructions
+        instructions && instructions.length > 0 ? instructions : undefined
       );
 
       // 7) Create tools for the assistant if project ID exists
