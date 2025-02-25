@@ -1,5 +1,3 @@
-// threads.ts
-
 import { Router, Request, Response } from "express";
 import z from "zod";
 import crypto from "crypto";
@@ -15,16 +13,16 @@ import {
   documentThumbnails,
   Project,
 } from "../config/schema";
-import { MessageAttachment } from "../config/schema"; // reusing types
+import { MessageAttachment } from "../config/schema";
 import { embeddingModel, ModelConfig, MODELS } from "./models";
 import { handle, generateThreadTitle, getPdfPageAsImage } from "../utils";
-import { CONFIG } from "../config/constants";
 
 // ai-related imports
-import { Attachment, CoreMessage, generateObject, streamText, tool } from "ai";
+import { Attachment, CoreMessage, streamText, tool } from "ai";
 import { searchProjectDocuments } from "./projects";
 import reranker from "../config/reranker";
 import exa from "../config/exa";
+import { CONFIG } from "../config/constants";
 
 // --------------------------------------------------------
 // 1. Define Zod Schemas
@@ -115,20 +113,16 @@ type ThreadWithMessages = {
 /** Generates presigned URL or returns raw data depending on environment. */
 async function generateAttachmentData(
   fileKey: string,
-  contentType?: string
+  contentType?: string,
+  s3UrlAllowed?: boolean
 ): Promise<string> {
-  const metadata = s3.file(fileKey);
-  // In local dev, we might return a base64 data URI
-  if (!CONFIG.__prod__) {
-    const buffer = Buffer.from(new Uint8Array(await metadata.arrayBuffer()));
-    return `${buffer.toString("base64")}`;
+  if (s3UrlAllowed && CONFIG.__prod__) {
+    return s3.file(fileKey).presign({ expiresIn: 3600 });
   }
-  // In production, generate an actual presigned URL
-  return metadata.presign({
-    acl: "public-read",
-    expiresIn: 3600,
-    method: "GET",
-  });
+
+  const metadata = s3.file(fileKey);
+  const buffer = Buffer.from(new Uint8Array(await metadata.arrayBuffer()));
+  return buffer.toString("base64");
 }
 
 /** Adds presigned URLs (or base64 data) to each attachment. */
@@ -229,12 +223,12 @@ async function createMessage(
 }
 
 /** Determines which model to use. "Auto" triggers classification logic. */
-async function getModelConfig(model: string, messages: MyMessage[]) {
+async function getModelConfig(model: string) {
   if (model !== "Auto") {
     return MODELS[model];
   }
 
-  return MODELS["claude-3.5-sonnet"];
+  return MODELS["claude-3.7-sonnet"];
 }
 
 /** Generates a thread title from the first user message if it doesn’t already exist. */
@@ -269,28 +263,38 @@ function buildSystemMessage(instructions?: string, project?: Project): string {
     hour12: true,
   });
 
-  let systemMsg = `You are Yo, a multi-disciplinary engineer with vast expertise across diverse fields such as building systems, product design, automation, and project management. Whether it's creating bill of materials, automating processes, or exploring new technical projects, you always provide clear, precise, and actionable advice. Your task is to write an accurate, detailed, and comprehensive answer to a given query using provided search results and following specific guidelines. 
-Follow these instructions to formulate your answer:
+  let systemMsg = `You are Yo, a highly skilled multi-disciplinary engineer with extensive expertise across various fields, including building systems, product design, automation, project management, and HVAC engineering. Your task is to provide accurate, detailed, and comprehensive answers to user queries using provided search results or your existing knowledge.
 
-1. Read the query carefully and analyze the provided search results.
+<current_date>
+${dateString}
+</current_date>
 
-2. Write your answer directly using the information from the search results. If the search results are empty or unhelpful, answer the query to the best of your ability using your existing knowledge. If you don't know the answer or if the premise of the query is incorrect, explain why.
+Instructions:
 
-3. Write a well-formatted answer that's optimized for readability:
+1. Read the query carefully and analyze what the user is asking for. Sometimes they may treat it like a google search query, or more of a chat message. Your goal is to provide a concise and accurate response.
+
+2. For project-specific questions:
+   - Use the search tool to find relevant information and context from project documents
+   - Make multiple focused searches to gather comprehensive information
+   - Synthesize information from search results to provide accurate, contextual answers
+   - If search results don't provide sufficient information, clearly state what's missing
+
+3. Structure your answer for optimal readability:
    - Separate your answer into logical sections using level 2 headers (##) for sections and bolding (**) for subsections.
    - Incorporate a variety of lists, headers, and text to make the answer visually appealing.
    - Never start your answer with a header.
+   - Incorporate tables for comparisons or data presentation
    - Use lists, bullet points, and other enumeration devices only sparingly, preferring other formatting methods like headers. Only use lists when there is a clear enumeration to be made
    - Only use numbered lists when you need to rank items. Otherwise, use bullet points.
    - Never nest lists or mix ordered and unordered lists.
    - When comparing items, use a markdown table instead of a list.
    - Bold specific words for emphasis.
-   - Use markdown code blocks for code snippets, including the language for syntax highlighting.
+   - Use code blocks with language specification for code snippets
    - You may include quotes in markdown to supplement the answer
 
 6. Be concise in your answer. Skip any preamble and provide the answer directly without explaining what you are doing.
 
-7. If the user provides enough context like files or images in the prompt and you don't need to search for additional information, you can provide the answer directly.
+7. If the user provides sufficient context (e.g., files or images) in the prompt, you may answer directly without searching for additional information.
 
 <restrictions>
 1. Avoid moralization or hedging language (e.g., "It is important to...", "It is inappropriate...", "It is subjective..."). These phrases waste time.
@@ -299,18 +303,16 @@ Follow these instructions to formulate your answer:
 4. NEVER use any of the following phrases or similar constructions: "According to the search results", "Based on the search results", "Given the search results", "Based on the given search", "Based on the provided sources", "Based on the provided search results", "from the given search results", "the source provided", "based on the available search results", "the search results indicate", "let me search for". These phrases are waste time because the user is already aware that the answer should come from search results. These phrases are strictly banned from your response.
 </restrictions>
 
-Remember to be accurate, comprehensive, and adhere to all the guidelines provided above.
-
-<date>
-Current date: ${dateString}
-</date>`;
+Remember to prioritize accuracy, comprehensiveness, and adherence to all guidelines provided.`;
 
   if (instructions && instructions.length > 0) {
     systemMsg += `\n<personalization>${instructions}</personalization>`;
   }
 
   if (project) {
-    systemMsg += `\n<current_proejct>\n${project.name}\n</current_proejct>\n\n Use search tool to help you find relevant information for this specific engineering project.`;
+    systemMsg += `\n<current_project>\n${project.name}${
+      project.description ? `\n${project.description}` : ""
+    }\n</current_project>`;
   }
 
   return systemMsg;
@@ -350,7 +352,7 @@ async function dbMessagesToMyMessages(
       updatedAt: Date;
     }[];
   }[],
-  selectedModelName: string
+  selectedModel: ModelConfig
 ) {
   const messages: MyMessage[] = [];
 
@@ -389,21 +391,19 @@ async function dbMessagesToMyMessages(
       if (completedCalls.length > 0) {
         const processedResults = await Promise.all(
           completedCalls.map(async (call) => {
-            // If model is claude 3.5 sonnet, get images of any pdfs or images
-            if (selectedModelName.includes("claude-3.5-sonnet")) {
+            // If model is claude 3.7 sonnet, get images of any pdfs or images
+            if (selectedModel.model.modelId.includes("claude-3.7-sonnet")) {
               const images: {
                 fileKey: string;
+                mimeType: string;
               }[] = call.result.images;
 
               const imagesData = await Promise.all(
                 images.map(async (image) => {
                   return {
                     type: "image" as const,
-                    data: await generateAttachmentData(
-                      image.fileKey,
-                      "image/png"
-                    ),
-                    mimeType: "image/png",
+                    data: await generateAttachmentData(image.fileKey),
+                    mimeType: image.mimeType,
                   };
                 })
               );
@@ -460,7 +460,8 @@ async function buildInferenceMessages(
   modelConfig: {
     supportedMimeTypes?: string[];
     supportsSystemMessages?: boolean;
-  }
+  },
+  project?: Project
 ): Promise<CoreMessage[]> {
   // Filter out any attachments that the model doesn’t support
   const filteredMessages = allMessages.filter((msg) => {
@@ -478,7 +479,7 @@ async function buildInferenceMessages(
   if (modelConfig.supportsSystemMessages) {
     messagesForCore.push({
       role: "system",
-      content: buildSystemMessage(),
+      content: buildSystemMessage(undefined, project),
     });
   }
 
@@ -518,7 +519,8 @@ async function buildInferenceMessages(
       for (const att of msg.experimental_attachments) {
         const data = await generateAttachmentData(
           att.file_key,
-          att.contentType
+          att.contentType,
+          true
         );
         if (att.contentType?.includes("image")) {
           chunks.push({
@@ -555,7 +557,7 @@ type DocumentSearchToolResult = {
 
 /** Converts reranked search results to XML format for AI consumption */
 function convertResultsToXml(docs: DocumentSearchToolResult[]): string {
-  return `<document_context>${docs
+  return `<documents_context>${docs
     .map(
       (doc) => `
 <document>
@@ -565,8 +567,8 @@ function convertResultsToXml(docs: DocumentSearchToolResult[]): string {
   <score>${doc.similarity}</score>
 </document>`
     )
-    .join("\n")}
-</document_context>`;
+    .join("\n\n")}
+</documents_context>`;
 }
 
 /** Extracts unique documents, treating PDF pages as separate docs */
@@ -589,6 +591,7 @@ function getUniqueDocuments(
 async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
   fileKey: string;
   imageData: string;
+  mimeType: string;
 } | null> {
   try {
     if (!doc.pageNumber || !doc.fileKey) {
@@ -608,6 +611,7 @@ async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
       return {
         fileKey: existingThumbnail.fileKey,
         imageData: await generateAttachmentData(existingThumbnail.fileKey),
+        mimeType: "image/png",
       };
     }
 
@@ -632,12 +636,8 @@ async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
 
     return {
       fileKey: imageKey,
-      imageData: !CONFIG.__prod__
-        ? base64Image
-        : s3.file(imageKey).presign({
-            expiresIn: 3600,
-            method: "GET",
-          }),
+      imageData: base64Image,
+      mimeType: "image/png",
     };
   } catch (error) {
     console.error("Error processing PDF document:", error);
@@ -649,28 +649,35 @@ async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
 async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
   {
     fileKey: string;
-    imageData: string; // s3 url or base64
+    imageData: string;
+    mimeType: string;
   }[]
 > {
-  const results: {
-    fileKey: string;
-    imageData: string;
-  }[] = [];
-
-  for (const doc of docs) {
-    if (doc.mimeType === "application/pdf") {
-      const result = await processPdfDocument(doc);
-      if (result) {
-        results.push(result);
+  // Process all documents in parallel
+  const processingPromises = docs.map(async (doc) => {
+    try {
+      if (doc.mimeType === "application/pdf") {
+        return await processPdfDocument(doc);
+      } else if (doc.mimeType?.includes("image") && doc.fileKey) {
+        const imageData = await generateAttachmentData(doc.fileKey);
+        return {
+          fileKey: doc.fileKey,
+          imageData,
+          mimeType: doc.mimeType,
+        };
       }
-    } else if (doc.mimeType?.includes("image") && doc.fileKey) {
-      const result = await generateAttachmentData(doc.fileKey);
-      results.push({
-        fileKey: doc.fileKey,
-        imageData: result,
-      });
+      return null;
+    } catch (error) {
+      console.error("Error processing document:", error);
+      return null;
     }
-  }
+  });
+
+  // Wait for all processing to complete and filter out nulls
+  const results = (await Promise.all(processingPromises)).filter(
+    (result): result is NonNullable<typeof result> => result !== null
+  );
+
   return results;
 }
 
@@ -748,8 +755,9 @@ Keep individual queries concise and targeted. Multiple focused searches are more
         let images: {
           fileKey: string;
           imageData: string;
+          mimeType: string;
         }[] = [];
-        if (modelConfig.model.modelId.includes("claude-3-5-sonnet")) {
+        if (modelConfig.model.modelId.includes("claude-3-7-sonnet")) {
           images = await processDocumentImages(uniqueDocs);
         }
 
@@ -778,7 +786,7 @@ Keep individual queries concise and targeted. Multiple focused searches are more
           ...result.images.map((image) => ({
             type: "image" as const,
             data: image.imageData,
-            mimeType: "image/png",
+            mimeType: image.mimeType,
           })),
           {
             type: "text",
@@ -858,6 +866,8 @@ const ThreadOps = {
       },
     });
     if (!thread) return null;
+
+    // console.log("Thread found:", thread);
 
     // Cast the thread to match ThreadWithMessages type
     const typedThread: ThreadWithMessages = {
@@ -1009,11 +1019,13 @@ const ThreadOps = {
         with: { attachments: true, toolCalls: true },
       });
 
-      const allMessages = await dbMessagesToMyMessages(rawMessages, model);
-
       // 4) Determine appropriate model
-      const modelConfig = await getModelConfig(model, allMessages);
-      console.log("Selected model:", modelConfig);
+      const modelConfig = await getModelConfig(model);
+
+      const allMessages = await dbMessagesToMyMessages(
+        rawMessages,
+        modelConfig
+      );
 
       // 5) Generate a thread title if missing
       await maybeGenerateTitle(threadId, allMessages, thread.title);
@@ -1021,10 +1033,9 @@ const ThreadOps = {
       // 6) Prepare messages for inference
       const inferenceMsgs = await buildInferenceMessages(
         allMessages,
-        modelConfig
+        modelConfig,
+        thread.project
       );
-
-      //   console.log("Inference messages:", inferenceMsgs);
 
       // 7) Create tools for the assistant if project ID exists
       const tools =
@@ -1049,11 +1060,13 @@ const ThreadOps = {
           finishReason,
           reasoning,
         }) => {
-          //   console.log(`Text: ${text}`);
-          //   console.log("Tool Calls:", toolCalls);
-          //   console.log("Tool Results:", toolResults);
-          //   console.log("Finish Reason:", finishReason);
-          //   console.log("\n\n\n\n\n");
+          //   console.log("Tool calls:", toolCalls);
+          //   console.log("Tool results:", toolResults.length);
+          //   console.log("Finish reason:", finishReason);
+          //   console.log("Text:", text);
+          //   console.log("Reasoning:", reasoning);
+
+          //   console.log("\n\n\n");
 
           if (finishReason === "tool-calls") {
             // First create a message for the assistant's tool call
@@ -1095,11 +1108,11 @@ const ThreadOps = {
                   .set({
                     status: "completed",
                     result: {
-                      docs: (result.result as any).docs,
-                      images:
-                        (result.result as any).images?.map((image: any) => ({
-                          fileKey: image.fileKey,
-                        })) || [],
+                      docs: result.result.docs,
+                      images: result.result.images.map((image) => ({
+                        fileKey: image.fileKey,
+                        mimeType: image.mimeType,
+                      })),
                     },
                     updatedAt: new Date(),
                   })
@@ -1110,10 +1123,12 @@ const ThreadOps = {
             return;
           }
 
+          // Create a message for the assistant's response
           if (finishReason === "stop" && text) {
             const responseEmbedding = await embeddingModel.doEmbed({
               values: [text],
             });
+
             // Persist the assistant's response
             await db.insert(messages).values({
               userId: req.dbUser!.id,

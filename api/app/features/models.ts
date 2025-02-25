@@ -41,8 +41,8 @@ export const anthropicModels = (
   ];
 
   return {
-    "claude-3.5-sonnet": {
-      model: anthropic("claude-3-5-sonnet-20241022"),
+    "claude-3.7-sonnet": {
+      model: anthropic("claude-3-7-sonnet-20250219"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "anthropic",
@@ -51,8 +51,20 @@ export const anthropicModels = (
       maxImageSize: 5 * 1024 * 1024, // 5MB
       maxFileSize: 32 * 1024 * 1024, // 32MB
       description:
-        "Claude 3.5 Sonnet strikes the ideal balance between intelligence and speed—particularly for enterprise workloads. It delivers strong performance at a lower cost compared to its peers, and is engineered for high endurance in large-scale AI deployments.",
+        "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
     },
+    // "claude-3.7-sonnet-thinking": {
+    //   model: anthropic("claude-3-7-sonnet-20250219"),
+    //   supportsToolUse: true,
+    //   supportsStreaming: true,
+    //   provider: "anthropic",
+    //   supportsSystemMessages: true,
+    //   supportedMimeTypes,
+    //   maxImageSize: 5 * 1024 * 1024, // 5MB
+    //   maxFileSize: 32 * 1024 * 1024, // 32MB
+    //   description:
+    //     "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
+    // },
     "claude-3.5-haiku": {
       model: anthropic("claude-3-5-haiku-latest"),
       supportsToolUse: true,
@@ -118,7 +130,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       maxImageSize: 20 * 1024 * 1024, // 20MB
       supportedMimeTypes,
       description:
-        "GPT-4o Mini from OpenAI has broad general knowledge and domain expertise allowing it to follow complex instructions in natural language and solve difficult problems accurately. It matches GPT-4 Turbo performance with a faster and cheaper API.",
+        "GPT-4o mini from OpenAI is their most advanced and cost-efficient small model. It is multi-modal (accepting text or image inputs and outputting text) and has higher intelligence than gpt-3.5-turbo but is just as fast.",
     },
   };
 };
@@ -184,20 +196,20 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
     },
-    "gemini-2.0-flash-online": {
-      model: google("gemini-2.0-flash", {
-        useSearchGrounding: true,
-      }),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      description:
-        "Gemini 2.0 Flash Online enhances the speed of Gemini 2.0 Flash with the ability to access real-time information through search grounding. It's perfect for tasks that require up-to-date data and fast responses, while also supporting tool use, streaming, image and PDF inputs.",
-    },
+    // "gemini-2.0-flash-online": {
+    //   model: google("gemini-2.0-flash", {
+    //     useSearchGrounding: true,
+    //   }),
+    //   supportsToolUse: true,
+    //   supportsStreaming: true,
+    //   provider: "google",
+    //   supportsSystemMessages: true,
+    //   supportedMimeTypes,
+    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+    //   maxFileSize: 50 * 1024 * 1024, // 50MB
+    //   description:
+    //     "Gemini 2.0 Flash Online enhances the speed of Gemini 2.0 Flash with the ability to access real-time information through search grounding. It's perfect for tasks that require up-to-date data and fast responses, while also supporting tool use, streaming, image and PDF inputs.",
+    // },
     // "gemini-2.0-flash-thinking": {
     //   model: google("gemini-2.0-flash-thinking-exp-01-21"),
     //   supportsToolUse: false,

@@ -5,7 +5,7 @@ import { ChatMessage, FileUpload } from "@/types/chat";
 import { DocumentContent } from "@/types/project";
 
 export const CLAUDE_3_5_CONFIG = {
-  name: "claude-3.5-sonnet",
+  name: "claude-3.7-sonnet",
   provider: "anthropic",
   supportedMimeTypes: [
     "image/jpeg",

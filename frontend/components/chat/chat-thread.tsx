@@ -17,7 +17,7 @@ import {
 
 // Hooks
 import { useQueryClient } from "@tanstack/react-query";
-import { useChat } from "ai/react";
+import { useChat } from "@ai-sdk/react";
 import { useAtom } from "jotai";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";

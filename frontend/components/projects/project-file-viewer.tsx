@@ -1,11 +1,12 @@
 "use client";
 
 import { DocumentContent } from "@/types/project";
-import MarkdownViewer from "../MarkdownViewer";
-import PdfViewer from "../pdf-viewer";
 import ReactPlayer from "react-player";
 import { ArrowDown, File } from "lucide-react";
 import { useEffect, useState } from "react";
+import MultiSheetViewer from "../viewers/excel-viewer";
+import PdfViewer from "../viewers/pdf-viewer";
+import MarkdownViewer from "../viewers/markdown-viewer";
 
 export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
   const [textContent, setTextContent] = useState<string>("");
@@ -62,6 +63,13 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
       return (
         <div className="h-full w-full p-8">
           <MarkdownViewer content={textContent || ""} />
+        </div>
+      );
+    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+    case "application/vnd.ms-excel":
+      return (
+        <div className="h-full w-full p-8 overflow-hidden">
+          {doc.url && <MultiSheetViewer excelUrl={doc.url} />}
         </div>
       );
     case "text/csv":
@@ -150,19 +158,8 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
             </p>
             <a
               href={doc.url}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-priamry bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               download={doc.name}
-              //   onClick={(e) => {
-              //     if (file.base64Content) {
-              //       e.preventDefault();
-              //       const link = document.createElement("a");
-              //       link.href = getFileSource();
-              //       link.download = file.name;
-              //       document.body.appendChild(link);
-              //       link.click();
-              //       document.body.removeChild(link);
-              //     }
-              //   }}
             >
               <ArrowDown className="h-4 w-4 mr-2" />
               Download {doc.name}

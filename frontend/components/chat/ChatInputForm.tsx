@@ -47,7 +47,7 @@ function ChatInputForm(
     onSubmit,
     input,
     handleInputChange,
-    placeholder = "Ask anything...",
+    placeholder = "What do you want to know?",
     isGenerating,
     stop,
     setInput,
@@ -173,8 +173,8 @@ function ChatInputForm(
   return (
     <Card
       className={cn(
-        "relative flex flex-col h-auto min-h-[105px] max-h-[450px] w-full mx-auto max-w-[750px] p-0 rounded-2xl bg-background",
-        focused && !isMobile ? "shadow-md" : "shadow-none"
+        "relative flex flex-col h-auto min-h-[105px] max-h-[500px] w-full mx-auto max-w-[750px] p-0 rounded-2xl bg-background",
+        focused && !isMobile ? "shadow-sm border-2" : "shadow-none"
       )}
     >
       <form
@@ -186,7 +186,7 @@ function ChatInputForm(
       >
         <div className="flex flex-col flex-1">
           {showContextSelector && (
-            <div className="flex items-center w-full h-6">
+            <div className="flex items-center w-full h-5">
               <Button
                 variant="ghost"
                 className="text-xs px-2 font-normal text-muted-foreground hover:bg-transparent hover:text-accent-foreground"
@@ -287,10 +287,11 @@ function ChatInputForm(
               autoFocus
               disabled={isGenerating}
               style={{
-                height: "42px",
-                minHeight: "42px",
+                height: "50px",
+                minHeight: "50px",
+                maxHeight: "400px",
               }}
-              className="resize-none !min-h-[42px] w-full text-base rounded-xl border-none focus:ring-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:font-medium"
+              className="resize-none !min-h-[50px] w-full text-base rounded-xl border-none focus:ring-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:font-normal"
             />
           </div>
         </div>

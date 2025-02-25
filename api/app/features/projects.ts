@@ -20,8 +20,9 @@ import {
 } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
-import { googleEmbeddingModel, smallOpenaiEmbeddingModel } from "./models";
+import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
+import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
 
 const schemas = {
   createProject: z
@@ -170,7 +171,11 @@ async function getProject(projectId: string) {
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
     with: {
-      organization: true,
+      organization: {
+        with: {
+          members: true,
+        },
+      },
       user: true,
     },
   });
@@ -513,7 +518,12 @@ async function createFolderStructure(
 
   // Process uploaded files in the background
   for (const doc of createdDocs) {
-    if (doc.type === "file" && doc.fileKey) {
+    const extension = doc.name.toLowerCase().match(/\.[^.]*$/)?.[0];
+    if (
+      doc.type === "file" &&
+      doc.fileKey &&
+      ALLOWED_UNSTRUCTURED_EXTENSIONS.includes(extension)
+    ) {
       await queue.addToQueue({
         fileKey: doc.fileKey,
         fileName: doc.path,
@@ -601,6 +611,31 @@ export async function searchProjectDocuments(
   return resultsWithUrls;
 }
 
+/**
+ * Checks if a user has permission to modify a project
+ * @throws Error if user doesn't have permission
+ */
+async function checkProjectUpdatePermission(projectId: string, userId: string) {
+  const project = await getProject(projectId);
+
+  // Check if user owns the project directly
+  if (project.userId === userId) {
+    return true;
+  }
+
+  // Check if user is an owner in the organization that owns the project
+  if (project.organization) {
+    const isOrgOwner = project.organization.members?.some(
+      (member) => member.userId === userId && member.role === "owner"
+    );
+    if (isOrgOwner) {
+      return true;
+    }
+  }
+
+  throw new Error("You don't have permission to modify this project");
+}
+
 // Route handlers
 const handlers = {
   createProject: async (req: Request, res: Response) => {
@@ -658,11 +693,29 @@ const handlers = {
   },
 
   updateProject: async (req: Request, res: Response) => {
-    const { projectId } = req.params;
+    try {
+      const { projectId } = req.params;
+      const userId = req.dbUser?.id;
 
-    const validatedData = schemas.updateProject.parse(req.body);
-    const project = await updateProject(projectId, validatedData);
-    res.json(project);
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      await checkProjectUpdatePermission(projectId, userId);
+
+      const validatedData = schemas.updateProject.parse(req.body);
+      const project = await updateProject(projectId, validatedData);
+      res.json(project);
+    } catch (error: any) {
+      if (
+        error.message === "You don't have permission to modify this project"
+      ) {
+        res.status(403).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "Failed to update project" });
+      }
+    }
   },
 
   /**

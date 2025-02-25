@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun run --watch app/server.ts",
     "start": "bun run app/server.ts",
+    "doc-worker-dev": "bun run --watch app/doc-worker.ts",
     "doc-worker": "bun run app/doc-worker.ts",
     "build": "bun build app/server.ts --target bun",
     "mig": "drizzle-kit generate"
@@ -26,7 +27,7 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.1.7",
+    "@ai-sdk/anthropic": "^1.1.10",
     "@ai-sdk/deepseek": "^0.1.8",
     "@ai-sdk/google": "^1.1.14",
     "@ai-sdk/groq": "^1.1.7",
@@ -35,7 +36,7 @@
     "@ai-sdk/perplexity": "^0.0.7",
     "@ai-sdk/togetherai": "^0.1.9",
     "@ai-sdk/xai": "^1.1.8",
-    "ai": "^4.1.41",
+    "ai": "^4.1.46",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.39.1",
@@ -43,7 +44,6 @@
     "express": "^4.21.2",
     "install": "^0.13.0",
     "jsonwebtoken": "^9.0.2",
-    "mime-types": "^2.1.35",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-microsoft": "^2.1.0",

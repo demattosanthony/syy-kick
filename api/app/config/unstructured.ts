@@ -5,12 +5,20 @@ const unstructured = new UnstructuredClient({
   security: {
     apiKeyAuth: process.env.UNSTRUCTURED_API_KEY,
   },
-  // 2 hours in milliseconds
-  timeoutMs: 7200000,
+  retryConfig: {
+    strategy: "backoff",
+    backoff: {
+      initialInterval: 3000, // 3 seconds
+      maxInterval: 1000 * 60 * 12, // 12 minutes
+      exponent: 1.88, // ~2 hours
+      maxElapsedTime: 1000 * 60 * 60, // 1 hour
+    },
+    retryConnectionErrors: true,
+  },
 });
 
 // Define supported extensions:
-export const unstructuredApiSupportExtensions = [
+export const ALLOWED_UNSTRUCTURED_EXTENSIONS = [
   ".abw",
   ".bmp",
   ".csv",
