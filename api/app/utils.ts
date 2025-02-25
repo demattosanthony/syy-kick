@@ -2,7 +2,6 @@ import { generateText } from "ai";
 import { MODELS } from "./features/models";
 import { ApiResponse } from "./config/schema";
 import { Request, Response } from "express";
-import s3 from "./config/s3";
 
 export async function generateThreadTitle(message: string) {
   const { text } = await generateText({
@@ -31,12 +30,13 @@ export const handle =
 export async function getPdfPageAsImage(
   pdfBytes: Uint8Array,
   pageNumber: number,
-  options = { format: "png", dpi: 96 }
+  options = { format: "png", dpi: 96, maxDimension: 2000 }
 ): Promise<string> {
   // Remove the unnecessary tempDir read
   const uniqueId = crypto.randomUUID();
   const tempPdfPath = `/tmp/pdf_${uniqueId}.pdf`;
   const tempPngPath = `/tmp/png_${uniqueId}.png`;
+  const tempResizedPath = `/tmp/png_resized_${uniqueId}.png`;
 
   try {
     // Get PDF from S3 and save to temp file
@@ -65,8 +65,24 @@ export async function getPdfPageAsImage(
       throw new Error(`Ghostscript process failed with exit code ${success}`);
     }
 
-    // Read the generated PNG and upload to S3
-    const imageBuffer = await Bun.file(tempPngPath).arrayBuffer();
+    // Resize the image if needed using ImageMagick
+    const resizeProc = Bun.spawn([
+      "convert",
+      tempPngPath,
+      "-resize",
+      `${options.maxDimension}x${options.maxDimension}>`, // Only shrink if larger
+      tempResizedPath,
+    ]);
+
+    const resizeSuccess = await resizeProc.exited;
+    if (resizeSuccess !== 0) {
+      throw new Error(
+        `ImageMagick resize process failed with exit code ${resizeSuccess}`
+      );
+    }
+
+    // Read the resized PNG
+    const imageBuffer = await Bun.file(tempResizedPath).arrayBuffer();
 
     return Buffer.from(imageBuffer).toString("base64");
   } catch (error: any) {
@@ -78,6 +94,7 @@ export async function getPdfPageAsImage(
       await Promise.all([
         Bun.spawn(["rm", "-f", tempPdfPath]).exited,
         Bun.spawn(["rm", "-f", tempPngPath]).exited,
+        Bun.spawn(["rm", "-f", tempResizedPath]).exited,
       ]);
     } catch (error) {
       console.error("Error cleaning up temporary files:", error);
