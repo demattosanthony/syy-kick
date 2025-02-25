@@ -188,7 +188,7 @@ export default function UserSettings() {
               </div>
 
               <div className="space-y-6">
-                <div className="space-y-4">
+                {/* <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-normal">Creativity</h3>
                     <span className="text-sm text-muted-foreground">
@@ -202,7 +202,7 @@ export default function UserSettings() {
                     value={[temperature]}
                     onValueChange={handleTemperatureChange}
                   />
-                </div>
+                </div> */}
 
                 <div className="space-y-2">
                   <h3 className="text-base font-normal">Custom Instructions</h3>

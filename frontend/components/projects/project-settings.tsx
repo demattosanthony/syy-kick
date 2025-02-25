@@ -95,7 +95,7 @@ export default function ProjectSettings({ pid }: { pid: string }) {
   return (
     <div className="flex flex-col h-screen w-full">
       <div className="flex-1 overflow-y-auto w-full">
-        <div className="max-w-xl mx-auto pt-6 px-6 w-full ">
+        <div className="max-w-3xl mx-auto pt-6 px-6 w-full ">
           <div className="space-y-6 pb-10 w-full">
             {/* Project Details Section */}
             <section className="space-y-4">

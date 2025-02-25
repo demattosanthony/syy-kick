@@ -182,12 +182,7 @@ const ChatMessagesList = React.memo(
     }, [messages.length]);
 
     // Example: show loading after the user's last message
-    const lastMessage = messages[messages.length - 1];
-    const showLoadingState =
-      isLoading &&
-      (lastMessage?.role === MessageRole.user ||
-        (lastMessage.role === "assistant" &&
-          lastMessage.toolInvocations?.length));
+    const showLoadingState = isLoading;
 
     return (
       <div className="flex-1 w-full h-full relative">
@@ -198,7 +193,7 @@ const ChatMessagesList = React.memo(
               const showEye =
                 message.role !== MessageRole.user &&
                 (!nextMessage || nextMessage.role === MessageRole.user) &&
-                !message.toolInvocations?.length;
+                !isLoading;
 
               return message.role === MessageRole.user ? (
                 <UserMessage key={index} message={message} />

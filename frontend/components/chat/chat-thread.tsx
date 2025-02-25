@@ -66,7 +66,7 @@ export default function ThreadPage({
     handleInputChange,
     handleSubmit,
     messages,
-    isLoading,
+    status,
     stop,
     error,
   } = useChat({
@@ -74,7 +74,6 @@ export default function ThreadPage({
     credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,
-    maxSteps: 8,
     experimental_prepareRequestBody({ messages, id }) {
       return {
         message: messages[messages.length - 1],
@@ -189,7 +188,10 @@ export default function ThreadPage({
 
   return (
     <>
-      <ChatMessagesList messages={messages} isLoading={isLoading} />
+      <ChatMessagesList
+        messages={messages}
+        isLoading={status === "submitted"}
+      />
 
       <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
         <ChatInputForm
@@ -198,7 +200,7 @@ export default function ThreadPage({
           handleInputChange={handleInputChange}
           onSubmit={onSubmit}
           stop={stop}
-          isGenerating={isLoading}
+          isGenerating={status === "submitted" || status === "streaming"}
           showContextSelector={thread?.project !== null}
           projectId={thread?.project?.id}
         />

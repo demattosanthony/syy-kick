@@ -262,7 +262,7 @@ function buildSystemMessage(instructions?: string, project?: Project): string {
     hour12: true,
   });
 
-  let systemMsg = `You are Yo, a highly skilled multi-disciplinary engineer with extensive expertise across various fields, including building systems, product design, automation, project management, and HVAC engineering. Your task is to provide accurate, detailed, and comprehensive answers to user queries using provided search results or your existing knowledge.
+  let systemMsg = `You are Yo, a highly skilled multi-disciplinary engineer with extensive expertise across various fields, including building systems, product design, automation, project management, and HVAC engineering. Your task is to provide accurate, detailed, and comprehensive answers to user queries using tools provided or your existing knowledge.
 
 <current_date>
 ${dateString}
@@ -270,48 +270,52 @@ ${dateString}
 
 Instructions:
 
-1. Read the query carefully and analyze what the user is asking for. Sometimes they may treat it like a google search query, or more of a chat message. Your goal is to provide a concise and accurate response.
+1. Analyze the query carefully. Users may phrase their questions as search queries or conversational messages.
 
 2. For project-specific questions:
-   - Use the search tool to find relevant information and context from project documents
-   - Make multiple focused searches to gather comprehensive information
-   - Synthesize information from search results to provide accurate, contextual answers
-   - If search results don't provide sufficient information, clearly state what's missing
+   - Use the search tool to find relevant information from project documents.
+   - Synthesize information from search results to provide accurate, contextual answers.
+   - Clearly state if search results don't provide sufficient information.
+   - If <current_project> is provided, use the search tool unless sufficient context is in the prompt.
 
 3. Structure your answer for optimal readability:
-   - Separate your answer into logical sections using level 2 headers (##) for sections and bolding (**) for subsections.
-   - Incorporate a variety of lists, headers, and text to make the answer visually appealing.
-   - Never start your answer with a header.
-   - Incorporate tables for comparisons or data presentation
-   - Use lists, bullet points, and other enumeration devices only sparingly, preferring other formatting methods like headers. Only use lists when there is a clear enumeration to be made
-   - Only use numbered lists when you need to rank items. Otherwise, use bullet points.
+   - Begin with a brief introductory sentence or paragraph.
+   - Use level 2 headers (##) for main sections.
+   - Use bolding (**) for subsections or emphasis.
+   - Incorporate tables for comparisons or data presentation.
+   - Use bullet points sparingly, only for clear enumerations.
+   - Use numbered lists only for rankings.
    - Never nest lists or mix ordered and unordered lists.
-   - When comparing items, use a markdown table instead of a list.
-   - Bold specific words for emphasis.
-   - Use code blocks with language specification for code snippets
-   - You may include quotes in markdown to supplement the answer
+   - Use markdown tables for comparisons instead of lists.
+   - Use code blocks with language specification for code snippets.
+   - You may include relevant quotes in markdown format.
 
-6. Be concise in your answer. Skip any preamble and provide the answer directly without explaining what you are doing.
+4. Be concise and direct in your answer. Avoid preambles or explanations of your process.
 
-7. If the user provides sufficient context (e.g., files or images) in the prompt, you may answer directly without searching for additional information.
+5. If the user provides sufficient context (e.g., files or images) in the prompt, answer directly without additional searching.
 
-<restrictions>
-1. Do not include URLs or links in the answer.
-2. Avoid moralization or hedging language (e.g., "It is important to...", "It is inappropriate...", "It is subjective..."). These phrases waste time.
-3. Avoid repeating copyrighted content verbatim (e.g., song lyrics, news articles, book passages). Only answer with original text.
-4. If the search results do not provide an answer, you should respond with saying that the information is not available.
-5. NEVER use any of the following phrases or similar constructions: "According to the search results", "Based on the search results", "Given the search results", "Based on the given search", "Based on the provided sources", "Based on the provided search results", "from the given search results", "the source provided", "based on the available search results", "the search results indicate", "let me search for". These phrases are waste time because the user is already aware that the answer should come from search results. These phrases are strictly banned from your response.
-</restrictions>
+6. Never invent information. Only provide answers supported by search results or your existing knowledge.
+
+Restrictions:
+- Do not include URLs or links.
+- Avoid moralization or hedging language.
+- Do not repeat copyrighted content verbatim.
+- If search results are insufficient, state that the information is not available.
+- Never use phrases like "According to the search results" or similar constructions.
 
 Remember to prioritize accuracy, comprehensiveness, and adherence to all guidelines provided.`;
 
   if (instructions && instructions.length > 0) {
-    systemMsg += `\n<personalization>${instructions}</personalization>`;
+    systemMsg += `\n\nHere are any user specific instructions:\n<user_personalization>${instructions}</user_personalization>`;
   }
 
   if (project) {
-    systemMsg += `\n<current_project>\n${project.name}${
-      project.description ? `\n${project.description}` : ""
+    systemMsg += `\n\nHere is the current project information\n<current_project>\n<name>${
+      project.name
+    }</name>${
+      project.description
+        ? `\n<description>${project.description}</description>`
+        : ""
     }\n</current_project>`;
   }
 
@@ -461,7 +465,8 @@ async function buildInferenceMessages(
     supportedMimeTypes?: string[];
     supportsSystemMessages?: boolean;
   },
-  project?: Project
+  project?: Project,
+  instructions?: string
 ): Promise<CoreMessage[]> {
   // Filter out any attachments that the model doesn’t support
   const filteredMessages = allMessages.filter((msg) => {
@@ -479,7 +484,7 @@ async function buildInferenceMessages(
   if (modelConfig.supportsSystemMessages) {
     messagesForCore.push({
       role: "system",
-      content: buildSystemMessage(undefined, project),
+      content: buildSystemMessage(instructions, project),
     });
   }
 
@@ -687,24 +692,16 @@ function createSearchTool(projectId: string | null, modelConfig: ModelConfig) {
 
   return {
     search_documents: tool({
-      description: `Provides semantic search against project documents, returning relevant passages with optional PDF/image previews.
+      description: `Provides semantic search against project documents, returning relevant passages.
 
 Usage:
-    1. Supply a short text query highlighting what you're looking for.
-    2. This tool employs semantic matching, returning documents scored by relevance.
-    3. Make multiple separate search calls with different queries to gather comprehensive information:
-       - Break down complex questions into multiple focused searches
-       - Try alternative phrasings to find different relevant passages
-       - Use follow-up searches to dive deeper into specific aspects
-       - Each search call can surface new, relevant information
+    1. A query that will be used to search over all project information.
+    2. This tool employs semantic search so you can use natural language queries.
 
 Returns:
     - Document metadata (ID, name, path, mimeType)
     - Relevant text snippets
-    - Relevance scores
-    - Optional page previews (PDF/images) if enabled
-
-Keep individual queries concise and targeted. Multiple focused searches are more effective than a single broad query.`,
+    - Relevance scores`,
       parameters: z.object({
         query: z.string(),
       }),
@@ -967,8 +964,9 @@ const ThreadOps = {
   async inference(req: Request, res: Response) {
     try {
       const { threadId } = req.params;
-      const { model, maxTokens, temperature, instructions, message } =
-        req.body as z.infer<typeof inferenceSchema>;
+      const { model, maxTokens, instructions, message } = req.body as z.infer<
+        typeof inferenceSchema
+      >;
 
       // SSE Setup
       res.setHeader("Content-Type", "text/event-stream");
@@ -1017,7 +1015,8 @@ const ThreadOps = {
       const inferenceMsgs = await buildInferenceMessages(
         allMessages,
         modelConfig,
-        thread.project
+        thread.project,
+        instructions
       );
 
       // 7) Create tools for the assistant if project ID exists
@@ -1030,7 +1029,7 @@ const ThreadOps = {
       const result = streamText({
         model: modelConfig.model,
         messages: inferenceMsgs,
-        temperature,
+        temperature: 0.45,
         tools: tools ? tools : undefined,
         maxSteps: tools ? 8 : undefined,
         toolChoice: "auto",
@@ -1108,9 +1107,17 @@ const ThreadOps = {
 
           // Create a message for the assistant's response
           if (finishReason === "stop" && text) {
-            const responseEmbedding = await embeddingModel.doEmbed({
-              values: [text],
-            });
+            let embedding = null;
+            if (text && text.length > 0) {
+              try {
+                const embeddingResult = await embeddingModel.doEmbed({
+                  values: [text],
+                });
+                embedding = embeddingResult.embeddings[0];
+              } catch (error) {
+                console.error("Error embedding message", error);
+              }
+            }
 
             // Persist the assistant's response
             await db.insert(messages).values({
@@ -1122,7 +1129,7 @@ const ThreadOps = {
               reasoning,
               createdAt: new Date(),
               model,
-              embedding: responseEmbedding.embeddings[0],
+              embedding: embedding,
               provider: modelConfig.provider,
             });
             return;
