@@ -13,7 +13,7 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
   return (
     <div
       className={cn(
-        "w-full rounded-lg border border-border p-3",
+        "w-fit rounded-lg border border-border p-3",
         (tool.state === "partial-call" || tool.state === "call") &&
           "animate-border-pulse"
       )}
