@@ -8,6 +8,10 @@ import db from "./config/db";
 import unstructured, {
   ALLOWED_UNSTRUCTURED_EXTENSIONS,
 } from "./config/unstructured";
+import { encoding_for_model } from "tiktoken";
+
+// Define constants
+const SUPER_CHUNK_SIZE = 95_000;
 
 export async function processFile(
   fileKey: string,
@@ -18,7 +22,6 @@ export async function processFile(
   try {
     // Determine extension (fallback to empty if no '.'):
     const extension = "." + (fileName.split(".").pop()?.toLowerCase() || "");
-    console.log(`Processing file with extension: ${extension}`);
 
     // Now check by extension instead:
     if (!ALLOWED_UNSTRUCTURED_EXTENSIONS.includes(extension)) {
@@ -68,11 +71,17 @@ export async function processFile(
     })) as typeof response.elements;
     const fullDocumentText = chunks.map((c) => c.text).join("\n");
 
-    // Add context to chunks
-    const contextualizedChunks = await addContextToChunks(
-      fullDocumentText,
-      chunks
+    // Create token-based super chunks of the full document
+    const superChunks = createSuperChunks(fullDocumentText, SUPER_CHUNK_SIZE);
+    console.log(`Created ${superChunks.length} super chunks from the document`);
+    console.log(
+      `Token count of each super chunk: ${superChunks.map(
+        (sc) => sc.tokenCount
+      )}`
     );
+
+    // Add context to chunks using the appropriate super chunk
+    const contextualizedChunks = await addContextToChunks(superChunks, chunks);
     console.log(
       `Finished contextualizing ${contextualizedChunks.length} chunks`
     );
@@ -124,7 +133,12 @@ export async function processFile(
 
 // Helper function to generate context for a chunk using GPT
 async function addContextToChunks(
-  fullDocument: string,
+  superChunks: {
+    text: string;
+    tokenCount: number;
+    startChar: number;
+    endChar: number;
+  }[],
   chunks: {
     [k: string]: any;
   }[]
@@ -140,19 +154,11 @@ async function addContextToChunks(
     try {
       const batchResults = await Promise.all(
         batch.map(async (chunk) => {
-          const localContext = getLocalContext(
-            fullDocument,
-            chunk.text,
-            95_000
-          );
+          // Find the most appropriate super chunk for this text chunk
+          const bestSuperChunk = findBestSuperChunk(superChunks, chunk.text);
           console.log(
-            `Situated chunk in local context. Length: ${localContext.length}`
+            `Found best super chunk with ${bestSuperChunk.tokenCount} tokens for chunk`
           );
-          //   // Count the tokens
-          //   const enc = encoding_for_model("gpt-4o-mini");
-          //   const tokenCount = enc.encode(localContext).length;
-          //   enc.free();
-          //   console.log(`Token count: ${tokenCount}`);
 
           const { text: context } = await generateText({
             model: MODELS["gpt-4o-mini"].model,
@@ -162,7 +168,7 @@ async function addContextToChunks(
                 content: [
                   {
                     type: "text",
-                    text: `<document>\n${localContext}\n</document>`,
+                    text: `<document>\n${bestSuperChunk.text}\n</document>`,
                   },
                   {
                     type: "text",
@@ -201,33 +207,110 @@ Answer only with the short context and nothing else.`,
 }
 
 /**
- * Get the local context without precise token counting
- * Uses character-based approximation instead of token counting
+ * Split the full document text into super chunks of approximately maxTokens
+ * @param fullText The full document text
+ * @param maxTokens Maximum number of tokens per super chunk
+ * @returns Array of super chunks with their token counts and start positions
  */
-export function getLocalContext(
-  fullText: string,
-  chunk: string,
-  maxTokens: number
-): string {
-  // Handle empty chunk case
-  if (chunk === "") return "";
+export function createSuperChunks(fullText: string, maxTokens: number) {
+  // Get the encoder for the model we're using
+  const enc = encoding_for_model("gpt-4o-mini");
 
-  const index = fullText.indexOf(chunk);
-  if (index === -1) return chunk;
+  try {
+    // Encode the full text to get tokens
+    const tokens = enc.encode(fullText);
+    const totalTokens = tokens.length;
+    console.log(`Total document tokens: ${totalTokens}`);
 
-  // Simple character-to-token approximation
-  const approxCharsPerToken = 4;
-  const approxMaxChars = maxTokens * approxCharsPerToken;
+    // Calculate optimal chunk size to distribute tokens more evenly
+    const numChunks = Math.ceil(totalTokens / maxTokens);
+    const optimalChunkSize = Math.ceil(totalTokens / numChunks);
+    console.log(
+      `Creating ${numChunks} chunks with ~${optimalChunkSize} tokens each`
+    );
 
-  // Extract context with chunk in the middle
-  const startPos = Math.max(0, index - approxMaxChars);
-  const endPos = Math.min(
-    fullText.length,
-    index + chunk.length + approxMaxChars
-  );
+    const superChunks = [];
+    let startTokenIdx = 0;
 
-  // Get the context with the chunk in the middle
-  return fullText.substring(startPos, endPos);
+    // Create super chunks of approximately optimalChunkSize tokens
+    while (startTokenIdx < totalTokens) {
+      // Calculate the end token index for this super chunk
+      const endTokenIdx = Math.min(
+        startTokenIdx + optimalChunkSize,
+        totalTokens
+      );
+
+      // Decode the tokens back to text for this super chunk
+      const chunkTokens = tokens.slice(startTokenIdx, endTokenIdx);
+      const chunkText = new TextDecoder().decode(enc.decode(chunkTokens));
+
+      // Store the super chunk with its token count and starting position in the original text
+      const startChar = fullText.indexOf(chunkText);
+      superChunks.push({
+        text: chunkText,
+        tokenCount: chunkTokens.length,
+        startChar: startChar,
+        endChar: startChar + chunkText.length,
+      });
+
+      startTokenIdx = endTokenIdx;
+    }
+
+    return superChunks;
+  } finally {
+    // Free the encoder
+    enc.free();
+  }
+}
+
+/**
+ * Find the most appropriate super chunk for a given text chunk
+ * @param superChunks Array of super chunks
+ * @param chunkText Text of the chunk to find context for
+ * @returns The most appropriate super chunk
+ */
+export function findBestSuperChunk(
+  superChunks: Array<{
+    text: string;
+    tokenCount: number;
+    startChar: number;
+    endChar: number;
+  }>,
+  chunkText: string
+) {
+  const chunkIndex = superChunks.findIndex((sc) => sc.text.includes(chunkText));
+
+  if (chunkIndex !== -1) {
+    // Found in a super chunk
+    return superChunks[chunkIndex];
+  }
+
+  // If not found directly, find the closest super chunk
+  // This handles edge cases where chunks might span super chunk boundaries
+  const fullText = superChunks.map((sc) => sc.text).join("");
+  const chunkPosition = fullText.indexOf(chunkText);
+
+  if (chunkPosition === -1) {
+    // If not found at all, return the first super chunk as fallback
+    console.warn(
+      "Chunk not found in full document, using first super chunk as fallback"
+    );
+    return superChunks[0];
+  }
+
+  // Find the super chunk with the closest starting position
+  let closestSuperChunk = superChunks[0];
+  let minDistance = Math.abs(chunkPosition - closestSuperChunk.startChar);
+
+  for (const sc of superChunks) {
+    const distance = Math.abs(chunkPosition - sc.startChar);
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestSuperChunk = sc;
+    }
+  }
+
+  return closestSuperChunk;
 }
 
 /** Sanitize text to remove unwanted characters and control codes */
