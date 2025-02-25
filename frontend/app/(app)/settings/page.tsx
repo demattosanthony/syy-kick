@@ -13,7 +13,7 @@ import { useMeQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { useAtom } from "jotai";
-import { instructionsAtom, temperatureAtom } from "@/atoms/chat";
+import { instructionsAtom } from "@/atoms/chat";
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import AdminSettings from "@/components/settings/admin-settings";
@@ -38,16 +38,9 @@ export default function UserSettings() {
     );
   }, [user, activeWorkspace]);
 
-  const [temperature, setTemperature] = useAtom(temperatureAtom);
-  const [, setInputValue] = useState(temperature.toFixed(2));
   const [instructions, setInstructions] = useAtom(instructionsAtom);
 
   const tab = searchParams.get("tab") || "account";
-
-  const handleTemperatureChange = (value: number[]) => {
-    const newTemp = value[0];
-    setTemperature(newTemp);
-  };
 
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -58,10 +51,6 @@ export default function UserSettings() {
     }
     router.push(`/settings?${params.toString()}`);
   };
-
-  useEffect(() => {
-    setInputValue(temperature.toFixed(1));
-  }, [temperature]);
 
   // Add useEffect for client-side mounting
   useEffect(() => {
