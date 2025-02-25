@@ -27,7 +27,7 @@ export default function ProjectNavBreadcrumbs({
             className="hover:text-blue-500 hover:underline"
             prefetch={false}
           >
-            All Projects
+            Projects
           </Link>
         </BreadcrumbItem>
         <BreadcrumbSeparator>

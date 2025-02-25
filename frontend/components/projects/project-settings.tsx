@@ -95,12 +95,12 @@ export default function ProjectSettings({ pid }: { pid: string }) {
   return (
     <div className="flex flex-col h-screen w-full">
       <div className="flex-1 overflow-y-auto w-full">
-        <div className="max-w-xl mx-auto pt-16 px-6 w-full ">
+        <div className="max-w-xl mx-auto pt-6 px-6 w-full ">
           <div className="space-y-6 pb-10 w-full">
             {/* Project Details Section */}
             <section className="space-y-4">
               <div className="space-y-1">
-                <h1 className="text-xl font-medium">Project Details</h1>
+                <h1 className="text-xl font-medium">Project Settings</h1>
                 <p className="text-sm text-muted-foreground">
                   Manage your project settings and configuration.
                 </p>
@@ -149,7 +149,7 @@ export default function ProjectSettings({ pid }: { pid: string }) {
             </section>
 
             {/* Danger Zone Section */}
-            <section className="flex items-center justify-between ">
+            <section className="flex items-center justify-between px-2">
               <div className="space-y-1">
                 <h2 className="text-base font-medium">Danger Zone</h2>
                 <p className="text-sm text-muted-foreground">
