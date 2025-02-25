@@ -28,12 +28,24 @@ import {
   useProjectQuery,
   useUpdateProjectMutation,
 } from "@/queries/queries";
+import { LocationSearch } from "../location-search";
 
 const formSchema = z.object({
   name: z.string().min(1, "Project name is required").max(100),
   description: z
     .string()
     .max(500, "Description must be less than 500 characters"),
+  location: z
+    .object({
+      address: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      country: z.string().optional(),
+      postalCode: z.string().optional(),
+      latitude: z.string().optional(),
+      longitude: z.string().optional(),
+    })
+    .optional(),
 });
 
 export default function ProjectSettings({ pid }: { pid: string }) {
@@ -49,6 +61,15 @@ export default function ProjectSettings({ pid }: { pid: string }) {
     defaultValues: {
       name: "",
       description: "",
+      location: {
+        address: "",
+        city: "",
+        state: "",
+        country: "",
+        postalCode: "",
+        latitude: "",
+        longitude: "",
+      },
     },
   });
 
@@ -59,6 +80,13 @@ export default function ProjectSettings({ pid }: { pid: string }) {
         data: {
           name: values.name,
           description: values.description,
+          address: values.location?.address || undefined,
+          city: values.location?.city || undefined,
+          state: values.location?.state || undefined,
+          country: values.location?.country || undefined,
+          postalCode: values.location?.postalCode || undefined,
+          latitude: values.location?.latitude || undefined,
+          longitude: values.location?.longitude || undefined,
         },
       });
       toast.success("Settings updated", {
@@ -82,12 +110,21 @@ export default function ProjectSettings({ pid }: { pid: string }) {
     }
   }
 
-  // Add this effect to update form values when project data is available
+  // Load form values
   useEffect(() => {
     if (project) {
       form.reset({
         name: project.name,
         description: project.description,
+        location: {
+          address: project.address,
+          city: project.city,
+          state: project.state,
+          country: project.country,
+          postalCode: project.postalCode,
+          latitude: project.latitude,
+          longitude: project.longitude,
+        },
       });
     }
   }, [project, form]);
@@ -140,6 +177,25 @@ export default function ProjectSettings({ pid }: { pid: string }) {
                         </div>
                       )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name="location"
+                      render={({ field }) => (
+                        <div>
+                          <Label className="text-muted-foreground text-sm">
+                            Location
+                          </Label>
+                          <LocationSearch
+                            value={field.value || {}}
+                            onChange={(locationData) => {
+                              field.onChange(locationData);
+                            }}
+                          />
+                        </div>
+                      )}
+                    />
+
                     <div className="flex justify-end">
                       <Button type="submit">Save Changes</Button>
                     </div>

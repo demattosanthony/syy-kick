@@ -54,15 +54,10 @@ function ProjectItem({ project }: { project: Project }) {
 
           <div className="flex-1 min-w-0">
             <p className="text-xl font-medium">{project.name}</p>
-            {/* {project.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2 max-w-[calc(100vw-8rem)] md:max-w-[calc(100vw-8rem)] mt-1">
-                {project.description}
-              </p>
-            )} */}
 
-            <time className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground ">
               Updated {getRelativeTimeString(project.updatedAt)}
-            </time>
+            </p>
           </div>
 
           <div className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200">
