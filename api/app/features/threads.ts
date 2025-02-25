@@ -280,8 +280,7 @@ Instructions:
 
 3. Structure your answer for optimal readability:
    - Begin with a brief introductory sentence or paragraph.
-   - Use level 2 headers (##) for main sections.
-   - Use bolding (**) for subsections or emphasis.
+   - Separate your answer into logical sections using level 2 headers (##) for sections and bolding (**) for subsections.
    - Incorporate tables for comparisons or data presentation.
    - Use bullet points sparingly, only for clear enumerations.
    - Use numbered lists only for rankings.
