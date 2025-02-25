@@ -25,6 +25,7 @@ export default function ProjectNavBreadcrumbs({
           <Link
             href={`/projects/${project.id}`}
             className="hover:text-blue-500 hover:underline"
+            prefetch={false}
           >
             {project?.name}
           </Link>
@@ -46,6 +47,7 @@ export default function ProjectNavBreadcrumbs({
                       .slice(0, index + 1)
                       .join("/")}`}
                     className="hover:text-blue-500 hover:underline"
+                    prefetch={false}
                   >
                     {decodedSegment}
                   </Link>
