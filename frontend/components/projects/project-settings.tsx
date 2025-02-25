@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Form, FormField } from "@/components/ui/form";
@@ -64,7 +64,7 @@ export default function ProjectSettings({ pid }: { pid: string }) {
       toast.success("Settings updated", {
         description: "Your project settings have been updated successfully.",
       });
-    } catch (error) {
+    } catch {
       toast.error("Failed to update project settings. Please try again.");
     }
   }
@@ -76,7 +76,7 @@ export default function ProjectSettings({ pid }: { pid: string }) {
         description: "Your project has been deleted successfully.",
       });
       router.push("/projects");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete project. Please try again.");
     } finally {
     }

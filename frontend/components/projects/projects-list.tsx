@@ -8,7 +8,7 @@ import { useRef } from "react";
 import { Skeleton } from "../ui/skeleton";
 import { Project } from "@/types/project";
 import { getRelativeTimeString } from "@/lib/utils";
-import { Folder, FolderClosed, FolderOpen } from "lucide-react";
+import { FolderClosed, FolderOpen } from "lucide-react";
 
 export default function ProjectsList() {
   const searchParams = useSearchParams();
