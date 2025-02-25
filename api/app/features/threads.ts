@@ -624,7 +624,6 @@ async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
     await s3
       .file(imageKey)
       .write(Buffer.from(base64Image, "base64"), { type: "image/png" });
-    console.log(s3.file(imageKey).presign({ expiresIn: 3600 }));
 
     // Save thumbnail reference in database
     await db.insert(documentThumbnails).values({
