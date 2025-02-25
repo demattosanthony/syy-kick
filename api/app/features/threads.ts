@@ -151,25 +151,31 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
     msg.attachments = await processAttachments(msg.attachments);
 
     msg.toolCalls = msg.toolCalls?.map((call) => {
-      const uniqueDocs = getUniqueDocuments(call.result.docs);
+      // Only process search_project_information tool calls
+      if (call.toolName === "search_project_information" && call.result?.docs) {
+        const uniqueDocs = getUniqueDocuments(call.result.docs);
 
-      return {
-        ...call,
-        result: {
-          dataForFrontend: uniqueDocs.map((doc) => ({
-            document_id: doc.documentId,
-            source: doc.documentName,
-            snippet: doc.text,
-            path: doc.path,
-            score: doc.similarity,
-            page: doc.pageNumber,
-            projectId: doc.projectId,
-            url: doc.fileKey
-              ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
-              : undefined,
-          })),
-        },
-      };
+        return {
+          ...call,
+          result: {
+            ...call.result, // Preserve existing result properties
+            dataForFrontend: uniqueDocs.map((doc) => ({
+              document_id: doc.documentId,
+              source: doc.documentName,
+              snippet: doc.text,
+              path: doc.path,
+              score: doc.similarity,
+              page: doc.pageNumber,
+              projectId: doc.projectId,
+              url: doc.fileKey
+                ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+                : undefined,
+            })),
+          },
+        };
+      }
+      // For other tool calls (like web_search), return as is
+      return call;
     });
   }
 
@@ -682,13 +688,51 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
 }
 
 /** Creates search tool if project ID exists */
-function createSearchTool(projectId: string | null, modelConfig: ModelConfig) {
-  if (!projectId) return undefined;
-
+function createTools(modelConfig: ModelConfig, projectId?: string) {
   return {
-    search_documents: tool({
-      description: `Provides semantic search against project documents, returning relevant passages with optional PDF/image previews.
+    web_search: tool({
+      description: `A web search tool that retrieves relevant information from across the internet.
 
+When to use:
+- Looking up current events, news, or general knowledge
+- Finding technical documentation or reference materials
+- Researching companies, products, or technologies
+- Fact-checking or verifying information
+
+Input:
+- query: A clear, specific search phrase (e.g. "latest TypeScript features 2024" or "SpaceX Starship specifications")
+
+Output:
+- List of relevant search results containing:
+  - Title and URL of each result
+  - Content snippets showing relevant text
+  - Source information and metadata
+  - Relevance ranking
+
+Tips:
+- Use specific, focused queries for better results
+- Include key terms and any relevant date ranges
+- Avoid overly broad or vague searches`,
+      parameters: z.object({
+        query: z.string(),
+      }),
+      execute: async ({ query }) => {
+        console.log("Searching Exa for: ", query);
+        const results = await exa.searchAndContents(query, {
+          text: true,
+          numResults: 6,
+        });
+
+        console.log("Results: ", results.results.length);
+
+        return results.results;
+      },
+    }),
+
+    ...(projectId && {
+      search_project_information: tool({
+        description: `Provides semantic search against project documents, returning relevant passages with optional PDF/image previews.
+  
 Usage:
     1. Supply a short text query highlighting what you're looking for.
     2. This tool employs semantic matching, returning documents scored by relevance.
@@ -705,112 +749,96 @@ Returns:
     - Optional page previews (PDF/images) if enabled
 
 Keep individual queries concise and targeted. Multiple focused searches are more effective than a single broad query.`,
-      parameters: z.object({
-        query: z.string(),
-      }),
-      execute: async ({ query }) => {
-        console.log("Searching project documents for: ", query);
-        const res = await searchProjectDocuments(projectId, query, 80);
+        parameters: z.object({
+          query: z.string(),
+        }),
+        execute: async ({ query }) => {
+          console.log("Searching project documents for: ", query);
+          const res = await searchProjectDocuments(projectId, query, 80);
 
-        console.log("Search results:", res.length);
+          console.log("Search results:", res.length);
 
-        // Rerank results
-        const rerankedResults = await reranker.rerank(
-          query,
-          res.map((r) => r.text || ""),
-          {
-            topN: 20,
-            returnDocuments: true,
+          // Rerank results
+          const rerankedResults = await reranker.rerank(
+            query,
+            res.map((r) => r.text || ""),
+            {
+              topN: 20,
+              returnDocuments: true,
+            }
+          );
+
+          // Create a map of text to original result for lookup
+          const textToResultMap = new Map(res.map((r) => [r.text, r]));
+
+          // Map reranked results to simplified schema
+          const simplifiedDocs: DocumentSearchToolResult[] =
+            rerankedResults.results.map((reranked) => {
+              const originalDoc = textToResultMap.get(reranked.document.text)!;
+              return {
+                documentId: originalDoc.document.id,
+                projectId: projectId,
+                path: originalDoc.document.path,
+                documentName: originalDoc.document.name,
+                text: originalDoc.text,
+                similarity: reranked.relevance_score,
+                pageNumber: (originalDoc.metadata as { page_number?: number })
+                  ?.page_number,
+                mimeType: originalDoc.document.mimeType,
+                fileKey: originalDoc.document.fileKey,
+              };
+            });
+
+          console.log("Simplified docs length:", simplifiedDocs.length);
+
+          // Use the typed helper functions with simplified schema
+          const uniqueDocs = getUniqueDocuments(simplifiedDocs);
+          const searchContext = convertResultsToXml(simplifiedDocs);
+
+          // Generate images if supported by model
+          let images: {
+            fileKey: string;
+            imageData: string;
+            mimeType: string;
+          }[] = [];
+          if (modelConfig.model.modelId.includes("claude-3-7-sonnet")) {
+            images = await processDocumentImages(uniqueDocs);
           }
-        );
 
-        // Create a map of text to original result for lookup
-        const textToResultMap = new Map(res.map((r) => [r.text, r]));
+          return {
+            context: searchContext,
+            docs: simplifiedDocs,
+            images,
 
-        // Map reranked results to simplified schema
-        const simplifiedDocs: DocumentSearchToolResult[] =
-          rerankedResults.results.map((reranked) => {
-            const originalDoc = textToResultMap.get(reranked.document.text)!;
-            return {
-              documentId: originalDoc.document.id,
-              projectId: projectId,
-              path: originalDoc.document.path,
-              documentName: originalDoc.document.name,
-              text: originalDoc.text,
-              similarity: reranked.relevance_score,
-              pageNumber: (originalDoc.metadata as { page_number?: number })
-                ?.page_number,
-              mimeType: originalDoc.document.mimeType,
-              fileKey: originalDoc.document.fileKey,
-            };
-          });
-
-        console.log("Simplified docs length:", simplifiedDocs.length);
-
-        // Use the typed helper functions with simplified schema
-        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
-        const searchContext = convertResultsToXml(simplifiedDocs);
-
-        // Generate images if supported by model
-        let images: {
-          fileKey: string;
-          imageData: string;
-          mimeType: string;
-        }[] = [];
-        if (modelConfig.model.modelId.includes("claude-3-7-sonnet")) {
-          images = await processDocumentImages(uniqueDocs);
-        }
-
-        return {
-          context: searchContext,
-          docs: simplifiedDocs,
-          images,
-
-          // Format data thats easy for frontend to use
-          dataForFrontend: uniqueDocs.map((doc) => ({
-            document_id: doc.documentId,
-            path: doc.path,
-            projectId: doc.projectId,
-            source: doc.documentName,
-            snippet: doc.text,
-            score: doc.similarity,
-            page: doc.pageNumber,
-            url: doc.fileKey
-              ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
-              : undefined,
-          })),
-        };
-      },
-      experimental_toToolResultContent(result) {
-        return [
-          ...result.images.map((image) => ({
-            type: "image" as const,
-            data: image.imageData,
-            mimeType: image.mimeType,
-          })),
-          {
-            type: "text",
-            text: result.context,
-          },
-        ];
-      },
-    }),
-
-    web_search: tool({
-      description: `Perform an Exa search given an input query and retrieve a list of relevant results as links, optionally including the full text and/or highlights of the content.`,
-      parameters: z.object({
-        query: z.string(),
+            // Format data thats easy for frontend to use
+            dataForFrontend: uniqueDocs.map((doc) => ({
+              document_id: doc.documentId,
+              path: doc.path,
+              projectId: doc.projectId,
+              source: doc.documentName,
+              snippet: doc.text,
+              score: doc.similarity,
+              page: doc.pageNumber,
+              url: doc.fileKey
+                ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+                : undefined,
+            })),
+          };
+        },
+        experimental_toToolResultContent(result) {
+          return [
+            ...result.images.map((image) => ({
+              type: "image" as const,
+              data: image.imageData,
+              mimeType: image.mimeType,
+            })),
+            {
+              type: "text",
+              text: result.context,
+            },
+          ];
+        },
       }),
-      execute: async ({ query }) => {
-        console.log("Searching Exa for: ", query);
-        const results = await exa.searchAndContents(query, {
-          text: true,
-        });
-
-        console.log("Results: ", results.results);
-
-        return JSON.stringify(results.results, null, 2);
-      },
     }),
   };
 }
@@ -1038,10 +1066,7 @@ const ThreadOps = {
       );
 
       // 7) Create tools for the assistant if project ID exists
-      const tools =
-        thread.projectId && message.content
-          ? createSearchTool(thread.projectId, modelConfig)
-          : undefined;
+      const tools = createTools(modelConfig, thread.projectId || undefined);
 
       // Start the streaming from the AI
       const result = streamText({
@@ -1085,6 +1110,8 @@ const ThreadOps = {
 
             // Then persist each tool call and its result
             for (const toolCall of toolCalls) {
+              if (!toolCall) continue;
+
               const toolCallId = crypto.randomUUID();
               await db.insert(toolCallsTable).values({
                 id: toolCallId,
@@ -1102,18 +1129,32 @@ const ThreadOps = {
                 (r) => r.toolCallId === toolCall.toolCallId
               );
 
-              if (result && toolCall.toolName === "search_documents") {
+              if (
+                result &&
+                toolCall.toolName === "search_project_information"
+              ) {
                 await db
                   .update(toolCallsTable)
                   .set({
                     status: "completed",
                     result: {
-                      docs: result.result.docs,
-                      images: result.result.images.map((image) => ({
-                        fileKey: image.fileKey,
-                        mimeType: image.mimeType,
-                      })),
+                      docs: (result.result as any).docs,
+                      images:
+                        (result.result as any).images?.map((image: any) => ({
+                          fileKey: image.fileKey,
+                          mimeType: image.mimeType,
+                        })) || [],
                     },
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
+              } else if (result && toolCall.toolName === "web_search") {
+                console.log("Web search result:", result.result);
+                await db
+                  .update(toolCallsTable)
+                  .set({
+                    status: "completed",
+                    result: result.result,
                     updatedAt: new Date(),
                   })
                   .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));

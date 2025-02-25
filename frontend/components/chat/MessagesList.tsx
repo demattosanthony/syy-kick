@@ -63,7 +63,7 @@ const MessageBubble = ({
 
 import { Message } from "ai/react";
 import { ThinkingDropdown } from "./ThinkingDropdown";
-import SearchDocumentsTool from "./ToolCallResult";
+import { ToolCallMessageContent } from "./ToolCallResult";
 
 const AssistantMessage = ({
   message,
@@ -103,7 +103,10 @@ const AssistantMessage = ({
                 );
               case "tool-invocation":
                 return (
-                  <SearchDocumentsTool tool={part.toolInvocation} key={index} />
+                  <ToolCallMessageContent
+                    tool={part.toolInvocation}
+                    key={index}
+                  />
                 );
               default:
                 return null;
