@@ -1,11 +1,24 @@
 "use client";
 
-import { useProjectQuery } from "@/queries/queries";
+import { useMeQuery, useProjectQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { ProjectAddFileButton } from "./project-add-file-button";
+import { Button } from "../ui/button";
+import { Settings } from "lucide-react";
+import Link from "next/link";
 
 export default function ProjectHeader({ pid }: { pid: string }) {
   const { data: project } = useProjectQuery(pid);
+  const { data: me } = useMeQuery();
+
+  // Check if user is an owner of the project's organization or if it's their personal project
+  const isOrgOwner = project?.organizationId
+    ? me?.organizationMembers?.some(
+        (member) =>
+          member.organization.id === project.organizationId &&
+          member.role === "owner"
+      )
+    : project?.user?.id === me?.id;
 
   // Use nullish coalescing for a simple fallback
   const logo = project?.organization?.logoUrl ?? project?.user?.profilePicture;
@@ -25,6 +38,13 @@ export default function ProjectHeader({ pid }: { pid: string }) {
           </div>
           <div className="flex gap-2">
             <ProjectAddFileButton projectId={pid} />
+            {isOrgOwner && (
+              <Link href={`/projects/${pid}/settings`} prefetch={false}>
+                <Button variant={"ghost"} size={"icon"}>
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>

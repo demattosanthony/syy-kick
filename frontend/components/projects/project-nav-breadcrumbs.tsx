@@ -23,6 +23,18 @@ export default function ProjectNavBreadcrumbs({
       <BreadcrumbList>
         <BreadcrumbItem>
           <Link
+            href={`/projects`}
+            className="hover:text-blue-500 hover:underline"
+            prefetch={false}
+          >
+            Projects
+          </Link>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator>
+          <Slash />
+        </BreadcrumbSeparator>
+        <BreadcrumbItem>
+          <Link
             href={`/projects/${project.id}`}
             className="hover:text-blue-500 hover:underline"
             prefetch={false}

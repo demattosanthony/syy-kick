@@ -18,11 +18,14 @@ export default function ProjectsHeader() {
   // Return null if we're not in a project path or if project data isn't available
   if (!isProjectPath) return null;
 
+  // Check if we're in the settings path
+  const isSettingsPath = pathname.includes("/settings");
+
   return (
     <div className="h-14 flex items-center justify-between w-full px-4">
       <div>{project && <ProjectNavBreadcrumbs project={project} />}</div>
 
-      <ProjectAddFileButton projectId={pid} />
+      {!isSettingsPath && <ProjectAddFileButton projectId={pid} />}
     </div>
   );
 }

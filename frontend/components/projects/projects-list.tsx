@@ -8,6 +8,7 @@ import { useRef } from "react";
 import { Skeleton } from "../ui/skeleton";
 import { Project } from "@/types/project";
 import { getRelativeTimeString } from "@/lib/utils";
+import { FolderClosed, FolderOpen } from "lucide-react";
 
 export default function ProjectsList() {
   const searchParams = useSearchParams();
@@ -44,16 +45,41 @@ export default function ProjectsList() {
 function ProjectItem({ project }: { project: Project }) {
   return (
     <Link href={`/projects/${project.id}`} prefetch>
-      <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full">
+      <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full group">
         <div className="flex items-center gap-4 min-w-0">
+          <div className="text-muted-foreground relative">
+            <FolderClosed className="w-6 h-6 absolute text-blue-400 fill-blue-400 transition-opacity duration-200 group-hover:opacity-0" />
+            <FolderOpen className="w-6 h-6 text-blue-400 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+          </div>
+
           <div className="flex-1 min-w-0">
             <p className="text-xl font-medium">{project.name}</p>
-            <p className="text-sm text-muted-foreground line-clamp-2 max-w-[calc(100vw-8rem)] md:max-w-[calc(100vw-8rem)]">
-              {project.description}
-            </p>
+            {project.description && (
+              <p className="text-sm text-muted-foreground line-clamp-2 max-w-[calc(100vw-8rem)] md:max-w-[calc(100vw-8rem)] mt-1">
+                {project.description}
+              </p>
+            )}
+
             <time className="text-xs text-muted-foreground">
               Updated {getRelativeTimeString(project.updatedAt)}
             </time>
+          </div>
+
+          <div className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-blue-400"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
           </div>
         </div>
       </div>
