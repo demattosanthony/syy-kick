@@ -71,7 +71,7 @@ export const anthropicModels = (
       supportsStreaming: true,
       provider: "anthropic",
       supportsSystemMessages: true,
-      supportedMimeTypes,
+      supportedMimeTypes: [],
       maxImageSize: 5 * 1024 * 1024, // 5MB
       description:
         "Claude 3.5 Haiku is the next generation of our fastest model. For a similar speed to Claude 3 Haiku, Claude 3.5 Haiku improves across every skill set and surpasses Claude 3 Opus, the largest model in our previous generation, on many intelligence benchmarks.",
@@ -172,18 +172,18 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
-    "gemini-2.0-pro": {
-      model: google("gemini-2.0-pro-exp-02-05"),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      description:
-        "Gemini 2.0 Pro is a robust model from Google, well-suited for a variety of tasks including text generation, translation, and code completion. It supports tool use, streaming, image and PDF inputs, making it a versatile option for many applications.",
-    },
+    // "gemini-2.0-pro": {
+    //   model: google("gemini-2.0-pro-exp-02-05"),
+    //   supportsToolUse: true,
+    //   supportsStreaming: true,
+    //   provider: "google",
+    //   supportsSystemMessages: true,
+    //   supportedMimeTypes,
+    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+    //   maxFileSize: 50 * 1024 * 1024, // 50MB
+    //   description:
+    //     "Gemini 2.0 Pro is a robust model from Google, well-suited for a variety of tasks including text generation, translation, and code completion. It supports tool use, streaming, image and PDF inputs, making it a versatile option for many applications.",
+    // },
     "gemini-2.0-flash": {
       model: google("gemini-2.0-flash"),
       supportsToolUse: true,
