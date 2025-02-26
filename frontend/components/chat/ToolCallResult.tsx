@@ -15,6 +15,7 @@ import MarkdownViewer from "../viewers/markdown-viewer";
 import { Button } from "../ui/button";
 import { useAtom } from "jotai";
 import { selectedArtifactAtom } from "@/atoms/chat";
+import { useSidebar } from "../ui/sidebar";
 
 export const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
   switch (tool.toolName) {
@@ -155,6 +156,7 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
   const documentContent = tool.args?.content;
   const isStreaming = tool.state === "partial-call" || tool.state === "call";
   const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
+  const { setOpen } = useSidebar();
 
   const isSelectedArtifact = selectedArtifact?.id === tool.toolCallId;
 
@@ -182,7 +184,7 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
           "rounded-lg border overflow-hidden",
           isSelectedArtifact
             ? "w-fit border-primary/40 shadow-sm bg-background"
-            : "w-fit border-border shadow-sm"
+            : "w-fit border-border shadow-md"
         )}
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -230,6 +232,7 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
               if (isSelectedArtifact) {
                 setSelectedArtifact(null);
               } else {
+                setOpen(false);
                 setSelectedArtifact({
                   id: tool.toolCallId,
                   title: documentTitle || "Untitled Document",

@@ -322,11 +322,13 @@ export default function ThreadPage({
                           </Button>
                         </div>
                       </div>
-                      <div className="p-4 px-6">
-                        <MarkdownEditorViewer
-                          initialContent={selectedArtifact.content}
-                          editable
-                        />
+                      <div className="p-4 px-6 flex justify-center">
+                        <div className="max-w-[800px] w-full">
+                          <MarkdownEditorViewer
+                            initialContent={selectedArtifact.content}
+                            editable
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
