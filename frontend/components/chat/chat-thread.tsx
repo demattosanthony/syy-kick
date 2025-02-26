@@ -200,7 +200,7 @@ export default function ThreadPage({
           handleInputChange={handleInputChange}
           onSubmit={onSubmit}
           stop={stop}
-          isGenerating={status === "submitted" || status === "streaming"}
+          isGenerating={status === "streaming"}
           showContextSelector={thread?.project !== null}
           projectId={thread?.project?.id}
         />
