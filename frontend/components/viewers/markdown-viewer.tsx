@@ -23,6 +23,13 @@ import {
   TypographyLi,
 } from "../Typography";
 import { Button } from "../ui/button";
+import { Markdown } from "tiptap-markdown";
+import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
 
 const SyntaxHighlighter =
   Prism as typeof React.Component<SyntaxHighlighterProps>;
@@ -92,7 +99,28 @@ const EditableBlock = ({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        // Add any specific configurations here
+        heading: {
+          levels: [1, 2, 3, 4],
+        },
+        bulletList: {},
+        orderedList: {},
+        code: {},
+        codeBlock: {},
+        blockquote: {},
+      }),
+      Link.configure({
+        openOnClick: false,
+      }),
+      Image,
+      Table,
+      TableRow,
+      TableCell,
+      TableHeader,
+      // Add Markdown extension to handle conversion
+      Markdown.configure({
+        html: false,
+        transformPastedText: true,
+        transformCopiedText: false,
       }),
       // Add a custom keymap extension
       Extension.create({
@@ -104,46 +132,44 @@ const EditableBlock = ({
               return true;
             },
             "Mod-Enter": () => {
-              editor?.commands.blur();
+              // Save content without closing the editor
+              if (editor) {
+                setIsSaving(true);
+                const markdown = editor.storage.markdown.getMarkdown();
+                onUpdate(markdown);
+
+                setTimeout(() => {
+                  setIsSaving(false);
+                }, 300);
+              }
               return true;
             },
           };
         },
       }),
     ],
-    content: block.markdown,
     editable: isEditing,
     onBlur: () => {
       if (editor) {
         setIsSaving(true);
-        // Get the HTML content instead of plain text to preserve formatting
-        const content = editor.getHTML();
-        // Convert HTML to markdown before saving
-        const markdown = convertHtmlToMarkdown(content);
+        // Get the markdown content from the editor
+        const markdown = editor.storage.markdown.getMarkdown();
         onUpdate(markdown);
 
-        // Add a small delay to show saving indicator
+        // Just show saving indicator without closing the editor
         setTimeout(() => {
-          setIsEditing(false);
           setIsSaving(false);
         }, 300);
       }
     },
   });
-
-  // Helper function to convert HTML to markdown (placeholder)
-  const convertHtmlToMarkdown = (html: string) => {
-    // In a real implementation, you would use a library like turndown
-    // This is just a placeholder
-    return html.replace(/<[^>]*>/g, "");
-  };
-
-  // Update editor content when block changes
+  // Parse markdown and set content when entering edit mode
   useEffect(() => {
-    if (editor && editor.getText() !== block.markdown) {
+    if (editor && isEditing) {
+      // This will convert markdown to the editor's internal format
       editor.commands.setContent(block.markdown);
     }
-  }, [block.markdown, editor]);
+  }, [isEditing, editor, block.markdown]);
 
   // Set editor to editable and focus when isEditing changes
   useEffect(() => {
@@ -204,12 +230,116 @@ const EditableBlock = ({
       >
         {isEditing && editor ? (
           <div className="border rounded-md p-2 focus-within:ring-2 focus-within:ring-blue-500 transition-all">
-            <div className="text-xs text-gray-500 mb-1 flex items-center">
-              <span className="mr-1">✏️</span> Editing
+            <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
+              <span>
+                <span className="mr-1">✏️</span> Editing
+              </span>
+              <div className="flex space-x-2">
+                {/* Enhanced formatting toolbar */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    editor.chain().focus().toggleBold().run();
+                  }}
+                  data-active={editor.isActive("bold")}
+                >
+                  <strong>B</strong>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5"
+                  onClick={() => editor.chain().focus().toggleItalic().run()}
+                  data-active={editor.isActive("italic")}
+                >
+                  <em>I</em>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5"
+                  onClick={() => editor.chain().focus().toggleCode().run()}
+                  data-active={editor.isActive("code")}
+                >
+                  <code>{"<>"}</code>
+                </Button>
+                <span className="border-r h-4 mx-1"></span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5"
+                  onClick={() =>
+                    editor.chain().focus().toggleHeading({ level: 1 }).run()
+                  }
+                  data-active={editor.isActive("heading", { level: 1 })}
+                >
+                  H1
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5"
+                  onClick={() =>
+                    editor.chain().focus().toggleHeading({ level: 2 }).run()
+                  }
+                  data-active={editor.isActive("heading", { level: 2 })}
+                >
+                  H2
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5"
+                  onClick={() =>
+                    editor.chain().focus().toggleHeading({ level: 3 }).run()
+                  }
+                  data-active={editor.isActive("heading", { level: 3 })}
+                >
+                  H3
+                </Button>
+                <span className="border-r h-4 mx-1"></span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5"
+                  onClick={() =>
+                    editor.chain().focus().toggleBulletList().run()
+                  }
+                  data-active={editor.isActive("bulletList")}
+                >
+                  •
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5"
+                  onClick={() =>
+                    editor.chain().focus().toggleOrderedList().run()
+                  }
+                  data-active={editor.isActive("orderedList")}
+                >
+                  1.
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5"
+                  onClick={() =>
+                    editor.chain().focus().toggleBlockquote().run()
+                  }
+                  data-active={editor.isActive("blockquote")}
+                >
+                  "
+                </Button>
+              </div>
             </div>
             <EditorContent
               editor={editor}
-              className="ProseMirror-focused-override"
+              className="prose dark:prose-invert max-w-none"
             />
             <div className="flex justify-between mt-2 text-sm">
               <div className="text-gray-500">
@@ -228,24 +358,72 @@ const EditableBlock = ({
                 <Button
                   size="sm"
                   variant="default"
-                  onClick={() => editor.commands.blur()}
+                  onClick={() => {
+                    if (editor) {
+                      setIsSaving(true);
+                      const markdown = editor.storage.markdown.getMarkdown();
+                      onUpdate(markdown);
+
+                      setTimeout(() => {
+                        setIsSaving(false);
+                        setIsEditing(false); // Exit edit mode after saving
+                      }, 300);
+                    }
+                  }}
                 >
                   Save
                 </Button>
               </div>
             </div>
             <style jsx global>{`
-              .ProseMirror-focused-override .ProseMirror {
-                outline: none !important;
-                box-shadow: none !important;
-                border: none !important;
-                min-height: 100px;
-              }
               .ProseMirror {
                 outline: none !important;
-                box-shadow: none !important;
-                border: none !important;
+                min-height: 100px;
                 padding: 0.5rem;
+              }
+              .ProseMirror p {
+                margin: 0.5em 0;
+              }
+              .ProseMirror h1,
+              .ProseMirror h2,
+              .ProseMirror h3,
+              .ProseMirror h4 {
+                margin: 1em 0 0.5em;
+                font-weight: bold;
+              }
+              .ProseMirror h1 {
+                font-size: 1.75em;
+              }
+              .ProseMirror h2 {
+                font-size: 1.5em;
+              }
+              .ProseMirror h3 {
+                font-size: 1.25em;
+              }
+              .ProseMirror h4 {
+                font-size: 1.1em;
+              }
+              .ProseMirror ul,
+              .ProseMirror ol {
+                padding-left: 1.5em;
+                margin: 0.5em 0;
+              }
+              .ProseMirror blockquote {
+                border-left: 3px solid #ddd;
+                padding-left: 1em;
+                margin-left: 0;
+                margin-right: 0;
+                font-style: italic;
+              }
+              .ProseMirror code {
+                background-color: rgba(97, 97, 97, 0.1);
+                border-radius: 3px;
+                padding: 0.2em 0.4em;
+                font-family: monospace;
+              }
+              [data-active="true"] {
+                background-color: rgba(59, 130, 246, 0.1);
+                color: rgb(59, 130, 246);
               }
             `}</style>
           </div>
