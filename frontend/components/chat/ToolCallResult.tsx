@@ -4,7 +4,7 @@ import {
   ChevronDown,
   Loader2,
   Maximize,
-  Minimize,
+  Minimize2,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
@@ -158,12 +158,31 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
 
   const isSelectedArtifact = selectedArtifact?.id === tool.toolCallId;
 
+  // Update the selected artifact when content changes
+  React.useEffect(() => {
+    if (isSelectedArtifact && documentContent) {
+      setSelectedArtifact({
+        id: tool.toolCallId,
+        title: documentTitle || "Untitled Document",
+        content: documentContent,
+      });
+    }
+  }, [
+    documentContent,
+    documentTitle,
+    isSelectedArtifact,
+    setSelectedArtifact,
+    tool.toolCallId,
+  ]);
+
   return (
     <AnimatePresence>
       <motion.div
         className={cn(
-          "rounded-lg border border-border overflow-hidden my-2",
-          isSelectedArtifact ? "w-auto" : "w-fit"
+          "rounded-lg border overflow-hidden",
+          isSelectedArtifact
+            ? "w-fit border-primary/40 shadow-sm bg-background"
+            : "w-fit border-border"
         )}
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -173,19 +192,37 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
         }}
       >
         {/* Document Header */}
-        <div className="flex items-center justify-between bg-secondary/40 p-3">
+        <div
+          className={cn(
+            "flex items-center justify-between px-3 py-2",
+            isSelectedArtifact && "border-b border-primary/20"
+          )}
+        >
           <div className="flex items-center gap-2">
             {isStreaming ? (
               <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
             ) : (
-              <File className="w-4 h-4 text-muted-foreground" />
+              <File
+                className={cn(
+                  "w-4 h-4",
+                  isSelectedArtifact ? "text-primary" : "text-muted-foreground"
+                )}
+              />
             )}
-            <span className="font-medium text-sm truncate max-w-[400px]">
+            <span
+              className={cn(
+                "text-sm truncate max-w-[400px]",
+                isSelectedArtifact ? "font-medium text-primary" : "font-normal"
+              )}
+            >
               {documentTitle || "Untitled Document"}
             </span>
           </div>
           <Button
-            className="hover:bg-secondary rounded-sm transition-colors"
+            className={cn(
+              "rounded-md transition-colors text-muted-foreground",
+              isSelectedArtifact ? " ml-1 h-7 w-7" : "hover:bg-secondary"
+            )}
             title={isSelectedArtifact ? "Minimize" : "Expand full screen"}
             variant={"ghost"}
             size={"icon"}
@@ -202,7 +239,7 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
             }}
           >
             {isSelectedArtifact ? (
-              <Minimize className="w-4 h-4" />
+              <Minimize2 className="w-4 h-4" />
             ) : (
               <Maximize className="w-4 h-4" />
             )}
@@ -212,7 +249,7 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
         {/* Document Content Preview - only show if not selected */}
         {!isSelectedArtifact && (
           <motion.div
-            className="p-4 max-h-[320px] overflow-y-auto bg-card"
+            className="px-4 max-h-[320px] overflow-y-auto bg-card"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.3 }}

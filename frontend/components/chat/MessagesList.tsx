@@ -75,7 +75,7 @@ const AssistantMessage = ({
   return (
     <div className="my-2 flex flex-col justify-start">
       <div className="flex">
-        <div className="mr-2 w-[32px] h-[32px]">
+        <div className="mr-2 mt-3 w-[32px] h-[32px]">
           {showEye ? <Syyclops3dEye size={32} animate={false} /> : null}
         </div>
 
@@ -205,8 +205,8 @@ const ChatMessagesList = React.memo(
 
     return (
       <div className="flex-1 w-full h-full relative">
-        <div className="absolute inset-0 overflow-y-auto">
-          <div className="max-w-[840px] mx-auto pt-20 p-4">
+        <div className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
+          <div className="max-w-[840px] mx-auto pt-20 p-4 flex flex-col">
             {messages.map((message, index) => {
               const nextMessage = messages[index + 1];
               const showEye =

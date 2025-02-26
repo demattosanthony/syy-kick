@@ -32,7 +32,7 @@ import { toast } from "sonner";
 import { useWorkspace } from "../sidebar/workspace-context";
 import MarkdownEditorViewer from "../viewers/markdown-viewer";
 import { Button } from "../ui/button";
-import { Copy } from "lucide-react";
+import { Copy, X } from "lucide-react";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -239,10 +239,12 @@ export default function ThreadPage({
     <>
       <div id="chat-container" className="flex h-full w-full relative">
         <div
-          className="flex flex-col h-full"
-          style={{ width: selectedArtifact ? `${splitPosition}%` : "100%" }}
+          className="flex flex-col h-full min-w-[300px]"
+          style={{
+            width: selectedArtifact ? `${splitPosition}%` : "100%",
+          }}
         >
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 ">
             <ChatMessagesList
               messages={messages}
               isLoading={status === "submitted"}
@@ -282,29 +284,44 @@ export default function ThreadPage({
               >
                 <div className="flex-1 w-full h-full relative shadow-md">
                   <div className="absolute inset-0 overflow-y-auto">
-                    <div className="mx-auto p-4">
+                    <div className="mx-auto">
                       {/* Header with artifact name and copy button */}
-                      <div className="flex justify-between items-center mb-3 pb-2 border-b">
-                        <h3 className="text-lg font-semibold truncate">
-                          {selectedArtifact.title || "Untitled Artifact"}
-                        </h3>
-                        <Button
-                          onClick={() => {
-                            navigator.clipboard.writeText(
-                              selectedArtifact.content
-                            );
-                            toast.success("Content copied to clipboard");
-                          }}
-                          size={"icon"}
-                          variant={"ghost"}
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
+                      <div className="flex justify-between items-center sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-4 py-3 border-b">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={() => setSelectedArtifact(null)}
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                          <h3 className="text-lg font-medium truncate max-w-[400px]">
+                            {selectedArtifact.title || "Untitled Artifact"}
+                          </h3>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => {
+                              navigator.clipboard.writeText(
+                                selectedArtifact.content
+                              );
+                              toast.success("Content copied to clipboard");
+                            }}
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <MarkdownEditorViewer
-                        initialContent={selectedArtifact.content}
-                        editable
-                      />
+                      <div className="p-4 px-6">
+                        <MarkdownEditorViewer
+                          initialContent={selectedArtifact.content}
+                          editable
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

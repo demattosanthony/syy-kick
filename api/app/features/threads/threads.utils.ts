@@ -426,6 +426,7 @@ This is a guide for using artifacts tools: \`createDocument\` and \`updateDocume
 - When explicitly requested to create a document
 - For when content contains a single code snippet
 - Use ## for headers and ** for bolding
+- Don't make the title and beginning of the content the same
 
 **When NOT to use \`createDocument\`:**
 - For informational/explanatory content

@@ -66,6 +66,7 @@
     "remark-parse": "^11.0.0",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.4",
+    "tailwind-scrollbar": "^4.0.1",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.172.0",
     "tippy.js": "^6.3.7",
