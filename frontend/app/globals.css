@@ -4,45 +4,45 @@
 
 @layer base {
   :root {
-    /* Pure white to soft grey backgrounds */
+    /* Pure white background */
     --background: 0 0% 100%;
-    --foreground: 0 0% 15%;
-    /* Slightly whiter for cards to stand out */
+    --foreground: 0 0% 10%; /* Darkened from 15% to 10% for more contrast */
+    /* Slightly whiter cards, unchanged */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 15%;
+    --card-foreground: 0 0% 10%; /* Match foreground darkening */
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 15%;
-    /* Softer black for primary */
-    --primary: 0 0% 20%;
-    --primary-foreground: 0 0% 98%;
-    /* Light grey secondary */
-    --secondary: 0 0% 94%;
-    --secondary-foreground: 0 0% 20%;
-    /* Muted greys */
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    /* Accent greys */
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 20%;
-    /* Keep destructive red */
+    --popover-foreground: 0 0% 10%; /* Consistent with foreground */
+    /* Darker primary grey */
+    --primary: 0 0% 15%; /* Darkened from 20% to 15% */
+    --primary-foreground: 0 0% 98%; /* Near-white, unchanged */
+    /* Darker secondary grey */
+    --secondary: 0 0% 90%; /* Darkened from 94% to 90% */
+    --secondary-foreground: 0 0% 15%; /* Darkened from 20% to 15% */
+    /* Darker muted greys */
+    --muted: 0 0% 92%; /* Darkened from 96% to 92% */
+    --muted-foreground: 0 0% 40%; /* Darkened from 45% to 40% */
+    /* Darker accent greys */
+    --accent: 0 0% 92%; /* Darkened from 96% to 92% */
+    --accent-foreground: 0 0% 15%; /* Darkened from 20% to 15% */
+    /* Destructive red unchanged */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    /* Subtle grey borders and inputs */
-    --border: 0 0% 92%;
-    --input: 0 0% 92%;
-    --ring: 0 0% 20%;
-    --radius: 0.75rem;
-    /* Sidebar with pure greys */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Darker grey borders and inputs */
+    --border: 0 0% 88%; /* Darkened from 92% to 88% */
+    --input: 0 0% 88%; /* Match border darkening */
+    --ring: 0 0% 15%; /* Darkened from 20% to 15% */
+    --radius: 0.75rem; /* Unchanged */
+    /* Sidebar with darker greys */
+    --sidebar-background: 0 0% 96%; /* Darkened from 98% to 96% */
+    --sidebar-foreground: 240 5.3% 20%; /* Darkened from 26.1% to 20% */
+    --sidebar-primary: 240 5.9% 8%; /* Darkened from 10% to 8% */
+    --sidebar-primary-foreground: 0 0% 98%; /* Unchanged */
+    --sidebar-accent: 240 4.8% 92%; /* Darkened from 95.9% to 92% */
+    --sidebar-accent-foreground: 240 5.9% 8%; /* Darkened from 10% to 8% */
+    --sidebar-border: 220 13% 87%; /* Darkened from 91% to 87% */
+    --sidebar-ring: 217.2 91.2% 50%; /* Darkened from 59.8% to 50% */
 
-    --theme-color: #ffffff;
+    --theme-color: #ffffff; /* White, unchanged */
   }
 
   .dark {

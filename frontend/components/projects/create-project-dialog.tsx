@@ -93,14 +93,15 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Create a new Project</DialogTitle>
-          <DialogDescription></DialogDescription>
+          <DialogTitle className="text-2xl font-semibold">
+            Create a new Project
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5 py-2">
           <div className="space-y-2">
-            <Label htmlFor="name">
+            <Label htmlFor="name" className="text-sm font-medium">
               Name <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -111,10 +112,13 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
                 setFormData((prev) => ({ ...prev, name: e.target.value }))
               }
               required
+              className="focus-visible:ring-primary"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description" className="text-sm font-medium">
+              Description
+            </Label>
             <Textarea
               id="description"
               placeholder="Project description"
@@ -125,10 +129,13 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
                   description: e.target.value,
                 }))
               }
+              className="min-h-24 focus-visible:ring-primary"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
+            <Label htmlFor="location" className="text-sm font-medium">
+              Location
+            </Label>
             <LocationSearch
               value={formData.location}
               onChange={(locationData) =>
@@ -148,8 +155,12 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
             />
           </div>
 
-          <DialogFooter>
-            <Button type="submit" disabled={createProjectMutation.isPending}>
+          <DialogFooter className="pt-2">
+            <Button
+              type="submit"
+              disabled={createProjectMutation.isPending}
+              className="w-full sm:w-auto"
+            >
               {createProjectMutation.isPending
                 ? "Creating..."
                 : "Create Project"}

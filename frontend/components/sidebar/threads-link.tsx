@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSidebar } from "../ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export function ThreadsLink() {
   const { state, toggleSidebar } = useSidebar();
@@ -21,13 +22,13 @@ export function ThreadsLink() {
     >
       <Button
         variant={"ghost"}
-        className={`w-full px-2 ${
+        className={cn(
+          "w-full px-2",
           state === "collapsed" && !isMobile
             ? "justify-center"
-            : "justify-start"
-        }
-                    ${isThreadsPage ? "bg-accent text-accent-foreground" : ""}
-                    `}
+            : "justify-start",
+          isThreadsPage ? "bg-accent text-accent-foreground" : ""
+        )}
       >
         {state === "collapsed" && !isMobile ? (
           <History />

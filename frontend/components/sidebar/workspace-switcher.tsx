@@ -59,8 +59,8 @@ export function WorkSpaceSwitcher() {
   const WorkspaceLogo = ({ workspace }: { workspace: Workspace }) => {
     if (workspace.type === "personal") {
       return (
-        <div className="flex h-6 w-6 items-center justify-center shrink-0">
-          <Avatar className="h-6 w-6 rounded-full bg-transparent">
+        <div className="flex h-5 w-5 items-center justify-center shrink-0">
+          <Avatar className="h-5 w-5 rounded-full bg-transparent">
             <AvatarImage src={user?.profilePicture} alt={user?.name} />
             <AvatarFallback>
               {user?.name
@@ -90,7 +90,7 @@ export function WorkSpaceSwitcher() {
 
   if (!activeWorkspace) {
     return (
-      <Skeleton className="h-6 group-data-[collapsible=icon]:w-6 w-36 group-data-[collapsible=icon]:rounded-full" />
+      <Skeleton className="h-5 group-data-[collapsible=icon]:w-5 w-36 group-data-[collapsible=icon]:rounded-full" />
     );
   }
 

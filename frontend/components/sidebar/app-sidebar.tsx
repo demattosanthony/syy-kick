@@ -18,7 +18,6 @@ import { NavUser } from "./nav-user";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@/types/user";
 import { WorkSpaceSwitcher } from "./workspace-switcher";
-import { NewThreadButton } from "./new-thread-button";
 import { ThreadsList } from "./sidebar-threads-list";
 import { ThreadsLink } from "./threads-link";
 import { SidebarProjectsList } from "./sidebar-projects-list";
@@ -29,6 +28,8 @@ import { useAtom } from "jotai";
 import { pricingPlanDialogOpenAtom } from "../PricingDialog";
 import { useWorkspace } from "./workspace-context";
 
+import { NewThreadButton } from "./new-thread-button";
+
 export function AppSidebar({
   user,
   ...props
@@ -37,6 +38,8 @@ export function AppSidebar({
   const isMobile = useIsMobile();
   const [, setShowPricingPlanDialog] = useAtom(pricingPlanDialogOpenAtom);
   const { activeWorkspace } = useWorkspace();
+
+  //   const isHomePage = window.location.pathname === "/";
 
   return (
     <Sidebar collapsible={"icon"} {...props}>
@@ -52,6 +55,28 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupContent className="px-1.5 md:px-0">
             <SidebarMenu>
+              {/* <Link href={"/"} prefetch>
+                <Button
+                  variant={"ghost"}
+                  className={cn(
+                    "w-full px-2",
+                    state === "collapsed" && !isMobile
+                      ? "justify-center"
+                      : "justify-start",
+                    isHomePage ? "bg-accent text-accent-foreground" : ""
+                  )}
+                >
+                  {state === "collapsed" && !isMobile ? (
+                    <House />
+                  ) : (
+                    <>
+                      <House />
+                      Home
+                    </>
+                  )}
+                </Button>
+              </Link> */}
+
               <SidebarMenuItem>
                 <NewThreadButton />
               </SidebarMenuItem>
