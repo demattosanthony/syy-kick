@@ -14,9 +14,9 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, MapPin } from "lucide-react";
-import { useLoadScript } from "@react-google-maps/api";
+import { useLoadScript, Libraries } from "@react-google-maps/api";
 
-const libraries = ["places"];
+const libraries: Libraries = ["places"];
 
 type LocationData = {
   address?: string;
@@ -46,7 +46,7 @@ export function LocationSearch({ value, onChange }: LocationSearchProps) {
 
   const { isLoaded } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries: libraries as any,
+    libraries: libraries,
   });
 
   useEffect(() => {
