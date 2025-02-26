@@ -11,6 +11,14 @@ export interface Project {
   updatedAt: string;
   organization?: Organization;
   user?: User;
+
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 interface DocumentProcessingJob {

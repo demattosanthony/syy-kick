@@ -19,6 +19,7 @@ import { useWorkspace } from "@/components/sidebar/workspace-context";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
+import { LocationSearch } from "../location-search";
 
 interface CreateProjectDialogProps {
   trigger: React.ReactNode;
@@ -30,6 +31,15 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    location: {
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+      postalCode: "",
+      latitude: "",
+      longitude: "",
+    },
   });
 
   const { activeWorkspace } = useWorkspace();
@@ -45,8 +55,27 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
           activeWorkspace?.type === "organization"
             ? activeWorkspace.id
             : undefined,
+        address: formData.location.address,
+        city: formData.location.city,
+        state: formData.location.state,
+        country: formData.location.country,
+        postalCode: formData.location.postalCode,
+        latitude: formData.location.latitude,
+        longitude: formData.location.longitude,
       });
-      setFormData({ name: "", description: "" });
+      setFormData({
+        name: "",
+        description: "",
+        location: {
+          address: "",
+          city: "",
+          state: "",
+          country: "",
+          postalCode: "",
+          latitude: "",
+          longitude: "",
+        },
+      });
       setOpen(false);
       router.push(`/projects/${project.id}`);
     } catch (error: unknown) {
@@ -98,6 +127,27 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
               }
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="location">Location</Label>
+            <LocationSearch
+              value={formData.location}
+              onChange={(locationData) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  location: {
+                    address: locationData.address || "",
+                    city: locationData.city || "",
+                    state: locationData.state || "",
+                    country: locationData.country || "",
+                    postalCode: locationData.postalCode || "",
+                    latitude: locationData.latitude || "",
+                    longitude: locationData.longitude || "",
+                  },
+                }))
+              }
+            />
+          </div>
+
           <DialogFooter>
             <Button type="submit" disabled={createProjectMutation.isPending}>
               {createProjectMutation.isPending

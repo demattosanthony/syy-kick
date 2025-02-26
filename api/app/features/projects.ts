@@ -31,6 +31,13 @@ const schemas = {
       description: z.string().max(255).optional(),
       organizationId: z.string().uuid().optional(),
       userId: z.string().uuid().optional(),
+      address: z.string().max(500).optional(),
+      city: z.string().max(100).optional(),
+      state: z.string().max(100).optional(),
+      country: z.string().max(100).optional(),
+      postalCode: z.string().max(20).optional(),
+      latitude: z.string().optional(),
+      longitude: z.string().optional(),
     })
     .refine((data) => data.organizationId || data.userId, {
       message: "Either organizationId or userId must be provided",
@@ -40,6 +47,13 @@ const schemas = {
     name: z.string().min(1).max(255).optional(),
     description: z.string().max(255).optional(),
     organizationId: z.string().optional(),
+    address: z.string().max(500).optional().nullable(),
+    city: z.string().max(100).optional().nullable(),
+    state: z.string().max(100).optional().nullable(),
+    country: z.string().max(100).optional().nullable(),
+    postalCode: z.string().max(20).optional().nullable(),
+    latitude: z.string().optional().nullable(),
+    longitude: z.string().optional().nullable(),
   }),
 
   docsUpload: z.object({
@@ -113,6 +127,13 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
       organizationId: data.organizationId,
       userId: data.userId,
       visibility: "private",
+      address: data.address,
+      city: data.city,
+      state: data.state,
+      country: data.country,
+      postalCode: data.postalCode,
+      latitude: data.latitude,
+      longitude: data.longitude,
     })
     .returning()
     .then((res) => res[0]);
@@ -171,7 +192,11 @@ async function getProject(projectId: string) {
   const project = await db.query.projects.findFirst({
     where: eq(projects.id, projectId),
     with: {
-      organization: true,
+      organization: {
+        with: {
+          members: true,
+        },
+      },
       user: true,
     },
   });
@@ -329,6 +354,15 @@ async function updateProject(
     .set({
       name: data.name || project.name,
       description: data.description ?? project.description,
+      address: data.address !== undefined ? data.address : project.address,
+      city: data.city !== undefined ? data.city : project.city,
+      state: data.state !== undefined ? data.state : project.state,
+      country: data.country !== undefined ? data.country : project.country,
+      postalCode:
+        data.postalCode !== undefined ? data.postalCode : project.postalCode,
+      latitude: data.latitude !== undefined ? data.latitude : project.latitude,
+      longitude:
+        data.longitude !== undefined ? data.longitude : project.longitude,
     })
     .where(eq(projects.id, projectId))
     .returning()
@@ -607,6 +641,31 @@ export async function searchProjectDocuments(
   return resultsWithUrls;
 }
 
+/**
+ * Checks if a user has permission to modify a project
+ * @throws Error if user doesn't have permission
+ */
+async function checkProjectUpdatePermission(projectId: string, userId: string) {
+  const project = await getProject(projectId);
+
+  // Check if user owns the project directly
+  if (project.userId === userId) {
+    return true;
+  }
+
+  // Check if user is an owner in the organization that owns the project
+  if (project.organization) {
+    const isOrgOwner = project.organization.members?.some(
+      (member) => member.userId === userId && member.role === "owner"
+    );
+    if (isOrgOwner) {
+      return true;
+    }
+  }
+
+  throw new Error("You don't have permission to modify this project");
+}
+
 // Route handlers
 const handlers = {
   createProject: async (req: Request, res: Response) => {
@@ -664,11 +723,29 @@ const handlers = {
   },
 
   updateProject: async (req: Request, res: Response) => {
-    const { projectId } = req.params;
+    try {
+      const { projectId } = req.params;
+      const userId = req.dbUser?.id;
 
-    const validatedData = schemas.updateProject.parse(req.body);
-    const project = await updateProject(projectId, validatedData);
-    res.json(project);
+      if (!userId) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      await checkProjectUpdatePermission(projectId, userId);
+
+      const validatedData = schemas.updateProject.parse(req.body);
+      const project = await updateProject(projectId, validatedData);
+      res.json(project);
+    } catch (error: any) {
+      if (
+        error.message === "You don't have permission to modify this project"
+      ) {
+        res.status(403).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "Failed to update project" });
+      }
+    }
   },
 
   /**

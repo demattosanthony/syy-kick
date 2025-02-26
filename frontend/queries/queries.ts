@@ -283,6 +283,13 @@ export function useCreateProjectMutation() {
       name: string;
       description: string;
       organizationId?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      postalCode?: string;
+      latitude?: string;
+      longitude?: string;
     }) =>
       api.projects.createProject({
         ...data,
@@ -401,7 +408,18 @@ export function useUpdateProjectMutation() {
       data,
     }: {
       projectId: string;
-      data: { name?: string; description?: string };
+      data: {
+        name?: string;
+        description?: string;
+        // New location fields
+        address?: string | null;
+        city?: string | null;
+        state?: string | null;
+        country?: string | null;
+        postalCode?: string | null;
+        latitude?: string | null;
+        longitude?: string | null;
+      };
     }) =>
       api.projects.updateProject(projectId, {
         ...data,

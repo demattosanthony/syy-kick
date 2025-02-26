@@ -49,7 +49,8 @@ export const SidebarItem = ({
         <div className="w-full flex justify-between items-center">
           <Link
             href={href}
-            onMouseDown={() => isMobile && toggleSidebar()}
+            prefetch={false}
+            onClick={() => isMobile && toggleSidebar()}
             className="text-ellipsis overflow-hidden whitespace-nowrap flex-1"
           >
             {title.length > 28 ? title.slice(0, 28) + "..." : title}

@@ -8,13 +8,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { useMeQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { useAtom } from "jotai";
-import { instructionsAtom, temperatureAtom } from "@/atoms/chat";
+import { instructionsAtom } from "@/atoms/chat";
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import AdminSettings from "@/components/settings/admin-settings";
@@ -39,16 +38,9 @@ export default function UserSettings() {
     );
   }, [user, activeWorkspace]);
 
-  const [temperature, setTemperature] = useAtom(temperatureAtom);
-  const [, setInputValue] = useState(temperature.toFixed(2));
   const [instructions, setInstructions] = useAtom(instructionsAtom);
 
   const tab = searchParams.get("tab") || "account";
-
-  const handleTemperatureChange = (value: number[]) => {
-    const newTemp = value[0];
-    setTemperature(newTemp);
-  };
 
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -59,10 +51,6 @@ export default function UserSettings() {
     }
     router.push(`/settings?${params.toString()}`);
   };
-
-  useEffect(() => {
-    setInputValue(temperature.toFixed(1));
-  }, [temperature]);
 
   // Add useEffect for client-side mounting
   useEffect(() => {
@@ -183,37 +171,16 @@ export default function UserSettings() {
               <div className="space-y-1">
                 <h2 className="text-base font-medium">Model Settings</h2>
                 <p className="text-sm text-muted-foreground">
-                  Customize how the AI model responds to your prompts.
+                  Add custom instructions to personalize the responses you get.
                 </p>
               </div>
 
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-normal">Creativity</h3>
-                    <span className="text-sm text-muted-foreground">
-                      {temperature.toFixed(1)}
-                    </span>
-                  </div>
-                  <Slider
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={[temperature]}
-                    onValueChange={handleTemperatureChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-base font-normal">Custom Instructions</h3>
-                  <Textarea
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                    placeholder="Add personal details or preferences to customize Yo's responses (e.g. 'I'm a beginner programmer' or 'Explain things simply'). You can also add specific instructions like 'Always include code examples' or 'Be more detailed'"
-                    className="min-h-[160px] resize-none"
-                  />
-                </div>
-              </div>
+              <Textarea
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder="Add personal details or preferences to customize Yo's responses (e.g. 'I'm a beginner programmer' or 'Explain things simply'). You can also add specific instructions like 'Always include code examples' or 'Be more detailed'"
+                className="min-h-[160px] resize-none"
+              />
             </section>
           </div>
         </TabsContent>

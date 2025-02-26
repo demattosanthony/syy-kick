@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { useAtom } from "jotai";
 import { AUTO_MODEL_CONFIG, initalInputAtom, modelAtom } from "@/atoms/chat";
-import { NotebookPen, Plug, Search, LucideIcon, Globe } from "lucide-react";
+import { NotebookPen, Plug, Search, LucideIcon, Building } from "lucide-react";
 import { animatedAtom } from "./AnimatedGreeting";
 
 interface ConversationStartersProps {
@@ -46,13 +46,21 @@ const CONVERSATION_STARTERS: StarterButtonProps[] = [
     requiresFile: false,
   },
   {
-    icon: Globe,
-    iconColor: "text-green-500",
-    label: "Search the web",
-    inputText: "Search the web for ",
-    requiresFile: false,
-    requiresWebSearch: true,
+    icon: Building,
+    iconColor: "text-purple-500",
+    label: "HVAC System Analysis",
+    inputText:
+      "Analyze this HVAC system diagram and suggest efficiency improvements",
+    requiresFile: true,
   },
+  //   {
+  //     icon: Globe,
+  //     iconColor: "text-green-500",
+  //     label: "Search the web",
+  //     inputText: "Search the web for ",
+  //     requiresFile: false,
+  //     requiresWebSearch: true,
+  //   },
 ];
 
 function StarterButton({
