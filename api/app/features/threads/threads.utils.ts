@@ -54,12 +54,8 @@ async function processAttachments(attachments: MessageAttachment[]) {
   try {
     const processed: MessageAttachment[] = [];
     for (const att of attachments) {
-      const urlOrBase64 = await generateAttachmentData(
-        att.fileKey,
-        att.mimeType,
-        true
-      );
-      processed.push({ ...att, url: urlOrBase64 });
+      const url = s3.file(att.fileKey).presign({ expiresIn: 3600 });
+      processed.push({ ...att, url });
     }
     return processed;
   } catch (error) {
