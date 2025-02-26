@@ -270,7 +270,7 @@ export default function ThreadPage({
           <>
             {/* Resizable border */}
             <div
-              className="w-[2px] hover:w-1 h-full cursor-col-resize hover:bg-blue-400 transition-colors bg-gray-200"
+              className="w-[2px] hover:w-1 h-full cursor-col-resize bg-secondary transition-all"
               onMouseDown={handleMouseDown}
             />
 
