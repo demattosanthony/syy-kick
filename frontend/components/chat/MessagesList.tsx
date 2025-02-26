@@ -197,17 +197,11 @@ LoadingMessage.displayName = "LoadingMessage";
 const ChatMessagesList = React.memo(
   ({ messages, isLoading }: { messages: Message[]; isLoading: boolean }) => {
     useEffect(() => {
-      // Using requestAnimationFrame to ensure DOM is fully updated before scrolling
-      const scrollToBottom = () => {
-        const container = document.querySelector(".overflow-y-auto");
-        if (container) {
-          container.scrollTop = container.scrollHeight;
-        }
-      };
-
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(scrollToBottom);
-    }, [messages]); // Changed from messages.length to messages
+      const container = document.querySelector(".overflow-y-auto");
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }, [messages.length]);
 
     return (
       <div className="flex-1 w-full h-full relative">

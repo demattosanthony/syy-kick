@@ -31,6 +31,8 @@ import { Thread } from "@/types/chat";
 import { toast } from "sonner";
 import { useWorkspace } from "../sidebar/workspace-context";
 import MarkdownEditorViewer from "../viewers/markdown-viewer";
+import { Button } from "../ui/button";
+import { Copy } from "lucide-react";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -281,6 +283,24 @@ export default function ThreadPage({
                 <div className="flex-1 w-full h-full relative shadow-md">
                   <div className="absolute inset-0 overflow-y-auto">
                     <div className="mx-auto p-4">
+                      {/* Header with artifact name and copy button */}
+                      <div className="flex justify-between items-center mb-3 pb-2 border-b">
+                        <h3 className="text-lg font-semibold truncate">
+                          {selectedArtifact.title || "Untitled Artifact"}
+                        </h3>
+                        <Button
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              selectedArtifact.content
+                            );
+                            toast.success("Content copied to clipboard");
+                          }}
+                          size={"icon"}
+                          variant={"ghost"}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </div>
                       <MarkdownEditorViewer
                         initialContent={selectedArtifact.content}
                         editable
