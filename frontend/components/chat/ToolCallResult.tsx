@@ -7,7 +7,7 @@ import {
   Minimize2,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, scrollbarStyle } from "@/lib/utils";
 import React from "react";
 import { ToolInvocation } from "ai";
 import { motion, AnimatePresence } from "framer-motion";
@@ -182,7 +182,7 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
           "rounded-lg border overflow-hidden",
           isSelectedArtifact
             ? "w-fit border-primary/40 shadow-sm bg-background"
-            : "w-fit border-border"
+            : "w-fit border-border shadow-sm"
         )}
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -249,7 +249,10 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
         {/* Document Content Preview - only show if not selected */}
         {!isSelectedArtifact && (
           <motion.div
-            className="px-4 max-h-[320px] overflow-y-auto bg-card"
+            className={cn(
+              "px-4 max-h-[320px] overflow-y-auto bg-card",
+              scrollbarStyle
+            )}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.3 }}

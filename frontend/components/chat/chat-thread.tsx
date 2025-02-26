@@ -33,6 +33,7 @@ import { useWorkspace } from "../sidebar/workspace-context";
 import MarkdownEditorViewer from "../viewers/markdown-viewer";
 import { Button } from "../ui/button";
 import { Copy, X } from "lucide-react";
+import { cn, scrollbarStyle } from "@/lib/utils";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -283,7 +284,12 @@ export default function ThreadPage({
                 transition={{ duration: 0.3, ease: "easeInOut" }}
               >
                 <div className="flex-1 w-full h-full relative shadow-md">
-                  <div className="absolute inset-0 overflow-y-auto">
+                  <div
+                    className={cn(
+                      "absolute inset-0 overflow-y-auto",
+                      scrollbarStyle
+                    )}
+                  >
                     <div className="mx-auto">
                       {/* Header with artifact name and copy button */}
                       <div className="flex justify-between items-center sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-4 py-3 border-b">
