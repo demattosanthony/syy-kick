@@ -31,6 +31,13 @@ const schemas = {
       description: z.string().max(255).optional(),
       organizationId: z.string().uuid().optional(),
       userId: z.string().uuid().optional(),
+      address: z.string().max(500).optional(),
+      city: z.string().max(100).optional(),
+      state: z.string().max(100).optional(),
+      country: z.string().max(100).optional(),
+      postalCode: z.string().max(20).optional(),
+      latitude: z.string().optional(),
+      longitude: z.string().optional(),
     })
     .refine((data) => data.organizationId || data.userId, {
       message: "Either organizationId or userId must be provided",
@@ -40,6 +47,13 @@ const schemas = {
     name: z.string().min(1).max(255).optional(),
     description: z.string().max(255).optional(),
     organizationId: z.string().optional(),
+    address: z.string().max(500).optional().nullable(),
+    city: z.string().max(100).optional().nullable(),
+    state: z.string().max(100).optional().nullable(),
+    country: z.string().max(100).optional().nullable(),
+    postalCode: z.string().max(20).optional().nullable(),
+    latitude: z.string().optional().nullable(),
+    longitude: z.string().optional().nullable(),
   }),
 
   docsUpload: z.object({
@@ -113,6 +127,13 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
       organizationId: data.organizationId,
       userId: data.userId,
       visibility: "private",
+      address: data.address,
+      city: data.city,
+      state: data.state,
+      country: data.country,
+      postalCode: data.postalCode,
+      latitude: data.latitude,
+      longitude: data.longitude,
     })
     .returning()
     .then((res) => res[0]);
@@ -333,6 +354,15 @@ async function updateProject(
     .set({
       name: data.name || project.name,
       description: data.description ?? project.description,
+      address: data.address !== undefined ? data.address : project.address,
+      city: data.city !== undefined ? data.city : project.city,
+      state: data.state !== undefined ? data.state : project.state,
+      country: data.country !== undefined ? data.country : project.country,
+      postalCode:
+        data.postalCode !== undefined ? data.postalCode : project.postalCode,
+      latitude: data.latitude !== undefined ? data.latitude : project.latitude,
+      longitude:
+        data.longitude !== undefined ? data.longitude : project.longitude,
     })
     .where(eq(projects.id, projectId))
     .returning()
