@@ -303,6 +303,16 @@ const threadsOps = {
         toolChoice: "auto",
         toolCallStreaming: true,
         maxTokens: maxTokens,
+
+        providerOptions: {
+          ...(model === "claude-3.7-sonnet-thinking" && !tools
+            ? {
+                anthropic: {
+                  thinking: { type: "enabled", budgetTokens: 30000 },
+                },
+              }
+            : {}),
+        },
         onStepFinish: async ({
           toolCalls,
           toolResults,

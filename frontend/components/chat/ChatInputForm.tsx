@@ -297,7 +297,7 @@ function ChatInputForm(
         </div>
 
         <div className="w-full flex justify-between items-center px-1">
-          <ModelSelector />
+          <ModelSelector proejctId={projectId} />
 
           <div className="flex items-center gap-1">
             {isMounted &&
