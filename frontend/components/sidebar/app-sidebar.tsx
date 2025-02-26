@@ -75,30 +75,32 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="mb-4 md:mb-0">
-        {state === "collapsed" && !isMobile && (
-          <SidebarTrigger className="w-full" />
-        )}
-
-        {state === "expanded" &&
-          user.subscriptionStatus !== "active" &&
-          activeWorkspace?.type === "personal" && (
-            <DropdownMenuGroup>
-              <Button
-                className="w-full"
-                variant={"default"}
-                onClick={(e) => {
-                  console.log("Upgrade to Pro");
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowPricingPlanDialog(true);
-                }}
-              >
-                Upgrade to Pro
-              </Button>
-            </DropdownMenuGroup>
+        <SidebarMenu className="flex flex-col w-full items-center group-data-[collapsible=icon]:justify-center justify-between">
+          {state === "collapsed" && !isMobile && (
+            <SidebarTrigger className=" mb-1" />
           )}
 
-        <NavUser user={user} />
+          {state === "expanded" &&
+            user.subscriptionStatus !== "active" &&
+            activeWorkspace?.type === "personal" && (
+              <DropdownMenuGroup className="w-full mb-1">
+                <Button
+                  className="w-full"
+                  variant={"default"}
+                  onClick={(e) => {
+                    console.log("Upgrade to Pro");
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowPricingPlanDialog(true);
+                  }}
+                >
+                  Upgrade to Pro
+                </Button>
+              </DropdownMenuGroup>
+            )}
+
+          <NavUser user={user} />
+        </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

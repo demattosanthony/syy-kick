@@ -9,7 +9,7 @@ import { auth, checkSub } from "./middleware";
 // Routes
 import authRoutes from "./features/auth";
 import modelRoutes from "./features/models";
-import threadRoutes from "./features/threads";
+import threadRoutes from "./features/threads/threads.routes";
 import paymentRoutes, { webhook } from "./features/payments";
 import organizationRoutes from "./features/organizations";
 import projectRoutes from "./features/projects";
