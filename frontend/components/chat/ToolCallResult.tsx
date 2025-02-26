@@ -1,4 +1,11 @@
-import { File, Search, ChevronDown, Loader2, Maximize } from "lucide-react";
+import {
+  File,
+  Search,
+  ChevronDown,
+  Loader2,
+  Maximize,
+  Minimize,
+} from "lucide-react";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import React from "react";
@@ -6,6 +13,8 @@ import { ToolInvocation } from "ai";
 import { motion, AnimatePresence } from "framer-motion";
 import MarkdownViewer from "../viewers/markdown-viewer";
 import { Button } from "../ui/button";
+import { useAtom } from "jotai";
+import { selectedArtifactAtom } from "@/atoms/chat";
 
 export const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
   switch (tool.toolName) {
@@ -142,15 +151,20 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
 };
 
 const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
-  const [isExpanded, setIsExpanded] = React.useState(true);
   const documentTitle = tool.args?.title;
   const documentContent = tool.args?.content;
   const isStreaming = tool.state === "partial-call" || tool.state === "call";
+  const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
+
+  const isSelectedArtifact = selectedArtifact?.id === tool.toolCallId;
 
   return (
     <AnimatePresence>
       <motion.div
-        className="w-fit rounded-lg border border-border overflow-hidden"
+        className={cn(
+          "rounded-lg border border-border overflow-hidden my-2",
+          isSelectedArtifact ? "w-auto" : "w-fit"
+        )}
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{
@@ -172,26 +186,40 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
           </div>
           <Button
             className="hover:bg-secondary rounded-sm transition-colors"
-            title="Expand full screen"
+            title={isSelectedArtifact ? "Minimize" : "Expand full screen"}
             variant={"ghost"}
             size={"icon"}
             onClick={() => {
-              /* Will be implemented later */
+              if (isSelectedArtifact) {
+                setSelectedArtifact(null);
+              } else {
+                setSelectedArtifact({
+                  id: tool.toolCallId,
+                  title: documentTitle || "Untitled Document",
+                  content: documentContent || "",
+                });
+              }
             }}
           >
-            <Maximize className="w-4 h-4" />
+            {isSelectedArtifact ? (
+              <Minimize className="w-4 h-4" />
+            ) : (
+              <Maximize className="w-4 h-4" />
+            )}
           </Button>
         </div>
 
-        {/* Document Content Preview */}
-        <motion.div
-          className="p-4 max-h-[400px] overflow-y-auto bg-card"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2, duration: 0.3 }}
-        >
-          <MarkdownViewer initialContent={documentContent} editable />
-        </motion.div>
+        {/* Document Content Preview - only show if not selected */}
+        {!isSelectedArtifact && (
+          <motion.div
+            className="p-4 max-h-[320px] overflow-y-auto bg-card"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+          >
+            <MarkdownViewer initialContent={documentContent} editable />
+          </motion.div>
+        )}
       </motion.div>
     </AnimatePresence>
   );

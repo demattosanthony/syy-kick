@@ -31,6 +31,8 @@ export default function ThreadHeader() {
     return null;
   }
 
+  return null;
+
   return (
     <header
       className={cn(

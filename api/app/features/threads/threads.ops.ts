@@ -380,6 +380,12 @@ const threadsOps = {
                   .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
               } else if (result && toolCall.toolName === "create_document") {
                 console.log("Document tool result:", result.result);
+
+                await db.update(toolCallsTable).set({
+                  status: "completed",
+                  result: result.result,
+                  updatedAt: new Date(),
+                });
               }
             }
 

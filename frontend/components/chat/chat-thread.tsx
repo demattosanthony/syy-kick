@@ -1,6 +1,7 @@
 "use client";
 
 import api from "@/lib/api";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Types
 import { Attachment, Message } from "@ai-sdk/ui-utils";
@@ -10,6 +11,7 @@ import {
   initalInputAtom,
   instructionsAtom,
   modelAtom,
+  selectedArtifactAtom,
   selectedProjectDocsAtom,
   temperatureAtom,
   uploadsAtom,
@@ -20,7 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import { useAtom } from "jotai";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // Components
 import ChatInputForm from "@/components/chat/ChatInputForm";
@@ -28,6 +30,7 @@ import ChatMessagesList from "@/components/chat/MessagesList";
 import { Thread } from "@/types/chat";
 import { toast } from "sonner";
 import { useWorkspace } from "../sidebar/workspace-context";
+import MarkdownEditorViewer from "../viewers/markdown-viewer";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -51,6 +54,7 @@ export default function ThreadPage({
   const [uploads, setUploads] = useAtom(uploadsAtom);
   const [temperature] = useAtom(temperatureAtom);
   const [instructions] = useAtom(instructionsAtom);
+  const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
 
   const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
     selectedProjectDocsAtom
@@ -177,6 +181,7 @@ export default function ThreadPage({
   useEffect(() => {
     return () => {
       setInitalInput("");
+      setSelectedArtifact(null);
     };
   }, [threadId]);
 
@@ -186,24 +191,107 @@ export default function ThreadPage({
     }
   }, [error]);
 
+  // Add state for managing the split width
+  const [splitPosition, setSplitPosition] = useState(35);
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Handle mouse down on the resizer
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  // Handle mouse move for resizing
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      const container = document.getElementById("chat-container");
+      if (!container) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const newPosition =
+        ((e.clientX - containerRect.left) / containerRect.width) * 100;
+
+      // Limit the resize range (10% to 90%)
+      const limitedPosition = Math.min(Math.max(newPosition, 10), 90);
+      setSplitPosition(limitedPosition);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
   return (
     <>
-      <ChatMessagesList
-        messages={messages}
-        isLoading={status === "submitted"}
-      />
+      <div id="chat-container" className="flex h-full w-full relative">
+        <div
+          className="flex flex-col h-full"
+          style={{ width: selectedArtifact ? `${splitPosition}%` : "100%" }}
+        >
+          <div className="flex-1 overflow-y-auto">
+            <ChatMessagesList
+              messages={messages}
+              isLoading={status === "submitted"}
+            />
+          </div>
 
-      <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
-        <ChatInputForm
-          input={input}
-          setInput={setInput}
-          handleInputChange={handleInputChange}
-          onSubmit={onSubmit}
-          stop={stop}
-          isGenerating={status === "streaming"}
-          showContextSelector={thread?.project !== null}
-          projectId={thread?.project?.id}
-        />
+          <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
+            <ChatInputForm
+              input={input}
+              setInput={setInput}
+              handleInputChange={handleInputChange}
+              onSubmit={onSubmit}
+              stop={stop}
+              isGenerating={status === "streaming"}
+              showContextSelector={thread?.project !== null}
+              projectId={thread?.project?.id}
+            />
+          </div>
+        </div>
+
+        {selectedArtifact && (
+          <>
+            {/* Resizable border */}
+            <div
+              className="w-[2px] hover:w-1 h-full cursor-col-resize hover:bg-blue-400 transition-colors bg-gray-200"
+              onMouseDown={handleMouseDown}
+            />
+
+            <AnimatePresence>
+              <motion.div
+                className="h-full"
+                style={{ width: `${100 - splitPosition - 0.25}%` }}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+              >
+                <div className="flex-1 w-full h-full relative shadow-md">
+                  <div className="absolute inset-0 overflow-y-auto">
+                    <div className="mx-auto p-4">
+                      <MarkdownEditorViewer
+                        initialContent={selectedArtifact.content}
+                        editable
+                      />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </>
+        )}
       </div>
     </>
   );

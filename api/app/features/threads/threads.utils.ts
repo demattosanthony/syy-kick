@@ -54,12 +54,8 @@ async function processAttachments(attachments: MessageAttachment[]) {
   try {
     const processed: MessageAttachment[] = [];
     for (const att of attachments) {
-      const urlOrBase64 = await generateAttachmentData(
-        att.fileKey,
-        att.mimeType,
-        true
-      );
-      processed.push({ ...att, url: urlOrBase64 });
+      const url = s3.file(att.fileKey).presign({ expiresIn: 3600 });
+      processed.push({ ...att, url });
     }
     return processed;
   } catch (error) {
@@ -345,10 +341,9 @@ const createDocumentTool = () =>
       content: z.string(),
     }),
     execute: async ({ title, content }) => {
-      return {
-        title,
-        content,
-      };
+      console.log("Creating document with title: ", title);
+      console.log("Creating document with content: ", content);
+      return "Document created successfully";
     },
   });
 
@@ -421,8 +416,6 @@ Remember to prioritize accuracy, comprehensiveness, and adherence to all guideli
 
   systemMsg += `\n\nArtifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
 
-When asked to write code, always use artifacts. When writing code, specify the language in the backticks, e.g. \`\`\`python\`code here\`\`\`. The default language is Python. Other languages are not yet supported, so let the user know if they request a different language.
-
 DO NOT UPDATE DOCUMENTS IMMEDIATELY AFTER CREATING THEM. WAIT FOR USER FEEDBACK OR REQUEST TO UPDATE IT.
 
 This is a guide for using artifacts tools: \`createDocument\` and \`updateDocument\`, which render content on a artifacts beside the conversation.
@@ -432,6 +425,7 @@ This is a guide for using artifacts tools: \`createDocument\` and \`updateDocume
 - For content users will likely save/reuse (emails, code, essays, etc.)
 - When explicitly requested to create a document
 - For when content contains a single code snippet
+- Use ## for headers and ** for bolding
 
 **When NOT to use \`createDocument\`:**
 - For informational/explanatory content

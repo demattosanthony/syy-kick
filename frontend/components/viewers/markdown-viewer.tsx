@@ -488,14 +488,26 @@ const MarkdownEditorViewer = ({
 }) => {
   const [blocks, setBlocks] = useState<{ markdown: string }[]>([]);
 
-  // Parse markdown into blocks on mount
+  // Parse markdown into blocks only if editable
   useEffect(() => {
+    if (!editable) {
+      // If not editable, just use the entire content as a single block
+      setBlocks(initialContent ? [{ markdown: initialContent }] : []);
+      return;
+    }
+
+    // Only split into blocks if editable
+    if (!initialContent) {
+      setBlocks([]);
+      return;
+    }
+
     // Split the content by double newlines as a simple approach
     const blockList = initialContent
       .split(/\n\n+/)
       .filter((block) => block.trim());
     setBlocks(blockList.map((markdown) => ({ markdown })));
-  }, [initialContent]);
+  }, [initialContent, editable]);
 
   const updateBlock = (index: number, newMarkdown: string) => {
     setBlocks((prevBlocks) =>

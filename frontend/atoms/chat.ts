@@ -53,3 +53,8 @@ export const inputAtom = atom("");
 export const uploadsAtom = atom<FileUpload[]>([]);
 export const abortControllerAtom = atom<AbortController>(new AbortController());
 export const selectedProjectDocsAtom = atom<DocumentContent[]>([]);
+export const selectedArtifactAtom = atom<{
+  id: string;
+  title: string;
+  content: string;
+} | null>(null);
