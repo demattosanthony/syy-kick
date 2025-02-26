@@ -18,7 +18,8 @@ import { embeddingModel } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
-  createSearchTool,
+  createDocumentTool,
+  createProjectSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
   maybeGenerateTitle,
@@ -288,10 +289,15 @@ const threadsOps = {
       await maybeGenerateTitle(threadId, inferenceMsgs, thread.title);
 
       // 7) Create tools for the assistant if project ID exists
-      const tools =
-        thread.projectId && message.content
-          ? createSearchTool(thread.projectId, modelConfig)
-          : undefined;
+      let tools = {
+        create_document: createDocumentTool(),
+        ...(thread.projectId && {
+          search_project_information: createProjectSearchTool(
+            thread.projectId,
+            modelConfig
+          ),
+        }),
+      };
 
       // Start the streaming from the AI
       const result = streamText({
@@ -335,6 +341,7 @@ const threadsOps = {
 
             // Then persist each tool call and its result
             for (const toolCall of toolCalls) {
+              if (!toolCall) continue;
               const toolCallId = crypto.randomUUID();
               await db.insert(toolCallsTable).values({
                 id: toolCallId,
@@ -352,21 +359,27 @@ const threadsOps = {
                 (r) => r.toolCallId === toolCall.toolCallId
               );
 
-              if (result) {
+              if (
+                result &&
+                toolCall.toolName === "search_project_information"
+              ) {
                 await db
                   .update(toolCallsTable)
                   .set({
                     status: "completed",
                     result: {
-                      docs: result.result.docs,
-                      images: result.result.images.map((image) => ({
-                        fileKey: image.fileKey,
-                        mimeType: image.mimeType,
-                      })),
+                      docs: (result.result as any).docs,
+                      images:
+                        (result.result as any).images?.map((image: any) => ({
+                          fileKey: image.fileKey,
+                          mimeType: image.mimeType,
+                        })) || [],
                     },
                     updatedAt: new Date(),
                   })
                   .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
+              } else if (result && toolCall.toolName === "create_document") {
+                console.log("Document tool result:", result.result);
               }
             }
 

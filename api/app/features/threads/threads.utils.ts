@@ -194,13 +194,10 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
   return results;
 }
 
-/** Creates search tool if project ID exists */
-function createSearchTool(projectId: string | null, modelConfig: ModelConfig) {
-  if (!projectId) return undefined;
-
-  return {
-    search_documents: tool({
-      description: `Provides semantic search against project documents, returning relevant passages.
+/** Tool to search all project information */
+const createProjectSearchTool = (projectId: string, modelConfig: ModelConfig) =>
+  tool({
+    description: `Provides semantic search against project documents, returning relevant passages.
 
 Usage:
     1. A query that will be used to search over all project information.
@@ -210,98 +207,96 @@ Returns:
     - Document metadata (ID, name, path, mimeType)
     - Relevant text snippets
     - Relevance scores`,
-      parameters: z.object({
-        query: z.string(),
-      }),
-      execute: async ({ query }) => {
-        console.log("Searching project documents for: ", query);
-        const res = await searchProjectDocuments(projectId, query, 80);
-
-        console.log("Search results:", res.length);
-
-        // Rerank results
-        const rerankedResults = await reranker.rerank(
-          query,
-          res.map((r) => r.text || ""),
-          {
-            topN: 20,
-            returnDocuments: true,
-          }
-        );
-
-        // Create a map of text to original result for lookup
-        const textToResultMap = new Map(res.map((r) => [r.text, r]));
-
-        // Map reranked results to simplified schema
-        const simplifiedDocs: DocumentSearchToolResult[] =
-          rerankedResults.results.map((reranked) => {
-            const originalDoc = textToResultMap.get(reranked.document.text)!;
-            return {
-              documentId: originalDoc.document.id,
-              projectId: projectId,
-              path: originalDoc.document.path,
-              documentName: originalDoc.document.name,
-              text: originalDoc.text,
-              similarity: reranked.relevance_score,
-              pageNumber: (originalDoc.metadata as { page_number?: number })
-                ?.page_number,
-              mimeType: originalDoc.document.mimeType,
-              fileKey: originalDoc.document.fileKey,
-            };
-          });
-
-        console.log("Simplified docs length:", simplifiedDocs.length);
-
-        // Use the typed helper functions with simplified schema
-        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
-        const searchContext = convertResultsToXml(simplifiedDocs);
-
-        // Generate images if supported by model
-        let images: {
-          fileKey: string;
-          imageData: string;
-          mimeType: string;
-        }[] = [];
-        if (modelConfig.model.modelId.includes("claude-3-7-sonnet")) {
-          images = await processDocumentImages(uniqueDocs);
-        }
-
-        return {
-          context: searchContext,
-          docs: simplifiedDocs,
-          images,
-
-          // Format data thats easy for frontend to use
-          dataForFrontend: uniqueDocs.map((doc) => ({
-            document_id: doc.documentId,
-            path: doc.path,
-            projectId: doc.projectId,
-            source: doc.documentName,
-            snippet: doc.text,
-            score: doc.similarity,
-            page: doc.pageNumber,
-            url: doc.fileKey
-              ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
-              : undefined,
-          })),
-        };
-      },
-      experimental_toToolResultContent(result) {
-        return [
-          ...result.images.map((image) => ({
-            type: "image" as const,
-            data: image.imageData,
-            mimeType: image.mimeType,
-          })),
-          {
-            type: "text",
-            text: result.context,
-          },
-        ];
-      },
+    parameters: z.object({
+      query: z.string(),
     }),
-  };
-}
+    execute: async ({ query }) => {
+      console.log("Searching project documents for: ", query);
+      const res = await searchProjectDocuments(projectId, query, 80);
+
+      console.log("Search results:", res.length);
+
+      // Rerank results
+      const rerankedResults = await reranker.rerank(
+        query,
+        res.map((r) => r.text || ""),
+        {
+          topN: 20,
+          returnDocuments: true,
+        }
+      );
+
+      // Create a map of text to original result for lookup
+      const textToResultMap = new Map(res.map((r) => [r.text, r]));
+
+      // Map reranked results to simplified schema
+      const simplifiedDocs: DocumentSearchToolResult[] =
+        rerankedResults.results.map((reranked) => {
+          const originalDoc = textToResultMap.get(reranked.document.text)!;
+          return {
+            documentId: originalDoc.document.id,
+            projectId: projectId,
+            path: originalDoc.document.path,
+            documentName: originalDoc.document.name,
+            text: originalDoc.text,
+            similarity: reranked.relevance_score,
+            pageNumber: (originalDoc.metadata as { page_number?: number })
+              ?.page_number,
+            mimeType: originalDoc.document.mimeType,
+            fileKey: originalDoc.document.fileKey,
+          };
+        });
+
+      console.log("Simplified docs length:", simplifiedDocs.length);
+
+      // Use the typed helper functions with simplified schema
+      const uniqueDocs = getUniqueDocuments(simplifiedDocs);
+      const searchContext = convertResultsToXml(simplifiedDocs);
+
+      // Generate images if supported by model
+      let images: {
+        fileKey: string;
+        imageData: string;
+        mimeType: string;
+      }[] = [];
+      if (modelConfig.model.modelId.includes("claude-3-7-sonnet")) {
+        images = await processDocumentImages(uniqueDocs);
+      }
+
+      return {
+        context: searchContext,
+        docs: simplifiedDocs,
+        images,
+
+        // Format data thats easy for frontend to use
+        dataForFrontend: uniqueDocs.map((doc) => ({
+          document_id: doc.documentId,
+          path: doc.path,
+          projectId: doc.projectId,
+          source: doc.documentName,
+          snippet: doc.text,
+          score: doc.similarity,
+          page: doc.pageNumber,
+          url: doc.fileKey
+            ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+            : undefined,
+        })),
+      };
+    },
+    experimental_toToolResultContent(result) {
+      return [
+        ...result.images.map((image) => ({
+          type: "image" as const,
+          data: image.imageData,
+          mimeType: image.mimeType,
+        })),
+        {
+          type: "text",
+          text: result.context,
+        },
+      ];
+    },
+  });
 
 async function processThreadMessages(thread: ThreadWithMessages | null) {
   if (!thread) return null;
@@ -309,30 +304,53 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
     msg.attachments = await processAttachments(msg.attachments);
 
     msg.toolCalls = msg.toolCalls?.map((call) => {
-      const uniqueDocs = getUniqueDocuments(call.result.docs);
+      if (call.toolName === "search_project_information" && call.result?.docs) {
+        const uniqueDocs = getUniqueDocuments(call.result.docs);
 
-      return {
-        ...call,
-        result: {
-          dataForFrontend: uniqueDocs.map((doc) => ({
-            document_id: doc.documentId,
-            source: doc.documentName,
-            snippet: doc.text,
-            path: doc.path,
-            score: doc.similarity,
-            page: doc.pageNumber,
-            projectId: doc.projectId,
-            url: doc.fileKey
-              ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
-              : undefined,
-          })),
-        },
-      };
+        return {
+          ...call,
+          result: {
+            ...call.result, // Preserve existing result properties
+            dataForFrontend: uniqueDocs.map((doc) => ({
+              document_id: doc.documentId,
+              source: doc.documentName,
+              snippet: doc.text,
+              path: doc.path,
+              score: doc.similarity,
+              page: doc.pageNumber,
+              projectId: doc.projectId,
+              url: doc.fileKey
+                ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+                : undefined,
+            })),
+          },
+        };
+      }
+
+      // For other tool calls
+      return call;
     });
   }
 
   return thread;
 }
+
+// Create Document tool
+const createDocumentTool = () =>
+  tool({
+    description:
+      "Create a document for a writing or content creation activities. This will create as simeple markdown format style document, so the content should be in markdown format.",
+    parameters: z.object({
+      title: z.string(),
+      content: z.string(),
+    }),
+    execute: async ({ title, content }) => {
+      return {
+        title,
+        content,
+      };
+    },
+  });
 
 /** Constructs a "system" style message, appending user instructions if they exist. */
 function buildSystemMessage(instructions?: string, project?: Project): string {
@@ -400,6 +418,35 @@ Remember to prioritize accuracy, comprehensiveness, and adherence to all guideli
         : ""
     }\n</current_project>`;
   }
+
+  systemMsg += `\n\nArtifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
+
+When asked to write code, always use artifacts. When writing code, specify the language in the backticks, e.g. \`\`\`python\`code here\`\`\`. The default language is Python. Other languages are not yet supported, so let the user know if they request a different language.
+
+DO NOT UPDATE DOCUMENTS IMMEDIATELY AFTER CREATING THEM. WAIT FOR USER FEEDBACK OR REQUEST TO UPDATE IT.
+
+This is a guide for using artifacts tools: \`createDocument\` and \`updateDocument\`, which render content on a artifacts beside the conversation.
+
+**When to use \`createDocument\`:**
+- For substantial content (>10 lines) or code
+- For content users will likely save/reuse (emails, code, essays, etc.)
+- When explicitly requested to create a document
+- For when content contains a single code snippet
+
+**When NOT to use \`createDocument\`:**
+- For informational/explanatory content
+- For conversational responses
+- When asked to keep it in chat
+
+**Using \`updateDocument\`:**
+- Default to full document rewrites for major changes
+- Use targeted updates only for specific, isolated changes
+- Follow user instructions for which parts to modify
+
+**When NOT to use \`updateDocument\`:**
+- Immediately after creating a document
+
+Do not update document right after creating it. Wait for user feedback or request to update it.`;
 
   return systemMsg;
 }
@@ -543,7 +590,10 @@ async function createToolMessage(
   const processedResults = await Promise.all(
     completedCalls.map(async (call) => {
       // Special handling for Claude 3.7 Sonnet
-      if (modelConfig.model.modelId.includes("claude-3.7-sonnet")) {
+      if (
+        modelConfig.model.modelId.includes("claude-3.7-sonnet") &&
+        call.toolName === "search_project_information"
+      ) {
         return await processClaudeToolResult(call);
       }
 
@@ -552,7 +602,10 @@ async function createToolMessage(
         type: "tool-result",
         toolCallId: call.toolCallId,
         toolName: call.toolName,
-        result: convertResultsToXml((call.result as any).docs || []),
+        result:
+          call.toolName === "search_project_information"
+            ? convertResultsToXml((call.result as any).docs)
+            : call.result,
       };
     })
   );
@@ -680,7 +733,8 @@ export {
   generateAttachmentData,
   processAttachments,
   processThreadMessages,
-  createSearchTool,
+  createProjectSearchTool,
+  createDocumentTool,
   processDocumentImages,
   dbMessagesToInferenceMessages,
   maybeGenerateTitle,

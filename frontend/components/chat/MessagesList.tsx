@@ -63,7 +63,7 @@ const MessageBubble = ({
 
 import { Message } from "ai/react";
 import { ThinkingDropdown } from "./ThinkingDropdown";
-import SearchDocumentsTool from "./ToolCallResult";
+import { ToolCallMessageContent } from "./ToolCallResult";
 
 const AssistantMessage = ({
   message,
@@ -103,7 +103,10 @@ const AssistantMessage = ({
                 );
               case "tool-invocation":
                 return (
-                  <SearchDocumentsTool tool={part.toolInvocation} key={index} />
+                  <ToolCallMessageContent
+                    tool={part.toolInvocation}
+                    key={index}
+                  />
                 );
               default:
                 return null;
@@ -192,11 +195,17 @@ LoadingMessage.displayName = "LoadingMessage";
 const ChatMessagesList = React.memo(
   ({ messages, isLoading }: { messages: Message[]; isLoading: boolean }) => {
     useEffect(() => {
-      const container = document.querySelector(".overflow-y-auto");
-      if (container) {
-        container.scrollTop = container.scrollHeight;
-      }
-    }, [messages.length]);
+      // Using requestAnimationFrame to ensure DOM is fully updated before scrolling
+      const scrollToBottom = () => {
+        const container = document.querySelector(".overflow-y-auto");
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      };
+
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(scrollToBottom);
+    }, [messages]); // Changed from messages.length to messages
 
     return (
       <div className="flex-1 w-full h-full relative">

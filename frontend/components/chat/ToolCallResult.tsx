@@ -1,9 +1,23 @@
-import { File, Search, ChevronDown } from "lucide-react";
+import { File, Search, ChevronDown, Loader2, Maximize } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { cn } from "@/lib/utils";
 import React from "react";
 import { ToolInvocation } from "ai";
 import { motion, AnimatePresence } from "framer-motion";
+import MarkdownViewer from "../viewers/markdown-viewer";
+import { Button } from "../ui/button";
+
+export const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
+  switch (tool.toolName) {
+    case "search_project_information":
+      return <SearchDocumentsTool tool={tool} />;
+    case "create_document":
+      return <CreateDocumentTool tool={tool} />;
+
+    default:
+      return null;
+  }
+};
 
 const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
   const [showAll, setShowAll] = React.useState(false);
@@ -124,6 +138,62 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
         </div>
       )}
     </div>
+  );
+};
+
+const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
+  const [isExpanded, setIsExpanded] = React.useState(true);
+  const documentTitle = tool.args?.title;
+  const documentContent = tool.args?.content;
+  const isStreaming = tool.state === "partial-call" || tool.state === "call";
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="w-fit rounded-lg border border-border overflow-hidden"
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{
+          duration: 0.4,
+          ease: [0.4, 0, 0.2, 1],
+        }}
+      >
+        {/* Document Header */}
+        <div className="flex items-center justify-between bg-secondary/40 p-3">
+          <div className="flex items-center gap-2">
+            {isStreaming ? (
+              <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+            ) : (
+              <File className="w-4 h-4 text-muted-foreground" />
+            )}
+            <span className="font-medium text-sm truncate max-w-[400px]">
+              {documentTitle || "Untitled Document"}
+            </span>
+          </div>
+          <Button
+            className="hover:bg-secondary rounded-sm transition-colors"
+            title="Expand full screen"
+            variant={"ghost"}
+            size={"icon"}
+            onClick={() => {
+              /* Will be implemented later */
+            }}
+          >
+            <Maximize className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Document Content Preview */}
+        <motion.div
+          className="p-4 max-h-[400px] overflow-y-auto bg-card"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.3 }}
+        >
+          <MarkdownViewer content={documentContent} />
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
