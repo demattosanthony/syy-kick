@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism, SyntaxHighlighterProps } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Pencil } from "lucide-react";
 import { useEditor, EditorContent, Extension } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -198,35 +198,20 @@ const EditableBlock = ({
     <div className="relative group mb-2">
       {editable && !isEditing && (
         <Button
-          size="sm"
+          size="icon"
           variant="ghost"
-          className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute left-0 top-2 opacity-0 group-hover:opacity-100 transition-opacity -ml-10"
           onClick={handleEditClick}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
+          <Pencil size={16} />
         </Button>
       )}
 
       <div
         onDoubleClick={handleDoubleClick}
         className={`p-2 rounded-md transition-all duration-200 ${
-          editable && !isEditing
-            ? "hover:bg-gray-50 dark:hover:bg-gray-800 cursor-text"
-            : ""
-        } ${isEditing ? "bg-white dark:bg-gray-900 shadow-sm" : ""}`}
+          editable && !isEditing ? "hover:bg-secondary cursor-text" : ""
+        } ${isEditing ? "bg-background shadow-sm" : ""}`}
       >
         {isEditing && editor ? (
           <div className="border rounded-md p-2 focus-within:ring-2 focus-within:ring-blue-500 transition-all">
@@ -343,9 +328,7 @@ const EditableBlock = ({
             />
             <div className="flex justify-between mt-2 text-sm">
               <div className="text-gray-500">
-                {isSaving
-                  ? "Saving..."
-                  : "Press Esc to cancel, Ctrl+Enter to save"}
+                {isSaving ? "Saving..." : "Press Esc to cancel"}
               </div>
               <div className="flex space-x-2">
                 <Button

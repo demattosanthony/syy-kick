@@ -32,8 +32,8 @@ import { toast } from "sonner";
 import { useWorkspace } from "../sidebar/workspace-context";
 import MarkdownEditorViewer from "../viewers/markdown-viewer";
 import { Button } from "../ui/button";
-import { Copy, X } from "lucide-react";
-import { cn, scrollbarStyle } from "@/lib/utils";
+import { Check, Copy, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -197,6 +197,7 @@ export default function ThreadPage({
   // Add state for managing the split width
   const [splitPosition, setSplitPosition] = useState(35);
   const [isResizing, setIsResizing] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   // Handle mouse down on the resizer
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -240,7 +241,7 @@ export default function ThreadPage({
     <>
       <div id="chat-container" className="flex h-full w-full relative">
         <div
-          className="flex flex-col h-full min-w-[300px]"
+          className="flex flex-col h-full min-w-[400px]"
           style={{
             width: selectedArtifact ? `${splitPosition}%` : "100%",
           }}
@@ -270,38 +271,62 @@ export default function ThreadPage({
           <>
             {/* Resizable border */}
             <div
-              className="w-[2px] hover:w-1 h-full cursor-col-resize bg-secondary transition-all"
+              className="w-[2px] hover:w-1 h-full cursor-col-resize bg-secondary transition-all "
               onMouseDown={handleMouseDown}
             />
-
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               <motion.div
-                className="h-full"
-                style={{ width: `${100 - splitPosition - 0.25}%` }}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="h-full "
+                style={{
+                  width: `${100 - splitPosition - 0.25}%`,
+                  minWidth: "450px",
+                }}
+                initial={{ opacity: 0, x: 50, scale: 0.95 }}
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                  scale: 1,
+                  transition: {
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 25,
+                  },
+                }}
+                exit={{
+                  opacity: 0,
+                  x: 50,
+                  scale: 0.95,
+                  transition: {
+                    duration: 0.2,
+                  },
+                }}
               >
-                <div className="flex-1 w-full h-full relative shadow-md">
+                <motion.div
+                  className="flex-1 w-full h-full relative shadow-md"
+                  initial={{ boxShadow: "0 0 0 rgba(0,0,0,0)" }}
+                  animate={{
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                    transition: { delay: 0.1, duration: 0.3 },
+                  }}
+                >
                   <div
                     className={cn(
-                      "absolute inset-0 overflow-y-auto",
-                      scrollbarStyle
+                      "absolute inset-0 overflow-y-auto ",
+                      "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
                     )}
                   >
                     <div className="mx-auto">
                       {/* Header with artifact name and copy button */}
-                      <div className="flex justify-between items-center sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-4 py-3 border-b">
+                      <div className="flex justify-between items-center sticky top-0 z-10 px-4 py-3 bg-background/80 backdrop-blur-md">
                         <div className="flex items-center gap-2">
                           <Button
                             onClick={() => setSelectedArtifact(null)}
                             size="icon"
                             variant="ghost"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="min-w-[18px] min-h-[18px]" />
                           </Button>
-                          <h3 className="text-lg font-medium truncate max-w-[400px]">
+                          <h3 className="text-lg font-medium truncate max-w-[475px]">
                             {selectedArtifact.title || "Untitled Artifact"}
                           </h3>
                         </div>
@@ -312,13 +337,23 @@ export default function ThreadPage({
                               navigator.clipboard.writeText(
                                 selectedArtifact.content
                               );
+                              setIsCopied(true);
                               toast.success("Content copied to clipboard");
+
+                              // Reset the copied state after 2 seconds
+                              setTimeout(() => {
+                                setIsCopied(false);
+                              }, 2000);
                             }}
                             size="sm"
                             variant="ghost"
                             className="h-8 px-2 text-muted-foreground hover:text-foreground"
                           >
-                            <Copy className="w-4 h-4" />
+                            {isCopied ? (
+                              <Check className="w-[18px] h-[18px] text-green-500" />
+                            ) : (
+                              <Copy className="w-[18px] h-[18px]" />
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -332,7 +367,7 @@ export default function ThreadPage({
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               </motion.div>
             </AnimatePresence>
           </>

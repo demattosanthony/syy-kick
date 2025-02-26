@@ -330,8 +330,9 @@ function ChatInputForm(
 
           <Button
             ref={buttonRef}
-            className="h-8 w-8 ml-auto"
-            variant="ghost"
+            className="h-8 w-8 ml-auto rounded-full"
+            disabled={isGenerating || !input}
+            // variant="ghost"
             onClick={(e) => {
               e.preventDefault();
               if (isGenerating && stop) {

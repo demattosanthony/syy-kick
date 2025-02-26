@@ -206,7 +206,12 @@ const ChatMessagesList = React.memo(
 
     return (
       <div className="flex-1 w-full h-full relative">
-        <div className={cn("absolute inset-0 overflow-y-auto", scrollbarStyle)}>
+        <div
+          className={cn(
+            "absolute inset-0 overflow-y-auto",
+            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
+          )}
+        >
           <div className="max-w-[840px] mx-auto pt-20 p-4 flex flex-col">
             {messages.map((message, index) => {
               const nextMessage = messages[index + 1];

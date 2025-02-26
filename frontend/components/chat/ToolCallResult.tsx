@@ -182,22 +182,28 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
       <motion.div
         className={cn(
           "rounded-lg border overflow-hidden",
-          isSelectedArtifact
-            ? "w-fit border-primary/40 shadow-sm bg-background"
-            : "w-fit border-border shadow-md"
+          isSelectedArtifact ? "w-fit" : "w-fit"
         )}
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        initial={{ opacity: 0, y: 20, scale: 0.95, rotateX: 10 }}
+        animate={{
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          rotateX: 0,
+        }}
         transition={{
-          duration: 0.4,
-          ease: [0.4, 0, 0.2, 1],
+          duration: 0.5,
+          type: "spring",
+          stiffness: 100,
+          damping: 15,
+          delay: 0.1,
         }}
       >
         {/* Document Header */}
         <div
           className={cn(
             "flex items-center justify-between px-3 py-2",
-            isSelectedArtifact && "border-b border-primary/20"
+            isSelectedArtifact && "border-primary/20"
           )}
         >
           <div className="flex items-center gap-2">
@@ -253,14 +259,14 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
         {!isSelectedArtifact && (
           <motion.div
             className={cn(
-              "px-4 max-h-[320px] overflow-y-auto bg-card",
-              scrollbarStyle
+              "px-4 max-h-[320px] overflow-y-auto",
+              "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
             )}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.3 }}
           >
-            <MarkdownViewer initialContent={documentContent} editable />
+            <MarkdownViewer initialContent={documentContent} />
           </motion.div>
         )}
       </motion.div>
