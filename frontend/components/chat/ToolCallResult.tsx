@@ -190,7 +190,7 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.3 }}
         >
-          <MarkdownViewer content={documentContent} />
+          <MarkdownViewer initialContent={documentContent} editable />
         </motion.div>
       </motion.div>
     </AnimatePresence>

@@ -94,11 +94,13 @@ const AssistantMessage = ({
           {message.parts?.map((part, index) => {
             switch (part.type) {
               case "text":
-                return <MarkdownViewer content={part.text} key={index} />;
+                return (
+                  <MarkdownViewer initialContent={part.text} key={index} />
+                );
               case "reasoning":
                 return (
                   <ThinkingDropdown key={index}>
-                    <MarkdownViewer content={part.reasoning || ""} />
+                    <MarkdownViewer initialContent={part.reasoning || ""} />
                   </ThinkingDropdown>
                 );
               case "tool-invocation":
