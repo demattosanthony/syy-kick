@@ -4,7 +4,14 @@ import { motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { useAtom } from "jotai";
 import { AUTO_MODEL_CONFIG, initalInputAtom, modelAtom } from "@/atoms/chat";
-import { NotebookPen, Plug, Search, LucideIcon, Building } from "lucide-react";
+import {
+  NotebookPen,
+  Plug,
+  Search,
+  LucideIcon,
+  Building,
+  Files,
+} from "lucide-react";
 import { animatedAtom } from "./AnimatedGreeting";
 
 interface ConversationStartersProps {
@@ -53,6 +60,64 @@ const CONVERSATION_STARTERS: StarterButtonProps[] = [
       "Analyze this HVAC system diagram and suggest efficiency improvements",
     requiresFile: true,
   },
+  {
+    icon: Files,
+    iconColor: "text-orange-500",
+    label: "Generate RFP",
+    inputText: `You are an experienced MEP (Mechanical, Electrical, Plumbing) engineer tasked with analyzing project documents and generating fee estimates. Your goal is to extract key information from the provided document and calculate appropriate MEP design fees based on industry standards.
+
+Please follow these steps to analyze the document and generate a fee estimate:
+
+1. Carefully read through the project document.
+
+2. Extract the following key information:
+   - Type of building
+   - Square footage (sf)
+   - Construction budget
+   - Brief description of the project
+
+3. Calculate the MEP design fees based on the following guidelines:
+   - Use a range of 0.75% to 1% of the construction budget
+   - Break down the fees into the following phases:
+     a) SD (Schematic Design)
+     b) DD (Design Development)
+     c) CD (Construction Documents)
+     d) CA (Construction Administration)
+   - Use industry standards to allocate percentages to each phase
+
+4. Double-check your extracted information and calculations to ensure accuracy.
+
+5. Present your findings in a clear, structured format.
+
+Before providing your final output, wrap your analysis inside <project_analysis> tags. In this analysis:
+- Quote relevant parts of the document for each key piece of information you extract.
+- Consider different building types and their typical MEP requirements.
+- Justify your chosen fee percentage within the 0.75% to 1% range.
+- Break down industry standard percentages for each project phase.
+This will help ensure a thorough interpretation of the data and accurate fee estimation. It's OK for this section to be quite long.
+
+After your analysis, provide a summary of your findings in the following format:
+
+1. Project Information:
+   - Building Type: [Type]
+   - Square Footage: [SF]
+   - Construction Budget: [Budget]
+   - Project Description: [Brief description]
+
+2. MEP Design Fee Estimate:
+   - Total Fee Range: [Lower bound] - [Upper bound]
+   - Fee Breakdown:
+     a) SD (Schematic Design): [Amount] ([Percentage])
+     b) DD (Design Development): [Amount] ([Percentage])
+     c) CD (Construction Documents): [Amount] ([Percentage])
+     d) CA (Construction Administration): [Amount] ([Percentage])
+
+3. Additional Notes: [Any relevant observations or recommendations]
+
+Please proceed with your analysis and summary of the project document.`,
+    requiresFile: true,
+  },
+
   //   {
   //     icon: Globe,
   //     iconColor: "text-green-500",

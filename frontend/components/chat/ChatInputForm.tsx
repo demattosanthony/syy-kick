@@ -173,7 +173,7 @@ function ChatInputForm(
   return (
     <Card
       className={cn(
-        "relative flex flex-col h-auto min-h-[105px] max-h-[500px] w-full mx-auto max-w-[750px] p-0 rounded-2xl bg-background",
+        "relative flex flex-col h-auto min-h-[105px] max-h-[600px] w-full mx-auto max-w-[750px] p-0 rounded-2xl bg-background",
         focused && !isMobile ? "shadow-sm border-2" : "shadow-none"
       )}
     >
@@ -289,7 +289,7 @@ function ChatInputForm(
               style={{
                 height: "50px",
                 minHeight: "50px",
-                maxHeight: "400px",
+                maxHeight: "375px",
               }}
               className="resize-none !min-h-[50px] w-full text-base rounded-xl border-none focus:ring-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:font-normal"
             />
