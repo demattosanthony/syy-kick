@@ -2,7 +2,7 @@
 
 import { Plus, Slash } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { messagesAtom } from "@/atoms/chat";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -19,17 +19,11 @@ import Link from "next/link";
 export default function ThreadHeader() {
   const params = useParams();
   const router = useRouter();
-  const pathname = usePathname();
 
   const threadId = params.threadId as string;
   const [, setMessages] = useAtom(messagesAtom);
 
   const { data: thread } = useThreadQuery(threadId, false);
-
-  // Return null if not on a threads page
-  if (!pathname.includes("/threads/")) {
-    return null;
-  }
 
   return (
     <header
