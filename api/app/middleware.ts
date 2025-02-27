@@ -88,7 +88,7 @@ export const checkSub = async (
   }
 
   // Fallback to checking user's personal subscription
-  if (!["trialing", "active"].includes(dbUser!.subscriptionStatus!)) {
+  if (!["trialing", "active"].includes(dbUser?.subscriptionStatus || "")) {
     res.status(402).json({ error: "Subscription required" });
     return;
   }
