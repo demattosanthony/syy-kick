@@ -45,7 +45,7 @@ export function DeleteAlertDialog({
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <DropdownMenuItem
-          className="text-destructive"
+          className="text-destructive cursor-pointer"
           onSelect={(e) => e.preventDefault()}
         >
           <Trash className="h-2 w-2" />
