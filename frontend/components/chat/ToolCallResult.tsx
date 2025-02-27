@@ -184,19 +184,11 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
           "rounded-lg border overflow-hidden",
           isSelectedArtifact ? "w-fit" : "w-fit"
         )}
-        initial={{ opacity: 0, y: 20, scale: 0.95, rotateX: 10 }}
-        animate={{
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          rotateX: 0,
-        }}
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{
-          duration: 0.5,
-          type: "spring",
-          stiffness: 100,
-          damping: 15,
-          delay: 0.1,
+          duration: 0.4,
+          ease: [0.4, 0, 0.2, 1],
         }}
       >
         {/* Document Header */}
@@ -259,7 +251,7 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
         {!isSelectedArtifact && (
           <motion.div
             className={cn(
-              "px-4 max-h-[320px] overflow-y-auto",
+              "px-4 max-h-[320px] overflow-y-auto max-w-[740px] mx-auto",
               "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
             )}
             initial={{ opacity: 0 }}

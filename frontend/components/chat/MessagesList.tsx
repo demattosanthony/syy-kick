@@ -75,7 +75,7 @@ const AssistantMessage = ({
   return (
     <div className="my-2 flex flex-col justify-start">
       <div className="flex">
-        <div className="mr-2 mt-3 w-[32px] h-[32px]">
+        <div className="mr-1 pt-2 w-[32px] h-[32px]">
           {showEye ? <Syyclops3dEye size={32} animate={false} /> : null}
         </div>
 
@@ -157,7 +157,7 @@ import { MessageRole } from "@/types/chat";
 import Syyclops3dEye from "../syy-eye";
 import MarkdownViewer from "../viewers/markdown-viewer";
 import { motion } from "framer-motion";
-import { cn, scrollbarStyle } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const LoadingMessage = React.memo(() => {
   return (
@@ -212,7 +212,7 @@ const ChatMessagesList = React.memo(
             "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
           )}
         >
-          <div className="max-w-[840px] mx-auto pt-20 p-4 flex flex-col">
+          <div className="max-w-[840px] mx-auto pt-20 p-4">
             {messages.map((message, index) => {
               const nextMessage = messages[index + 1];
               const showEye =
