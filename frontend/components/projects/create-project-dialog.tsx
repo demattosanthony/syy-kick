@@ -93,7 +93,7 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Create a new Project</DialogTitle>
           <DialogDescription></DialogDescription>
@@ -127,7 +127,7 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
               }
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 max-w-[460px]">
             <Label htmlFor="location">Location</Label>
             <LocationSearch
               value={formData.location}

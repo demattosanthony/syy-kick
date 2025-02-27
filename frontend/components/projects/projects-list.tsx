@@ -59,23 +59,6 @@ function ProjectItem({ project }: { project: Project }) {
               Updated {getRelativeTimeString(project.updatedAt)}
             </p>
           </div>
-
-          <div className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-blue-400"
-            >
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </div>
         </div>
       </div>
     </Link>
