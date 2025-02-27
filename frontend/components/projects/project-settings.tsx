@@ -34,7 +34,8 @@ const formSchema = z.object({
   name: z.string().min(1, "Project name is required").max(100),
   description: z
     .string()
-    .max(500, "Description must be less than 500 characters"),
+    .max(500, "Description must be less than 500 characters")
+    .optional(),
   location: z
     .object({
       address: z.string().optional(),
@@ -58,6 +59,7 @@ export default function ProjectSettings({ pid }: { pid: string }) {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: "onSubmit", // Only validate on submit
     defaultValues: {
       name: "",
       description: "",
@@ -73,7 +75,8 @@ export default function ProjectSettings({ pid }: { pid: string }) {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  // Handle form submission
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       await updateProjectMutation.mutateAsync({
         projectId: pid,
@@ -89,13 +92,15 @@ export default function ProjectSettings({ pid }: { pid: string }) {
           longitude: values.location?.longitude || undefined,
         },
       });
+
       toast.success("Settings updated", {
         description: "Your project settings have been updated successfully.",
       });
-    } catch {
+    } catch (error) {
+      console.error("Failed to update project settings:", error);
       toast.error("Failed to update project settings. Please try again.");
     }
-  }
+  };
 
   async function handleDeleteProject() {
     try {
@@ -115,19 +120,19 @@ export default function ProjectSettings({ pid }: { pid: string }) {
     if (project) {
       form.reset({
         name: project.name,
-        description: project.description,
+        description: project.description || undefined,
         location: {
-          address: project.address,
-          city: project.city,
-          state: project.state,
-          country: project.country,
-          postalCode: project.postalCode,
-          latitude: project.latitude,
-          longitude: project.longitude,
+          address: project.address || undefined,
+          city: project.city || undefined,
+          state: project.state || undefined,
+          country: project.country || undefined,
+          postalCode: project.postalCode || undefined,
+          latitude: project.latitude || undefined,
+          longitude: project.longitude || undefined,
         },
       });
     }
-  }, [project, form]);
+  }, [project]);
 
   return (
     <div className="flex flex-col h-screen w-full">
@@ -144,63 +149,69 @@ export default function ProjectSettings({ pid }: { pid: string }) {
               </div>
 
               <Card className="p-6">
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-4"
-                  >
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <div>
-                          <Label className="text-muted-foreground text-sm">
-                            Project Name
-                          </Label>
-                          <Input {...field} />
-                        </div>
-                      )}
-                    />
+                {/* Remove the Form component wrapper */}
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <div>
+                        <Label className="text-muted-foreground text-sm">
+                          Project Name
+                        </Label>
+                        <Input {...field} />
+                      </div>
+                    )}
+                  />
 
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <div>
-                          <Label className="text-muted-foreground text-sm">
-                            Description
-                          </Label>
-                          <Textarea
-                            {...field}
-                            placeholder="Enter a description for your project"
-                          />
-                        </div>
-                      )}
-                    />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <div>
+                        <Label className="text-muted-foreground text-sm">
+                          Description
+                        </Label>
+                        <Textarea
+                          {...field}
+                          placeholder="Enter a description for your project"
+                        />
+                      </div>
+                    )}
+                  />
 
-                    <FormField
-                      control={form.control}
-                      name="location"
-                      render={({ field }) => (
-                        <div>
-                          <Label className="text-muted-foreground text-sm">
-                            Location
-                          </Label>
-                          <LocationSearch
-                            value={field.value || {}}
-                            onChange={(locationData) => {
-                              field.onChange(locationData);
-                            }}
-                          />
-                        </div>
-                      )}
-                    />
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <div>
+                        <Label className="text-muted-foreground text-sm">
+                          Location
+                        </Label>
+                        <LocationSearch
+                          value={field.value || {}}
+                          onChange={(locationData) => {
+                            field.onChange(locationData);
+                          }}
+                        />
+                      </div>
+                    )}
+                  />
 
-                    <div className="flex justify-end">
-                      <Button type="submit">Save Changes</Button>
-                    </div>
-                  </form>
-                </Form>
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      disabled={updateProjectMutation.isPending}
+                    >
+                      {updateProjectMutation.isPending
+                        ? "Saving..."
+                        : "Save Changes"}
+                    </Button>
+                  </div>
+                </form>
               </Card>
             </section>
 
