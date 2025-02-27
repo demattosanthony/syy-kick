@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateProjectMutation } from "@/queries/queries";
-import { useWorkspace } from "@/components/sidebar/workspace-context";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
