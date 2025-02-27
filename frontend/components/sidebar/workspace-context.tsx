@@ -3,8 +3,7 @@
 import * as React from "react";
 import { type Workspace } from "@/types/workspace";
 import { useMeQuery } from "@/queries/queries";
-import { atomWithStorage } from "jotai/utils";
-import { useAtom } from "jotai";
+import { setActiveWorkspaceCookie } from "@/app/workspace-actions";
 
 type WorkspaceContextType = {
   activeWorkspace: Workspace | null;
@@ -16,19 +15,29 @@ const WorkspaceContext = React.createContext<WorkspaceContextType | undefined>(
   undefined
 );
 
-const activeWorkspaceAtom = atomWithStorage<Workspace | null>(
-  "activeWorkspace",
-  null
-);
-
 export const WorkspaceProvider = ({
   children,
+  initialWorkspace,
 }: {
   children: React.ReactNode;
+  initialWorkspace?: Workspace | null;
 }) => {
-  const [activeWorkspace, setActiveWorkspace] = useAtom(activeWorkspaceAtom);
+  const [activeWorkspace, setActiveWorkspaceState] =
+    React.useState<Workspace | null>(initialWorkspace || null);
   const { data: user } = useMeQuery();
   const [workspaces, setWorkspaces] = React.useState<Workspace[]>([]);
+
+  // Function to update both client state and cookie
+  const setActiveWorkspace = React.useCallback((workspace: Workspace) => {
+    setActiveWorkspaceCookie(workspace); // Call the server action
+
+    // Also set the cookie on the client side for immediate effect
+    document.cookie = `activeWorkspace=${JSON.stringify(
+      workspace
+    )}; path=/; max-age=2147483647; samesite=strict`;
+
+    setActiveWorkspaceState(workspace);
+  }, []);
 
   // Set up workspaces and ensure active workspace is valid
   React.useEffect(() => {
