@@ -1,14 +1,12 @@
 import { z } from "zod";
 
 const createThreadSchema = z.object({
-  organizationId: z.string().optional(),
   projectId: z.string().optional(),
 });
 
 const getThreadsSchema = z.object({
   page: z.string().optional(),
   search: z.string().optional(),
-  organizationId: z.string().optional(),
 });
 
 const inferenceSchema = z.object({

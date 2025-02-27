@@ -463,7 +463,6 @@ class ProjectsApi extends ApiRequest {
   async createProject(data: {
     name: string;
     description?: string;
-    organizationId?: string;
     address?: string;
     city?: string;
     state?: string;
@@ -475,14 +474,9 @@ class ProjectsApi extends ApiRequest {
     return await this.request("/projects", "POST", data);
   }
 
-  async getProject(
-    projectId: string,
-    organizationId?: string
-  ): Promise<Project> {
+  async getProject(projectId: string): Promise<Project> {
     const queryParams = new URLSearchParams();
-    if (organizationId) {
-      queryParams.append("organizationId", organizationId);
-    }
+
     return await this.request(
       `/projects/${projectId}${
         queryParams.toString() ? "?" + queryParams.toString() : ""
@@ -490,28 +484,17 @@ class ProjectsApi extends ApiRequest {
     );
   }
 
-  async listProjects(
-    organizationId?: string,
-    search?: string
-  ): Promise<Project[]> {
+  async listProjects(search?: string): Promise<Project[]> {
     const queryParams = new URLSearchParams();
-    if (organizationId) {
-      queryParams.append("organizationId", organizationId);
-    }
     if (search) {
       queryParams.append("search", search);
     }
     return await this.request(`/projects?${queryParams.toString()}`);
   }
 
-  async deleteProject(
-    projectId: string,
-    organizationId?: string
-  ): Promise<{ success: boolean }> {
+  async deleteProject(projectId: string): Promise<{ success: boolean }> {
     const queryParams = new URLSearchParams();
-    if (organizationId) {
-      queryParams.append("organizationId", organizationId);
-    }
+
     return await this.request(
       `/projects/${projectId}${
         queryParams.toString() ? "?" + queryParams.toString() : ""
@@ -522,16 +505,13 @@ class ProjectsApi extends ApiRequest {
 
   async getDocuments(
     projectId: string,
-    path?: string,
-    organizationId?: string
+    path?: string
   ): Promise<DocumentContent[]> {
     const queryParams = new URLSearchParams();
     if (path) {
       queryParams.append("path", path);
     }
-    if (organizationId) {
-      queryParams.append("organizationId", organizationId);
-    }
+
     return await this.request(
       `/projects/${projectId}/documents${
         queryParams.toString() ? "?" + queryParams.toString() : ""
@@ -541,16 +521,13 @@ class ProjectsApi extends ApiRequest {
 
   async deleteContents(
     projectId: string,
-    path: string,
-    organizationId?: string
+    path: string
   ): Promise<{
     success: boolean;
   }> {
     const queryParams = new URLSearchParams();
     queryParams.append("path", path);
-    if (organizationId) {
-      queryParams.append("organizationId", organizationId);
-    }
+
     return await this.request(
       `/projects/${projectId}/documents?${queryParams.toString()}`,
       "DELETE"
@@ -562,7 +539,6 @@ class ProjectsApi extends ApiRequest {
     data: {
       name?: string;
       description?: string;
-      organizationId?: string;
       address?: string | null;
       city?: string | null;
       state?: string | null;
@@ -581,16 +557,10 @@ class ProjectsApi extends ApiRequest {
    * - content (for text files),
    * - base64Content (for small/binary files directly in Gitea).
    */
-  async getDocument(
-    projectId: string,
-    path: string,
-    organizationId?: string
-  ): Promise<DocumentContent> {
+  async getDocument(projectId: string, path: string): Promise<DocumentContent> {
     const queryParams = new URLSearchParams();
     queryParams.append("path", path);
-    if (organizationId) {
-      queryParams.append("organizationId", organizationId);
-    }
+
     return await this.request(
       `/projects/${projectId}/document?${queryParams.toString()}`
     );
@@ -745,8 +715,7 @@ class ProjectsApi extends ApiRequest {
     projectId: string,
     files: File[],
     basePath: string = "",
-    onProgress?: (progress: number) => void,
-    organizationId?: string
+    onProgress?: (progress: number) => void
   ): Promise<{
     success: boolean;
   }> {
@@ -802,7 +771,7 @@ class ProjectsApi extends ApiRequest {
       }
     }
 
-    const payload = { basePath, entries, organizationId };
+    const payload = { basePath, entries };
     return this.request<{
       success: boolean;
     }>(`/projects/${projectId}/documents`, "POST", payload);

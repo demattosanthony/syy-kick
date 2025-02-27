@@ -23,6 +23,7 @@ import s3 from "../config/s3";
 import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
+import { getOrgIdOrUnedfined } from "../utils";
 
 const schemas = {
   createProject: z
@@ -669,9 +670,11 @@ async function checkProjectUpdatePermission(projectId: string, userId: string) {
 // Route handlers
 const handlers = {
   createProject: async (req: Request, res: Response) => {
+    const orgId = getOrgIdOrUnedfined(req.workspace);
     const data = {
       ...req.body,
-      userId: req.body.organizationId ? undefined : req.dbUser?.id,
+      userId: orgId ? undefined : req.dbUser?.id,
+      organizationId: orgId,
     };
 
     const validatedData = schemas.createProject.parse(data);
@@ -680,9 +683,10 @@ const handlers = {
   },
 
   listProjects: async (req: Request, res: Response) => {
-    const { search, organizationId } = req.query;
+    const { search } = req.query;
+    const orgId = getOrgIdOrUnedfined(req.workspace);
     const projectsList = await listProjects({
-      organizationId: organizationId as string | undefined,
+      organizationId: orgId,
       userId: req.dbUser?.id,
       search: search as string,
     });
@@ -691,14 +695,12 @@ const handlers = {
 
   getProject: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const organizationId = req.query.organizationId as string | undefined;
     const project = await getProject(projectId);
     res.json(project || {});
   },
 
   deleteProject: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const organizationId = req.query.organizationId as string | undefined;
     await deleteProject(projectId);
     res.json({ success: true });
   },
@@ -706,7 +708,7 @@ const handlers = {
   getDocuments: async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
-      const { path, organizationId } = req.query;
+      const { path } = req.query;
       const files = await getProjectDocs(projectId, path as string);
       res.json(files);
     } catch (error) {
@@ -717,7 +719,7 @@ const handlers = {
 
   deleteContents: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const { path, organizationId } = req.query;
+    const { path } = req.query;
     await deleteProjectContent(projectId, decodeURIComponent(path as string));
     res.json({ success: true });
   },
@@ -754,7 +756,7 @@ const handlers = {
    */
   getDocument: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const { path, organizationId } = req.query;
+    const { path } = req.query;
     const file = await getDocContent(
       projectId,
       decodeURIComponent(path as string)

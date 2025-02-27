@@ -42,7 +42,6 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
     },
   });
 
-  const { activeWorkspace } = useWorkspace();
   const createProjectMutation = useCreateProjectMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,10 +50,6 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
       const project = await createProjectMutation.mutateAsync({
         name: formData.name,
         description: formData.description,
-        organizationId:
-          activeWorkspace?.type === "organization"
-            ? activeWorkspace.id
-            : undefined,
         address: formData.location.address,
         city: formData.location.city,
         state: formData.location.state,

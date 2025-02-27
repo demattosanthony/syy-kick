@@ -17,7 +17,10 @@ const router = Router();
 router.post(
   "/",
   handle(async (req) => {
-    const { organizationId, projectId } = createThreadSchema.parse(req.body);
+    const { workspace } = req;
+    const { organizationId } =
+      workspace?.type === "organization" ? workspace : req.body;
+    const { projectId } = createThreadSchema.parse(req.body);
     return threadsOps.createThread(req.dbUser!.id, organizationId, projectId);
   })
 );
@@ -26,12 +29,13 @@ router.post(
 router.get(
   "/",
   handle(async (req) => {
-    const { page, search, organizationId } = getThreadsSchema.parse(req.query);
+    const { workspace } = req;
+    const { page, search } = getThreadsSchema.parse(req.query);
     return threadsOps.listThreads(
       req.dbUser!.id,
       parseInt(page || "1", 10),
       (search || "").trim(),
-      organizationId
+      workspace && workspace.type === "organization" ? workspace.id : undefined
     );
   })
 );
@@ -64,11 +68,11 @@ router.post("/:threadId/inference", async (req: Request, res: Response) => {
 router.delete(
   "/:threadId",
   handle(async (req) => {
-    const organizationId = req.query.organizationId as string | undefined;
+    const { workspace } = req;
     return threadsOps.deleteThread(
       req.dbUser!.id,
       req.params.threadId,
-      organizationId
+      workspace && workspace.type === "organization" ? workspace.id : undefined
     );
   })
 );
