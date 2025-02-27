@@ -53,8 +53,11 @@ export const checkSub = async (
   res: Response,
   next: NextFunction
 ) => {
-  //   if (!CONFIG.__prod__ || CONFIG.EMAIL_WHITELIST.includes(req.dbUser.email))
-  //     return next();
+  if (
+    !CONFIG.__prod__ ||
+    (req.dbUser && CONFIG.EMAIL_WHITELIST.includes(req.dbUser.email))
+  )
+    return next();
 
   const { workspace, dbUser } = req;
 
@@ -85,7 +88,7 @@ export const checkSub = async (
   }
 
   // Fallback to checking user's personal subscription
-  if (!["trialing", "active"].includes(dbUser!.subscriptionStatus!)) {
+  if (!["trialing", "active"].includes(dbUser?.subscriptionStatus || "")) {
     res.status(402).json({ error: "Subscription required" });
     return;
   }
