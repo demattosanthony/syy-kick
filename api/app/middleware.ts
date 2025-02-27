@@ -53,8 +53,11 @@ export const checkSub = async (
   res: Response,
   next: NextFunction
 ) => {
-  //   if (!CONFIG.__prod__ || CONFIG.EMAIL_WHITELIST.includes(req.dbUser.email))
-  //     return next();
+  if (
+    !CONFIG.__prod__ ||
+    (req.dbUser && CONFIG.EMAIL_WHITELIST.includes(req.dbUser.email))
+  )
+    return next();
 
   const { workspace, dbUser } = req;
 

@@ -4,12 +4,9 @@ import { me } from "./app/actions";
 
 export async function middleware(req: NextRequest) {
   const user = await me();
-  const path = req.nextUrl.pathname;
-
-  const protectedRoutes = ["/settings", "/threads"];
 
   // Redirect unauthenticated users
-  if (protectedRoutes.includes(path) && user === null) {
+  if (user === null) {
     return NextResponse.redirect(new URL("/", req.nextUrl));
   }
 
@@ -17,5 +14,11 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/settings", "/threads", "/threads/:threadId"],
+  matcher: [
+    "/settings",
+    "/threads",
+    "/projects",
+    "/threads/:threadId",
+    "/projects/:projectId",
+  ],
 };
