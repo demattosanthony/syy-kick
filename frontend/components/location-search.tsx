@@ -178,7 +178,9 @@ export function LocationSearch({ value, onChange }: LocationSearchProps) {
                 <span className="truncate">{displayValue}</span>
               </div>
             ) : (
-              <span>Search for a location...</span>
+              <span className="text-muted-foreground font-normal">
+                Search for a location...
+              </span>
             )}
           </Button>
         </PopoverTrigger>

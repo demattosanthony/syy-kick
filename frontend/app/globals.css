@@ -22,7 +22,7 @@
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
     /* Accent greys */
-    --accent: 0 0% 96%;
+    --accent: 0 0% 94%;
     --accent-foreground: 0 0% 20%;
     /* Keep destructive red */
     --destructive: 0 84.2% 60.2%;
@@ -33,7 +33,7 @@
     --ring: 0 0% 20%;
     --radius: 0.75rem;
     /* Sidebar with pure greys */
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 97%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
@@ -46,49 +46,49 @@
   }
 
   .dark {
-    /* Darker background with pure blacks */
-    --background: 0 0% 7%;
+    /* Slightly lighter dark background */
+    --background: 0 0% 10%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 7;
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 7%;
+    --popover: 0 0% 10%;
     --popover-foreground: 0 0% 98%;
 
     /* Clean white for primary in dark mode */
     --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 7%;
+    --primary-foreground: 0 0% 10%;
 
-    /* Darker greys for secondary elements */
-    --secondary: 0 0% 15%;
+    /* Slightly lighter greys for secondary elements */
+    --secondary: 0 0% 18%;
     --secondary-foreground: 0 0% 98%;
 
-    /* Muted dark greys */
-    --muted: 0 0% 15%;
+    /* Slightly lighter muted dark greys */
+    --muted: 0 0% 18%;
     --muted-foreground: 0 0% 65%;
 
-    /* Accent colors matching secondary */
-    --accent: 0 0% 15%;
+    /* Accent colors slightly lighter */
+    --accent: 0 0% 18%;
     --accent-foreground: 0 0% 98%;
 
     /* Deeper destructive red for dark mode */
     --destructive: 0 65% 30%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
     --ring: 0 0% 85%;
 
-    /* Sidebar with slightly different dark shade */
-    --sidebar-background: 0 0% 7%;
+    /* Sidebar with slightly lighter dark shade */
+    --sidebar-background: 0 0% 10%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 0 0% 7%;
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 18%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 15%;
+    --sidebar-border: 0 0% 18%;
     --sidebar-ring: 0 0% 85%;
 
-    --theme-color: hsl(0 0% 7%);
+    --theme-color: hsl(0 0% 10%);
   }
 }
 

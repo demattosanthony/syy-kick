@@ -90,7 +90,7 @@ export default function Home() {
         ) && <PricingDialog />}
 
       <div className="w-full flex flex-1 items-center justify-center">
-        <div className="flex flex-col h-[65%] md:h-[50%] items-center w-full ">
+        <div className="flex flex-col h-[65%] md:h-[55%] items-center w-full ">
           <div className="w-[175px] flex items-center justify-center">
             <Syyclops3dEye size={175} />
           </div>

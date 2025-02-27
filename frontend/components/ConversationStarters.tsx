@@ -4,14 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "./ui/button";
 import { useAtom } from "jotai";
 import { AUTO_MODEL_CONFIG, initalInputAtom, modelAtom } from "@/atoms/chat";
-import {
-  NotebookPen,
-  Plug,
-  Search,
-  LucideIcon,
-  Building,
-  Files,
-} from "lucide-react";
+import { Plug, Search, LucideIcon, Building, Files } from "lucide-react";
 import { animatedAtom } from "./AnimatedGreeting";
 
 interface ConversationStartersProps {
@@ -45,13 +38,13 @@ const CONVERSATION_STARTERS: StarterButtonProps[] = [
       "Extract my energy usage from this bill and return it in a table format",
     requiresFile: true,
   },
-  {
-    icon: NotebookPen,
-    iconColor: "text-blue-500",
-    label: "Write a Report",
-    inputText: "Help me write a report about ",
-    requiresFile: false,
-  },
+  //   {
+  //     icon: NotebookPen,
+  //     iconColor: "text-blue-500",
+  //     label: "Write a Report",
+  //     inputText: "Help me write a report about ",
+  //     requiresFile: false,
+  //   },
   {
     icon: Building,
     iconColor: "text-purple-500",
@@ -62,7 +55,7 @@ const CONVERSATION_STARTERS: StarterButtonProps[] = [
   },
   {
     icon: Files,
-    iconColor: "text-orange-500",
+    iconColor: "text-blue-500",
     label: "Generate RFP",
     inputText: `You are an experienced MEP (Mechanical, Electrical, Plumbing) engineer tasked with analyzing project documents and generating fee estimates. Your goal is to extract key information from the provided document and calculate appropriate MEP design fees based on industry standards.
 
