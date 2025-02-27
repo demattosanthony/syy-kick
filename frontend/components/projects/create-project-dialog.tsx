@@ -76,7 +76,7 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
       if (error instanceof ApiError) {
         console.log(error.status);
         if (error.status === 402) {
-          toast.error("Pro plan is required to create a project");
+          toast.error("Pro or Teams plan is required to create a project");
           return;
         }
       }

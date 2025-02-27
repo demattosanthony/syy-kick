@@ -58,7 +58,10 @@ export function AppSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <ProjectsButton />
+                {!(
+                  activeWorkspace?.type === "personal" &&
+                  user.subscriptionStatus !== "active"
+                ) && <ProjectsButton />}
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
