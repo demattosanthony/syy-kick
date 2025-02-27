@@ -127,7 +127,7 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
               }
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 max-w-[460px]">
             <Label htmlFor="location">Location</Label>
             <LocationSearch
               value={formData.location}

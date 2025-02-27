@@ -81,7 +81,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
             <Link href={"/threads"}>
               <Button
                 variant={"link"}
-                className="justify-start px-2 gap-1"
+                className="justify-start px-2 gap-1 text-muted-foreground"
                 size={"sm"}
               >
                 View All

@@ -170,18 +170,18 @@ export function LocationSearch({ value, onChange }: LocationSearchProps) {
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="justify-between w-full"
+            className="justify-between w-full text-left"
           >
-            {displayValue ? (
-              <div className="flex items-center">
-                <MapPin className="mr-2 h-4 w-4" />
+            <div className="flex items-center w-full overflow-hidden">
+              <MapPin className="mr-2 h-4 w-4 shrink-0" />
+              {displayValue ? (
                 <span className="truncate">{displayValue}</span>
-              </div>
-            ) : (
-              <span className="text-muted-foreground font-normal">
-                Search for a location...
-              </span>
-            )}
+              ) : (
+                <span className="text-muted-foreground font-normal">
+                  Search for a location...
+                </span>
+              )}
+            </div>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="p-0 w-[400px]" align="start">
