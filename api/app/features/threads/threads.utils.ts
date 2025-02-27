@@ -9,6 +9,7 @@ import db from "../../config/db";
 import reranker from "../../config/reranker";
 import s3 from "../../config/s3";
 import {
+  artifacts,
   documentThumbnails,
   MessageAttachment,
   messageAttachments,
@@ -341,9 +342,38 @@ const createDocumentTool = () =>
       content: z.string(),
     }),
     execute: async ({ title, content }) => {
-      console.log("Creating document with title: ", title);
-      console.log("Creating document with content: ", content);
-      return "Document created successfully";
+      const [artifact] = await db
+        .insert(artifacts)
+        .values({
+          title,
+          content,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      return {
+        document_id: artifact.id,
+      };
+    },
+  });
+
+const updateDocumentTool = () =>
+  tool({
+    description: "Update a document with new content.",
+    parameters: z.object({
+      id: z.string(),
+      content: z.string(),
+    }),
+    execute: async ({ id, content }) => {
+      console.log("Updating document with id: ", id);
+      await db
+        .update(artifacts)
+        .set({ content, updatedAt: new Date() })
+        .where(eq(artifacts.id, id));
+
+      console.log("Document updated with id: ", id);
+      return `Document updated with id: ${id}.`;
     },
   });
 
@@ -730,6 +760,7 @@ export {
   processThreadMessages,
   createProjectSearchTool,
   createDocumentTool,
+  updateDocumentTool,
   processDocumentImages,
   dbMessagesToInferenceMessages,
   maybeGenerateTitle,

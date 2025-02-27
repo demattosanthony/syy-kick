@@ -7,7 +7,7 @@ import {
   Minimize2,
 } from "lucide-react";
 import { Badge } from "../ui/badge";
-import { cn, scrollbarStyle } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import React from "react";
 import { ToolInvocation } from "ai";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,7 +23,8 @@ export const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
       return <SearchDocumentsTool tool={tool} />;
     case "create_document":
       return <CreateDocumentTool tool={tool} />;
-
+    case "update_document":
+      return <UpdateDocumentTool tool={tool} />;
     default:
       return null;
   }
@@ -158,13 +159,18 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
   const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
   const { setOpen } = useSidebar();
 
-  const isSelectedArtifact = selectedArtifact?.id === tool.toolCallId;
+  const documentId =
+    tool.state === "result" ? (tool.result as any)?.document_id : undefined;
+
+  const isSelectedArtifact =
+    selectedArtifact?.id === tool.toolCallId ||
+    selectedArtifact?.id === documentId;
 
   // Update the selected artifact when content changes
   React.useEffect(() => {
     if (isSelectedArtifact && documentContent) {
       setSelectedArtifact({
-        id: tool.toolCallId,
+        id: documentId || tool.toolCallId,
         title: documentTitle || "Untitled Document",
         content: documentContent,
       });
@@ -175,6 +181,7 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
     isSelectedArtifact,
     setSelectedArtifact,
     tool.toolCallId,
+    documentId,
   ]);
 
   return (
@@ -232,8 +239,123 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
               } else {
                 setOpen(false);
                 setSelectedArtifact({
-                  id: tool.toolCallId,
+                  id: documentId || tool.toolCallId,
                   title: documentTitle || "Untitled Document",
+                  content: documentContent || "",
+                });
+              }
+            }}
+          >
+            {isSelectedArtifact ? (
+              <Minimize2 className="w-4 h-4" />
+            ) : (
+              <Maximize className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+
+        {/* Document Content Preview - only show if not selected */}
+        {!isSelectedArtifact && (
+          <motion.div
+            className={cn(
+              "px-4 max-h-[320px] overflow-y-auto max-w-[740px] mx-auto",
+              "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
+            )}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+          >
+            <MarkdownViewer initialContent={documentContent} />
+          </motion.div>
+        )}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+const UpdateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
+  const documentId = tool.args?.id;
+  const documentContent = tool.args?.content;
+  const isStreaming = tool.state === "partial-call" || tool.state === "call";
+  const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
+  const { setOpen } = useSidebar();
+
+  const isSelectedArtifact = documentId === selectedArtifact?.id;
+
+  // Update the selected artifact when content changes
+  //   React.useEffect(() => {
+  //     if (isSelectedArtifact && documentContent) {
+  //       setSelectedArtifact({
+  //         id: tool.toolCallId,
+  //         title: `Updated Document (${documentId})`,
+  //         content: documentContent,
+  //       });
+  //     }
+  //   }, [
+  //     documentContent,
+  //     documentId,
+  //     isSelectedArtifact,
+  //     setSelectedArtifact,
+  //     tool.toolCallId,
+  //   ]);
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className={cn(
+          "rounded-lg border overflow-hidden",
+          isSelectedArtifact ? "w-fit" : "w-fit"
+        )}
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{
+          duration: 0.4,
+          ease: [0.4, 0, 0.2, 1],
+        }}
+      >
+        {/* Document Header */}
+        <div
+          className={cn(
+            "flex items-center justify-between px-3 py-2",
+            isSelectedArtifact && "border-primary/20"
+          )}
+        >
+          <div className="flex items-center gap-2">
+            {isStreaming ? (
+              <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+            ) : (
+              <File
+                className={cn(
+                  "w-4 h-4",
+                  isSelectedArtifact ? "text-primary" : "text-muted-foreground"
+                )}
+              />
+            )}
+            <span
+              className={cn(
+                "text-sm truncate max-w-[400px]",
+                isSelectedArtifact ? "font-medium text-primary" : "font-normal"
+              )}
+            >
+              Updated Document (ID: {documentId})
+            </span>
+          </div>
+          <Button
+            className={cn(
+              "rounded-md transition-colors text-muted-foreground",
+              isSelectedArtifact ? " ml-1 h-7 w-7" : "hover:bg-secondary"
+            )}
+            title={isSelectedArtifact ? "Minimize" : "Expand full screen"}
+            variant={"ghost"}
+            size={"icon"}
+            onClick={() => {
+              if (isSelectedArtifact) {
+                setSelectedArtifact(null);
+              } else {
+                setOpen(false);
+                setSelectedArtifact({
+                  id: tool.toolCallId,
+                  title: `Updated Document (${documentId})`,
                   content: documentContent || "",
                 });
               }

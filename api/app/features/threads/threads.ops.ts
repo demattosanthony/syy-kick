@@ -24,6 +24,7 @@ import {
   getModelConfig,
   maybeGenerateTitle,
   processThreadMessages,
+  updateDocumentTool,
 } from "./threads.utils";
 
 const threadsOps = {
@@ -291,6 +292,7 @@ const threadsOps = {
       // 7) Create tools for the assistant if project ID exists
       let tools = {
         create_document: createDocumentTool(),
+        update_document: updateDocumentTool(),
         ...(thread.projectId && {
           search_project_information: createProjectSearchTool(
             thread.projectId,
@@ -309,7 +311,6 @@ const threadsOps = {
         toolChoice: "auto",
         toolCallStreaming: true,
         maxTokens: maxTokens,
-
         providerOptions: {
           ...(model === "claude-3.7-sonnet-thinking" && !tools
             ? {
