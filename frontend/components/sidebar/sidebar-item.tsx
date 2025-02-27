@@ -13,6 +13,7 @@ import {
 import { Button } from "../ui/button";
 import { MoreHorizontal } from "lucide-react";
 import { DeleteAlertDialog } from "./delete-alert-dialog";
+import { cn } from "@/lib/utils";
 
 interface SidebarItemProps {
   id: string;
@@ -42,9 +43,10 @@ export const SidebarItem = ({
     <SidebarMenuItem>
       <SidebarMenuButton
         asChild
-        className={`group/item flex justify-between items-center ${
+        className={cn(
+          "group/item flex justify-between items-center hover:bg-accent",
           currentId === id ? "bg-accent text-accent-foreground" : ""
-        }`}
+        )}
       >
         <div className="w-full flex justify-between items-center">
           <Link

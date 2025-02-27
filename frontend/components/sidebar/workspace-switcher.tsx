@@ -59,8 +59,8 @@ export function WorkSpaceSwitcher() {
   const WorkspaceLogo = ({ workspace }: { workspace: Workspace }) => {
     if (workspace.type === "personal") {
       return (
-        <div className="flex h-6 w-6 items-center justify-center shrink-0">
-          <Avatar className="h-6 w-6 rounded-full bg-transparent">
+        <div className="flex h-5 w-5 items-center justify-center shrink-0">
+          <Avatar className="h-5 w-5 rounded-full bg-transparent">
             <AvatarImage src={user?.profilePicture} alt={user?.name} />
             <AvatarFallback>
               {user?.name
@@ -74,13 +74,9 @@ export function WorkSpaceSwitcher() {
     }
 
     return (
-      <div className="flex h-6 w-6 items-center justify-center rounded-full shrink-0">
+      <div className="flex h-5 w-5 items-center justify-center  shrink-0">
         {workspace.logo ? (
-          <img
-            src={workspace.logo}
-            alt={workspace.name}
-            className="h-6 w-6 rounded-full"
-          />
+          <img src={workspace.logo} alt={workspace.name} className="h-5 w-5 " />
         ) : (
           <Building className="h-4 w-4" />
         )}
@@ -90,7 +86,7 @@ export function WorkSpaceSwitcher() {
 
   if (!activeWorkspace) {
     return (
-      <Skeleton className="h-6 group-data-[collapsible=icon]:w-6 w-36 group-data-[collapsible=icon]:rounded-full" />
+      <Skeleton className="h-5 group-data-[collapsible=icon]:w-5 w-36 group-data-[collapsible=icon]:rounded-full" />
     );
   }
 
@@ -121,7 +117,7 @@ export function WorkSpaceSwitcher() {
             <DropdownMenuItem
               key={workspace.id}
               onClick={handleWorkspaceChange.bind(null, workspace)}
-              className="gap-2 p-2"
+              className="gap-2 p-2 cursor-pointer"
             >
               <WorkspaceLogo workspace={workspace} />
               <div className="flex flex-col">
