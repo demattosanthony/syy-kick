@@ -12,6 +12,10 @@ export interface Project {
   organization?: Organization;
   user?: User;
 
+  projectNumber?: string;
+  estimatedStartDate?: string;
+  estimatedEndDate?: string;
+
   address?: string;
   city?: string;
   state?: string;

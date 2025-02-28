@@ -44,7 +44,7 @@ export default function ProjectFileExplorer({
 
   if (isLoading) {
     return (
-      <div className="divide-y">
+      <div className="divide-y w-full max-w-full overflow-x-hidden">
         {[1, 2, 3, 4, 5, 6].map((item) => (
           <FileExplorerSkeleton key={item} />
         ))}
@@ -58,7 +58,7 @@ export default function ProjectFileExplorer({
     contents.every((file) => file.name[0] === ".")
   ) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center w-full max-w-full">
         <Folder className="h-12 w-12 mb-4 fill-blue-400 text-blue-400" />
         <h3 className="text-lg font-semibold mb-2">No files yet</h3>
         <p className="text-muted-foreground text-sm mb-4">
@@ -68,7 +68,6 @@ export default function ProjectFileExplorer({
     );
   }
 
-  // Filter out hidden files and sort contents so that README.md appears last
   const sortedContents = [...contents]
     .filter((file) => !file.name.startsWith("."))
     .sort((a, b) => {
@@ -78,7 +77,7 @@ export default function ProjectFileExplorer({
     });
 
   return (
-    <div className="divide-y">
+    <div className="divide-y w-full max-w-full overflow-x-hidden">
       {sortedContents.map((item) => (
         <FileExplorerItem
           key={item.path}
@@ -115,15 +114,12 @@ function FileExplorerItem({
   const isSelected =
     variant === "compact" && pathname.endsWith(`/${item.path}`);
 
-  // If there is a chain and this item’s name matches the first element,
-  // then mark it as open by default.
   const shouldAutoOpen =
     item.type === "folder" &&
     initialPathChain.length > 0 &&
     initialPathChain[0] === item.name;
   const [isOpen, setIsOpen] = useState(shouldAutoOpen);
 
-  // In "compact" mode, we load children only when the folder is open.
   const { data: childContents } = useProjectDocsQuery(
     projectId,
     variant === "compact" && item.type === "folder" && isOpen ? item.path : ""
@@ -135,46 +131,44 @@ function FileExplorerItem({
     const ext = filename.split(".").pop()?.toLowerCase();
     switch (ext) {
       case "ifc":
-        return "🏛️"; // Building/architecture file
+        return "🏛️";
       case "pdf":
-        return "📑"; // Document
+        return "📑";
       case "xlsx":
       case "xls":
-        return "📊"; // Spreadsheet/charts
+        return "📊";
       case "ttl":
-        return "🔄"; // Turtle/RDF file
+        return "🔄";
       case "dwg":
-        return "📏"; // CAD drawing
+        return "📏";
       case "rvt":
-        return "🏢"; // Revit/BIM file
+        return "🏢";
       case "json":
-        return "🔧"; // Config/data file
+        return "🔧";
       case "html":
-        return "🌐"; // Web page
+        return "🌐";
       case "png":
       case "jpg":
       case "jpeg":
       case "gif":
-        return "🖼️"; // Images
+        return "🖼️";
       case "mp4":
       case "mov":
       case "avi":
-        return "🎥"; // Videos
+        return "🎥";
       case "mp3":
       case "wav":
-        return "🎵"; // Audio
+        return "🎵";
       case "zip":
       case "rar":
       case "7z":
-        return "📦"; // Archives
+        return "📦";
       default:
         return null;
     }
   };
 
-  // Clicking the row navigates to the detailed view.
   const handleRowClick = async () => {
-    // If there was an onFileSelect callback, call it and return.
     if (variant === "compact" && onFileSelect) {
       if (item.type === "folder") {
         setIsOpen(!isOpen);
@@ -182,7 +176,6 @@ function FileExplorerItem({
       return;
     }
 
-    // Otherwise, navigate to the file or folder.
     if (item.type === "folder") {
       if (variant === "compact") {
         setIsOpen(!isOpen);
@@ -193,25 +186,24 @@ function FileExplorerItem({
     }
   };
 
-  // In compact mode, clicking the arrow toggles inline expansion.
   const toggleExpansion = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsOpen(!isOpen);
   };
 
   return (
-    <div>
+    <div className="w-full max-w-full overflow-x-hidden">
       <div
         className={cn(
-          "group flex items-center justify-between p-2 cursor-pointer rounded-lg",
+          "group flex items-center justify-between p-2 cursor-pointer rounded-lg w-full min-w-0",
           isSelected ? "bg-muted/50" : "hover:bg-muted/50"
         )}
         style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
         onClick={handleRowClick}
       >
-        <div className="flex items-center gap-2 max-w-full">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {item.type === "folder" ? (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
               {variant === "compact" && (
                 <div onClick={toggleExpansion}>
                   {isOpen ? (
@@ -222,36 +214,42 @@ function FileExplorerItem({
                 </div>
               )}
               {variant === "compact" && isOpen ? (
-                <FolderOpen className="h-5 w-5 text-blue-400 " />
+                <FolderOpen className="h-5 w-5 text-blue-400" />
               ) : (
                 <Folder className="h-5 w-5 text-blue-400 fill-blue-400" />
               )}
             </div>
           ) : (
-            <span className={`${variant === "compact" ? "ml-[2px]" : ""} w-4`}>
+            <span
+              className={`${
+                variant === "compact" ? "ml-[2px]" : ""
+              } w-4 flex-shrink-0`}
+            >
               {getFileIcon(item.name) || (
                 <File className="h-4 w-4 text-muted-foreground" />
               )}
             </span>
           )}
-          <span className="text-sm hover:underline hover:text-blue-500 truncate">
+          <span className="text-sm hover:underline hover:text-blue-500 truncate flex-1 min-w-0">
             {item.name}
           </span>
 
-          {/* Extraction Status indicator dot */}
           {item.processingJob && variant === "detailed" && (
             <Tooltip>
               <TooltipTrigger>
                 <div
-                  className={cn("h-2 w-2 rounded-full shadow-md", {
-                    "bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20":
-                      item.processingJob.status === "failed",
-                    "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-yellow-500/20 animate-pulse":
-                      item.processingJob.status === "pending" ||
-                      item.processingJob.status === "processing",
-                    "bg-gradient-to-br from-green-600 to-green-800 shadow-green-700/20":
-                      item.processingJob.status === "completed",
-                  })}
+                  className={cn(
+                    "h-2 w-2 rounded-full shadow-md flex-shrink-0",
+                    {
+                      "bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20":
+                        item.processingJob.status === "failed",
+                      "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-yellow-500/20 animate-pulse":
+                        item.processingJob.status === "pending" ||
+                        item.processingJob.status === "processing",
+                      "bg-gradient-to-br from-green-600 to-green-800 shadow-green-700/20":
+                        item.processingJob.status === "completed",
+                    }
+                  )}
                 />
               </TooltipTrigger>
               <TooltipContent>
@@ -267,7 +265,7 @@ function FileExplorerItem({
         </div>
 
         {variant === "detailed" && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2 whitespace-nowrap">
             <small className="text-sm font-medium leading-none text-muted-foreground">
               {getRelativeTimeString(item.updatedAt)}
             </small>
@@ -304,12 +302,11 @@ function FileExplorerItem({
         )}
       </div>
 
-      {/* In compact mode, render children inline if this folder is expanded */}
       {variant === "compact" &&
         item.type === "folder" &&
         isOpen &&
         childContents && (
-          <div className="divide-y">
+          <div className="divide-y w-full max-w-full overflow-x-hidden">
             {childContents.map((child) => (
               <FileExplorerItem
                 key={child.path}
@@ -318,7 +315,6 @@ function FileExplorerItem({
                 projectId={projectId}
                 variant={variant}
                 onFileSelect={onFileSelect}
-                // Pass down the remaining chain if this folder was auto-opened.
                 initialPathChain={
                   shouldAutoOpen && initialPathChain.length > 0
                     ? initialPathChain.slice(1)
@@ -335,11 +331,11 @@ function FileExplorerItem({
 function FileExplorerSkeleton({ depth = 0 }: { depth?: number }) {
   return (
     <div
-      className="flex items-center gap-2 p-2"
+      className="flex items-center gap-2 p-2 w-full max-w-full overflow-x-hidden"
       style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
     >
-      <Skeleton className="h-6 w-6" />
-      <Skeleton className="h-4 w-[165px]" />
+      <Skeleton className="h-6 w-6 flex-shrink-0" />
+      <Skeleton className="h-4 w-[165px] flex-1" />
     </div>
   );
 }

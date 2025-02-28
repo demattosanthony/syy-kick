@@ -68,7 +68,7 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
     case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
     case "application/vnd.ms-excel":
       return (
-        <div className="h-full w-full p-8 overflow-hidden">
+        <div className="h-full w-full  overflow-hidden">
           {doc.url && <MultiSheetViewer excelUrl={doc.url} />}
         </div>
       );
@@ -118,8 +118,14 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
     case "text/yaml":
     case "text/xml":
       return (
-        <div className="h-full w-full">
-          <pre className="code-viewer">{textContent}</pre>
+        <div className="h-full w-full relative">
+          <div className="absolute inset-0 overflow-auto">
+            <MarkdownViewer
+              content={`\`\`\`${
+                doc.mimeType.split("/")[1] || ""
+              }\n${textContent}\n\`\`\``}
+            />
+          </div>
         </div>
       );
     case "video/mp4":
