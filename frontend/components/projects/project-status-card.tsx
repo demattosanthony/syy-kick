@@ -1,12 +1,10 @@
 "use client";
 
+import { Project } from "@/types/project";
 import { Card } from "../ui/card";
 import { Progress } from "../ui/progress";
-import { useProjectQuery } from "@/queries/queries";
 
-export default function ProjectStatusCard({ pid }: { pid: string }) {
-  const { data: project } = useProjectQuery(pid);
-
+export default function ProjectStatusCard({ project }: { project: Project }) {
   // Calculate completion percentage based on dates
   const calculateCompletionPercentage = () => {
     if (!project?.estimatedStartDate || !project?.estimatedEndDate) {
@@ -47,7 +45,7 @@ export default function ProjectStatusCard({ pid }: { pid: string }) {
           </div>
           <Progress value={completionPercentage} />
         </div>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-1 text-sm">
           <div>
             <div className="text-muted-foreground">Start Date</div>
             <div>
@@ -64,7 +62,7 @@ export default function ProjectStatusCard({ pid }: { pid: string }) {
             </div>
           </div>
           <div>
-            <div className="text-muted-foreground">Target Completion</div>
+            <div className="text-muted-foreground">Target End Date</div>
             <div>
               {project?.estimatedEndDate
                 ? new Date(project.estimatedEndDate).toLocaleDateString(
