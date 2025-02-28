@@ -177,8 +177,6 @@ async function listProjects(params: {
     conditions.push(eq(projects.userId, params.userId));
   }
 
-  console.log(conditions);
-
   if (params.search) {
     conditions.push(ilike(projects.name, `%${params.search}%`));
   }
@@ -687,15 +685,11 @@ const handlers = {
   listProjects: async (req: Request, res: Response) => {
     const { search } = req.query;
     const orgId = getOrgIdOrUnedfined(req.workspace);
-    console.log("orgId", orgId);
-    console.log("req.dbUser?.id", req.dbUser?.id);
-    console.log("search", search);
     const projectsList = await listProjects({
       organizationId: orgId,
       userId: req.dbUser?.id,
       search: search as string,
     });
-    console.log("projectsList", projectsList);
     res.json(projectsList);
   },
 
