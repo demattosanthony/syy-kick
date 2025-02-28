@@ -239,6 +239,13 @@
       "when": 1740770444520,
       "tag": "0033_minor_ulik",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1740774457867,
+      "tag": "0034_charming_stick",
+      "breakpoints": true
     }
   ]
 }

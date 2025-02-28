@@ -18,13 +18,13 @@ import { embeddingModel } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
-  createDocumentTool,
+  createArtifactTool,
   createProjectSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
   maybeGenerateTitle,
   processThreadMessages,
-  updateDocumentTool,
+  updateArtifactTool,
 } from "./threads.utils";
 
 const threadsOps = {
@@ -291,8 +291,8 @@ const threadsOps = {
 
       // 7) Create tools for the assistant if project ID exists
       let tools = {
-        create_document: createDocumentTool(),
-        update_document: updateDocumentTool(),
+        create_artifact: createArtifactTool(),
+        update_artifact: updateArtifactTool(),
         ...(thread.projectId && {
           search_project_information: createProjectSearchTool(
             thread.projectId,
@@ -374,6 +374,7 @@ const threadsOps = {
                 result &&
                 toolCall.toolName === "search_project_information"
               ) {
+                console.log("Project search tool result:", toolCall);
                 await db
                   .update(toolCallsTable)
                   .set({
@@ -389,14 +390,17 @@ const threadsOps = {
                     updatedAt: new Date(),
                   })
                   .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
-              } else if (result && toolCall.toolName === "create_document") {
-                console.log("Document tool result:", result.result);
+              } else if (result) {
+                console.log("Document tool result:", toolCall);
 
-                await db.update(toolCallsTable).set({
-                  status: "completed",
-                  result: result.result,
-                  updatedAt: new Date(),
-                });
+                await db
+                  .update(toolCallsTable)
+                  .set({
+                    status: "completed",
+                    result: result.result,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
               }
             }
 

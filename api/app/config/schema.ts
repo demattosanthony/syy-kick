@@ -290,6 +290,7 @@ export const toolCalls = pgTable("tool_calls", {
 
 export const artifacts = pgTable("artifacts", {
   id: uuid("id").primaryKey().defaultRandom(),
+  mimeType: varchar("mime_type", { length: 255 }),
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

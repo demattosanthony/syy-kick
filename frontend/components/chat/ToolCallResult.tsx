@@ -21,9 +21,9 @@ export const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
   switch (tool.toolName) {
     case "search_project_information":
       return <SearchDocumentsTool tool={tool} />;
-    case "create_document":
+    case "create_artifact":
       return <CreateDocumentTool tool={tool} />;
-    case "update_document":
+    case "update_artifact":
       return <UpdateDocumentTool tool={tool} />;
     default:
       return null;
@@ -32,6 +32,7 @@ export const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
 
 const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
   const [showAll, setShowAll] = React.useState(false);
+  console.log("Tool: ", tool);
   const hasResults = tool.state === "result" && tool.result;
   const resultCount = hasResults ? tool.result.dataForFrontend.length : 0;
 
@@ -157,7 +158,9 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
   const documentContent = tool.args?.content;
   const isStreaming = tool.state === "partial-call" || tool.state === "call";
   const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
-  const { setOpen } = useSidebar();
+  const { setOpen, open: sidebarOpen } = useSidebar();
+
+  console.log(`Selected Artifact: ${selectedArtifact?.id}`);
 
   const documentId =
     tool.state === "result" ? (tool.result as any)?.document_id : undefined;
@@ -166,23 +169,27 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
     selectedArtifact?.id === tool.toolCallId ||
     selectedArtifact?.id === documentId;
 
+  console.log(`Is selected artifact: ${isSelectedArtifact}`);
+
   // Update the selected artifact when content changes
-  React.useEffect(() => {
-    if (isSelectedArtifact && documentContent) {
-      setSelectedArtifact({
-        id: documentId || tool.toolCallId,
-        title: documentTitle || "Untitled Document",
-        content: documentContent,
-      });
-    }
-  }, [
-    documentContent,
-    documentTitle,
-    isSelectedArtifact,
-    setSelectedArtifact,
-    tool.toolCallId,
-    documentId,
-  ]);
+  //   React.useEffect(() => {
+  //     if (isSelectedArtifact && documentContent) {
+  //       console.log("Setting selected artifact");
+  //       if (sidebarOpen) setOpen(false);
+  //       setSelectedArtifact({
+  //         id: documentId || tool.toolCallId,
+  //         title: documentTitle || "Untitled Document",
+  //         content: documentContent,
+  //       });
+  //     }
+  //   }, [
+  //     documentContent,
+  //     documentTitle,
+  //     isSelectedArtifact,
+  //     setSelectedArtifact,
+  //     tool.toolCallId,
+  //     documentId,
+  //   ]);
 
   return (
     <AnimatePresence>

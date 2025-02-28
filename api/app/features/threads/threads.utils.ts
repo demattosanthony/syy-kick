@@ -333,19 +333,34 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
 }
 
 // Create Document tool
-const createDocumentTool = () =>
+const createArtifactTool = () =>
   tool({
-    description:
-      "Create a document for a writing or content creation activities. This will create as simeple markdown format style document, so the content should be in markdown format.",
+    description: `Creates a new document artifact with the specified content.
+
+Usage:
+    1. Use this tool to create standalone documents that users can reference, edit, or export.
+    2. Provide a descriptive title, content in markdown format, and the appropriate MIME type.
+    3. Only create artifacts for substantial, self-contained content that users might want to modify or reuse.
+
+Good use cases:
+    - Reports, documentation, or technical specifications
+    - Code files or scripts that are meant to be saved
+    - Templates, emails, or other reusable content
+    - Complex markdown documents with structured information
+
+Returns:
+    - The ID of the newly created document artifact`,
     parameters: z.object({
+      mimeType: z.enum(["text/markdown"]),
       title: z.string(),
       content: z.string(),
     }),
-    execute: async ({ title, content }) => {
+    execute: async ({ title, content, mimeType }) => {
       const [artifact] = await db
         .insert(artifacts)
         .values({
           title,
+          mimeType,
           content,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -358,9 +373,23 @@ const createDocumentTool = () =>
     },
   });
 
-const updateDocumentTool = () =>
+const updateArtifactTool = () =>
   tool({
-    description: "Update a document with new content.",
+    description: `Updates an existing document artifact with new content.
+
+Usage:
+    1. Use this tool to modify the content of a previously created artifact.
+    2. Provide the artifact ID and the new content to replace the existing content.
+    3. Only the content will be updated; the title and MIME type remain unchanged.
+
+Good use cases:
+    - Revising or improving previously created documents
+    - Updating code based on user feedback
+    - Making corrections to existing artifacts
+    - Adding new sections to previously created content
+
+Returns:
+    - A confirmation message with the ID of the updated artifact`,
     parameters: z.object({
       id: z.string(),
       content: z.string(),
@@ -406,7 +435,7 @@ Instructions:
 
 3. Structure your answer for optimal readability:
    - Begin with a brief introductory sentence or paragraph.
-   - Separate your answer into logical sections using level 2 headers (##) for sections and bolding (**) for subsections. Never use level 1 headers (#).
+   - Separate your answer into logical sections using level 2 headers (##) for sections and bolding (**) for subsections.
    - Incorporate tables for comparisons or data presentation.
    - Use bullet points sparingly, only for clear enumerations.
    - Use numbered lists only for rankings.
@@ -419,9 +448,10 @@ Instructions:
 
 5. If the user provides sufficient context (e.g., files or images) in the prompt, answer directly without additional searching.
 
-6. Never invent information. Only provide answers supported by search results or your existing knowledge.
-
 Restrictions:
+- Never invent information. Only provide answers supported by search results or your existing knowledge.
+- Never use level 1 headers (#), they look ugly in the final document.
+- Never make up any information, especially about equipment or systems that you do not find from the search results.
 - Do not include URLs or links.
 - Avoid moralization or hedging language.
 - Do not repeat copyrighted content verbatim.
@@ -444,34 +474,36 @@ Remember to prioritize accuracy, comprehensiveness, and adherence to all guideli
     }\n</current_project>`;
   }
 
-  systemMsg += `\n\nArtifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
+  systemMsg += `\n\n<artifacts_info>
 
-DO NOT UPDATE DOCUMENTS IMMEDIATELY AFTER CREATING THEM. WAIT FOR USER FEEDBACK OR REQUEST TO UPDATE IT.
+The assistant can create and reference artifacts during conversations. Artifacts are for substantial, self-contained content that users might modify or reuse, displayed in a separate UI window for clarity.
 
-This is a guide for using artifacts tools: \`createDocument\` and \`updateDocument\`, which render content on a artifacts beside the conversation.
+## Good artifacts are...
 
-**When to use \`createDocument\`:**
-- For substantial content (>10 lines) or code
-- For content users will likely save/reuse (emails, code, essays, etc.)
-- When explicitly requested to create a document
-- For when content contains a single code snippet
-- Use ## for headers and ** for bolding
-- Don't make the title and beginning of the content the same
+- Substantial content (>15 lines)
+- Content that the user is likely to modify, iterate on, or take ownership of
+- Self-contained, complex content that can be understood on its own, without context from the conversation
+- Content intended for eventual use outside the conversation (e.g., reports, emails, presentations)
+- Content likely to be referenced or reused multiple times
 
-**When NOT to use \`createDocument\`:**
-- For informational/explanatory content
-- For conversational responses
-- When asked to keep it in chat
+## Don’t use artifacts for...
 
-**Using \`updateDocument\`:**
-- Default to full document rewrites for major changes
-- Use targeted updates only for specific, isolated changes
-- Follow user instructions for which parts to modify
+- Simple, informational, or short content, such as brief code snippets, mathematical equations, or small examples
+- Primarily explanatory, instructional, or illustrative content, such as examples provided to clarify a concept
+- Suggestions, commentary, or feedback on existing artifacts
+- Conversational or explanatory content that doesn’t represent a standalone piece of work
+- Content that is dependent on the current conversational context to be useful
+- Content that is unlikely to be modified or iterated upon by the user
+- Request from users that appears to be a one-off question
 
-**When NOT to use \`updateDocument\`:**
-- Immediately after creating a document
+## Usage notes
 
-Do not update document right after creating it. Wait for user feedback or request to update it.`;
+- One artifact per message unless specifically requested
+- Prefer in-line content (don’t use artifacts) when possible. Unnecessary use of artifacts can be jarring for users.
+- If a user asks the assistant to "draw an SVG" or "make a website," the assistant does not need to explain that it doesn’t have these capabilities. Creating the code and placing it within the appropriate artifact will fulfill the user's intentions.
+- If asked to generate an image, the assistant can offer an SVG instead. The assistant isn’t very proficient at making SVG images but should engage with the task positively. Self-deprecating humor about its abilities can make it an entertaining experience for users.
+- The assistant errs on the side of simplicity and avoids overusing artifacts for content that can be effectively presented within the conversation.
+<artifact_instructions>`;
 
   return systemMsg;
 }
@@ -762,8 +794,8 @@ export {
   processAttachments,
   processThreadMessages,
   createProjectSearchTool,
-  createDocumentTool,
-  updateDocumentTool,
+  createArtifactTool,
+  updateArtifactTool,
   processDocumentImages,
   dbMessagesToInferenceMessages,
   maybeGenerateTitle,

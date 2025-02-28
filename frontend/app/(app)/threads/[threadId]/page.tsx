@@ -52,7 +52,7 @@ export default function ThreadsPage() {
 
   return (
     <>
-      <ThreadHeader />
+      {/* <ThreadHeader /> */}
       <ChatThread initalMessages={initalMessages} thread={thread} />{" "}
     </>
   );

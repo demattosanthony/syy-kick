@@ -62,7 +62,7 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
     case "text/markdown":
       return (
         <div className="h-full w-full p-8">
-          <MarkdownViewer content={textContent || ""} />
+          <MarkdownViewer initialContent={textContent || ""} />
         </div>
       );
     case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
@@ -121,7 +121,7 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
         <div className="h-full w-full relative">
           <div className="absolute inset-0 overflow-auto">
             <MarkdownViewer
-              content={`\`\`\`${
+              initialContent={`\`\`\`${
                 doc.mimeType.split("/")[1] || ""
               }\n${textContent}\n\`\`\``}
             />
