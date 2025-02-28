@@ -46,7 +46,7 @@ export default function ProjectFileExplorer({
     return (
       <div className="divide-y w-full max-w-full overflow-x-hidden">
         {[1, 2, 3, 4, 5, 6].map((item) => (
-          <FileExplorerSkeleton key={item} />
+          <FileExplorerSkeleton key={item} variant={variant} />
         ))}
       </div>
     );
@@ -328,14 +328,29 @@ function FileExplorerItem({
   );
 }
 
-function FileExplorerSkeleton({ depth = 0 }: { depth?: number }) {
+function FileExplorerSkeleton({
+  depth = 0,
+  variant = "detailed",
+}: {
+  depth?: number;
+  variant?: "compact" | "detailed";
+}) {
   return (
     <div
-      className="flex items-center gap-2 p-2 w-full max-w-full overflow-x-hidden"
+      className="flex items-center justify-between p-2 w-full max-w-full overflow-x-hidden"
       style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
     >
-      <Skeleton className="h-6 w-6 flex-shrink-0" />
-      <Skeleton className="h-4 w-[165px] flex-1" />
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <Skeleton className="h-5 w-5 flex-shrink-0" />
+        <Skeleton className="h-4 w-[220px] " />
+      </div>
+
+      {variant === "detailed" && (
+        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+          <Skeleton className="h-4 w-4 rounded-full" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+      )}
     </div>
   );
 }
