@@ -8,7 +8,8 @@ export async function setActiveWorkspaceCookie(workspace: Workspace) {
   cookieStore.set("activeWorkspace", JSON.stringify(workspace), {
     path: "/",
     maxAge: 2147483647, // Maximum value (~68 years) - effectively doesn't expire
-    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
   });
 }
 
