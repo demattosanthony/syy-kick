@@ -13,7 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, MapPin } from "lucide-react";
+import { Check, MapPin, Plus } from "lucide-react";
 import { useLoadScript, Libraries } from "@react-google-maps/api";
 
 const libraries: Libraries = ["places"];
@@ -39,6 +39,16 @@ export function LocationSearch({ value, onChange }: LocationSearchProps) {
   const [predictions, setPredictions] = useState<
     google.maps.places.AutocompletePrediction[]
   >([]);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualLocation, setManualLocation] = useState<LocationData>({
+    address: "",
+    city: "",
+    state: "",
+    country: "",
+    postalCode: "",
+    latitude: "",
+    longitude: "",
+  });
   const autocompleteService =
     useRef<google.maps.places.AutocompleteService | null>(null);
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
@@ -70,6 +80,21 @@ export function LocationSearch({ value, onChange }: LocationSearchProps) {
     }
   }, [value.address]);
 
+  useEffect(() => {
+    // Initialize manual location with current values when toggling to manual entry
+    if (showManualEntry) {
+      setManualLocation({
+        address: value.address || "",
+        city: value.city || "",
+        state: value.state || "",
+        country: value.country || "",
+        postalCode: value.postalCode || "",
+        latitude: value.latitude || "",
+        longitude: value.longitude || "",
+      });
+    }
+  }, [showManualEntry, value]);
+
   const handleInputChange = (query: string) => {
     setInput(query);
 
@@ -90,6 +115,31 @@ export function LocationSearch({ value, onChange }: LocationSearchProps) {
     } else {
       setPredictions([]);
     }
+  };
+
+  const handleManualChange = (
+    field: keyof LocationData,
+    fieldValue: string
+  ) => {
+    setManualLocation((prev) => ({
+      ...prev,
+      [field]: fieldValue,
+    }));
+  };
+
+  const saveManualEntry = () => {
+    onChange(manualLocation);
+    setOpen(false);
+    setShowManualEntry(false);
+
+    // Update the display value in the input field
+    const displayAddress =
+      manualLocation.address +
+      (manualLocation.city ? `, ${manualLocation.city}` : "") +
+      (manualLocation.state ? `, ${manualLocation.state}` : "") +
+      (manualLocation.postalCode ? ` ${manualLocation.postalCode}` : "");
+
+    setInput(displayAddress);
   };
 
   const handleSelectPlace = (placeId: string) => {
@@ -185,32 +235,150 @@ export function LocationSearch({ value, onChange }: LocationSearchProps) {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="p-0 w-[400px]" align="start">
-          <Command>
-            <CommandInput
-              placeholder="Search for address..."
-              value={input}
-              onValueChange={handleInputChange}
-              disabled={!isLoaded}
-            />
-            <CommandList>
-              <CommandEmpty>No results found.</CommandEmpty>
-              <CommandGroup>
-                {predictions.map((prediction) => (
-                  <CommandItem
-                    key={prediction.place_id}
-                    value={prediction.description}
-                    onSelect={() => handleSelectPlace(prediction.place_id)}
+          {!showManualEntry ? (
+            <Command>
+              <CommandInput
+                placeholder="Search for address..."
+                value={input}
+                onValueChange={handleInputChange}
+                disabled={!isLoaded}
+              />
+              <CommandList>
+                <CommandEmpty>
+                  <div className="py-2 px-4 text-center">
+                    <p>No results found.</p>
+                  </div>
+                </CommandEmpty>
+                <CommandGroup>
+                  {predictions.map((prediction) => (
+                    <CommandItem
+                      key={prediction.place_id}
+                      value={prediction.description}
+                      onSelect={() => handleSelectPlace(prediction.place_id)}
+                    >
+                      <MapPin className="mr-2 h-4 w-4" />
+                      <span>{prediction.description}</span>
+                      {prediction.description === displayValue && (
+                        <Check className="ml-auto h-4 w-4" />
+                      )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+                <div className="border-t p-2 text-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full flex items-center justify-center gap-2 py-2"
+                    onClick={() => setShowManualEntry(true)}
                   >
-                    <MapPin className="mr-2 h-4 w-4" />
-                    <span>{prediction.description}</span>
-                    {prediction.description === displayValue && (
-                      <Check className="ml-auto h-4 w-4" />
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
+                    <Plus className="h-3 w-3" />
+                    <span>Enter location manually</span>
+                  </Button>
+                </div>
+              </CommandList>
+            </Command>
+          ) : (
+            <div className="p-4 space-y-3">
+              <h3 className="font-medium">Manual Location Entry</h3>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Address</label>
+                <input
+                  className="w-full p-2 border rounded-md text-sm"
+                  value={manualLocation.address}
+                  onChange={(e) =>
+                    handleManualChange("address", e.target.value)
+                  }
+                  placeholder="Street address"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">City</label>
+                  <input
+                    className="w-full p-2 border rounded-md text-sm"
+                    value={manualLocation.city}
+                    onChange={(e) => handleManualChange("city", e.target.value)}
+                    placeholder="City"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">State/Province</label>
+                  <input
+                    className="w-full p-2 border rounded-md text-sm"
+                    value={manualLocation.state}
+                    onChange={(e) =>
+                      handleManualChange("state", e.target.value)
+                    }
+                    placeholder="State/Province"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Postal Code</label>
+                  <input
+                    className="w-full p-2 border rounded-md text-sm"
+                    value={manualLocation.postalCode}
+                    onChange={(e) =>
+                      handleManualChange("postalCode", e.target.value)
+                    }
+                    placeholder="Postal code"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Country</label>
+                  <input
+                    className="w-full p-2 border rounded-md text-sm"
+                    value={manualLocation.country}
+                    onChange={(e) =>
+                      handleManualChange("country", e.target.value)
+                    }
+                    placeholder="Country"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Latitude (optional)
+                  </label>
+                  <input
+                    className="w-full p-2 border rounded-md text-sm"
+                    value={manualLocation.latitude}
+                    onChange={(e) =>
+                      handleManualChange("latitude", e.target.value)
+                    }
+                    placeholder="Latitude"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Longitude (optional)
+                  </label>
+                  <input
+                    className="w-full p-2 border rounded-md text-sm"
+                    value={manualLocation.longitude}
+                    onChange={(e) =>
+                      handleManualChange("longitude", e.target.value)
+                    }
+                    placeholder="Longitude"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowManualEntry(false)}
+                >
+                  Back to Search
+                </Button>
+                <Button size="sm" onClick={saveManualEntry}>
+                  Save Location
+                </Button>
+              </div>
+            </div>
+          )}
         </PopoverContent>
       </Popover>
     </div>
