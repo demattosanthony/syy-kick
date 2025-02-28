@@ -1,21 +1,21 @@
-name: Deploy Api
+name: Deploy Doc Worker
 
 on:
   push:
     branches:
-      - prod
+      - prod-doc-worker
 
 jobs:
-  deploy-api:
+  deploy-doc-worker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Deploy API to Dokku
+      - name: Deploy Doc Worker to Dokku
         uses: dokku/github-action@master
         with:
           branch: "main"
-          git_remote_url: "ssh://dokku@165.22.46.191:22/yo-api"
+          git_remote_url: "ssh://dokku@165.22.46.191:22/yo-doc-worker"
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}

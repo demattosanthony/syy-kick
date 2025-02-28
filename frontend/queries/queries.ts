@@ -270,6 +270,9 @@ export function useCreateProjectMutation() {
       postalCode?: string;
       latitude?: string;
       longitude?: string;
+      project_number?: string;
+      estimated_start_date?: string;
+      estimated_end_date?: string;
     }) =>
       api.projects.createProject({
         ...data,
@@ -367,6 +370,9 @@ export function useUpdateProjectMutation() {
       data: {
         name?: string;
         description?: string;
+        project_number?: string;
+        estimated_start_date?: string;
+        estimated_end_date?: string;
         // New location fields
         address?: string | null;
         city?: string | null;

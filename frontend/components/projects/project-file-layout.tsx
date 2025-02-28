@@ -20,7 +20,7 @@ export default function ProjectFileLayout({
       <div className="flex gap-2 flex-1 pb-2 mx-2 max-h-[calc(100vh-62px)]">
         {/* Left Navigation: full tree with auto-opened folders */}
         <Card className="w-80 h-full flex flex-col">
-          <CardContent className="p-2 px-0 overflow-y-auto">
+          <CardContent className="p-2 px-0 overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
             <ProjectFileExplorer
               projectId={projectId}
               variant="compact"

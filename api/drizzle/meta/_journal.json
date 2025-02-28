@@ -225,6 +225,13 @@
       "when": 1740519393677,
       "tag": "0031_nebulous_gabe_jones",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1740753152422,
+      "tag": "0032_soft_supreme_intelligence",
+      "breakpoints": true
     }
   ]
 }
