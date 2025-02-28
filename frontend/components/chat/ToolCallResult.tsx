@@ -32,7 +32,6 @@ export const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
 
 const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
   const [showAll, setShowAll] = React.useState(false);
-  console.log("Tool: ", tool);
   const hasResults = tool.state === "result" && tool.result;
   const resultCount = hasResults ? tool.result.dataForFrontend.length : 0;
 
@@ -160,36 +159,33 @@ const CreateDocumentTool = ({ tool }: { tool: ToolInvocation }) => {
   const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
   const { setOpen, open: sidebarOpen } = useSidebar();
 
-  console.log(`Selected Artifact: ${selectedArtifact?.id}`);
-
   const documentId =
     tool.state === "result" ? (tool.result as any)?.document_id : undefined;
 
   const isSelectedArtifact =
-    selectedArtifact?.id === tool.toolCallId ||
-    selectedArtifact?.id === documentId;
-
-  console.log(`Is selected artifact: ${isSelectedArtifact}`);
+    selectedArtifact &&
+    (selectedArtifact.id === tool.toolCallId ||
+      selectedArtifact.id === documentId);
 
   // Update the selected artifact when content changes
-  //   React.useEffect(() => {
-  //     if (isSelectedArtifact && documentContent) {
-  //       console.log("Setting selected artifact");
-  //       if (sidebarOpen) setOpen(false);
-  //       setSelectedArtifact({
-  //         id: documentId || tool.toolCallId,
-  //         title: documentTitle || "Untitled Document",
-  //         content: documentContent,
-  //       });
-  //     }
-  //   }, [
-  //     documentContent,
-  //     documentTitle,
-  //     isSelectedArtifact,
-  //     setSelectedArtifact,
-  //     tool.toolCallId,
-  //     documentId,
-  //   ]);
+  React.useEffect(() => {
+    if (isSelectedArtifact && documentContent) {
+      console.log("Setting selected artifact");
+      if (sidebarOpen) setOpen(false);
+      setSelectedArtifact({
+        id: documentId || tool.toolCallId,
+        title: documentTitle || "Untitled Document",
+        content: documentContent,
+      });
+    }
+  }, [
+    documentContent,
+    documentTitle,
+    isSelectedArtifact,
+    setSelectedArtifact,
+    tool.toolCallId,
+    documentId,
+  ]);
 
   return (
     <AnimatePresence>
