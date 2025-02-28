@@ -33,7 +33,7 @@ export const WorkspaceProvider = ({
             // Clean up jotai storage
             localStorage.removeItem("activeWorkspace");
             return parsed;
-          } catch (e) {
+          } catch {
             return initialWorkspace || null;
           }
         }
