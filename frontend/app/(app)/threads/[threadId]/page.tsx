@@ -1,6 +1,7 @@
 "use client";
 
 import ChatThread from "@/components/chat/chat-thread";
+import ThreadHeader from "@/components/chat/thread-header";
 import { useThreadQuery } from "@/queries/queries";
 import { Message } from "ai/react";
 import { useParams, useSearchParams } from "next/navigation";
@@ -49,5 +50,10 @@ export default function ThreadsPage() {
     );
   }, [isNew, thread]);
 
-  return <ChatThread initalMessages={initalMessages} thread={thread} />;
+  return (
+    <>
+      <ThreadHeader />
+      <ChatThread initalMessages={initalMessages} thread={thread} />{" "}
+    </>
+  );
 }

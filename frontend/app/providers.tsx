@@ -1,51 +1,32 @@
-"use client";
-
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
-import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Provider as JotaiProvider } from "jotai";
 import { WorkspaceProvider } from "@/components/sidebar/workspace-context";
 import { Toaster } from "@/components/ui/sonner";
+import { getActiveWorkspaceCookie } from "./workspace-actions";
+import TanstackQueryClientProvider, {
+  KeyboardShortcutsProvider,
+} from "@/components/tanstack-query-client-provider";
 
-function KeyboardShortcutsProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  useKeyboardShortcuts();
-  return <>{children}</>;
-}
-
-export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            refetchOnWindowFocus: false,
-          },
-        },
-      })
-  );
+export async function Providers({ children }: { children: React.ReactNode }) {
+  const initialWorkspace = await getActiveWorkspaceCookie();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-      >
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <TanstackQueryClientProvider>
         <JotaiProvider>
-          <WorkspaceProvider>
+          <WorkspaceProvider initialWorkspace={initialWorkspace}>
             <KeyboardShortcutsProvider>
               <Toaster />
               {children}
             </KeyboardShortcutsProvider>
           </WorkspaceProvider>
         </JotaiProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+      </TanstackQueryClientProvider>
+    </ThemeProvider>
   );
 }

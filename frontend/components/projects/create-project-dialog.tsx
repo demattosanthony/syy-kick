@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateProjectMutation } from "@/queries/queries";
-import { useWorkspace } from "@/components/sidebar/workspace-context";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
@@ -42,7 +41,6 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
     },
   });
 
-  const { activeWorkspace } = useWorkspace();
   const createProjectMutation = useCreateProjectMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,10 +49,6 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
       const project = await createProjectMutation.mutateAsync({
         name: formData.name,
         description: formData.description,
-        organizationId:
-          activeWorkspace?.type === "organization"
-            ? activeWorkspace.id
-            : undefined,
         address: formData.location.address,
         city: formData.location.city,
         state: formData.location.state,
@@ -82,7 +76,7 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
       if (error instanceof ApiError) {
         console.log(error.status);
         if (error.status === 402) {
-          toast.error("Pro plan is required to create a project");
+          toast.error("Pro or Teams plan is required to create a project");
           return;
         }
       }
