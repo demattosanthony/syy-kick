@@ -44,6 +44,7 @@
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cmdk": "1.0.0",
+        "date-fns": "^4.1.0",
         "framer-motion": "^12.0.5",
         "jotai": "^2.10.1",
         "lucide-react": "^0.469.0",
@@ -51,6 +52,7 @@
         "next-themes": "^0.4.4",
         "pdfjs-dist": "^3.4.120",
         "react": "^19.0.0-rc.1",
+        "react-day-picker": "8.10.1",
         "react-dom": "^19.0.0-rc.1",
         "react-hook-form": "^7.54.2",
         "react-markdown": "^10.0.0",
@@ -611,6 +613,8 @@
     "data-view-byte-length": ["data-view-byte-length@1.0.2", "", { "dependencies": { "call-bound": "^1.0.3", "es-errors": "^1.3.0", "is-data-view": "^1.0.2" } }, ""],
 
     "data-view-byte-offset": ["data-view-byte-offset@1.0.1", "", { "dependencies": { "call-bound": "^1.0.2", "es-errors": "^1.3.0", "is-data-view": "^1.0.1" } }, ""],
+
+    "date-fns": ["date-fns@4.1.0", "", {}, "sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg=="],
 
     "debounce": ["debounce@1.2.1", "", {}, ""],
 
@@ -1265,6 +1269,8 @@
     "react": ["react@19.0.0", "", {}, ""],
 
     "react-composer": ["react-composer@5.0.3", "", { "dependencies": { "prop-types": "^15.6.0" }, "peerDependencies": { "react": "^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0" } }, ""],
+
+    "react-day-picker": ["react-day-picker@8.10.1", "", { "peerDependencies": { "date-fns": "^2.28.0 || ^3.0.0", "react": "^16.8.0 || ^17.0.0 || ^18.0.0" } }, "sha512-TMx7fNbhLk15eqcMt+7Z7S2KF7mfTId/XJDjKE8f+IUcFn0l08/kI4FiYTL/0yuOLmEcbR4Fwe3GJf/NiiMnPA=="],
 
     "react-dom": ["react-dom@19.0.0", "", { "dependencies": { "scheduler": "^0.25.0" }, "peerDependencies": { "react": "^19.0.0" } }, ""],
 

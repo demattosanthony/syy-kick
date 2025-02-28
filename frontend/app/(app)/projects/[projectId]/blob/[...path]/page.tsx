@@ -21,7 +21,7 @@ export default function Page() {
   const { data: doc } = useProjectDocQuery(projectId, currentPath);
 
   const rightContent = (
-    <Card className="h-full overflow-y-auto">
+    <Card className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
       <CardContent className="flex flex-col h-full p-0">
         {doc && <ProjectFileViewer doc={doc} />}
       </CardContent>

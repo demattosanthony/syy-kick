@@ -1,25 +1,28 @@
 "use client";
 
+// React and Next.js imports
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+
+// Third-party utility imports
+import { toast } from "sonner";
+
+// UI component imports
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
+// Custom component imports
+import { ProjectFormFields } from "./project-form-fields";
+
+// API and data fetching imports
 import { useCreateProjectMutation } from "@/queries/queries";
-import { useWorkspace } from "@/components/sidebar/workspace-context";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { ApiError } from "@/lib/api";
-import { LocationSearch } from "../location-search";
 
 interface CreateProjectDialogProps {
   trigger: React.ReactNode;
@@ -31,6 +34,9 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    projectNumber: "",
+    estimatedStartDate: "",
+    estimatedEndDate: "",
     location: {
       address: "",
       city: "",
@@ -42,7 +48,6 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
     },
   });
 
-  const { activeWorkspace } = useWorkspace();
   const createProjectMutation = useCreateProjectMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,10 +56,9 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
       const project = await createProjectMutation.mutateAsync({
         name: formData.name,
         description: formData.description,
-        organizationId:
-          activeWorkspace?.type === "organization"
-            ? activeWorkspace.id
-            : undefined,
+        project_number: formData.projectNumber,
+        estimated_start_date: formData.estimatedStartDate || undefined,
+        estimated_end_date: formData.estimatedEndDate || undefined,
         address: formData.location.address,
         city: formData.location.city,
         state: formData.location.state,
@@ -66,6 +70,9 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
       setFormData({
         name: "",
         description: "",
+        projectNumber: "",
+        estimatedStartDate: "",
+        estimatedEndDate: "",
         location: {
           address: "",
           city: "",
@@ -82,7 +89,7 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
       if (error instanceof ApiError) {
         console.log(error.status);
         if (error.status === 402) {
-          toast.error("Pro plan is required to create a project");
+          toast.error("Pro or Teams plan is required to create a project");
           return;
         }
       }
@@ -98,63 +105,15 @@ export function CreateProjectDialog({ trigger }: CreateProjectDialogProps) {
           <DialogTitle>Create a new Project</DialogTitle>
           <DialogDescription></DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">
-              Name <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="name"
-              placeholder="Project name"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, name: e.target.value }))
-              }
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Project description"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="space-y-2 max-w-[460px]">
-            <Label htmlFor="location">Location</Label>
-            <LocationSearch
-              value={formData.location}
-              onChange={(locationData) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  location: {
-                    address: locationData.address || "",
-                    city: locationData.city || "",
-                    state: locationData.state || "",
-                    country: locationData.country || "",
-                    postalCode: locationData.postalCode || "",
-                    latitude: locationData.latitude || "",
-                    longitude: locationData.longitude || "",
-                  },
-                }))
-              }
-            />
-          </div>
-
-          <DialogFooter>
-            <Button type="submit" disabled={createProjectMutation.isPending}>
-              {createProjectMutation.isPending
-                ? "Creating..."
-                : "Create Project"}
-            </Button>
-          </DialogFooter>
+        <form onSubmit={handleSubmit} className="space-y-4 max-w-[460px]">
+          <ProjectFormFields
+            formData={formData}
+            setFormData={setFormData}
+            isSubmitting={createProjectMutation.isPending}
+            submitButtonText={
+              createProjectMutation.isPending ? "Creating..." : "Create Project"
+            }
+          />
         </form>
       </DialogContent>
     </Dialog>

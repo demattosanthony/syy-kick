@@ -23,14 +23,18 @@ import s3 from "../config/s3";
 import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
+import { getOrgIdOrUnedfined } from "../utils";
 
 const schemas = {
   createProject: z
     .object({
       name: z.string().min(1).max(255),
       description: z.string().max(255).optional(),
+      project_number: z.string().optional(),
       organizationId: z.string().uuid().optional(),
       userId: z.string().uuid().optional(),
+      estimated_start_date: z.string().datetime().optional(),
+      estimated_end_date: z.string().datetime().optional(),
       address: z.string().max(500).optional(),
       city: z.string().max(100).optional(),
       state: z.string().max(100).optional(),
@@ -46,6 +50,9 @@ const schemas = {
   updateProject: z.object({
     name: z.string().min(1).max(255).optional(),
     description: z.string().max(255).optional(),
+    project_number: z.string().optional(),
+    estimated_start_date: z.string().datetime().optional(),
+    estimated_end_date: z.string().datetime().optional(),
     organizationId: z.string().optional(),
     address: z.string().max(500).optional().nullable(),
     city: z.string().max(100).optional().nullable(),
@@ -124,6 +131,13 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
     .values({
       name: data.name,
       description: data.description,
+      projectNumber: data.project_number,
+      estimatedStartDate: data.estimated_start_date
+        ? new Date(data.estimated_start_date)
+        : null,
+      estimatedEndDate: data.estimated_end_date
+        ? new Date(data.estimated_end_date)
+        : null,
       organizationId: data.organizationId,
       userId: data.userId,
       visibility: "private",
@@ -354,6 +368,13 @@ async function updateProject(
     .set({
       name: data.name || project.name,
       description: data.description ?? project.description,
+      projectNumber: data.project_number ?? project.projectNumber,
+      estimatedStartDate: data.estimated_start_date
+        ? new Date(data.estimated_start_date)
+        : null,
+      estimatedEndDate: data.estimated_end_date
+        ? new Date(data.estimated_end_date)
+        : null,
       address: data.address !== undefined ? data.address : project.address,
       city: data.city !== undefined ? data.city : project.city,
       state: data.state !== undefined ? data.state : project.state,
@@ -669,9 +690,11 @@ async function checkProjectUpdatePermission(projectId: string, userId: string) {
 // Route handlers
 const handlers = {
   createProject: async (req: Request, res: Response) => {
+    const orgId = getOrgIdOrUnedfined(req.workspace);
     const data = {
       ...req.body,
-      userId: req.body.organizationId ? undefined : req.dbUser?.id,
+      userId: orgId ? undefined : req.dbUser?.id,
+      organizationId: orgId,
     };
 
     const validatedData = schemas.createProject.parse(data);
@@ -680,9 +703,10 @@ const handlers = {
   },
 
   listProjects: async (req: Request, res: Response) => {
-    const { search, organizationId } = req.query;
+    const { search } = req.query;
+    const orgId = getOrgIdOrUnedfined(req.workspace);
     const projectsList = await listProjects({
-      organizationId: organizationId as string | undefined,
+      organizationId: orgId,
       userId: req.dbUser?.id,
       search: search as string,
     });
@@ -691,14 +715,12 @@ const handlers = {
 
   getProject: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const organizationId = req.query.organizationId as string | undefined;
     const project = await getProject(projectId);
     res.json(project || {});
   },
 
   deleteProject: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const organizationId = req.query.organizationId as string | undefined;
     await deleteProject(projectId);
     res.json({ success: true });
   },
@@ -706,7 +728,7 @@ const handlers = {
   getDocuments: async (req: Request, res: Response) => {
     try {
       const { projectId } = req.params;
-      const { path, organizationId } = req.query;
+      const { path } = req.query;
       const files = await getProjectDocs(projectId, path as string);
       res.json(files);
     } catch (error) {
@@ -717,7 +739,7 @@ const handlers = {
 
   deleteContents: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const { path, organizationId } = req.query;
+    const { path } = req.query;
     await deleteProjectContent(projectId, decodeURIComponent(path as string));
     res.json({ success: true });
   },
@@ -754,7 +776,7 @@ const handlers = {
    */
   getDocument: async (req: Request, res: Response) => {
     const { projectId } = req.params;
-    const { path, organizationId } = req.query;
+    const { path } = req.query;
     const file = await getDocContent(
       projectId,
       decodeURIComponent(path as string)

@@ -3,13 +3,13 @@ import { DragAndDropProvider } from "@/components/DragDropProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
 import { me } from "../actions";
+import FinishOrgSetupBanner from "@/components/organizations/finish-org-setup-banner";
+import LoginButtons from "@/components/login-buttons";
 
 export default async function MainAppLayout({
   children,
-  header,
 }: {
   children: React.ReactNode;
-  header: React.ReactNode;
 }) {
   const user = await me();
   const cookieStore = await cookies();
@@ -22,7 +22,13 @@ export default async function MainAppLayout({
       <SidebarInset>
         <div className="h-full w-full flex flex-col max-h-[-webkit-fill-available] relative">
           <DragAndDropProvider>
-            {header}
+            <FinishOrgSetupBanner />
+
+            {!user && (
+              <div className="absolute top-4 right-4 z-10">
+                <LoginButtons />
+              </div>
+            )}
 
             {children}
           </DragAndDropProvider>

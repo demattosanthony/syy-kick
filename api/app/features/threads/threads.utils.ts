@@ -406,7 +406,7 @@ Instructions:
 
 3. Structure your answer for optimal readability:
    - Begin with a brief introductory sentence or paragraph.
-   - Separate your answer into logical sections using level 2 headers (##) for sections and bolding (**) for subsections.
+   - Separate your answer into logical sections using level 2 headers (##) for sections and bolding (**) for subsections. Never use level 1 headers (#).
    - Incorporate tables for comparisons or data presentation.
    - Use bullet points sparingly, only for clear enumerations.
    - Use numbered lists only for rankings.
@@ -744,9 +744,12 @@ async function maybeGenerateTitle(
   if (!firstUserTextMessage) return;
 
   try {
-    const title = await generateThreadTitle(
-      (firstUserTextMessage.content as string) || ""
-    );
+    const textContent = Array.isArray(firstUserTextMessage.content)
+      ? firstUserTextMessage.content.find((chunk) => chunk.type === "text")
+          ?.text || ""
+      : (firstUserTextMessage.content as string) || "";
+
+    const title = await generateThreadTitle(textContent);
     await db.update(threads).set({ title }).where(eq(threads.id, threadId));
   } catch (error) {
     console.error("Error generating title", error);

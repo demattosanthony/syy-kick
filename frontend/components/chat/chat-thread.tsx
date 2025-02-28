@@ -63,10 +63,6 @@ export default function ThreadPage({
     selectedProjectDocsAtom
   );
 
-  const { activeWorkspace } = useWorkspace();
-  const orgId =
-    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
-
   const {
     input,
     setInput,
@@ -88,7 +84,6 @@ export default function ThreadPage({
         model: model.name,
         temperature: temperature,
         instructions,
-        organizationId: orgId,
       };
     },
   });

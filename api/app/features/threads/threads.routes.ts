@@ -2,7 +2,7 @@
 import { Request, Response, Router } from "express";
 
 // Internal utilities
-import { handle } from "../../utils";
+import { getOrgIdOrUnedfined, handle } from "../../utils";
 
 // Thread-specific imports
 import threadsOps from "./threads.ops";
@@ -17,8 +17,9 @@ const router = Router();
 router.post(
   "/",
   handle(async (req) => {
-    const { organizationId, projectId } = createThreadSchema.parse(req.body);
-    return threadsOps.createThread(req.dbUser!.id, organizationId, projectId);
+    const { projectId } = createThreadSchema.parse(req.body);
+    const orgId = getOrgIdOrUnedfined(req.workspace);
+    return threadsOps.createThread(req.dbUser!.id, orgId, projectId);
   })
 );
 
@@ -26,12 +27,13 @@ router.post(
 router.get(
   "/",
   handle(async (req) => {
-    const { page, search, organizationId } = getThreadsSchema.parse(req.query);
+    const { page, search } = getThreadsSchema.parse(req.query);
+    const orgId = getOrgIdOrUnedfined(req.workspace);
     return threadsOps.listThreads(
       req.dbUser!.id,
       parseInt(page || "1", 10),
       (search || "").trim(),
-      organizationId
+      orgId
     );
   })
 );
@@ -64,12 +66,8 @@ router.post("/:threadId/inference", async (req: Request, res: Response) => {
 router.delete(
   "/:threadId",
   handle(async (req) => {
-    const organizationId = req.query.organizationId as string | undefined;
-    return threadsOps.deleteThread(
-      req.dbUser!.id,
-      req.params.threadId,
-      organizationId
-    );
+    const orgId = getOrgIdOrUnedfined(req.workspace);
+    return threadsOps.deleteThread(req.dbUser!.id, req.params.threadId, orgId);
   })
 );
 

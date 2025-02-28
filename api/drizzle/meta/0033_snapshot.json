@@ -1,9 +1,55 @@
 {
-  "id": "f5b81897-58e3-4e11-b796-943c6731aefe",
-  "prevId": "7ba9fc13-d950-43fc-8e3e-3da157405584",
+  "id": "a37caa48-8a92-4ec7-baf1-8f2ab09e6e44",
+  "prevId": "f5b81897-58e3-4e11-b796-943c6731aefe",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.artifacts": {
+      "name": "artifacts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.document_embeddings": {
       "name": "document_embeddings",
       "schema": "",

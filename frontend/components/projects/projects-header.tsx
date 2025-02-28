@@ -10,22 +10,19 @@ export default function ProjectsHeader() {
   const pathname = usePathname();
   const pid = params.projectId as string;
 
-  // Check if we're actually in a project path
+  // Check if we're on a project page
   const isProjectPath = pathname.startsWith(`/projects/${pid}/`);
+  const isProjectSettingsPage = pathname === `/projects/${pid}/settings`;
 
   const { data: project } = useProjectQuery(pid);
 
-  // Return null if we're not in a project path or if project data isn't available
   if (!isProjectPath) return null;
-
-  // Check if we're in the settings path
-  const isSettingsPath = pathname.includes("/settings");
 
   return (
     <div className="h-14 flex items-center justify-between w-full px-4">
       <div>{project && <ProjectNavBreadcrumbs project={project} />}</div>
 
-      {!isSettingsPath && <ProjectAddFileButton projectId={pid} />}
+      {!isProjectSettingsPage && <ProjectAddFileButton projectId={pid} />}
     </div>
   );
 }

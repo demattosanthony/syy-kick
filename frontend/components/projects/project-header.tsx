@@ -1,14 +1,15 @@
 "use client";
 
-import { useMeQuery, useProjectQuery } from "@/queries/queries";
+import { useMeQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { ProjectAddFileButton } from "./project-add-file-button";
 import { Button } from "../ui/button";
 import { Settings } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "../ui/badge";
+import { Project } from "@/types/project";
 
-export default function ProjectHeader({ pid }: { pid: string }) {
-  const { data: project } = useProjectQuery(pid);
+export default function ProjectHeader({ project }: { project: Project }) {
   const { data: me } = useMeQuery();
 
   // Check if user is an owner of the project's organization or if it's their personal project
@@ -32,14 +33,17 @@ export default function ProjectHeader({ pid }: { pid: string }) {
               <AvatarImage src={logo} />
               <AvatarFallback>{project?.name[0]}</AvatarFallback>
             </Avatar>
-            <div className="flex flex-col gap-1">
-              <h2 className="text-2xl font-bold">{project?.name}</h2>
-            </div>
+            <h2 className="text-2xl font-bold">{project?.name}</h2>
+            {project?.projectNumber && (
+              <Badge variant={"secondary"} className="">
+                {project?.projectNumber}
+              </Badge>
+            )}
           </div>
           <div className="flex gap-2">
-            <ProjectAddFileButton projectId={pid} />
+            <ProjectAddFileButton projectId={project.id} />
             {isOrgOwner && (
-              <Link href={`/projects/${pid}/settings`} prefetch={false}>
+              <Link href={`/projects/${project.id}/settings`} prefetch={false}>
                 <Button variant={"ghost"} size={"icon"}>
                   <Settings className="w-4 h-4" />
                 </Button>
