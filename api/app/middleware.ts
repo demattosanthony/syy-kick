@@ -63,8 +63,6 @@ export const checkSub = async (
 
   const { workspace, dbUser } = req;
 
-  console.log(req);
-
   // Check if workspace comes from an organization type
   if (workspace && workspace.type === "organization") {
     // Check organization subscription

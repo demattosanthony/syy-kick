@@ -10,7 +10,7 @@ export async function setActiveWorkspaceCookie(workspace: Workspace) {
     maxAge: 2147483647, // Maximum value (~68 years) - effectively doesn't expire
     secure: process.env.NODE_ENV === "production",
     sameSite: "none",
-    domain: "syyclops.com",
+    domain: process.env.NODE_ENV === "production" ? ".syyclops.com" : undefined, // Add dot prefix for production
   });
 }
 
