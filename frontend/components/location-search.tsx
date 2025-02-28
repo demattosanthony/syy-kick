@@ -160,7 +160,7 @@ export function LocationSearch({ value, onChange }: LocationSearchProps) {
     : "";
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col w-full maxm-w-full">
       {/* Hidden div for PlacesService */}
       <div ref={mapRef} style={{ display: "none" }}></div>
 

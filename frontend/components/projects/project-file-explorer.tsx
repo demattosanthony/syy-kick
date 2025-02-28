@@ -234,7 +234,12 @@ function FileExplorerItem({
               )}
             </span>
           )}
-          <span className="text-sm hover:underline hover:text-blue-500 truncate">
+          <span
+            className={cn(
+              "text-sm hover:underline hover:text-blue-500 truncate",
+              variant === "detailed" && "max-w-[400px]"
+            )}
+          >
             {item.name}
           </span>
 

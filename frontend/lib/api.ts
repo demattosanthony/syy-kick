@@ -470,6 +470,9 @@ class ProjectsApi extends ApiRequest {
     postalCode?: string;
     latitude?: string;
     longitude?: string;
+    project_number?: string;
+    estimated_start_date?: string;
+    estimated_end_date?: string;
   }): Promise<Project> {
     return await this.request("/projects", "POST", data);
   }
@@ -546,6 +549,9 @@ class ProjectsApi extends ApiRequest {
       postalCode?: string | null;
       latitude?: string | null;
       longitude?: string | null;
+      project_number?: string;
+      estimated_start_date?: string;
+      estimated_end_date?: string;
     }
   ): Promise<Project> {
     return await this.request(`/projects/${projectId}`, "PATCH", data);
