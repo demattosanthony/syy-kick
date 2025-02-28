@@ -34,7 +34,7 @@ export const WorkspaceProvider = ({
     // Also set the cookie on the client side for immediate effect
     document.cookie = `activeWorkspace=${JSON.stringify(
       workspace
-    )}; path=/; max-age=2147483647; samesite=strict`;
+    )}; path=/; max-age=2147483647; samesite=none`;
 
     setActiveWorkspaceState(workspace);
   }, []);
