@@ -41,6 +41,8 @@ export const auth = async (req: any, res: any, next: any) => {
       : null;
     req.workspace = workspace;
 
+    console.log("Workspace", workspace);
+
     next();
   } catch {
     res.status(401).json({ error: "Unauthorized" });
@@ -60,6 +62,8 @@ export const checkSub = async (
     return next();
 
   const { workspace, dbUser } = req;
+
+  console.log(req);
 
   // Check if workspace comes from an organization type
   if (workspace && workspace.type === "organization") {
