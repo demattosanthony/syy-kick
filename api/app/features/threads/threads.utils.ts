@@ -662,9 +662,12 @@ async function maybeGenerateTitle(
   if (!firstUserTextMessage) return;
 
   try {
-    const title = await generateThreadTitle(
-      (firstUserTextMessage.content as string) || ""
-    );
+    const textContent = Array.isArray(firstUserTextMessage.content)
+      ? firstUserTextMessage.content.find((chunk) => chunk.type === "text")
+          ?.text || ""
+      : (firstUserTextMessage.content as string) || "";
+
+    const title = await generateThreadTitle(textContent);
     await db.update(threads).set({ title }).where(eq(threads.id, threadId));
   } catch (error) {
     console.error("Error generating title", error);

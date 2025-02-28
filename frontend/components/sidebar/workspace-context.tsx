@@ -34,8 +34,10 @@ export const WorkspaceProvider = ({
     // Also set the cookie on the client side for immediate effect
     document.cookie = `activeWorkspace=${JSON.stringify(
       workspace
-    )}; path=/; max-age=2147483647; secure; samesite=none${
-      process.env.NODE_ENV === "production" ? "; domain=.syyclops.com" : ""
+    )}; path=/; max-age=2147483647; secure${
+      process.env.NODE_ENV === "production"
+        ? "; domain=.syyclops.com; samesite=lax"
+        : "; samesite=lax"
     }`;
 
     setActiveWorkspaceState(workspace);
