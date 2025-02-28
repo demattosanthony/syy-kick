@@ -41,6 +41,8 @@ export const auth = async (req: any, res: any, next: any) => {
       : null;
     req.workspace = workspace;
 
+    console.log("Workspace", workspace);
+
     next();
   } catch {
     res.status(401).json({ error: "Unauthorized" });
