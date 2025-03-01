@@ -18,13 +18,11 @@ import { embeddingModel } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
-  createArtifactTool,
   createProjectSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
   maybeGenerateTitle,
   processThreadMessages,
-  updateArtifactTool,
 } from "./threads.utils";
 
 const threadsOps = {
@@ -290,16 +288,14 @@ const threadsOps = {
       await maybeGenerateTitle(threadId, inferenceMsgs, thread.title);
 
       // 7) Create tools for the assistant if project ID exists
-      let tools = {
-        create_artifact: createArtifactTool(),
-        update_artifact: updateArtifactTool(),
-        ...(thread.projectId && {
-          search_project_information: createProjectSearchTool(
-            thread.projectId,
-            modelConfig
-          ),
-        }),
-      };
+      let tools = thread.projectId
+        ? {
+            search_project_information: createProjectSearchTool(
+              thread.projectId,
+              modelConfig
+            ),
+          }
+        : undefined;
 
       // Start the streaming from the AI
       const result = streamText({
