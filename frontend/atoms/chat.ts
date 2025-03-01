@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { Model } from "@/types/model";
-import { ChatMessage, FileUpload } from "@/types/chat";
+import { Artifact, ChatMessage, FileUpload } from "@/types/chat";
 import { DocumentContent } from "@/types/project";
 
 export const CLAUDE_3_5_CONFIG = {
@@ -53,8 +53,4 @@ export const inputAtom = atom("");
 export const uploadsAtom = atom<FileUpload[]>([]);
 export const abortControllerAtom = atom<AbortController>(new AbortController());
 export const selectedProjectDocsAtom = atom<DocumentContent[]>([]);
-export const selectedArtifactAtom = atom<{
-  id: string;
-  title: string;
-  content: string;
-} | null>(null);
+export const selectedArtifactAtom = atom<Artifact | null>(null);

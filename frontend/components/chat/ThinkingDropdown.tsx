@@ -7,10 +7,10 @@ interface ThinkingDropdownProps {
 }
 
 export function ThinkingDropdown({ children }: ThinkingDropdownProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(true);
 
   return (
-    <div className="w-full rounded-lg mb-2 border border-border p-3 bg-muted/30">
+    <div className="w-fit rounded-lg mb-2 border border-border p-3">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex w-full items-center justify-between gap-1 rounded-lg text-sm text-muted-foreground hover:text-primary transition-colors duration-200"
