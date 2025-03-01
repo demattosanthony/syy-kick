@@ -23,18 +23,19 @@ export default function ArtifactViewer({
   const [copied, setCopied] = useState(false);
   const [, setSelectedArtifact] = useAtom(selectedArtifactAtom);
 
-  // Find the latest version of the selected artifact from all messages
-  const { latestArtifactContent, artifactVersion } = React.useMemo(() => {
+  // Use the specific artifact content that was selected, not the latest version
+  const artifactContent = artifact.content;
+
+  // Find the version number of the selected artifact
+  const artifactVersion = React.useMemo(() => {
     // Look through all messages to find all versions of this artifact
     const artifactRegex = new RegExp(
       `<antArtifact\\s+identifier="${artifact.identifier}"[\\s\\S]*?>(([\\s\\S]*?)(?:<\\/antArtifact>|$))`,
       "g"
     );
 
-    let latestContent = artifact.content;
     let totalVersions = 0;
     let currentVersion = 0;
-    let allVersions = [];
 
     // Check each message for the artifact with matching identifier
     for (const message of messages) {
@@ -44,40 +45,25 @@ export default function ArtifactViewer({
         for (const match of matches) {
           totalVersions++;
           const content = match[2]?.trim();
-          allVersions.push(content);
 
           // If this content matches our artifact's content, this is our version
           if (content === artifact.content.trim()) {
             currentVersion = totalVersions;
           }
-
-          // Always keep track of the latest content
-          latestContent = content;
         }
       }
     }
 
-    // If we didn't find a match, this might be the latest version
-    if (currentVersion === 0 && artifact.content === latestContent) {
-      currentVersion = totalVersions;
-    }
-
-    // If we still don't have a version, use the one from the artifact or default to 1
-    if (currentVersion === 0) {
-      currentVersion = artifact.version || 1;
-    }
-
-    return {
-      latestArtifactContent: latestContent,
-      artifactVersion: currentVersion,
-    };
+    // If we didn't find a match, use the version from the artifact or default to 1
+    return currentVersion || artifact.version || 1;
   }, [messages, artifact.identifier, artifact.content, artifact.version]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(latestArtifactContent);
+    navigator.clipboard.writeText(artifactContent);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
   return (
     <motion.div
       className="h-full"
@@ -153,7 +139,7 @@ export default function ArtifactViewer({
             </div>
             <div className="p-4 px-6 flex justify-center">
               <div className="max-w-[800px] w-full">
-                <MarkdownEditorViewer content={latestArtifactContent} />
+                <MarkdownEditorViewer content={artifactContent} />
               </div>
             </div>
           </div>

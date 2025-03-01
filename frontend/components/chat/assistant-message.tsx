@@ -33,6 +33,7 @@ const extractSpecialContent = (content: string) => {
       title: artifactMetaMatch[3],
       content: artifactMatch[1].trim(),
       isComplete: content.includes("</antArtifact>"),
+      rawContent: artifactMatch[1].trim(), // Store the exact content for version matching
     };
   }
 
