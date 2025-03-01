@@ -9,6 +9,7 @@ import { Message } from "ai";
 import React from "react";
 import { useAtom } from "jotai";
 import { selectedArtifactAtom } from "@/atoms/chat";
+import { Badge } from "../ui/badge";
 
 export default function ArtifactViewer({
   artifact,
@@ -132,9 +133,7 @@ export default function ArtifactViewer({
                 <h3 className="text-lg font-medium truncate max-w-[400px]">
                   {artifact.title || "Untitled Artifact"}
                 </h3>
-                <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-1 rounded-full">
-                  v{artifactVersion}
-                </span>
+                <Badge variant={"secondary"}>v{artifactVersion}</Badge>
               </div>
 
               <div className="flex gap-2">
@@ -154,10 +153,7 @@ export default function ArtifactViewer({
             </div>
             <div className="p-4 px-6 flex justify-center">
               <div className="max-w-[800px] w-full">
-                <MarkdownEditorViewer
-                  initialContent={latestArtifactContent}
-                  editable
-                />
+                <MarkdownEditorViewer content={latestArtifactContent} />
               </div>
             </div>
           </div>

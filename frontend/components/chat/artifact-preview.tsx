@@ -8,6 +8,7 @@ import { selectedArtifactAtom } from "@/atoms/chat";
 import { useEffect } from "react";
 import React from "react";
 import { Message } from "ai";
+import { Badge } from "../ui/badge";
 
 const ArtifactPreview = ({
   artifact,
@@ -91,7 +92,9 @@ const ArtifactPreview = ({
 
   return (
     <motion.div
-      className={cn("rounded-lg border overflow-hidden w-full max-w-[500px]")}
+      className={cn(
+        "rounded-lg border overflow-hidden w-full max-w-[500px] hover:border-2 transition-all"
+      )}
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{
@@ -106,18 +109,14 @@ const ArtifactPreview = ({
         });
       }}
     >
-      <div className="flex items-center p-3 cursor-pointer">
-        <div className="bg-muted/20 p-2 rounded-md mr-3">
-          <File className="w-5 h-5 text-muted-foreground" />
-        </div>
+      <div className="flex items-center p-3 cursor-pointer ">
+        <div className="p-1 mr-2 text-2xl">📑</div>
         <div className="flex flex-col flex-1">
           <div className="flex justify-between items-center">
             <h3 className="text-base font-medium">
               {artifact.title || "Artifact"}
             </h3>
-            <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-1 rounded-full">
-              v{artifactVersion}
-            </span>
+            <Badge variant={"secondary"}>v{artifactVersion}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
             Click to open document
