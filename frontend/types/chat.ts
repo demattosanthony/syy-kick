@@ -81,4 +81,5 @@ export type Artifact = {
   content: string;
   isComplete: boolean;
   version?: number;
+  autoSelected?: boolean;
 };

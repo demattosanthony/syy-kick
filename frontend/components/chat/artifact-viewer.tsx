@@ -23,40 +23,56 @@ export default function ArtifactViewer({
   const [copied, setCopied] = useState(false);
   const [, setSelectedArtifact] = useAtom(selectedArtifactAtom);
 
-  // Use the specific artifact content that was selected, not the latest version
-  const artifactContent = artifact.content;
+  // Find the version number and content of the selected artifact from messages
+  const { artifactContent, artifactVersion, artifactTitle } =
+    React.useMemo(() => {
+      // Look through all messages to find all versions of this artifact
+      const artifactRegex = new RegExp(
+        `<antArtifact\\s+identifier="${artifact.identifier}"[\\s\\S]*?>(([\\s\\S]*?)(?:<\\/antArtifact>|$))`,
+        "g"
+      );
 
-  // Find the version number of the selected artifact
-  const artifactVersion = React.useMemo(() => {
-    // Look through all messages to find all versions of this artifact
-    const artifactRegex = new RegExp(
-      `<antArtifact\\s+identifier="${artifact.identifier}"[\\s\\S]*?>(([\\s\\S]*?)(?:<\\/antArtifact>|$))`,
-      "g"
-    );
+      let totalVersions = 0;
+      let currentVersion = 0;
+      let content = "";
+      let title = artifact.title || "Untitled Artifact";
 
-    let totalVersions = 0;
-    let currentVersion = 0;
+      // Check each message for the artifact with matching identifier
+      for (const message of messages) {
+        if (typeof message.content === "string") {
+          const matches = [...message.content.matchAll(artifactRegex)];
 
-    // Check each message for the artifact with matching identifier
-    for (const message of messages) {
-      if (typeof message.content === "string") {
-        const matches = [...message.content.matchAll(artifactRegex)];
+          for (const match of matches) {
+            totalVersions++;
 
-        for (const match of matches) {
-          totalVersions++;
-          const content = match[2]?.trim();
+            // If this is the version we want, store its content
+            if (artifact.version && totalVersions === artifact.version) {
+              content = match[2]?.trim() || "";
+              currentVersion = totalVersions;
+            }
 
-          // If this content matches our artifact's content, this is our version
-          if (content === artifact.content.trim()) {
-            currentVersion = totalVersions;
+            // Always update content for the latest version if we haven't found our specific version
+            if (!currentVersion) {
+              content = match[2]?.trim() || "";
+              currentVersion = totalVersions;
+            }
           }
         }
       }
-    }
 
-    // If we didn't find a match, use the version from the artifact or default to 1
-    return currentVersion || artifact.version || 1;
-  }, [messages, artifact.identifier, artifact.content, artifact.version]);
+      // If we didn't find a match, use the version from the artifact or default to 1
+      return {
+        artifactContent: content || artifact.content || "",
+        artifactVersion: currentVersion || artifact.version || 1,
+        artifactTitle: title,
+      };
+    }, [
+      messages,
+      artifact.identifier,
+      artifact.version,
+      artifact.title,
+      artifact.content,
+    ]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(artifactContent);

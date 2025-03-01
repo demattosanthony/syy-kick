@@ -1,10 +1,12 @@
 import { motion } from "framer-motion";
-import { File } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "../ui/sidebar";
 import { Artifact } from "@/types/chat";
 import { useAtom } from "jotai";
-import { selectedArtifactAtom } from "@/atoms/chat";
+import {
+  alreadyAutoSelectedArtifactAtom,
+  selectedArtifactAtom,
+} from "@/atoms/chat";
 import { useEffect } from "react";
 import React from "react";
 import { Message } from "ai";
@@ -18,11 +20,11 @@ const ArtifactPreview = ({
   messages: Message[];
 }) => {
   const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
+  const [alreadyAutoSelected, setAlreadyAutoSelected] = useAtom(
+    alreadyAutoSelectedArtifactAtom
+  );
   const { setOpen } = useSidebar();
   const processedArtifactRef = React.useRef(new Set<string>());
-
-  const isSelectedArtifact =
-    selectedArtifact && selectedArtifact.identifier === artifact.identifier;
 
   // Calculate the version of this specific artifact instance
   const artifactVersion = React.useMemo(() => {
@@ -64,6 +66,8 @@ const ArtifactPreview = ({
 
   // Auto-select new artifacts if nothing is currently selected
   useEffect(() => {
+    if (alreadyAutoSelected) return;
+
     // Check if we've seen this artifact identifier before
     const isNewArtifact = !processedArtifactRef.current.has(
       `${artifact.identifier}-${artifact.content}`
@@ -82,6 +86,8 @@ const ArtifactPreview = ({
     processedArtifactRef.current.add(
       `${artifact.identifier}-${artifact.content}`
     );
+
+    setAlreadyAutoSelected(true); // Mark that we've auto-selected an artifact
   }, [
     artifact,
     selectedArtifact,

@@ -54,3 +54,4 @@ export const uploadsAtom = atom<FileUpload[]>([]);
 export const abortControllerAtom = atom<AbortController>(new AbortController());
 export const selectedProjectDocsAtom = atom<DocumentContent[]>([]);
 export const selectedArtifactAtom = atom<Artifact | null>(null);
+export const alreadyAutoSelectedArtifactAtom = atom(false);
