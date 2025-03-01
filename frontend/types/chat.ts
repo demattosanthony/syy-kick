@@ -80,4 +80,5 @@ export type Artifact = {
   title: string;
   content: string;
   isComplete: boolean;
+  version?: number;
 };

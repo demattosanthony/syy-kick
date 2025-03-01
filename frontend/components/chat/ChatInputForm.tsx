@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Paperclip, SendHorizonal, Wrench, X } from "lucide-react";
+import { Loader2, Paperclip, SendHorizonal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
@@ -23,9 +23,6 @@ import {
 import ProjectFileExplorer from "../projects/project-file-explorer";
 import { toast } from "sonner";
 import { DocumentContent } from "@/types/project";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Label } from "../ui/label";
-import { Switch } from "../ui/switch";
 
 interface ChatInputFormProps {
   onSubmit: (e: React.FormEvent) => void;
@@ -301,50 +298,6 @@ function ChatInputForm(
 
         <div className="w-full flex justify-between items-center px-1">
           <ModelSelector proejctId={projectId} />
-
-          {isMounted && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button className="h-8 w-8" variant="ghost" type="button">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5"
-                  >
-                    <rect x="3" y="6" width="18" height="14" rx="2" />
-                    <path d="M3 10h18" />
-                    <path d="M10 6V4a2 2 0 0 1 4 0v2" />
-                  </svg>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56">
-                <div className="space-y-2">
-                  <h4 className="font-medium text-sm">Tools</h4>
-                  <div className="grid gap-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="web-search" className="text-sm">
-                        Web Search
-                      </Label>
-                      <Switch id="web-search" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="canvas" className="text-sm">
-                        Canvas
-                      </Label>
-                      <Switch id="canvas" />
-                    </div>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
 
           {isMounted &&
             selectedModel.supportedMimeTypes &&

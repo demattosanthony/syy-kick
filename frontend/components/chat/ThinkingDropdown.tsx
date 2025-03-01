@@ -7,7 +7,7 @@ interface ThinkingDropdownProps {
 }
 
 export function ThinkingDropdown({ children }: ThinkingDropdownProps) {
-  const [isOpen, setIsOpen] = React.useState(true);
+  const [isOpen, setIsOpen] = React.useState(false);
 
   return (
     <div className="w-fit rounded-lg mb-2 border border-border p-3">

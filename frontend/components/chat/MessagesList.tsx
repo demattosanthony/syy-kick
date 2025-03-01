@@ -169,6 +169,7 @@ const ChatMessagesList = React.memo(
                   key={index}
                   message={message}
                   showEye={showEye}
+                  messages={messages}
                 />
               );
             })}

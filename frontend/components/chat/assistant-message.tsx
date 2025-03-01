@@ -9,9 +9,11 @@ import React from "react";
 const AssistantMessage = ({
   message,
   showEye,
+  messages,
 }: {
   message: Message;
   showEye: boolean;
+  messages: Message[];
 }) => {
   // Parse antThinking and antArtifact content
   const parseSpecialContent = (content: string) => {
@@ -142,7 +144,10 @@ const AssistantMessage = ({
 
           {/* Display artifact if present */}
           {processedContent.artifact && (
-            <ArtifactPreview artifact={processedContent.artifact} />
+            <ArtifactPreview
+              artifact={processedContent.artifact}
+              messages={messages}
+            />
           )}
         </div>
       </div>
