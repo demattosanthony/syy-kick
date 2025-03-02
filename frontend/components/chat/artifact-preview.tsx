@@ -1,13 +1,8 @@
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "../ui/sidebar";
 import { Artifact } from "@/types/chat";
 import { useAtom } from "jotai";
-import {
-  alreadyAutoSelectedArtifactAtom,
-  selectedArtifactAtom,
-} from "@/atoms/chat";
-import { useEffect } from "react";
+import { selectedArtifactAtom } from "@/atoms/chat";
 import React from "react";
 import { Message } from "ai";
 import { Badge } from "../ui/badge";
@@ -19,12 +14,8 @@ const ArtifactPreview = ({
   artifact: Artifact;
   messages: Message[];
 }) => {
-  const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
-  const [alreadyAutoSelected, setAlreadyAutoSelected] = useAtom(
-    alreadyAutoSelectedArtifactAtom
-  );
+  const [, setSelectedArtifact] = useAtom(selectedArtifactAtom);
   const { setOpen } = useSidebar();
-  const processedArtifactRef = React.useRef(new Set<string>());
 
   // Calculate the version of this specific artifact instance
   const artifactVersion = React.useMemo(() => {
@@ -64,49 +55,11 @@ const ArtifactPreview = ({
     return foundCurrentArtifact ? version : version + 1;
   }, [artifact.identifier, artifact.content, messages]);
 
-  // Auto-select new artifacts if nothing is currently selected
-  useEffect(() => {
-    if (alreadyAutoSelected) return;
-
-    // Check if we've seen this artifact identifier before
-    const isNewArtifact = !processedArtifactRef.current.has(
-      `${artifact.identifier}-${artifact.content}`
-    );
-
-    // If this is a new artifact and nothing is selected, select it
-    if (isNewArtifact && !selectedArtifact) {
-      setSelectedArtifact({
-        ...artifact,
-        version: artifactVersion, // Set the calculated version
-      });
-      setOpen(false); // Close sidebar when auto-selecting
-    }
-
-    // Mark this specific artifact instance as processed
-    processedArtifactRef.current.add(
-      `${artifact.identifier}-${artifact.content}`
-    );
-
-    setAlreadyAutoSelected(true); // Mark that we've auto-selected an artifact
-  }, [
-    artifact,
-    selectedArtifact,
-    setSelectedArtifact,
-    setOpen,
-    artifactVersion,
-  ]);
-
   return (
-    <motion.div
+    <div
       className={cn(
         "rounded-lg border overflow-hidden w-full max-w-[500px] hover:border-2 transition-all"
       )}
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{
-        duration: 0.4,
-        ease: [0.4, 0, 0.2, 1],
-      }}
       onClick={() => {
         setOpen(false);
         setSelectedArtifact({
@@ -129,7 +82,7 @@ const ArtifactPreview = ({
           </p>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

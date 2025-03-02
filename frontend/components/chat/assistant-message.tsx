@@ -1,219 +1,238 @@
 import { Message } from "ai/react";
+import React, { ReactNode } from "react";
 import { ThinkingDropdown } from "./ThinkingDropdown";
 import { ToolCallMessageContent } from "./ToolCallResult";
 import ArtifactPreview from "./artifact-preview";
 import MarkdownViewer from "../viewers/markdown-viewer";
 import Syyclops3dEye from "../syy-eye";
-import React from "react";
+import { Artifact } from "@/types/chat";
+import { useAtom, useSetAtom } from "jotai";
+import {
+  alreadyAutoSelectedArtifactAtom,
+  selectedArtifactAtom,
+} from "@/atoms/chat";
 
-// Helper function to extract special content
-const extractSpecialContent = (content: string) => {
-  // Extract thinking content
-  //   const thinkingMatch = content.match(
-  //     /<antThinking>([\s\S]*?)(?:<\/antThinking>|$)/
-  //   );
+interface SpecialContent {
+  thinking: string | null;
+  artifact: Artifact | null;
+  cleanContent: string;
+}
+
+// Utility function to extract special content
+const extractSpecialContent = (content: string): SpecialContent => {
+  const thinkingMatch = content.match(
+    /<antThinking>([\s\S]*?)(?:<\/antThinking>|$)/
+  );
   const hasThinking = content.includes("<antThinking>");
-  //   const thinking = thinkingMatch ? thinkingMatch[1].trim() : null;
-  const thinking = null;
+  const thinking = thinkingMatch ? thinkingMatch[1].trim() : null;
 
-  // Extract artifact content
-  const artifactMetaMatch = content.match(
-    /<antArtifact\s+identifier="([\s\S]*?)"\s+type="([\s\S]*?)"\s+title="([\s\S]*?)">/
-  );
-  const artifactMatch = content.match(
-    /<antArtifact[\s\S]*?>([\s\S]*?)(?:<\/antArtifact>|$)/
-  );
+  // Improved artifact extraction with a single regex that captures all needed parts
+  const artifactRegex =
+    /<antArtifact\s+identifier="([\s\S]*?)"\s+type="([\s\S]*?)"\s+title="([\s\S]*?)">([\s\S]*?)(?:<\/antArtifact>|$)/;
+  const artifactMatch = content.match(artifactRegex);
   const hasArtifact = content.includes("<antArtifact");
 
-  let artifact = null;
-  if (artifactMatch && artifactMetaMatch) {
-    artifact = {
-      identifier: artifactMetaMatch[1],
-      type: artifactMetaMatch[2],
-      title: artifactMetaMatch[3],
-      content: artifactMatch[1].trim(),
-      isComplete: content.includes("</antArtifact>"),
-      rawContent: artifactMatch[1].trim(), // Store the exact content for version matching
-    };
-  }
+  const artifact = artifactMatch
+    ? {
+        identifier: artifactMatch[1],
+        type: artifactMatch[2],
+        title: artifactMatch[3],
+        content: artifactMatch[4].trim(),
+        isComplete: content.includes("</antArtifact>"),
+        rawContent: artifactMatch[4].trim(),
+      }
+    : null;
 
-  // Clean content by removing all special tags and their content
-  let cleanContent = content;
+  let cleanContent = content
+    .replace(/<antThinking>[\s\S]*?(?:<\/antThinking>|$)/g, "")
+    .replace(/<antArtifact[\s\S]*?>[\s\S]*?(?:<\/antArtifact>|$)/g, "")
+    .trim();
 
-  // Remove thinking tags and their content
-  if (hasThinking) {
-    cleanContent = cleanContent.replace(
-      /<antThinking>[\s\S]*?(?:<\/antThinking>|$)/g,
-      ""
-    );
-  }
-
-  // Remove artifact tags and their content
-  if (hasArtifact) {
-    cleanContent = cleanContent.replace(
-      /<antArtifact[\s\S]*?>[\s\S]*?(?:<\/antArtifact>|$)/g,
-      ""
-    );
-  }
-
-  return { thinking, artifact, cleanContent: cleanContent.trim() };
+  return { thinking, artifact, cleanContent };
 };
 
-// Process text content and render appropriate components
-const renderTextContent = (
-  text: string,
-  messages: Message[],
-  index: number
-) => {
+// Component to render text content
+const TextContent: React.FC<{
+  text: string;
+  messages: Message[];
+  index: number;
+}> = ({ text, messages, index }) => {
   const { thinking, artifact, cleanContent } = extractSpecialContent(text);
-  const elements: React.ReactNode[] = [];
+  const elements: ReactNode[] = [];
+  const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
+  const [alreadyAutoSelectedArtifact, setAlreadyAutoSelectedArtifact] = useAtom(
+    alreadyAutoSelectedArtifactAtom
+  );
 
-  // Add thinking at the beginning
-  if (thinking) {
-    elements.push(
-      <ThinkingDropdown key={`thinking-${index}`}>
-        <MarkdownViewer content={thinking} />
-      </ThinkingDropdown>
-    );
-  }
+  const processedRef = React.useRef(false);
 
-  // First, remove all special tags from the original text for positioning purposes
-  let processedText = text;
+  // Auto-select new artifacts
+  React.useEffect(() => {
+    if (artifact && !processedRef.current) {
+      processedRef.current = true;
 
-  // Remove thinking tags for positioning
-  if (text.includes("<antThinking>")) {
-    processedText = processedText.replace(
+      // Calculate artifact version
+      let version = 0;
+      let foundCurrentArtifact = false;
+
+      for (const message of messages) {
+        if (typeof message.content === "string") {
+          const artifactRegex = new RegExp(
+            `<antArtifact\\s+identifier="${artifact.identifier}"[\\s\\S]*?>(([\\s\\S]*?)(?:<\\/antArtifact>|$))`,
+            "g"
+          );
+
+          const matches = [...message.content.matchAll(artifactRegex)];
+
+          for (const match of matches) {
+            version++;
+
+            if (match[2]?.trim() === artifact.content.trim()) {
+              foundCurrentArtifact = true;
+            }
+          }
+        }
+
+        if (foundCurrentArtifact) {
+          break;
+        }
+      }
+
+      const artifactVersion = foundCurrentArtifact ? version : version + 1;
+      const artifactKey = `${artifact.identifier}-v${artifactVersion}`;
+
+      // Only auto-select if we haven't already selected this specific version
+      if (alreadyAutoSelectedArtifact !== artifactKey) {
+        setSelectedArtifact({
+          ...artifact,
+          version: artifactVersion,
+        });
+        setAlreadyAutoSelectedArtifact(artifactKey);
+      }
+    }
+  }, [artifact, messages]);
+
+  //   if (thinking) {
+  //     elements.push(
+  //       <ThinkingDropdown key={`thinking-${index}`}>
+  //         <MarkdownViewer content={thinking} />
+  //       </ThinkingDropdown>
+  //     );
+  //   }
+
+  const renderWithArtifact = () => {
+    let processedText = text.replace(
       /<antThinking>[\s\S]*?(?:<\/antThinking>|$)/g,
       ""
     );
-  }
-
-  // For artifact positioning, we'll keep track of where it was but remove the tags
-  let artifactPosition = -1;
-  if (artifact) {
-    artifactPosition = processedText.indexOf("<antArtifact");
-    // Replace the artifact tag with a placeholder for positioning
+    const artifactPosition = processedText.indexOf("<antArtifact");
     processedText = processedText.replace(
       /<antArtifact[\s\S]*?>[\s\S]*?(?:<\/antArtifact>|$)/g,
-      "{{ARTIFACT_PLACEHOLDER}}"
+      "{{ARTIFACT}}"
     );
-  }
 
-  // Now render content in the correct order
-  if (artifact && artifactPosition > 0) {
-    // Split the content at the artifact placeholder
-    const parts = processedText.split("{{ARTIFACT_PLACEHOLDER}}");
+    const parts = processedText.split("{{ARTIFACT}}");
 
-    // Render content before artifact
-    if (parts[0].trim()) {
+    if (artifactPosition > 0) {
+      if (parts[0].trim()) {
+        elements.push(
+          <MarkdownViewer key={`before-${index}`} content={parts[0].trim()} />
+        );
+      }
       elements.push(
-        <MarkdownViewer
-          content={parts[0].trim()}
-          key={`text-before-${index}`}
+        <ArtifactPreview
+          key={`artifact-${index}`}
+          artifact={artifact!}
+          messages={messages}
         />
       );
-    }
-
-    // Render artifact
-    elements.push(
-      <ArtifactPreview
-        artifact={artifact}
-        messages={messages}
-        key={`artifact-${index}`}
-      />
-    );
-
-    // Render content after artifact
-    if (parts[1] && parts[1].trim()) {
+      if (parts[1]?.trim()) {
+        elements.push(
+          <MarkdownViewer key={`after-${index}`} content={parts[1].trim()} />
+        );
+      }
+    } else {
       elements.push(
-        <MarkdownViewer content={parts[1].trim()} key={`text-after-${index}`} />
+        <ArtifactPreview
+          key={`artifact-${index}`}
+          artifact={artifact!}
+          messages={messages}
+        />
       );
+      if (cleanContent) {
+        elements.push(
+          <MarkdownViewer key={`text-${index}`} content={cleanContent} />
+        );
+      }
     }
-  } else if (artifact) {
-    // Artifact at the beginning
-    elements.push(
-      <ArtifactPreview
-        artifact={artifact}
-        messages={messages}
-        key={`artifact-${index}`}
-      />
-    );
+  };
 
-    if (cleanContent) {
-      elements.push(
-        <MarkdownViewer content={cleanContent} key={`text-${index}`} />
-      );
-    }
+  if (artifact) {
+    renderWithArtifact();
   } else if (cleanContent) {
-    // No artifact, just render clean content
     elements.push(
-      <MarkdownViewer content={cleanContent} key={`text-${index}`} />
+      <MarkdownViewer key={`text-${index}`} content={cleanContent} />
     );
   }
 
-  return elements;
+  return <>{elements}</>;
 };
 
-const AssistantMessage = ({
-  message,
-  showEye,
-  messages,
-}: {
+// Component to render message content
+const MessageContent: React.FC<{
+  message: Message;
+  messages: Message[];
+}> = React.memo(({ message, messages }) => {
+  if (message.parts?.length) {
+    return (
+      <>
+        {message.parts.flatMap((part, index) =>
+          part.type === "tool-invocation" ? (
+            <ToolCallMessageContent
+              key={`tool-${index}`}
+              tool={part.toolInvocation}
+            />
+          ) : part.type === "text" ? (
+            <TextContent
+              key={`text-${index}`}
+              text={part.text}
+              messages={messages}
+              index={index}
+            />
+          ) : part.type === "reasoning" ? (
+            <ThinkingDropdown key={`reasoning-${index}`}>
+              <MarkdownViewer content={part.reasoning} />
+            </ThinkingDropdown>
+          ) : null
+        )}
+      </>
+    );
+  }
+
+  const content =
+    typeof message.content === "string" ? (
+      <TextContent text={message.content} messages={messages} index={0} />
+    ) : (
+      <MarkdownViewer content={message.content} />
+    );
+
+  return <>{content}</>;
+});
+
+// Main component
+const AssistantMessage: React.FC<{
   message: Message;
   showEye: boolean;
   messages: Message[];
-}) => {
-  const renderMessageContent = React.useMemo(() => {
-    // Handle message with parts
-    if (message.parts && message.parts.length > 0) {
-      return message.parts.flatMap((part, index) => {
-        if (part.type === "tool-invocation") {
-          return [
-            <ToolCallMessageContent
-              tool={part.toolInvocation}
-              key={`tool-${index}`}
-            />,
-          ] as React.ReactElement[];
-        } else if (part.type === "text") {
-          return renderTextContent(
-            part.text,
-            messages,
-            index
-          ) as React.ReactElement[];
-        }
-        return [] as React.ReactElement[];
-      });
-    }
-
-    // Fallback for string content
-    if (typeof message.content === "string") {
-      return renderTextContent(message.content, messages, 0);
-    }
-
-    // Handle non-string content
-    return [<MarkdownViewer content={message.content} key="main-content" />];
-  }, [message, messages]);
-
+}> = ({ message, showEye, messages }) => {
   return (
     <div className="my-2 flex flex-col justify-start">
       <div className="flex">
         <div className="mr-1 w-[32px] h-[32px]">
-          {showEye ? <Syyclops3dEye size={32} animate={false} /> : null}
+          {showEye && <Syyclops3dEye size={32} animate={false} />}
         </div>
-
-        <div
-          className="
-            max-w-full
-            md:max-w-[750px]
-            overflow-hidden
-            bg-background
-            break-words
-            mt-[1px]
-            flex flex-col
-            gap-2
-          "
-        >
-          {renderMessageContent}
+        <div className="max-w-full md:max-w-[750px] overflow-hidden bg-background break-words mt-[1px] flex flex-col gap-2">
+          <MessageContent message={message} messages={messages} />
         </div>
       </div>
     </div>

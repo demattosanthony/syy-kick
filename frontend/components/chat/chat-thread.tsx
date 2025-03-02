@@ -7,6 +7,7 @@ import { Attachment, Message } from "@ai-sdk/ui-utils";
 
 // Atoms
 import {
+  alreadyAutoSelectedArtifactAtom,
   initalInputAtom,
   instructionsAtom,
   modelAtom,
@@ -54,7 +55,7 @@ export default function ThreadPage({
   const [temperature] = useAtom(temperatureAtom);
   const [instructions] = useAtom(instructionsAtom);
   const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
-
+  const [, setAlreadyOpenedArtifact] = useAtom(alreadyAutoSelectedArtifactAtom);
   const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
     selectedProjectDocsAtom
   );
@@ -176,6 +177,7 @@ export default function ThreadPage({
     return () => {
       setInitalInput("");
       setSelectedArtifact(null);
+      setAlreadyOpenedArtifact(null);
     };
   }, [threadId]);
 
