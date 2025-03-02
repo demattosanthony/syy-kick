@@ -3,13 +3,15 @@ import { Button } from "../ui/button";
 import { useState } from "react";
 import { useSetAtom } from "jotai";
 import { selectedArtifactAtom } from "@/atoms/chat";
-import { Check, Copy, X } from "lucide-react";
-import MarkdownEditorViewer from "../viewers/markdown-viewer";
+import { Check, Copy, Download, X } from "lucide-react";
+import MarkdownViewer from "../viewers/markdown-viewer";
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 import { getArtifactVersionInfo } from "@/lib/artifact-utils";
 import { Artifact } from "@/types/chat";
 import { Message } from "ai";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { marked } from "marked";
 
 const ArtifactViewer: React.FC<{
   artifact: Artifact;
@@ -22,11 +24,202 @@ const ArtifactViewer: React.FC<{
     artifact,
     messages
   );
+  const mimeType = artifact.type || "text/markdown";
+
+  console.log(artifact);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownload = () => {
+    // Determine file extension and type based on mime type
+    let fileExtension = ".txt";
+    let fileType = "text/plain";
+
+    switch (true) {
+      case mimeType === "text/markdown":
+        fileExtension = ".md";
+        fileType = "text/markdown";
+        break;
+      case mimeType.includes("csv"):
+        fileExtension = ".csv";
+        fileType = "text/csv";
+        break;
+      case mimeType.includes("excel") || mimeType.includes("spreadsheet"):
+        fileExtension = ".xlsx";
+        fileType =
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        break;
+      case mimeType.startsWith("application/json"):
+        fileExtension = ".json";
+        fileType = "application/json";
+        break;
+      // Add more cases as needed for other mime types
+    }
+
+    // Create a blob with the content and appropriate type
+    const blob = new Blob([content], { type: fileType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "_")}${fileExtension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePdfDownload = () => {
+    // Convert markdown to HTML using marked
+    const htmlContent = marked(content);
+
+    // Create a new window with properly rendered markdown
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+          <html>
+            <head>
+              <title>${title}</title>
+              <style>
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+                  line-height: 1.6;
+                  color: #333;
+                  max-width: 800px;
+                  margin: 0 auto;
+                  padding: 20px;
+                }
+                pre {
+                  background-color: #f5f5f5;
+                  padding: 12px;
+                  border-radius: 4px;
+                  overflow-x: auto;
+                }
+                code {
+                  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+                  font-size: 0.9em;
+                  background-color: #f5f5f5;
+                  padding: 0.2em 0.4em;
+                  border-radius: 3px;
+                }
+                pre code {
+                  background-color: transparent;
+                  padding: 0;
+                }
+                blockquote {
+                  border-left: 4px solid #ddd;
+                  padding-left: 16px;
+                  margin-left: 0;
+                  color: #666;
+                }
+                img {
+                  max-width: 100%;
+                }
+                table {
+                  border-collapse: collapse;
+                  width: 100%;
+                }
+                table, th, td {
+                  border: 1px solid #ddd;
+                }
+                th, td {
+                  padding: 8px 12px;
+                }
+                th {
+                  background-color: #f5f5f5;
+                }
+                @media print {
+                  body {
+                    padding: 0;
+                  }
+                  pre, code {
+                    white-space: pre-wrap;
+                  }
+                }
+              </style>
+            </head>
+            <body>
+              <div>${htmlContent}</div>
+              <script>
+                // Automatically trigger print dialog and close window when done
+                window.onload = function() {
+                  setTimeout(function() {
+                    window.print();
+                    window.onafterprint = function() {
+                      window.close();
+                    };
+                  }, 500);
+                };
+              </script>
+            </body>
+          </html>
+        `);
+      printWindow.document.close();
+    }
+  };
+
+  const renderViewer = () => {
+    // Check the artifact's MIME type
+    const mimeType = artifact.type || "text/markdown";
+
+    switch (true) {
+      case mimeType.startsWith("application/vnd.ant.code") &&
+        mimeType.includes("csv"):
+        const rows = content.split("\n") || [];
+        const headerRow = rows[0];
+        const bodyRows = rows.slice(1);
+
+        return (
+          <div className="h-full w-full overflow-auto whitespace-nowrap">
+            <table className="min-w-full table-fixed border-collapse">
+              <thead>
+                <tr className="bg-secondary font-semibold">
+                  {headerRow?.split(",").map((cell, cellIndex) => (
+                    <td
+                      key={cellIndex}
+                      className="px-4 py-2 border overflow-hidden text-ellipsis"
+                    >
+                      {cell.trim()}
+                    </td>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bodyRows.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="border-t">
+                    {row.split(",").map((cell, cellIndex) => (
+                      <td
+                        key={cellIndex}
+                        className="px-4 py-2 border overflow-hidden text-ellipsis"
+                      >
+                        {cell.trim()}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      case mimeType.startsWith("text/") && mimeType !== "text/markdown":
+      case mimeType.startsWith("application/json"):
+      case mimeType.startsWith("application/xml"):
+      case mimeType.includes("javascript"):
+      case mimeType.includes("typescript"):
+      case mimeType.includes("python"):
+        // Get language from MIME type for code highlighting
+        const language = mimeType.split("/")[1] || "";
+        // Wrap in markdown code block
+        const wrappedContent = `\`\`\`${language}\n${content}\n\`\`\``;
+        return <MarkdownViewer content={wrappedContent} />;
+
+      case mimeType === "text/markdown":
+      default:
+        return <MarkdownViewer content={content} />;
+    }
   };
 
   return (
@@ -71,23 +264,102 @@ const ArtifactViewer: React.FC<{
                 </h3>
                 <Badge variant="secondary">v{version}</Badge>
               </div>
-              <Button
-                onClick={handleCopy}
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-muted-foreground hover:text-foreground"
-              >
-                {copied ? (
-                  <Check className="w-[18px] h-[18px] text-green-500" />
-                ) : (
-                  <Copy className="w-[18px] h-[18px]" />
-                )}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <Download className="w-[18px] h-[18px]" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2">
+                    <div className="flex flex-col gap-1.5">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="justify-start font-normal h-auto py-2 px-2.5"
+                        onClick={handleDownload}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`${
+                              mimeType.includes("csv") ||
+                              mimeType.includes("excel") ||
+                              mimeType.includes("spreadsheet")
+                                ? "bg-green-700"
+                                : "bg-blue-700"
+                            } w-8 h-8 rounded-md flex items-center justify-center`}
+                          >
+                            <span className="text-xs font-semibold text-white">
+                              {mimeType === "text/markdown"
+                                ? ".md"
+                                : mimeType.includes("csv") ||
+                                  mimeType.includes("excel") ||
+                                  mimeType.includes("spreadsheet")
+                                ? ".xlsx"
+                                : ".txt"}
+                            </span>
+                          </div>
+                          <div className="flex flex-col items-start">
+                            <span className="text-sm">
+                              {mimeType === "text/markdown"
+                                ? "Markdown"
+                                : mimeType.includes("csv") ||
+                                  mimeType.includes("excel") ||
+                                  mimeType.includes("spreadsheet")
+                                ? "Excel"
+                                : "Text"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              Raw format
+                            </span>
+                          </div>
+                        </div>
+                      </Button>
+                      {mimeType === "text/markdown" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="justify-start font-normal h-auto py-2 px-2.5"
+                          onClick={handlePdfDownload}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="bg-red-700 w-8 h-8 rounded-md flex items-center justify-center">
+                              <span className="text-xs font-semibold text-white">
+                                .pdf
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-start">
+                              <span className="text-sm">PDF</span>
+                              <span className="text-xs text-muted-foreground">
+                                Print-friendly
+                              </span>
+                            </div>
+                          </div>
+                        </Button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  onClick={handleCopy}
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                >
+                  {copied ? (
+                    <Check className="w-[18px] h-[18px] text-green-500" />
+                  ) : (
+                    <Copy className="w-[18px] h-[18px]" />
+                  )}
+                </Button>
+              </div>
             </div>
             <div className="p-4 px-6 flex justify-center">
-              <div className="max-w-[800px] w-full">
-                <MarkdownEditorViewer content={content} />
-              </div>
+              <div className="max-w-[800px] w-full">{renderViewer()}</div>
             </div>
           </div>
         </div>
