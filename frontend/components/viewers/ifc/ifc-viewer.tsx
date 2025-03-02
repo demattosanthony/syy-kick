@@ -2,8 +2,8 @@
 
 import { useIfcLoader } from "@/hooks/use-ifc-loader";
 import { useIfcViewer } from "@/hooks/use-ifc-viewer";
-// import IFCViewerToolbar from "./ifc-viewer-toolbar";
 import { useEffect, useState } from "react";
+import IfcViewerToolbar from "./ifc-toolbar";
 
 export default function IFCViewer({ fileUrl }: { fileUrl?: string }) {
   const { initializeViewer } = useIfcViewer("ifc-viewer");
@@ -61,7 +61,7 @@ export default function IFCViewer({ fileUrl }: { fileUrl?: string }) {
   return (
     <div className="flex flex-1 relative h-full bg-secondary">
       <div id="ifc-viewer" className="absolute top-0 left-0 right-0 bottom-0" />
-      {/* <IFCViewerToolbar /> */}
+      <IfcViewerToolbar />
     </div>
   );
 }
