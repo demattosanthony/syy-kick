@@ -7,9 +7,13 @@ import { useEffect, useState } from "react";
 import MultiSheetViewer from "../viewers/excel-viewer";
 import PdfViewer from "../viewers/pdf-viewer";
 import MarkdownViewer from "../viewers/markdown-viewer";
+import IFCViewer from "../viewers/ifc/ifc-viewer";
 
 export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
   const [textContent, setTextContent] = useState<string>("");
+
+  // Check if the file is an IFC file based on extension
+  const isIfcFile = doc.name?.toLowerCase().endsWith(".ifc");
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -37,6 +41,10 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
 
     fetchContent();
   }, [doc.url, doc.mimeType]);
+
+  if (isIfcFile) {
+    return <IFCViewer fileUrl={doc.url} />;
+  }
 
   switch (doc.mimeType) {
     case "application/pdf":
