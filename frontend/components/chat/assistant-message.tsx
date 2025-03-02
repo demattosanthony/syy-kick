@@ -133,6 +133,7 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
       <MarkdownViewer content={message.content} />
     );
   });
+MessageContent.displayName = "MessageContent";
 
 const AssistantMessage: React.FC<{
   message: Message;
@@ -151,5 +152,6 @@ const AssistantMessage: React.FC<{
     </div>
   </div>
 );
+AssistantMessage.displayName = "AssistantMessage";
 
 export default AssistantMessage;

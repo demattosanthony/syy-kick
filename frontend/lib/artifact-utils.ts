@@ -45,7 +45,7 @@ export const getArtifactVersionInfo = (
   );
 
   // Count all versions of this artifact by identifier
-  let allVersions: { content: string; messageIndex: number }[] = [];
+  const allVersions: { content: string; messageIndex: number }[] = [];
 
   // Collect all instances of this artifact across messages
   messages.forEach((message, messageIndex) => {
