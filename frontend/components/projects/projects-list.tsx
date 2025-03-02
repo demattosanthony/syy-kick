@@ -54,32 +54,10 @@ function ProjectItem({ project }: { project: Project }) {
 
           <div className="flex-1 min-w-0">
             <p className="text-xl font-medium">{project.name}</p>
-            {project.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2 max-w-[calc(100vw-8rem)] md:max-w-[calc(100vw-8rem)] mt-1">
-                {project.description}
-              </p>
-            )}
 
-            <time className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground ">
               Updated {getRelativeTimeString(project.updatedAt)}
-            </time>
-          </div>
-
-          <div className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-blue-400"
-            >
-              <path d="m9 18 6-6-6-6" />
-            </svg>
+            </p>
           </div>
         </div>
       </div>

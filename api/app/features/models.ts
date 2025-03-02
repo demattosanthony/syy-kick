@@ -53,25 +53,25 @@ export const anthropicModels = (
       description:
         "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
     },
-    // "claude-3.7-sonnet-thinking": {
-    //   model: anthropic("claude-3-7-sonnet-20250219"),
-    //   supportsToolUse: true,
-    //   supportsStreaming: true,
-    //   provider: "anthropic",
-    //   supportsSystemMessages: true,
-    //   supportedMimeTypes,
-    //   maxImageSize: 5 * 1024 * 1024, // 5MB
-    //   maxFileSize: 32 * 1024 * 1024, // 32MB
-    //   description:
-    //     "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
-    // },
+    "claude-3.7-sonnet-thinking": {
+      model: anthropic("claude-3-7-sonnet-20250219"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "anthropic",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 5 * 1024 * 1024, // 5MB
+      maxFileSize: 32 * 1024 * 1024, // 32MB
+      description:
+        "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
+    },
     "claude-3.5-haiku": {
       model: anthropic("claude-3-5-haiku-latest"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "anthropic",
       supportsSystemMessages: true,
-      supportedMimeTypes,
+      supportedMimeTypes: [],
       maxImageSize: 5 * 1024 * 1024, // 5MB
       description:
         "Claude 3.5 Haiku is the next generation of our fastest model. For a similar speed to Claude 3 Haiku, Claude 3.5 Haiku improves across every skill set and surpasses Claude 3 Opus, the largest model in our previous generation, on many intelligence benchmarks.",
@@ -90,6 +90,16 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
+    // "gpt-4.5-preview": {
+    //   model: openai("gpt-4.5-preview"),
+    //   supportsToolUse: true,
+    //   supportsStreaming: true,
+    //   supportsSystemMessages: true,
+    //   provider: "openai",
+    //   supportedMimeTypes,
+    //   description:
+    //     "GPT-4.5 is OpenAI's largest and best model for chat yet, representing a significant advancement in scaling unsupervised learning. It features broader knowledge, improved ability to follow user intent, and greater emotional intelligence. GPT-4.5 excels at creative tasks, writing, and problem-solving while demonstrating reduced hallucinations and more natural conversation. It supports tool use, streaming, system messages, and image inputs.",
+    // },
     o1: {
       model: openai("o1"),
       supportsToolUse: true,
@@ -172,18 +182,18 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
-    "gemini-2.0-pro": {
-      model: google("gemini-2.0-pro-exp-02-05"),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      description:
-        "Gemini 2.0 Pro is a robust model from Google, well-suited for a variety of tasks including text generation, translation, and code completion. It supports tool use, streaming, image and PDF inputs, making it a versatile option for many applications.",
-    },
+    // "gemini-2.0-pro": {
+    //   model: google("gemini-2.0-pro-exp-02-05"),
+    //   supportsToolUse: true,
+    //   supportsStreaming: true,
+    //   provider: "google",
+    //   supportsSystemMessages: true,
+    //   supportedMimeTypes,
+    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+    //   maxFileSize: 50 * 1024 * 1024, // 50MB
+    //   description:
+    //     "Gemini 2.0 Pro is a robust model from Google, well-suited for a variety of tasks including text generation, translation, and code completion. It supports tool use, streaming, image and PDF inputs, making it a versatile option for many applications.",
+    // },
     "gemini-2.0-flash": {
       model: google("gemini-2.0-flash"),
       supportsToolUse: true,

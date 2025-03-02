@@ -15,6 +15,7 @@ import Link from "next/link";
 import { Button } from "../ui/button";
 import { SidebarItem } from "./sidebar-item";
 import { useParams, usePathname, useRouter } from "next/navigation";
+import { ChevronRight, FolderClosed } from "lucide-react";
 
 interface ProjectsListProps {
   user: User;
@@ -46,7 +47,10 @@ export function SidebarProjectsList({ user }: ProjectsListProps) {
 
   return (
     <SidebarGroup key={"Projects"}>
-      <SidebarGroupLabel>{"Projects"}</SidebarGroupLabel>
+      <SidebarGroupLabel className="gap-1">
+        <FolderClosed className="max-h-[12px] max-w-[12px]" />
+        {"Projects"}
+      </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {isLoading
@@ -73,10 +77,11 @@ export function SidebarProjectsList({ user }: ProjectsListProps) {
             <Link href={"/projects"}>
               <Button
                 variant={"link"}
-                className="justify-start px-2"
+                className="justify-start px-2 gap-1 text-muted-foreground"
                 size={"sm"}
               >
                 View All
+                <ChevronRight className="max-h-[10px] max-w-[10px]" />
               </Button>
             </Link>
           )}

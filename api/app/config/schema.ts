@@ -120,9 +120,19 @@ export const projects = pgTable("projects", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
+  projectNumber: varchar("project_number", { length: 255 }),
   visibility: text("visibility", { enum: ["private", "public"] })
     .default("private")
     .notNull(),
+  estimatedStartDate: timestamp("estimated_start_date"),
+  estimatedEndDate: timestamp("estimated_end_date"),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  country: varchar("country", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+  latitude: text("latitude"),
+  longitude: text("longitude"),
   organizationId: uuid("organization_id").references(() => organizations.id, {
     onDelete: "cascade",
   }),

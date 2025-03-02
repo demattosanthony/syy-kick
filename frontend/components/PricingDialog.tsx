@@ -7,6 +7,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import api from "@/lib/api";
 import { useAtom } from "jotai";
@@ -47,6 +48,20 @@ export function PricingDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          className="w-full"
+          variant={"default"}
+          onClick={(e) => {
+            console.log("Upgrade to Pro");
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(true);
+          }}
+        >
+          Upgrade to Pro
+        </Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[800px]">
         <DialogHeader className="text-center">
           <DialogTitle className="text-2xl font-bold">

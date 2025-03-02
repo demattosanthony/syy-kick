@@ -17,9 +17,7 @@ const MessageBubble = ({
   copied,
 }: MessageBubbleProps) => (
   <div
-    className={`group mb-4 flex w-full ${
-      isUser ? "justify-end" : "justify-start"
-    }`}
+    className={`group flex w-full ${isUser ? "justify-end" : "justify-start"}`}
   >
     <div
       className={`
@@ -61,63 +59,6 @@ const MessageBubble = ({
   </div>
 );
 
-import { Message } from "ai/react";
-import { ThinkingDropdown } from "./ThinkingDropdown";
-import { ToolCallMessageContent } from "./ToolCallResult";
-
-const AssistantMessage = ({
-  message,
-  showEye,
-}: {
-  message: Message;
-  showEye: boolean;
-}) => {
-  return (
-    <div className="my-2 flex flex-col justify-start">
-      <div className="flex">
-        <div className="mr-2 w-[32px] h-[32px]">
-          {showEye ? <Syyclops3dEye size={32} animate={false} /> : null}
-        </div>
-
-        <div
-          className="
-            max-w-full
-            md:max-w-[750px]
-            overflow-hidden
-            bg-background
-            break-words
-            mt-[1px]
-            flex flex-col
-            gap-2
-          "
-        >
-          {message.parts?.map((part, index) => {
-            switch (part.type) {
-              case "text":
-                return <MarkdownViewer content={part.text} key={index} />;
-              case "reasoning":
-                return (
-                  <ThinkingDropdown key={index}>
-                    <MarkdownViewer content={part.reasoning || ""} />
-                  </ThinkingDropdown>
-                );
-              case "tool-invocation":
-                return (
-                  <ToolCallMessageContent
-                    tool={part.toolInvocation}
-                    key={index}
-                  />
-                );
-              default:
-                return null;
-            }
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 import ChatAttachment from "./ChatAttachment";
 
 const UserMessage = ({ message }: { message: Message }) => {
@@ -153,7 +94,10 @@ const UserMessage = ({ message }: { message: Message }) => {
 import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
 import Syyclops3dEye from "../syy-eye";
-import MarkdownViewer from "../viewers/markdown-viewer";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { Message } from "ai";
+import AssistantMessage from "./assistant-message";
 
 const LoadingMessage = React.memo(() => {
   return (
@@ -163,15 +107,31 @@ const LoadingMessage = React.memo(() => {
           <Syyclops3dEye size={32} animate={false} />
         </div>
 
-        <div className="flex items-center gap-1 text-muted-foreground mt-3">
-          <span className="animate-bounce">•</span>
-          <span className="animate-bounce delay-100">•</span>
-          <span className="animate-bounce delay-200">•</span>
+        <div className="flex items-center rounded-lg bg-background">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            {[0, 1, 2].map((index) => (
+              <motion.span
+                key={index}
+                className="inline-block w-2 h-2 rounded-full bg-current"
+                initial={{ opacity: 0.3, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  duration: 0.6,
+                  repeat: Infinity,
+                  repeatType: "reverse",
+                  delay: index * 0.2,
+                }}
+              >
+                &nbsp;
+              </motion.span>
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 });
+
 LoadingMessage.displayName = "LoadingMessage";
 
 // Memo helps to prevent unnecessary re-renders. Fixes issue when lots of messages and user types in chat input form is laggy
@@ -184,24 +144,21 @@ const ChatMessagesList = React.memo(
       }
     }, [messages.length]);
 
-    // Example: show loading after the user's last message
-    const lastMessage = messages[messages.length - 1];
-    const showLoadingState =
-      isLoading &&
-      (lastMessage?.role === MessageRole.user ||
-        (lastMessage.role === "assistant" &&
-          lastMessage.toolInvocations?.length));
-
     return (
       <div className="flex-1 w-full h-full relative">
-        <div className="absolute inset-0 overflow-y-auto">
-          <div className="max-w-[840px] mx-auto pt-20 p-4">
+        <div
+          className={cn(
+            "absolute inset-0 overflow-y-auto",
+            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
+          )}
+        >
+          <div className="max-w-[840px] mx-auto pt-20 p-4 flex flex-col gap-2">
             {messages.map((message, index) => {
               const nextMessage = messages[index + 1];
               const showEye =
                 message.role !== MessageRole.user &&
                 (!nextMessage || nextMessage.role === MessageRole.user) &&
-                !message.toolInvocations?.length;
+                !isLoading;
 
               return message.role === MessageRole.user ? (
                 <UserMessage key={index} message={message} />
@@ -210,10 +167,11 @@ const ChatMessagesList = React.memo(
                   key={index}
                   message={message}
                   showEye={showEye}
+                  messages={messages}
                 />
               );
             })}
-            {showLoadingState && <LoadingMessage />}
+            {isLoading && <LoadingMessage />}
           </div>
         </div>
       </div>

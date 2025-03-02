@@ -7,9 +7,11 @@ import { Attachment, Message } from "@ai-sdk/ui-utils";
 
 // Atoms
 import {
+  alreadyAutoSelectedArtifactAtom,
   initalInputAtom,
   instructionsAtom,
   modelAtom,
+  selectedArtifactAtom,
   selectedProjectDocsAtom,
   temperatureAtom,
   uploadsAtom,
@@ -20,14 +22,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import { useAtom } from "jotai";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 // Components
 import ChatInputForm from "@/components/chat/ChatInputForm";
 import ChatMessagesList from "@/components/chat/MessagesList";
 import { Thread } from "@/types/chat";
 import { toast } from "sonner";
-import { useWorkspace } from "../sidebar/workspace-context";
+import ThreadHeader from "./thread-header";
+import ArtifactViewer from "./artifact-viewer";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -51,14 +54,11 @@ export default function ThreadPage({
   const [uploads, setUploads] = useAtom(uploadsAtom);
   const [temperature] = useAtom(temperatureAtom);
   const [instructions] = useAtom(instructionsAtom);
-
+  const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
+  const [, setAlreadyOpenedArtifact] = useAtom(alreadyAutoSelectedArtifactAtom);
   const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
     selectedProjectDocsAtom
   );
-
-  const { activeWorkspace } = useWorkspace();
-  const orgId =
-    activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined;
 
   const {
     input,
@@ -66,7 +66,7 @@ export default function ThreadPage({
     handleInputChange,
     handleSubmit,
     messages,
-    isLoading,
+    status,
     stop,
     error,
   } = useChat({
@@ -74,7 +74,6 @@ export default function ThreadPage({
     credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,
-    maxSteps: 8,
     experimental_prepareRequestBody({ messages, id }) {
       return {
         message: messages[messages.length - 1],
@@ -82,7 +81,6 @@ export default function ThreadPage({
         model: model.name,
         temperature: temperature,
         instructions,
-        organizationId: orgId,
       };
     },
   });
@@ -178,6 +176,8 @@ export default function ThreadPage({
   useEffect(() => {
     return () => {
       setInitalInput("");
+      setSelectedArtifact(null);
+      setAlreadyOpenedArtifact(null);
     };
   }, [threadId]);
 
@@ -187,22 +187,96 @@ export default function ThreadPage({
     }
   }, [error]);
 
-  return (
-    <>
-      <ChatMessagesList messages={messages} isLoading={isLoading} />
+  // Add state for managing the split width
+  const [splitPosition, setSplitPosition] = useState(35);
+  const [isResizing, setIsResizing] = useState(false);
 
-      <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
-        <ChatInputForm
-          input={input}
-          setInput={setInput}
-          handleInputChange={handleInputChange}
-          onSubmit={onSubmit}
-          stop={stop}
-          isGenerating={isLoading}
-          showContextSelector={thread?.project !== null}
-          projectId={thread?.project?.id}
-        />
+  // Handle mouse down on the resizer
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  // Handle mouse move for resizing
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      const container = document.getElementById("chat-container");
+      if (!container) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const newPosition =
+        ((e.clientX - containerRect.left) / containerRect.width) * 100;
+
+      // Limit the resize range (10% to 90%)
+      const limitedPosition = Math.min(Math.max(newPosition, 10), 90);
+
+      // Since we've swapped the panels, we need to adjust how splitPosition works
+      // Now splitPosition controls the width of the right panel (chat)
+      setSplitPosition(100 - limitedPosition);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
+  return (
+    <div id="chat-container" className="flex h-full w-full relative">
+      {selectedArtifact && (
+        <>
+          <ArtifactViewer
+            artifact={selectedArtifact}
+            splitPosition={splitPosition}
+            messages={messages}
+          />
+
+          {/* Resizable border */}
+          <div
+            className="w-[2px] hover:w-1 h-full cursor-col-resize bg-secondary transition-all"
+            onMouseDown={handleMouseDown}
+          />
+        </>
+      )}
+
+      <div
+        className="flex flex-col h-full min-w-[400px] relative"
+        style={{
+          width: selectedArtifact ? `${splitPosition}%` : "100%",
+        }}
+      >
+        <ThreadHeader />
+        <div className="flex-1">
+          <ChatMessagesList
+            messages={messages}
+            isLoading={status === "submitted"}
+          />
+        </div>
+
+        <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
+          <ChatInputForm
+            input={input}
+            setInput={setInput}
+            handleInputChange={handleInputChange}
+            onSubmit={onSubmit}
+            stop={stop}
+            isGenerating={status === "streaming"}
+            showContextSelector={thread?.project !== null}
+            projectId={thread?.project?.id}
+          />
+        </div>
       </div>
-    </>
+    </div>
   );
 }

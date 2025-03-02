@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+// React and Next.js imports
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Form, FormField } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
+
+// Third-party utility imports
 import { toast } from "sonner";
+
+// UI component imports
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,20 +21,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
+
+// API and data fetching imports
 import {
   useDeleteProjectMutation,
   useProjectQuery,
   useUpdateProjectMutation,
 } from "@/queries/queries";
-
-const formSchema = z.object({
-  name: z.string().min(1, "Project name is required").max(100),
-  description: z
-    .string()
-    .max(500, "Description must be less than 500 characters"),
-});
+import { ProjectFormFields } from "./project-form-fields";
 
 export default function ProjectSettings({ pid }: { pid: string }) {
   const router = useRouter();
@@ -44,31 +38,53 @@ export default function ProjectSettings({ pid }: { pid: string }) {
   const updateProjectMutation = useUpdateProjectMutation();
   const deleteProjectMutation = useDeleteProjectMutation();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      description: "",
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    projectNumber: "",
+    estimatedStartDate: "",
+    estimatedEndDate: "",
+    location: {
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+      postalCode: "",
+      latitude: "",
+      longitude: "",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  // Handle form submission
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
       await updateProjectMutation.mutateAsync({
         projectId: pid,
         data: {
-          name: values.name,
-          description: values.description,
+          name: formData.name,
+          description: formData.description,
+          address: formData.location?.address || undefined,
+          city: formData.location?.city || undefined,
+          state: formData.location?.state || undefined,
+          country: formData.location?.country || undefined,
+          postalCode: formData.location?.postalCode || undefined,
+          latitude: formData.location?.latitude || undefined,
+          longitude: formData.location?.longitude || undefined,
+          project_number: formData.projectNumber || undefined,
+          estimated_start_date: formData.estimatedStartDate || undefined,
+          estimated_end_date: formData.estimatedEndDate || undefined,
         },
       });
+
       toast.success("Settings updated", {
         description: "Your project settings have been updated successfully.",
       });
-    } catch {
+    } catch (error) {
+      console.error("Failed to update project settings:", error);
       toast.error("Failed to update project settings. Please try again.");
     }
-  }
-
+  };
   async function handleDeleteProject() {
     try {
       await deleteProjectMutation.mutateAsync(pid);
@@ -82,20 +98,32 @@ export default function ProjectSettings({ pid }: { pid: string }) {
     }
   }
 
-  // Add this effect to update form values when project data is available
+  // Load form values
   useEffect(() => {
     if (project) {
-      form.reset({
+      setFormData({
         name: project.name,
-        description: project.description,
+        description: project.description || "",
+        estimatedEndDate: project.estimatedEndDate || "",
+        estimatedStartDate: project.estimatedStartDate || "",
+        projectNumber: project.projectNumber || "",
+        location: {
+          address: project.address || "",
+          city: project.city || "",
+          state: project.state || "",
+          country: project.country || "",
+          postalCode: project.postalCode || "",
+          latitude: project.latitude || "",
+          longitude: project.longitude || "",
+        },
       });
     }
-  }, [project, form]);
+  }, [project]);
 
   return (
     <div className="flex flex-col h-screen w-full">
       <div className="flex-1 overflow-y-auto w-full">
-        <div className="max-w-xl mx-auto pt-6 px-6 w-full ">
+        <div className="max-w-3xl mx-auto pt-6 px-6 w-full ">
           <div className="space-y-6 pb-10 w-full">
             {/* Project Details Section */}
             <section className="space-y-4">
@@ -107,44 +135,18 @@ export default function ProjectSettings({ pid }: { pid: string }) {
               </div>
 
               <Card className="p-6">
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-4"
-                  >
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <div>
-                          <Label className="text-muted-foreground text-sm">
-                            Project Name
-                          </Label>
-                          <Input {...field} />
-                        </div>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <div>
-                          <Label className="text-muted-foreground text-sm">
-                            Description
-                          </Label>
-                          <Textarea
-                            {...field}
-                            placeholder="Enter a description for your project"
-                          />
-                        </div>
-                      )}
-                    />
-                    <div className="flex justify-end">
-                      <Button type="submit">Save Changes</Button>
-                    </div>
-                  </form>
-                </Form>
+                <form onSubmit={onSubmit} className="space-y-4">
+                  <ProjectFormFields
+                    formData={formData}
+                    setFormData={setFormData}
+                    isSubmitting={updateProjectMutation.isPending}
+                    submitButtonText={
+                      updateProjectMutation.isPending
+                        ? "Saving..."
+                        : "Save Changes"
+                    }
+                  />
+                </form>
               </Card>
             </section>
 

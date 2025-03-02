@@ -73,3 +73,13 @@ export interface Thread {
   project?: Project;
   messages: ChatMessage[];
 }
+
+export type Artifact = {
+  identifier: string;
+  type: string;
+  title: string;
+  content: string;
+  isComplete: boolean;
+  version?: number;
+  autoSelected?: boolean;
+};

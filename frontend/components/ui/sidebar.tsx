@@ -16,13 +16,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ViewVerticalIcon } from "@radix-ui/react-icons";
+import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "15rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
-const SIDEBAR_WIDTH_ICON = "3rem";
+const SIDEBAR_WIDTH_ICON = "3.25rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 type SidebarContext = {
@@ -265,21 +265,32 @@ const SidebarTrigger = React.forwardRef<
   const { toggleSidebar } = useSidebar();
 
   return (
-    <Button
-      ref={ref}
-      data-sidebar="trigger"
-      variant="ghost"
-      size="icon"
-      className={cn("h-7 w-7", className)}
-      onClick={(event) => {
-        onClick?.(event);
-        toggleSidebar();
-      }}
-      {...props}
-    >
-      <ViewVerticalIcon />
-      <span className="sr-only">Toggle Sidebar</span>
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          ref={ref}
+          data-sidebar="trigger"
+          variant="ghost"
+          size="icon"
+          className={cn("h-8 w-8", className)}
+          onClick={(event) => {
+            onClick?.(event);
+            toggleSidebar();
+          }}
+          {...props}
+        >
+          {useSidebar().state === "expanded" ? (
+            <ArrowLeftToLine style={{ width: "16px", height: "16px" }} />
+          ) : (
+            <ArrowRightToLine style={{ width: "19px", height: "19px" }} />
+          )}
+          <span className="sr-only">Toggle Sidebar</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        {useSidebar().state === "expanded" ? "Collapse" : "Expand"}
+      </TooltipContent>
+    </Tooltip>
   );
 });
 SidebarTrigger.displayName = "SidebarTrigger";

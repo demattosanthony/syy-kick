@@ -5,14 +5,20 @@
 - better QA QC processes
 - automated workflows
 
+### Big lofty goals
+
+- text -> BIM model -> energy simulation model -> handover drawings set
+
 ## Get started
 
 1. Install Bun js runtime: https://bun.sh/docs/installation
 2. Install and start Docker: https://docs.docker.com/get-docker/
-3. Install Ghostscript:
-   - Mac: `brew install ghostscript`
-   - Ubuntu/Debian: `sudo apt-get install ghostscript`
-   - Windows: Download installer from htps://ghostscript.com/releases/gsdnld.html
+3. Install Ghostscript and ImageMagick:
+   - Mac: `brew install ghostscript imagemagick`
+   - Ubuntu/Debian: `sudo apt-get install ghostscript imagemagick`
+   - Windows:
+     - Ghostscript: Download installer from https://ghostscript.com/releases/gsdnld.html
+     - ImageMagick: Download installer from https://imagemagick.org/script/download.php
 4. Add environment variables as needed.
 
 ```bash
@@ -27,11 +33,7 @@ cp .env.example .env
 ./run.sh
 ```
 
-Open the app at http://localhost:4001 and start chatting
-
-## Demo
-
-https://github.com/user-attachments/assets/b8c2bcd8-fc2e-4744-add3-c65405a76838
+Open the app at http://localhost:4001
 
 ## Keyboard shortcuts
 

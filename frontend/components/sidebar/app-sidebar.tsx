@@ -24,9 +24,7 @@ import { ThreadsLink } from "./threads-link";
 import { SidebarProjectsList } from "./sidebar-projects-list";
 import { ProjectsButton } from "./projects-button";
 import { DropdownMenuGroup } from "../ui/dropdown-menu";
-import { Button } from "../ui/button";
-import { useAtom } from "jotai";
-import { pricingPlanDialogOpenAtom } from "../PricingDialog";
+import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "./workspace-context";
 
 export function AppSidebar({
@@ -35,7 +33,6 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & { user: User }) {
   const { state } = useSidebar();
   const isMobile = useIsMobile();
-  const [, setShowPricingPlanDialog] = useAtom(pricingPlanDialogOpenAtom);
   const { activeWorkspace } = useWorkspace();
 
   return (
@@ -61,7 +58,10 @@ export function AppSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <ProjectsButton />
+                {!(
+                  activeWorkspace?.type === "personal" &&
+                  user.subscriptionStatus !== "active"
+                ) && <ProjectsButton />}
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -75,30 +75,23 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="mb-4 md:mb-0">
-        {state === "collapsed" && !isMobile && (
-          <SidebarTrigger className="w-full" />
-        )}
-
-        {state === "expanded" &&
-          user.subscriptionStatus !== "active" &&
-          activeWorkspace?.type === "personal" && (
-            <DropdownMenuGroup>
-              <Button
-                className="w-full"
-                variant={"default"}
-                onClick={(e) => {
-                  console.log("Upgrade to Pro");
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowPricingPlanDialog(true);
-                }}
-              >
-                Upgrade to Pro
-              </Button>
-            </DropdownMenuGroup>
+        <SidebarMenu className="flex flex-col w-full items-center group-data-[collapsible=icon]:justify-center justify-between">
+          {state === "collapsed" && !isMobile && (
+            <SidebarMenuItem>
+              <SidebarTrigger className=" mb-1" />
+            </SidebarMenuItem>
           )}
 
-        <NavUser user={user} />
+          {state === "expanded" &&
+            user.subscriptionStatus !== "active" &&
+            activeWorkspace?.type === "personal" && (
+              <DropdownMenuGroup className="w-full mb-1">
+                <PricingDialog />
+              </DropdownMenuGroup>
+            )}
+
+          <NavUser user={user} />
+        </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

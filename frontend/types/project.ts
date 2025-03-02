@@ -11,6 +11,18 @@ export interface Project {
   updatedAt: string;
   organization?: Organization;
   user?: User;
+
+  projectNumber?: string;
+  estimatedStartDate?: string;
+  estimatedEndDate?: string;
+
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 interface DocumentProcessingJob {

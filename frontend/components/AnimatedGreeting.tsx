@@ -27,9 +27,9 @@ export function AnimatedGreeting({ name }: AnimatedGreetingProps) {
   }, [setIsAnimated]);
 
   return (
-    <div className="flex flex-col gal-1 items-center">
+    <div className="flex flex-col items-center">
       <h3
-        className="scroll-m-20 text-3xl md:text-5xl font-medium text-center tracking-normal overflow-hidden"
+        className="scroll-m-20 text-2xl md:text-4xl font-semibold text-center tracking-normal overflow-hidden"
         aria-label={greetingText}
       >
         <AnimatePresence>
@@ -64,7 +64,7 @@ export function AnimatedGreeting({ name }: AnimatedGreetingProps) {
           </motion.span>
         </AnimatePresence>
       </h3>
-      <div className="text-lg font-normal text-center tracking-normal overflow-hidden">
+      <div className="text-lg font-medium text-center tracking-normal overflow-hidden">
         <AnimatePresence>
           <motion.span
             style={{

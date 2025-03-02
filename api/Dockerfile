@@ -1,9 +1,9 @@
 FROM oven/bun:1.2.0 AS base
 WORKDIR /usr/src/app
 
-# Install ghostscript
+# Install ghostscript and imagemagick
 RUN apt-get update && \
-    apt-get install -y ghostscript && \
+    apt-get install -y ghostscript imagemagick && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

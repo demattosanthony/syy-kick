@@ -6,7 +6,7 @@ on:
       - prod
 
 jobs:
-  deploy:
+  deploy-api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -18,11 +18,4 @@ jobs:
         with:
           branch: "main"
           git_remote_url: "ssh://dokku@165.22.46.191:22/yo-api"
-          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Deploy Doc Worker to Dokku
-        uses: dokku/github-action@master
-        with:
-          branch: "main"
-          git_remote_url: "ssh://dokku@165.22.46.191:22/yo-doc-worker"
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
