@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
   switch (tool.toolName) {
     case "search_project_information":
+    case "search_documents":
       return <SearchDocumentsTool tool={tool} />;
     default:
       return null;

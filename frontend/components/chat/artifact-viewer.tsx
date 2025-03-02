@@ -27,7 +27,6 @@ const ArtifactViewer: React.FC<{
   );
   const { setOpen } = useSidebar();
   const mimeType = artifact.type || "text/markdown";
-  console.log(mimeType);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
