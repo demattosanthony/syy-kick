@@ -1,7 +1,7 @@
 import React from "react";
 import { Message } from "ai/react";
 import { ThinkingDropdown } from "./ThinkingDropdown";
-import { ToolCallMessageContent } from "./ToolCallResult";
+import { ToolCallMessageContent } from "./tool-call-result";
 import ArtifactPreview from "./artifact-preview";
 import MarkdownViewer from "../viewers/markdown-viewer";
 import Syyclops3dEye from "../syy-eye";
@@ -35,7 +35,13 @@ const TextContent: React.FC<{
       const { version } = getArtifactVersionInfo(artifact, messages);
       const artifactKey = `${artifact.identifier}-v${version}`;
       if (alreadyAutoSelected !== artifactKey) {
-        setSelectedArtifact({ ...artifact, version });
+        // Create a new object to ensure state update is triggered
+        const artifactWithVersion = {
+          ...artifact,
+          version,
+          key: Date.now(), // Add a unique key to force re-render
+        };
+        setSelectedArtifact(artifactWithVersion);
         setAlreadyAutoSelected(artifactKey);
         if (open) setOpen(false);
       }
@@ -46,22 +52,31 @@ const TextContent: React.FC<{
     setSelectedArtifact,
     alreadyAutoSelected,
     setAlreadyAutoSelected,
+    open,
+    setOpen,
   ]);
 
   const elements = [];
   if (artifact) {
-    const parts = text
+    // First, clean the text by removing thinking and artifact tags
+    const cleanedText = text
       .replace(/<antThinking>[\s\S]*?(?:<\/antThinking>|$)/g, "")
       .replace(
         /<antArtifact[\s\S]*?>[\s\S]*?(?:<\/antArtifact>|$)/g,
         "{{ARTIFACT}}"
-      )
-      .split("{{ARTIFACT}}");
+      );
 
-    if (parts[0].trim())
+    // Split by the artifact placeholder
+    const parts = cleanedText.split("{{ARTIFACT}}");
+
+    // Add the text before the artifact if it exists
+    if (parts[0].trim()) {
       elements.push(
         <MarkdownViewer key={`before-${index}`} content={parts[0].trim()} />
       );
+    }
+
+    // Add the artifact preview
     elements.push(
       <ArtifactPreview
         key={`artifact-${index}`}
@@ -69,10 +84,13 @@ const TextContent: React.FC<{
         messages={messages}
       />
     );
-    if (parts[1]?.trim())
+
+    // Add the text after the artifact if it exists
+    if (parts[1]?.trim()) {
       elements.push(
         <MarkdownViewer key={`after-${index}`} content={parts[1].trim()} />
       );
+    }
   } else if (cleanContent) {
     elements.push(
       <MarkdownViewer key={`text-${index}`} content={cleanContent} />
@@ -121,13 +139,12 @@ const AssistantMessage: React.FC<{
   showEye: boolean;
   messages: Message[];
 }> = ({ message, showEye, messages }) => (
-  <div className="my-2 flex flex-col justify-start">
+  <div className="flex flex-col justify-start">
     <div className="flex">
-      {showEye && (
-        <div className="mr-1 w-[32px] h-[32px]">
-          {showEye && <Syyclops3dEye size={32} animate={false} />}
-        </div>
-      )}
+      <div className="mr-1 w-[32px] h-[32px]">
+        {showEye && <Syyclops3dEye size={32} animate={false} />}
+      </div>
+
       <div className="max-w-full md:max-w-[750px] overflow-hidden bg-background break-words mt-[1px] flex flex-col gap-2">
         <MessageContent message={message} messages={messages} />
       </div>

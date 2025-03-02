@@ -44,28 +44,46 @@ export const getArtifactVersionInfo = (
     "g"
   );
 
-  let version = 0;
-  let content = artifact.content;
-  let title = artifact.title || "Untitled Artifact";
-  let foundCurrent = false;
+  // Count all versions of this artifact by identifier
+  let allVersions: { content: string; messageIndex: number }[] = [];
 
-  for (const message of messages) {
-    if (typeof message.content !== "string") continue;
+  // Collect all instances of this artifact across messages
+  messages.forEach((message, messageIndex) => {
+    if (typeof message.content !== "string") return;
+
     const matches = [...message.content.matchAll(artifactRegex)];
-    for (const match of matches) {
-      version++;
-      if (!foundCurrent && match[2]?.trim() === artifact.content.trim()) {
-        foundCurrent = true;
-      } else if (!foundCurrent) {
-        content = match[2]?.trim();
-      }
-    }
-    if (foundCurrent) break;
+    matches.forEach((match) => {
+      allVersions.push({
+        content: match[2]?.trim() || "",
+        messageIndex,
+      });
+    });
+  });
+
+  // Sort versions by message index (chronological order)
+  allVersions.sort((a, b) => a.messageIndex - b.messageIndex);
+
+  // Find the current version
+  const currentVersionIndex = allVersions.findIndex(
+    (v) => v.content === artifact.content.trim()
+  );
+
+  // If we found the current version
+  if (currentVersionIndex !== -1) {
+    return {
+      version: currentVersionIndex + 1,
+      content: artifact.content,
+      title: artifact.title || "Untitled Artifact",
+    };
   }
 
+  // If we didn't find the exact match, return the latest version
   return {
-    version: foundCurrent ? version : version + 1,
-    content: content || "",
-    title,
+    version: allVersions.length > 0 ? allVersions.length : 1,
+    content:
+      allVersions.length > 0
+        ? allVersions[allVersions.length - 1].content
+        : artifact.content,
+    title: artifact.title || "Untitled Artifact",
   };
 };

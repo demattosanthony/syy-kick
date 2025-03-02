@@ -1,1 +1,0 @@
-ALTER TABLE "artifacts" ADD COLUMN "mime_type" varchar(255);

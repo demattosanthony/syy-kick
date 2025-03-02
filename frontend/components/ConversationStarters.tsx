@@ -107,7 +107,9 @@ After your analysis, provide a summary of your findings in the following format:
 
 3. Additional Notes: [Any relevant observations or recommendations]
 
-Please proceed with your analysis and summary of the project document.`,
+Please proceed with your analysis and summary of the project document.
+
+Return the RFP as an artifact in markdown format.`,
     requiresFile: true,
   },
 

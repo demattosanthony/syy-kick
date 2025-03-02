@@ -17,9 +17,7 @@ const MessageBubble = ({
   copied,
 }: MessageBubbleProps) => (
   <div
-    className={`group mb-4 flex w-full ${
-      isUser ? "justify-end" : "justify-start"
-    }`}
+    className={`group flex w-full ${isUser ? "justify-end" : "justify-start"}`}
   >
     <div
       className={`
@@ -154,7 +152,7 @@ const ChatMessagesList = React.memo(
             "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
           )}
         >
-          <div className="max-w-[840px] mx-auto pt-20 p-4">
+          <div className="max-w-[840px] mx-auto pt-20 p-4 flex flex-col gap-2">
             {messages.map((message, index) => {
               const nextMessage = messages[index + 1];
               const showEye =

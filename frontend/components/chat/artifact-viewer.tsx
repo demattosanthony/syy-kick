@@ -12,6 +12,7 @@ import { Artifact } from "@/types/chat";
 import { Message } from "ai";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { marked } from "marked";
+import { useSidebar } from "../ui/sidebar";
 
 const ArtifactViewer: React.FC<{
   artifact: Artifact;
@@ -24,9 +25,8 @@ const ArtifactViewer: React.FC<{
     artifact,
     messages
   );
+  const { setOpen } = useSidebar();
   const mimeType = artifact.type || "text/markdown";
-
-  console.log(artifact);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
@@ -253,7 +253,10 @@ const ArtifactViewer: React.FC<{
             <div className="flex justify-between items-center sticky top-0 z-10 px-4 py-3 bg-background/80 backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => setSelectedArtifact(null)}
+                  onClick={() => {
+                    setSelectedArtifact(null);
+                    setOpen(true);
+                  }}
                   size="icon"
                   variant="ghost"
                 >

@@ -21,8 +21,8 @@ const ArtifactPreview: React.FC<{
         "rounded-lg border overflow-hidden w-full max-w-[500px] hover:border-2 transition-all"
       )}
       onClick={() => {
-        setOpen(false);
         setSelectedArtifact({ ...artifact, version });
+        setOpen(false);
       }}
     >
       <div className="flex items-center p-3 cursor-pointer">

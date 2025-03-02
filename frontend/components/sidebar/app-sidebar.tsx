@@ -77,7 +77,9 @@ export function AppSidebar({
       <SidebarFooter className="mb-4 md:mb-0">
         <SidebarMenu className="flex flex-col w-full items-center group-data-[collapsible=icon]:justify-center justify-between">
           {state === "collapsed" && !isMobile && (
-            <SidebarTrigger className=" mb-1" />
+            <SidebarMenuItem>
+              <SidebarTrigger className=" mb-1" />
+            </SidebarMenuItem>
           )}
 
           {state === "expanded" &&
