@@ -17,9 +17,7 @@ const MessageBubble = ({
   copied,
 }: MessageBubbleProps) => (
   <div
-    className={`group mb-4 flex w-full ${
-      isUser ? "justify-end" : "justify-start"
-    }`}
+    className={`group flex w-full ${isUser ? "justify-end" : "justify-start"}`}
   >
     <div
       className={`
@@ -61,60 +59,6 @@ const MessageBubble = ({
   </div>
 );
 
-import { Message } from "ai/react";
-import { ThinkingDropdown } from "./ThinkingDropdown";
-import SearchDocumentsTool from "./ToolCallResult";
-
-const AssistantMessage = ({
-  message,
-  showEye,
-}: {
-  message: Message;
-  showEye: boolean;
-}) => {
-  return (
-    <div className="my-2 flex flex-col justify-start">
-      <div className="flex">
-        <div className="mr-2 w-[32px] h-[32px]">
-          {showEye ? <Syyclops3dEye size={32} animate={false} /> : null}
-        </div>
-
-        <div
-          className="
-            max-w-full
-            md:max-w-[750px]
-            overflow-hidden
-            bg-background
-            break-words
-            mt-[1px]
-            flex flex-col
-            gap-2
-          "
-        >
-          {message.parts?.map((part, index) => {
-            switch (part.type) {
-              case "text":
-                return <MarkdownViewer content={part.text} key={index} />;
-              case "reasoning":
-                return (
-                  <ThinkingDropdown key={index}>
-                    <MarkdownViewer content={part.reasoning || ""} />
-                  </ThinkingDropdown>
-                );
-              case "tool-invocation":
-                return (
-                  <SearchDocumentsTool tool={part.toolInvocation} key={index} />
-                );
-              default:
-                return null;
-            }
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 import ChatAttachment from "./ChatAttachment";
 
 const UserMessage = ({ message }: { message: Message }) => {
@@ -150,8 +94,10 @@ const UserMessage = ({ message }: { message: Message }) => {
 import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
 import Syyclops3dEye from "../syy-eye";
-import MarkdownViewer from "../viewers/markdown-viewer";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { Message } from "ai";
+import AssistantMessage from "./assistant-message";
 
 const LoadingMessage = React.memo(() => {
   return (
@@ -200,8 +146,13 @@ const ChatMessagesList = React.memo(
 
     return (
       <div className="flex-1 w-full h-full relative">
-        <div className="absolute inset-0 overflow-y-auto">
-          <div className="max-w-[840px] mx-auto pt-20 p-4">
+        <div
+          className={cn(
+            "absolute inset-0 overflow-y-auto",
+            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
+          )}
+        >
+          <div className="max-w-[840px] mx-auto pt-20 p-4 flex flex-col gap-2">
             {messages.map((message, index) => {
               const nextMessage = messages[index + 1];
               const showEye =
@@ -216,6 +167,7 @@ const ChatMessagesList = React.memo(
                   key={index}
                   message={message}
                   showEye={showEye}
+                  messages={messages}
                 />
               );
             })}

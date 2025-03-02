@@ -132,7 +132,7 @@ const MarkdownViewer: React.FC<{ content: string }> = ({ content }) => {
           ),
         }}
         remarkPlugins={[remarkGfm]}
-        className="flex flex-col gap-2"
+        className="flex flex-col gap-3"
       >
         {content}
       </ReactMarkdown>

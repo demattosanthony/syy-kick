@@ -48,9 +48,9 @@ const CONVERSATION_STARTERS: StarterButtonProps[] = [
   {
     icon: Building,
     iconColor: "text-purple-500",
-    label: "HVAC System Analysis",
+    label: "Generate Basis of Design",
     inputText:
-      "Analyze this HVAC system diagram and suggest efficiency improvements",
+      "Analyze this document and create a comprehensive Basis of Design (BOD) document. First, carefully review the content to extract all relevant engineering requirements, specifications, and project parameters. Then, generate a well-structured markdown BOD document that includes:\n\n1. Project Overview\n2. Design Criteria and Standards\n3. System Descriptions (HVAC, Plumbing, Electrical, etc.)\n4. Load Calculations and Assumptions\n5. Equipment Selections\n6. Control Strategies\n7. Energy Efficiency Measures\n8. Sustainability Considerations\n\nFormat the BOD as a professional markdown document with appropriate headings, tables, and bullet points. This document should serve as a clear reference for all engineering design decisions and requirements. MAKE SURE to return the document as an artifact in markdown format.",
     requiresFile: true,
   },
   {
@@ -107,7 +107,9 @@ After your analysis, provide a summary of your findings in the following format:
 
 3. Additional Notes: [Any relevant observations or recommendations]
 
-Please proceed with your analysis and summary of the project document.`,
+Please proceed with your analysis and summary of the project document.
+
+Return the RFP as an artifact in markdown format.`,
     requiresFile: true,
   },
 

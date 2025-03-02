@@ -299,38 +299,37 @@ function ChatInputForm(
         <div className="w-full flex justify-between items-center px-1">
           <ModelSelector proejctId={projectId} />
 
-          <div className="flex items-center gap-1">
-            {isMounted &&
-              selectedModel.supportedMimeTypes &&
-              selectedModel.supportedMimeTypes.length > 0 && (
-                <>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept={selectedModel.supportedMimeTypes?.join(",")}
-                    multiple
-                    onChange={handleFiles}
-                  />
-                  <Button
-                    className="h-8 w-8"
-                    variant="ghost"
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      fileInputRef?.current?.click();
-                    }}
-                  >
-                    <Paperclip />
-                  </Button>
-                </>
-              )}
-          </div>
+          {isMounted &&
+            selectedModel.supportedMimeTypes &&
+            selectedModel.supportedMimeTypes.length > 0 && (
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept={selectedModel.supportedMimeTypes?.join(",")}
+                  multiple
+                  onChange={handleFiles}
+                />
+                <Button
+                  className="h-8 w-8"
+                  variant="ghost"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fileInputRef?.current?.click();
+                  }}
+                >
+                  <Paperclip />
+                </Button>
+              </>
+            )}
 
           <Button
             ref={buttonRef}
             className="h-8 w-8 ml-auto"
+            disabled={isGenerating || !input}
             variant="ghost"
             onClick={(e) => {
               e.preventDefault();

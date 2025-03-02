@@ -5,6 +5,16 @@ import React from "react";
 import { ToolInvocation } from "ai";
 import { motion, AnimatePresence } from "framer-motion";
 
+export const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
+  switch (tool.toolName) {
+    case "search_project_information":
+    case "search_documents":
+      return <SearchDocumentsTool tool={tool} />;
+    default:
+      return null;
+  }
+};
+
 const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
   const [showAll, setShowAll] = React.useState(false);
   const hasResults = tool.state === "result" && tool.result;
@@ -13,18 +23,18 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
   return (
     <div
       className={cn(
-        "w-fit rounded-lg border border-border p-3",
+        "w-full max-w-full rounded-lg border border-border p-3",
         (tool.state === "partial-call" || tool.state === "call") &&
           "animate-border-pulse"
       )}
     >
       {/* Search Query Section */}
-      <div className="flex items-center gap-2 text-sm">
-        <Search className="w-4 h-4 text-muted-foreground" />
-        <span className="text-muted-foreground">Searching for:</span>
-        <span className="font-medium max-w-[500px] truncate">
-          {tool.args?.query}
-        </span>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 min-w-fit">
+          <Search className="w-4 h-4 text-muted-foreground" />
+          <span className="text-muted-foreground">Searching for:</span>
+        </div>
+        <span className="font-medium break-words">{tool.args?.query}</span>
       </div>
 
       {/* Results Section */}
