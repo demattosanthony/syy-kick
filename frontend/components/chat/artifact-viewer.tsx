@@ -27,6 +27,7 @@ const ArtifactViewer: React.FC<{
   );
   const { setOpen } = useSidebar();
   const mimeType = artifact.type || "text/markdown";
+  console.log(mimeType);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
@@ -34,38 +35,50 @@ const ArtifactViewer: React.FC<{
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownload = () => {
-    // Determine file extension and type based on mime type
-    let fileExtension = ".txt";
-    let fileType = "text/plain";
+  const getFileInfo = () => {
+    const types = {
+      "text/markdown": { ext: ".md", type: "text/markdown", name: "Markdown" },
+      "text/csv": { ext: ".csv", type: "text/csv", name: "Excel" },
+      csv: { ext: ".csv", type: "text/csv", name: "Excel" },
+      excel: {
+        ext: ".xlsx",
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        name: "Excel",
+      },
+      spreadsheet: {
+        ext: ".xlsx",
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        name: "Excel",
+      },
+      "application/json": {
+        ext: ".json",
+        type: "application/json",
+        name: "Text",
+      },
+      "image/svg+xml": { ext: ".svg", type: "image/svg+xml", name: "SVG" },
+      default: { ext: ".txt", type: "text/plain", name: "Text" },
+    } as const;
 
-    switch (true) {
-      case mimeType === "text/markdown":
-        fileExtension = ".md";
-        fileType = "text/markdown";
-        break;
-      case mimeType.includes("csv"):
-        fileExtension = ".csv";
-        fileType = "text/csv";
-        break;
-      case mimeType.includes("excel") || mimeType.includes("spreadsheet"):
-        fileExtension = ".xlsx";
-        fileType =
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-        break;
-      case mimeType.startsWith("application/json"):
-        fileExtension = ".json";
-        fileType = "application/json";
-        break;
-      // Add more cases as needed for other mime types
+    // Check for the special case with language attribute
+    if (
+      mimeType.includes("application/vnd.ant.code") &&
+      mimeType.includes("csv")
+    ) {
+      return types["csv"];
     }
 
-    // Create a blob with the content and appropriate type
-    const blob = new Blob([content], { type: fileType });
+    const key = (Object.keys(types).find((k) => mimeType.includes(k)) ||
+      "default") as keyof typeof types;
+    return types[key];
+  };
+
+  const handleDownload = () => {
+    const { ext, type } = getFileInfo();
+    const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${title.replace(/\s+/g, "_")}${fileExtension}`;
+    a.download = `${title.replace(/\s+/g, "_")}${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -73,154 +86,127 @@ const ArtifactViewer: React.FC<{
   };
 
   const handlePdfDownload = () => {
-    // Convert markdown to HTML using marked
     const htmlContent = marked(content);
-
-    // Create a new window with properly rendered markdown
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(`
-          <html>
-            <head>
-              <title>${title}</title>
-              <style>
-                body {
-                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
-                  line-height: 1.6;
-                  color: #333;
-                  max-width: 800px;
-                  margin: 0 auto;
-                  padding: 20px;
-                }
-                pre {
-                  background-color: #f5f5f5;
-                  padding: 12px;
-                  border-radius: 4px;
-                  overflow-x: auto;
-                }
-                code {
-                  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-                  font-size: 0.9em;
-                  background-color: #f5f5f5;
-                  padding: 0.2em 0.4em;
-                  border-radius: 3px;
-                }
-                pre code {
-                  background-color: transparent;
-                  padding: 0;
-                }
-                blockquote {
-                  border-left: 4px solid #ddd;
-                  padding-left: 16px;
-                  margin-left: 0;
-                  color: #666;
-                }
-                img {
-                  max-width: 100%;
-                }
-                table {
-                  border-collapse: collapse;
-                  width: 100%;
-                }
-                table, th, td {
-                  border: 1px solid #ddd;
-                }
-                th, td {
-                  padding: 8px 12px;
-                }
-                th {
-                  background-color: #f5f5f5;
-                }
-                @media print {
-                  body {
-                    padding: 0;
-                  }
-                  pre, code {
-                    white-space: pre-wrap;
-                  }
-                }
-              </style>
-            </head>
-            <body>
-              <div>${htmlContent}</div>
-              <script>
-                // Automatically trigger print dialog and close window when done
-                window.onload = function() {
-                  setTimeout(function() {
-                    window.print();
-                    window.onafterprint = function() {
-                      window.close();
-                    };
-                  }, 500);
-                };
-              </script>
-            </body>
-          </html>
-        `);
+        <html>
+          <head>
+            <title>${title}</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+              pre { background-color: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; }
+              code { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.9em; background-color: #f5f5f5; padding: 0.2em 0.4em; border-radius: 3px; }
+              pre code { background-color: transparent; padding: 0; }
+              blockquote { border-left: 4px solid #ddd; padding-left: 16px; margin-left: 0; color: #666; }
+              img { max-width: 100%; }
+              table { border-collapse: collapse; width: 100%; }
+              table, th, td { border: 1px solid #ddd; }
+              th, td { padding: 8px 12px; }
+              th { background-color: #f5f5f5; }
+              @media print { body { padding: 0; } pre, code { white-space: pre-wrap; } }
+            </style>
+          </head>
+          <body>
+            <div>${htmlContent}</div>
+            <script>
+              window.onload = function() {
+                setTimeout(function() {
+                  window.print();
+                  window.onafterprint = function() { window.close(); };
+                }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
       printWindow.document.close();
     }
   };
 
   const renderViewer = () => {
-    // Check the artifact's MIME type
-    const mimeType = artifact.type || "text/markdown";
+    if (mimeType === "image/svg+xml") {
+      // Create a data URL for the SVG content
+      const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+        content
+      )}`;
+      return (
+        <div className="flex justify-center">
+          <img src={svgDataUrl} alt={title} style={{ maxWidth: "100%" }} />
+        </div>
+      );
+    }
 
-    switch (true) {
-      case mimeType.startsWith("application/vnd.ant.code") &&
-        mimeType.includes("csv"):
-        const rows = content.split("\n") || [];
-        const headerRow = rows[0];
-        const bodyRows = rows.slice(1);
+    if (
+      mimeType.startsWith("application/vnd.ant.code") &&
+      mimeType.includes("csv")
+    ) {
+      const rows = content.split("\n") || [];
+      const headerRow = rows[0];
+      const bodyRows = rows.slice(1);
 
-        return (
-          <div className="h-full w-full overflow-auto whitespace-nowrap">
-            <table className="min-w-full table-fixed border-collapse">
-              <thead>
-                <tr className="bg-secondary font-semibold">
-                  {headerRow?.split(",").map((cell, cellIndex) => (
+      return (
+        <div className="h-full w-full overflow-auto whitespace-nowrap">
+          <table className="min-w-full table-fixed border-collapse">
+            <thead>
+              <tr className="bg-secondary font-semibold">
+                {headerRow?.split(",").map((cell, i) => (
+                  <td
+                    key={i}
+                    className="px-4 py-2 border overflow-hidden text-ellipsis"
+                  >
+                    {cell.trim()}
+                  </td>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {bodyRows.map((row, i) => (
+                <tr key={i} className="border-t">
+                  {row.split(",").map((cell, j) => (
                     <td
-                      key={cellIndex}
+                      key={j}
                       className="px-4 py-2 border overflow-hidden text-ellipsis"
                     >
                       {cell.trim()}
                     </td>
                   ))}
                 </tr>
-              </thead>
-              <tbody>
-                {bodyRows.map((row, rowIndex) => (
-                  <tr key={rowIndex} className="border-t">
-                    {row.split(",").map((cell, cellIndex) => (
-                      <td
-                        key={cellIndex}
-                        className="px-4 py-2 border overflow-hidden text-ellipsis"
-                      >
-                        {cell.trim()}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-      case mimeType.startsWith("text/") && mimeType !== "text/markdown":
-      case mimeType.startsWith("application/json"):
-      case mimeType.startsWith("application/xml"):
-      case mimeType.includes("javascript"):
-      case mimeType.includes("typescript"):
-      case mimeType.includes("python"):
-        // Get language from MIME type for code highlighting
-        const language = mimeType.split("/")[1] || "";
-        // Wrap in markdown code block
-        const wrappedContent = `\`\`\`${language}\n${content}\n\`\`\``;
-        return <MarkdownViewer content={wrappedContent} />;
-
-      case mimeType === "text/markdown":
-      default:
-        return <MarkdownViewer content={content} />;
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
     }
+
+    if (
+      (mimeType.startsWith("text/") && mimeType !== "text/markdown") ||
+      mimeType.startsWith("application/json") ||
+      mimeType.startsWith("application/xml") ||
+      mimeType.includes("javascript") ||
+      mimeType.includes("typescript") ||
+      mimeType.includes("python")
+    ) {
+      const language = mimeType.split("/")[1] || "";
+      const wrappedContent = `\`\`\`${language}\n${content}\n\`\`\``;
+      return <MarkdownViewer content={wrappedContent} />;
+    }
+
+    return (
+      <div className="max-w-[750px]">
+        <MarkdownViewer content={content} />
+      </div>
+    );
   };
+
+  const { name } = getFileInfo();
+  const fileExt = getFileInfo().ext;
+  const bgColor =
+    fileExt === ".xlsx" || fileExt === ".csv"
+      ? "bg-green-700"
+      : fileExt === ".md"
+      ? "bg-blue-700"
+      : "bg-blue-700";
 
   return (
     <motion.div
@@ -288,34 +274,14 @@ const ArtifactViewer: React.FC<{
                       >
                         <div className="flex items-center gap-2.5">
                           <div
-                            className={`${
-                              mimeType.includes("csv") ||
-                              mimeType.includes("excel") ||
-                              mimeType.includes("spreadsheet")
-                                ? "bg-green-700"
-                                : "bg-blue-700"
-                            } w-8 h-8 rounded-md flex items-center justify-center`}
+                            className={`${bgColor} w-8 h-8 rounded-md flex items-center justify-center`}
                           >
                             <span className="text-xs font-semibold text-white">
-                              {mimeType === "text/markdown"
-                                ? ".md"
-                                : mimeType.includes("csv") ||
-                                  mimeType.includes("excel") ||
-                                  mimeType.includes("spreadsheet")
-                                ? ".xlsx"
-                                : ".txt"}
+                              {fileExt}
                             </span>
                           </div>
                           <div className="flex flex-col items-start">
-                            <span className="text-sm">
-                              {mimeType === "text/markdown"
-                                ? "Markdown"
-                                : mimeType.includes("csv") ||
-                                  mimeType.includes("excel") ||
-                                  mimeType.includes("spreadsheet")
-                                ? "Excel"
-                                : "Text"}
-                            </span>
+                            <span className="text-sm">{name}</span>
                             <span className="text-xs text-muted-foreground">
                               Raw format
                             </span>
@@ -362,7 +328,7 @@ const ArtifactViewer: React.FC<{
               </div>
             </div>
             <div className="p-4 px-6 flex justify-center">
-              <div className="max-w-[800px] w-full">{renderViewer()}</div>
+              <div className="w-full flex justify-center">{renderViewer()}</div>
             </div>
           </div>
         </div>

@@ -90,16 +90,16 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
-    "gpt-4.5-preview": {
-      model: openai("gpt-4.5-preview"),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      supportsSystemMessages: true,
-      provider: "openai",
-      supportedMimeTypes,
-      description:
-        "GPT-4.5 is OpenAI's largest and best model for chat yet, representing a significant advancement in scaling unsupervised learning. It features broader knowledge, improved ability to follow user intent, and greater emotional intelligence. GPT-4.5 excels at creative tasks, writing, and problem-solving while demonstrating reduced hallucinations and more natural conversation. It supports tool use, streaming, system messages, and image inputs.",
-    },
+    // "gpt-4.5-preview": {
+    //   model: openai("gpt-4.5-preview"),
+    //   supportsToolUse: true,
+    //   supportsStreaming: true,
+    //   supportsSystemMessages: true,
+    //   provider: "openai",
+    //   supportedMimeTypes,
+    //   description:
+    //     "GPT-4.5 is OpenAI's largest and best model for chat yet, representing a significant advancement in scaling unsupervised learning. It features broader knowledge, improved ability to follow user intent, and greater emotional intelligence. GPT-4.5 excels at creative tasks, writing, and problem-solving while demonstrating reduced hallucinations and more natural conversation. It supports tool use, streaming, system messages, and image inputs.",
+    // },
     o1: {
       model: openai("o1"),
       supportsToolUse: true,
