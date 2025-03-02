@@ -300,7 +300,11 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
     msg.attachments = await processAttachments(msg.attachments);
 
     msg.toolCalls = msg.toolCalls?.map((call) => {
-      if (call.toolName === "search_project_information" && call.result?.docs) {
+      if (
+        (call.toolName === "search_project_information" ||
+          call.toolName === "search_documents") &&
+        call.result?.docs
+      ) {
         const uniqueDocs = getUniqueDocuments(call.result.docs);
 
         return {
@@ -882,7 +886,8 @@ async function createToolMessage(
       // Special handling for Claude 3.7 Sonnet
       if (
         modelConfig.model.modelId.includes("claude-3.7-sonnet") &&
-        call.toolName === "search_project_information"
+        (call.toolName === "search_project_information" ||
+          call.toolName === "search_documents")
       ) {
         return await processClaudeToolResult(call);
       }
@@ -893,7 +898,8 @@ async function createToolMessage(
         toolCallId: call.toolCallId,
         toolName: call.toolName,
         result:
-          call.toolName === "search_project_information"
+          call.toolName === "search_project_information" ||
+          call.toolName === "search_documents"
             ? convertResultsToXml((call.result as any).docs)
             : call.result,
       };

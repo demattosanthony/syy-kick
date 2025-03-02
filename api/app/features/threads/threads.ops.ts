@@ -368,7 +368,8 @@ const threadsOps = {
 
               if (
                 result &&
-                toolCall.toolName === "search_project_information"
+                (toolCall.toolName === "search_project_information" ||
+                  toolCall.toolName === "search_documents")
               ) {
                 console.log("Project search tool result:", toolCall);
                 await db
