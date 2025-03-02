@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Paperclip, SendHorizonal, X } from "lucide-react";
+import { Globe, Loader2, Paperclip, SendHorizonal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
@@ -60,6 +60,7 @@ function ChatInputForm(
   const [isMounted, setIsMounted] = useState(false);
   const [selectedModel] = useAtom(modelAtom);
   const [focused, setFocused] = useState(true);
+  const [webSearchSelected, setWebSearchSelected] = useState(false);
   const [showFileExplorer, setShowFileExplorer] = useState(false);
   const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
     selectedProjectDocsAtom
@@ -325,6 +326,17 @@ function ChatInputForm(
                 </Button>
               </>
             )}
+
+          <Button
+            variant={webSearchSelected ? "secondary" : "ghost"}
+            size={"default"}
+            className="px-2"
+            onClick={() => {
+              setWebSearchSelected(!webSearchSelected);
+            }}
+          >
+            <Globe /> Web Search
+          </Button>
 
           <Button
             ref={buttonRef}
