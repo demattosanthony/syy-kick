@@ -1,81 +1,30 @@
 import { motion } from "framer-motion";
 import { Button } from "../ui/button";
-import { Artifact } from "@/types/chat";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { useSetAtom } from "jotai";
+import { selectedArtifactAtom } from "@/atoms/chat";
 import { Check, Copy, X } from "lucide-react";
 import MarkdownEditorViewer from "../viewers/markdown-viewer";
-import { useState } from "react";
-import { Message } from "ai";
-import React from "react";
-import { useAtom } from "jotai";
-import { selectedArtifactAtom } from "@/atoms/chat";
+import { cn } from "@/lib/utils";
 import { Badge } from "../ui/badge";
+import { getArtifactVersionInfo } from "@/lib/artifact-utils";
+import { Artifact } from "@/types/chat";
+import { Message } from "ai";
 
-export default function ArtifactViewer({
-  artifact,
-  splitPosition,
-  messages,
-}: {
+const ArtifactViewer: React.FC<{
   artifact: Artifact;
   splitPosition: number;
   messages: Message[];
-}) {
+}> = ({ artifact, splitPosition, messages }) => {
   const [copied, setCopied] = useState(false);
-  const [, setSelectedArtifact] = useAtom(selectedArtifactAtom);
-
-  // Find the version number and content of the selected artifact from messages
-  const { artifactContent, artifactVersion, artifactTitle } =
-    React.useMemo(() => {
-      // Look through all messages to find all versions of this artifact
-      const artifactRegex = new RegExp(
-        `<antArtifact\\s+identifier="${artifact.identifier}"[\\s\\S]*?>(([\\s\\S]*?)(?:<\\/antArtifact>|$))`,
-        "g"
-      );
-
-      let totalVersions = 0;
-      let currentVersion = 0;
-      let content = "";
-      let title = artifact.title || "Untitled Artifact";
-
-      // Check each message for the artifact with matching identifier
-      for (const message of messages) {
-        if (typeof message.content === "string") {
-          const matches = [...message.content.matchAll(artifactRegex)];
-
-          for (const match of matches) {
-            totalVersions++;
-
-            // If this is the version we want, store its content
-            if (artifact.version && totalVersions === artifact.version) {
-              content = match[2]?.trim() || "";
-              currentVersion = totalVersions;
-            }
-
-            // Always update content for the latest version if we haven't found our specific version
-            if (!currentVersion) {
-              content = match[2]?.trim() || "";
-              currentVersion = totalVersions;
-            }
-          }
-        }
-      }
-
-      // If we didn't find a match, use the version from the artifact or default to 1
-      return {
-        artifactContent: content || artifact.content || "",
-        artifactVersion: currentVersion || artifact.version || 1,
-        artifactTitle: title,
-      };
-    }, [
-      messages,
-      artifact.identifier,
-      artifact.version,
-      artifact.title,
-      artifact.content,
-    ]);
+  const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
+  const { version, content, title } = getArtifactVersionInfo(
+    artifact,
+    messages
+  );
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(artifactContent);
+    navigator.clipboard.writeText(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -83,29 +32,15 @@ export default function ArtifactViewer({
   return (
     <motion.div
       className="h-full"
-      style={{
-        width: `${100 - splitPosition - 0.25}%`,
-        minWidth: "450px",
-      }}
+      style={{ width: `${100 - splitPosition - 0.25}%`, minWidth: "450px" }}
       initial={{ opacity: 0, x: -50, scale: 0.95 }}
       animate={{
         opacity: 1,
         x: 0,
         scale: 1,
-        transition: {
-          type: "spring",
-          stiffness: 300,
-          damping: 25,
-        },
+        transition: { type: "spring", stiffness: 300, damping: 25 },
       }}
-      exit={{
-        opacity: 0,
-        x: -50,
-        scale: 0.95,
-        transition: {
-          duration: 0.2,
-        },
-      }}
+      exit={{ opacity: 0, x: -50, scale: 0.95, transition: { duration: 0.2 } }}
     >
       <motion.div
         className="flex-1 w-full h-full relative shadow-md"
@@ -117,12 +52,11 @@ export default function ArtifactViewer({
       >
         <div
           className={cn(
-            "absolute inset-0 overflow-y-auto ",
+            "absolute inset-0 overflow-y-auto",
             "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
           )}
         >
           <div className="mx-auto">
-            {/* Header with artifact name and copy button */}
             <div className="flex justify-between items-center sticky top-0 z-10 px-4 py-3 bg-background/80 backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <Button
@@ -133,29 +67,26 @@ export default function ArtifactViewer({
                   <X className="min-w-[18px] min-h-[18px]" />
                 </Button>
                 <h3 className="text-lg font-medium truncate max-w-[400px]">
-                  {artifact.title || "Untitled Artifact"}
+                  {title}
                 </h3>
-                <Badge variant={"secondary"}>v{artifactVersion}</Badge>
+                <Badge variant="secondary">v{version}</Badge>
               </div>
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleCopy}
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                >
-                  {copied ? (
-                    <Check className="w-[18px] h-[18px] text-green-500" />
-                  ) : (
-                    <Copy className="w-[18px] h-[18px]" />
-                  )}
-                </Button>
-              </div>
+              <Button
+                onClick={handleCopy}
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              >
+                {copied ? (
+                  <Check className="w-[18px] h-[18px] text-green-500" />
+                ) : (
+                  <Copy className="w-[18px] h-[18px]" />
+                )}
+              </Button>
             </div>
             <div className="p-4 px-6 flex justify-center">
               <div className="max-w-[800px] w-full">
-                <MarkdownEditorViewer content={artifactContent} />
+                <MarkdownEditorViewer content={content} />
               </div>
             </div>
           </div>
@@ -163,4 +94,6 @@ export default function ArtifactViewer({
       </motion.div>
     </motion.div>
   );
-}
+};
+
+export default ArtifactViewer;
