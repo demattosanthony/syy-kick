@@ -39,6 +39,7 @@ export function AppSidebar({
   const { activeWorkspace } = useWorkspace();
   const [isPinned, setIsPinned] = React.useState(true);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 
   // Keep pin state in sync with sidebar state
   React.useEffect(() => {
@@ -55,10 +56,10 @@ export function AppSidebar({
   }, [state, isMobile, setOpen]);
 
   const handleMouseLeave = React.useCallback(() => {
-    if (state === "expanded" && !isPinned && !isMobile) {
+    if (state === "expanded" && !isPinned && !isMobile && !isPopoverOpen) {
       setOpen(false);
     }
-  }, [isPinned, state, isMobile, setOpen]);
+  }, [isPinned, state, isMobile, setOpen, isPopoverOpen]);
 
   // Toggle pin state
   const togglePin = React.useCallback(() => {
@@ -75,7 +76,7 @@ export function AppSidebar({
     >
       <SidebarHeader>
         <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between">
-          <WorkSpaceSwitcher />
+          <WorkSpaceSwitcher onDropdownOpenChange={setIsPopoverOpen} />
 
           {state === "expanded" && (
             <div className="flex items-center">
@@ -139,7 +140,7 @@ export function AppSidebar({
               </DropdownMenuGroup>
             )}
 
-          <NavUser user={user} />
+          <NavUser user={user} onDropdownOpenChange={setIsPopoverOpen} />
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

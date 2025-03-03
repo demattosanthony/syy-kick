@@ -31,7 +31,11 @@ import { Skeleton } from "../ui/skeleton";
 import { useRouter } from "next/navigation";
 import { PRICING_PLANS } from "@/lib/pricing";
 
-export function WorkSpaceSwitcher() {
+export function WorkSpaceSwitcher({
+  onDropdownOpenChange,
+}: {
+  onDropdownOpenChange?: (open: boolean) => void;
+}) {
   const router = useRouter();
   const { isMobile } = useSidebar();
   const { data: user } = useMeQuery();
@@ -92,7 +96,7 @@ export function WorkSpaceSwitcher() {
 
   return (
     <SidebarMenuItem className="flex items-center flex-col">
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground flex w-full group-data-[collapsible=icon]:justify-center justify-start items-center gap-2 px-1">
             <WorkspaceLogo workspace={activeWorkspace} />
