@@ -125,13 +125,13 @@ const ArtifactViewer: React.FC<{
 
   const renderViewer = () => {
     if (mimeType === "image/svg+xml") {
-      // Create a data URL for the SVG content
-      const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-        content
-      )}`;
       return (
-        <div className="flex justify-center">
-          <img src={svgDataUrl} alt={title} style={{ maxWidth: "100%" }} />
+        <div className="flex justify-center w-full">
+          <div
+            className="max-w-full"
+            style={{ width: "100%", maxHeight: "80vh" }}
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
         </div>
       );
     }
