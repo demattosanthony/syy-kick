@@ -33,7 +33,13 @@ import { useTheme } from "next-themes";
 import Link from "next/link";
 import { useWorkspace } from "./workspace-context";
 
-export function NavUser({ user }: { user: User }) {
+export function NavUser({
+  user,
+  onDropdownOpenChange,
+}: {
+  user: User;
+  onDropdownOpenChange?: (open: boolean) => void;
+}) {
   const { isMobile } = useSidebar();
   const { logOut } = useAuth();
   const { setTheme } = useTheme();
@@ -56,7 +62,7 @@ export function NavUser({ user }: { user: User }) {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={onDropdownOpenChange}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"

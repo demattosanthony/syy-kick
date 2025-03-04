@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "../ui/button";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSetAtom } from "jotai";
 import { selectedArtifactAtom } from "@/atoms/chat";
 import { Check, Copy, Download, X } from "lucide-react";
@@ -13,6 +13,7 @@ import { Message } from "ai";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { marked } from "marked";
 import { useSidebar } from "../ui/sidebar";
+import mermaid from "mermaid";
 
 const ArtifactViewer: React.FC<{
   artifact: Artifact;
@@ -26,6 +27,7 @@ const ArtifactViewer: React.FC<{
     messages
   );
   const { setOpen } = useSidebar();
+  const mermaidRef = useRef<HTMLDivElement>(null);
   const mimeType = artifact.type || "text/markdown";
 
   const handleCopy = () => {
@@ -33,6 +35,52 @@ const ArtifactViewer: React.FC<{
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  useEffect(() => {
+    if (mimeType === "application/vnd.ant.mermaid" && mermaidRef.current) {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: "default",
+        securityLevel: "loose",
+      });
+
+      try {
+        // Clear previous content
+        mermaidRef.current.innerHTML = "";
+        const id = `mermaid-diagram-${Date.now()}`;
+
+        // Create a wrapper div to show loading/error states
+        const wrapperDiv = document.createElement("div");
+        wrapperDiv.className = "relative w-full";
+        mermaidRef.current.appendChild(wrapperDiv);
+
+        // Create the mermaid container
+        const tempDiv = document.createElement("div");
+        tempDiv.id = id;
+        tempDiv.className = "mermaid";
+        tempDiv.textContent = content;
+        wrapperDiv.appendChild(tempDiv);
+
+        // Use parse to validate the diagram first
+        mermaid
+          .parse(content)
+          .then(() => {
+            // If parsing succeeds, render the diagram
+            return mermaid.render(id, content);
+          })
+          .then(({ svg }) => {
+            if (mermaidRef.current) {
+              wrapperDiv.innerHTML = svg;
+            }
+          })
+          .catch(() => {
+            // console.error("Error rendering mermaid diagram:", error);
+          });
+      } catch {
+        // console.error("Error in mermaid setup:", error);
+      }
+    }
+  }, [content, mimeType]);
 
   const getFileInfo = () => {
     const types = {
@@ -53,6 +101,11 @@ const ArtifactViewer: React.FC<{
         ext: ".json",
         type: "application/json",
         name: "Text",
+      },
+      "application/vnd.ant.mermaid": {
+        ext: ".mmd",
+        type: "text/plain",
+        name: "Mermaid",
       },
       "image/svg+xml": { ext: ".svg", type: "image/svg+xml", name: "SVG" },
       default: { ext: ".txt", type: "text/plain", name: "Text" },
@@ -124,14 +177,25 @@ const ArtifactViewer: React.FC<{
   };
 
   const renderViewer = () => {
-    if (mimeType === "image/svg+xml") {
-      // Create a data URL for the SVG content
-      const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-        content
-      )}`;
+    if (mimeType === "application/vnd.ant.mermaid") {
       return (
-        <div className="flex justify-center">
-          <img src={svgDataUrl} alt={title} style={{ maxWidth: "100%" }} />
+        <div className="w-full flex justify-center">
+          <div
+            ref={mermaidRef}
+            className="mermaid-container max-w-full overflow-auto"
+          />
+        </div>
+      );
+    }
+
+    if (mimeType === "image/svg+xml") {
+      return (
+        <div className="flex justify-center w-full">
+          <div
+            className="max-w-full"
+            style={{ width: "100%", maxHeight: "80vh" }}
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
         </div>
       );
     }
@@ -186,9 +250,29 @@ const ArtifactViewer: React.FC<{
       mimeType.includes("typescript") ||
       mimeType.includes("python")
     ) {
-      const language = mimeType.split("/")[1] || "";
+      // Extract language from MIME type
+      let language = "";
+
+      // Check if the MIME type contains a language attribute
+      if (mimeType.includes("language=")) {
+        // Try to extract the language value
+        const match = mimeType.match(/language=["']?([^"'\s;]+)["']?/);
+        if (match && match[1]) {
+          language = match[1];
+        }
+      } else {
+        // Fall back to MIME type parsing
+        language = mimeType.split("/")[1] || "";
+        // Clean up any additional parameters
+        language = language.split(";")[0].split(" ")[0];
+      }
+
       const wrappedContent = `\`\`\`${language}\n${content}\n\`\`\``;
-      return <MarkdownViewer content={wrappedContent} />;
+      return (
+        <div className="w-full max-w-full">
+          <MarkdownViewer content={wrappedContent} />
+        </div>
+      );
     }
 
     return (
