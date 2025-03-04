@@ -405,7 +405,7 @@ const threadsOps = {
           }
 
           // Create a message for the assistant's response
-          if (finishReason === "stop" && text) {
+          if ((finishReason === "stop" || finishReason === "length") && text) {
             let embedding = null;
             if (text && text.length > 0) {
               try {
