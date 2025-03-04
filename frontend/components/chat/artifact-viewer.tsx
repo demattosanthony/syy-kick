@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "../ui/button";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSetAtom } from "jotai";
 import { selectedArtifactAtom } from "@/atoms/chat";
 import { Check, Copy, Download, X } from "lucide-react";
@@ -13,6 +13,7 @@ import { Message } from "ai";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { marked } from "marked";
 import { useSidebar } from "../ui/sidebar";
+import mermaid from "mermaid";
 
 const ArtifactViewer: React.FC<{
   artifact: Artifact;
@@ -26,6 +27,7 @@ const ArtifactViewer: React.FC<{
     messages
   );
   const { setOpen } = useSidebar();
+  const mermaidRef = useRef<HTMLDivElement>(null);
   const mimeType = artifact.type || "text/markdown";
 
   const handleCopy = () => {
@@ -33,6 +35,52 @@ const ArtifactViewer: React.FC<{
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  useEffect(() => {
+    if (mimeType === "application/vnd.ant.mermaid" && mermaidRef.current) {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: "default",
+        securityLevel: "loose",
+      });
+
+      try {
+        // Clear previous content
+        mermaidRef.current.innerHTML = "";
+        const id = `mermaid-diagram-${Date.now()}`;
+
+        // Create a wrapper div to show loading/error states
+        const wrapperDiv = document.createElement("div");
+        wrapperDiv.className = "relative w-full";
+        mermaidRef.current.appendChild(wrapperDiv);
+
+        // Create the mermaid container
+        const tempDiv = document.createElement("div");
+        tempDiv.id = id;
+        tempDiv.className = "mermaid";
+        tempDiv.textContent = content;
+        wrapperDiv.appendChild(tempDiv);
+
+        // Use parse to validate the diagram first
+        mermaid
+          .parse(content)
+          .then(() => {
+            // If parsing succeeds, render the diagram
+            return mermaid.render(id, content);
+          })
+          .then(({ svg }) => {
+            if (mermaidRef.current) {
+              wrapperDiv.innerHTML = svg;
+            }
+          })
+          .catch((error) => {
+            // console.error("Error rendering mermaid diagram:", error);
+          });
+      } catch (error) {
+        // console.error("Error in mermaid setup:", error);
+      }
+    }
+  }, [content, mimeType]);
 
   const getFileInfo = () => {
     const types = {
@@ -53,6 +101,11 @@ const ArtifactViewer: React.FC<{
         ext: ".json",
         type: "application/json",
         name: "Text",
+      },
+      "application/vnd.ant.mermaid": {
+        ext: ".mmd",
+        type: "text/plain",
+        name: "Mermaid",
       },
       "image/svg+xml": { ext: ".svg", type: "image/svg+xml", name: "SVG" },
       default: { ext: ".txt", type: "text/plain", name: "Text" },
@@ -124,6 +177,17 @@ const ArtifactViewer: React.FC<{
   };
 
   const renderViewer = () => {
+    if (mimeType === "application/vnd.ant.mermaid") {
+      return (
+        <div className="w-full flex justify-center">
+          <div
+            ref={mermaidRef}
+            className="mermaid-container max-w-full overflow-auto"
+          />
+        </div>
+      );
+    }
+
     if (mimeType === "image/svg+xml") {
       return (
         <div className="flex justify-center w-full">
