@@ -73,10 +73,10 @@ const ArtifactViewer: React.FC<{
               wrapperDiv.innerHTML = svg;
             }
           })
-          .catch((error) => {
+          .catch(() => {
             // console.error("Error rendering mermaid diagram:", error);
           });
-      } catch (error) {
+      } catch {
         // console.error("Error in mermaid setup:", error);
       }
     }
