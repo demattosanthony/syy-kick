@@ -167,7 +167,12 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
     try {
       if (doc.mimeType === "application/pdf") {
         return await processPdfDocument(doc);
-      } else if (doc.mimeType?.includes("image") && doc.fileKey) {
+      } else if (
+        (doc.mimeType?.includes("image/png") ||
+          doc.mimeType?.includes("image/jpg") ||
+          doc.mimeType?.includes("image/jpeg")) &&
+        doc.fileKey
+      ) {
         const imageData = await generateAttachmentData(doc.fileKey);
         return {
           fileKey: doc.fileKey,
