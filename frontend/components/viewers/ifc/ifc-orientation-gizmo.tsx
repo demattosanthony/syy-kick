@@ -1,6 +1,17 @@
 import * as THREE from "three";
 import * as OBC from "@thatopen/components";
 
+// Define the AxisDefinition interface
+interface AxisDefinition {
+  axis: string;
+  direction: THREE.Vector3;
+  size: number;
+  color: string[];
+  line?: number;
+  label?: string;
+  position: THREE.Vector3;
+}
+
 /**
  * A component that adds an orientation gizmo to the scene
  */
@@ -33,22 +44,29 @@ export class OrientationGizmo
   private domElement: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
   private rect?: DOMRect;
-  private world: {
-    renderer: OBC.SimpleRenderer;
-    camera: OBC.OrthoPerspectiveCamera;
-    scene: OBC.SimpleScene;
-  };
+  private world: OBC.SimpleWorld<
+    OBC.SimpleScene,
+    OBC.OrthoPerspectiveCamera,
+    OBC.SimpleRenderer
+  >;
   private isDragging = false;
-  private selectedAxis: any = null;
+  private selectedAxis: AxisDefinition | null = null;
   private invRotMat = new THREE.Matrix4();
   private rotateStart = new THREE.Vector2();
   private rotateEnd = new THREE.Vector2();
   private rotateDelta = new THREE.Vector2();
   private mouse = new THREE.Vector3();
   private center: THREE.Vector3;
-  private axes: any[];
+  private axes: AxisDefinition[];
 
-  constructor(components: OBC.Components, world: any) {
+  constructor(
+    components: OBC.Components,
+    world: OBC.SimpleWorld<
+      OBC.SimpleScene,
+      OBC.OrthoPerspectiveCamera,
+      OBC.SimpleRenderer
+    >
+  ) {
     super(components);
     this.world = world;
     this.center = new THREE.Vector3(this.size / 2, this.size / 2, 0);
@@ -64,7 +82,7 @@ export class OrientationGizmo
     components.add(OrientationGizmo.uuid, this);
 
     // Add canvas to renderer container
-    const container = this.world.renderer.container.parentElement;
+    const container = this.world.renderer!.container.parentElement;
     if (container) {
       container.appendChild(this.domElement);
     }
@@ -318,7 +336,7 @@ export class OrientationGizmo
     }
   }
 
-  private setAxisPosition(axis: any) {
+  private setAxisPosition(axis: AxisDefinition) {
     const position = axis.direction.clone().applyMatrix4(this.invRotMat);
     const size = axis.size;
     axis.position.set(

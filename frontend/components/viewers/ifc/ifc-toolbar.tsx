@@ -10,6 +10,7 @@ import {
 import { useState, useEffect, ReactNode } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { aiModeAtom, worldAtom } from "@/atoms/ifc-viewer-state";
+import * as THREE from "three";
 
 type CameraMode = {
   id: string;
@@ -57,7 +58,8 @@ export default function IfcViewerToolbar() {
 
   const handleCameraModeChange = (mode: CameraMode) => {
     setSelectedMode(mode);
-    let thisWorld: any = world;
+    const thisWorld = world;
+    if (!thisWorld) return;
     const { current } = thisWorld.camera.projection;
     const isOrtho = current === "Orthographic";
     const isFirstPerson = mode.id === "FirstPerson";
@@ -66,7 +68,7 @@ export default function IfcViewerToolbar() {
       thisWorld.camera.projection.set("Perspective");
       setIsOrthographic(false);
     }
-    thisWorld.camera.set(mode.id);
+    thisWorld.camera.set(mode.id as "Orbit" | "Plan" | "FirstPerson");
 
     const viewerElement = document.getElementById("ifc-viewer");
     if (viewerElement) {
@@ -75,23 +77,23 @@ export default function IfcViewerToolbar() {
   };
 
   const toggleProjection = () => {
-    let thisWorld: any = world;
+    const thisWorld = world;
     const newProjection = isOrthographic ? "Perspective" : "Orthographic";
 
     // Automatically switch to perspective mode if in first person
     if (selectedMode.id === "FirstPerson" && newProjection === "Orthographic") {
-      thisWorld.camera.projection.set("Perspective");
+      thisWorld?.camera.projection.set("Perspective");
       setIsOrthographic(false);
     }
 
-    thisWorld.camera.projection.set(newProjection);
+    thisWorld?.camera.projection.set(newProjection);
     setIsOrthographic(!isOrthographic);
   };
 
   const captureScreen = async () => {
     try {
       setIsCapturing(true);
-      const thisWorld: any = world;
+      const thisWorld = world;
       if (!thisWorld?.renderer) {
         throw new Error("Renderer not found");
       }
@@ -104,9 +106,15 @@ export default function IfcViewerToolbar() {
       // Force a render of the scene
       renderer.render(scene, camera);
 
-      // Make sure to preserve the renderer's original settings
-      const originalPreserveDrawingBuffer = renderer.preserveDrawingBuffer;
-      renderer.preserveDrawingBuffer = true;
+      // Type for WebGLRenderer with preserveDrawingBuffer
+      interface RendererWithDrawingBuffer extends THREE.WebGLRenderer {
+        preserveDrawingBuffer?: boolean;
+      }
+
+      // Cast to the extended type
+      const typedRenderer = renderer as RendererWithDrawingBuffer;
+      const originalPreserveDrawingBuffer = typedRenderer.preserveDrawingBuffer;
+      typedRenderer.preserveDrawingBuffer = true;
 
       // Render again with preserveDrawingBuffer enabled
       renderer.render(scene, camera);
@@ -115,7 +123,7 @@ export default function IfcViewerToolbar() {
       const imgData = renderer.domElement.toDataURL("image/png");
 
       // Restore original preserveDrawingBuffer setting
-      renderer.preserveDrawingBuffer = originalPreserveDrawingBuffer;
+      typedRenderer.preserveDrawingBuffer = originalPreserveDrawingBuffer;
 
       // Create a link element and trigger download
       const link = document.createElement("a");

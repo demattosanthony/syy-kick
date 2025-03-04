@@ -19,7 +19,7 @@ function createWorld(components: OBC.Components, container: HTMLElement) {
   world.scene.three.background = null;
 
   const grids = components.get(OBC.Grids);
-  const grid = grids.create(world);
+  grids.create(world);
 
   return world;
 }

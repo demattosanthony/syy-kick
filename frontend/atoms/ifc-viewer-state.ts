@@ -4,7 +4,11 @@ import * as OBCF from "@thatopen/components-front";
 import { EntityNode, IFCCategory, IFCModel } from "@/types/ifc";
 
 // Base atoms for individual state pieces
-export const worldAtom = atom<OBC.World | null>(null);
+export const worldAtom = atom<OBC.SimpleWorld<
+  OBC.SimpleScene,
+  OBC.OrthoPerspectiveCamera,
+  OBC.SimpleRenderer
+> | null>(null);
 export const cameraAtom = atom<OBC.OrthoPerspectiveCamera | null>(null);
 export const componentsAtom = atom<OBC.Components | null>(null);
 export const fragmentsAtom = atom<OBC.FragmentsManager | null>(null);

@@ -10,7 +10,6 @@ import {
   cullerAtom,
   plansAtom,
   addModelAtom,
-  categoriesAtom,
   modelsAtom,
   clearModelsAtom,
   highlighterAtom,
@@ -23,15 +22,10 @@ export function useIfcLoader() {
   const culler = useAtomValue(cullerAtom);
   const setPlans = useSetAtom(plansAtom);
   const addModel = useSetAtom(addModelAtom);
-  const categories = useAtomValue(categoriesAtom);
-  const setCategories = useSetAtom(categoriesAtom);
   const models = useAtomValue(modelsAtom);
   const clearModels = useSetAtom(clearModelsAtom);
   const highlighter = useAtomValue(highlighterAtom);
   const plans = useAtomValue(plansAtom);
-  const setHighlighter = useSetAtom(highlighterAtom);
-
-  //   const { focusOnModels } = useCameraFocus();
 
   /**
    * Loads an IFC file, processes it, and adds it to the scene.
@@ -78,10 +72,10 @@ export function useIfcLoader() {
         }
 
         // Define the inverse attributes to traverse
-        const inverseAttributes: OBC.InverseAttribute[] = [
-          "IsDecomposedBy",
-          "ContainsElements",
-        ];
+        // const inverseAttributes: OBC.InverseAttribute[] = [
+        //   "IsDecomposedBy",
+        //   "ContainsElements",
+        // ];
 
         addModel({
           fragmentsGroup: model,
