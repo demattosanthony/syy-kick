@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { useProjectQuery } from "@/features/projects/api";
 import {
