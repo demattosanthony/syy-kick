@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import Syyclops3dEye from "@/components/syy-eye";
+import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
 
 export default function ErrorPage() {
   return (

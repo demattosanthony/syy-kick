@@ -9,13 +9,14 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { useDeleteProjectMutation, useProjectsQuery } from "@/queries/queries";
 import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { SidebarItem } from "./sidebar-item";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { ChevronRight, FolderClosed } from "lucide-react";
+import { useProjectsQuery } from "@/features/projects/api";
+import { useDeleteProjectMutation } from "@/features/projects/api";
 
 interface ProjectsListProps {
   user: User;

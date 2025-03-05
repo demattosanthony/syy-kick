@@ -6,7 +6,7 @@ import { useSidebar } from "../ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { CreateProjectDialog } from "../projects/create-project-dialog";
+import { CreateProjectDialog } from "@/features/projects/components";
 
 export function ProjectsButton() {
   const router = useRouter();

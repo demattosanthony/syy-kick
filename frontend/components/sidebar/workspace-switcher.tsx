@@ -15,7 +15,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useMeQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import {
   Dialog,
@@ -23,13 +22,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { CreateOrgForm } from "../organizations/create-org-form";
 import api from "@/lib/api";
 import { Workspace } from "@/types/workspace";
 import { useWorkspace } from "./workspace-context";
 import { Skeleton } from "../ui/skeleton";
 import { useRouter } from "next/navigation";
 import { PRICING_PLANS } from "@/lib/pricing";
+import { CreateOrgForm } from "@/features/organizations/components";
+import { useMeQuery } from "@/features/user/api";
 
 export function WorkSpaceSwitcher({
   onDropdownOpenChange,

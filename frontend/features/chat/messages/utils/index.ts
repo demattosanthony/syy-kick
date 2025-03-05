@@ -1,0 +1,1 @@
+export { getModelImage, getModelIconPath } from "./model";

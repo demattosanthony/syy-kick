@@ -25,13 +25,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import { User } from "@/types/user";
 import { Button } from "../ui/button";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { useWorkspace } from "./workspace-context";
+import { useAuth } from "@/features/auth/hooks";
 
 export function NavUser({
   user,
