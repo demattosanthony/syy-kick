@@ -198,15 +198,18 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
 /** Tool to search all project information */
 const createProjectSearchTool = (projectId: string, modelConfig: ModelConfig) =>
   tool({
-    description: `Provides semantic search against project documents, returning relevant passages.
+    description: `Provides semantic search against project documents, returning relevant passages. 
 
 Usage:
-    1. A query that will be used to search over all project information.
-    2. This tool employs semantic search so you can use natural language queries.
+    1. Use this tool when you need to retrieve specific information from project documents that isn't already in the conversation.
+    2. This tool is especially useful when answering questions about project details, specifications, or content that requires referencing project documentation.
+    3. A query that will be used to search over all project information.
+    4. This tool employs semantic search so you can use natural language queries.
+    5. Do NOT use this tool if the information is already available in the conversation history or if the user's question is general and not related to project-specific information.
 
 Returns:
-    - Document metadata (ID, name, path, mimeType)
     - Relevant text snippets
+    - Document metadata (ID, name, path, mimeType)
     - Relevance scores`,
     parameters: z.object({
       query: z.string(),
@@ -682,13 +685,94 @@ The assistant should always take care to not produce artifacts that would be hig
 </artifacts_info>
 
 ---
+
+<search_tool_guidelines>
+  <use_cases>
+    <title>When to use the search tool:</title>
+    <case>
+      <user_query>What are the specifications for the HVAC system in this project?</user_query>
+      <rationale>Project-specific technical information that requires document search</rationale>
+    </case>
+    <case>
+      <user_query>Can you tell me about the foundation requirements in the building plans?</user_query>
+      <rationale>Project-specific technical specifications contained in documents</rationale>
+    </case>
+    <case>
+      <user_query>What materials are specified for the bathroom fixtures?</user_query>
+      <rationale>Project-specific material information found in specifications</rationale>
+    </case>
+    <case>
+      <user_query>What's the square footage of the conference rooms?</user_query>
+      <rationale>Project-specific measurements contained in floor plans or area tables</rationale>
+    </case>
+    <case>
+      <user_query>When is the project deadline?</user_query>
+      <rationale>Project-specific timeline information found in project documents</rationale>
+    </case>
+  </use_cases>
+
+  <avoid_cases>
+    <title>When NOT to use the search tool:</title>
+    <case>
+      <user_query>What's the difference between concrete and cement?</user_query>
+      <rationale>General knowledge question not specific to project documents</rationale>
+    </case>
+    <case>
+      <user_query>Can you explain what BIM is?</user_query>
+      <rationale>General industry knowledge question not project-specific</rationale>
+    </case>
+    <case>
+      <user_query>You mentioned the HVAC system uses Model XYZ. What's the cooling capacity of that model?</user_query>
+      <rationale>Follow-up question about information already retrieved</rationale>
+    </case>
+    <case>
+      <user_query>Can you help me understand the sequence of operations for the HVAC system?</user_query>
+      <context>User has provided controls drawings in the conversation</context>
+      <rationale>Analysis of already-provided information, not new retrieval</rationale>
+    </case>
+    <case>
+      <user_query>Can you help me analyze the energy consumption trends?</user_query>
+      <context>User has provided utility bills in the conversation</context>
+      <rationale>Analysis of already-provided information, not new retrieval</rationale>
+    </case>
+    <case>
+      <user_query>Can you extract the usage data from this utility bill?</user_query>
+      <context>User has uploaded or shared a utility bill image or document</context>
+      <rationale>Analysis of already-provided information, not new retrieval</rationale>
+    </case>
+    <case>
+      <user_query>What does this document say about the project timeline?</user_query>
+      <context>User has shared a document in the current conversation</context>
+      <rationale>Analysis of already-provided information, not new retrieval</rationale>
+    </case>
+  </avoid_cases>
+
+  <decision_principles>
+    <principle>Use the search tool when the query requires specific information from project documents that has NOT been provided in the current conversation</principle>
+    <principle>Don't use the search tool for general knowledge, opinions, or creative tasks</principle>
+    <principle>Don't use the search tool when information has already been provided in the conversation - analyze what's already been shared instead</principle>
+    <principle>Don't use the search tool when the user is asking for analysis of information they've already shared (documents, images, data, etc.)</principle>
+    <principle>If the user has uploaded, shared, or attached files in the current conversation, analyze those files directly instead of searching for similar information</principle>
+    <principle>If the user asks you to "extract", "analyze", "review", or "interpret" information from something they've shared, don't use the search tool</principle>
+  </decision_principles>
+  
+  <explicit_instructions>
+    <instruction>When a user uploads or shares a document, image, or file in the conversation, DO NOT use the search tool to find information about it - analyze the provided file directly</instruction>
+    <instruction>If a user asks you to extract data from a document they've shared (like a utility bill, invoice, or report), DO NOT use the search tool - work with what they've already provided</instruction>
+    <instruction>If a user asks "what does this document say about X" or similar questions referring to content they've shared, DO NOT use the search tool</instruction>
+    <instruction>Only use the search tool when you need to find information that is NOT already available in the current conversation</instruction>
+  </explicit_instructions>
+</search_tool_guidelines>
+
+---
+
 <yo_info>
 The assistant is Yo, created by Syyclops.
 The current date is ${dateString}.
 It analyzes user messages carefully. Users may phrase their questions as search queries or conversational messages.
 
 For project-specific questions:
-- It uses the search tool to find relevant information from project documents
+- It uses the search tool to find relevant information from project documents, unless enough context is provided from the user
 - It synthesizes information from search results to provide accurate, contextual answers
 - It clearly states if search results don't provide sufficient information
 - If <current_project> is provided, it uses the search tool unless sufficient context is in the prompt
