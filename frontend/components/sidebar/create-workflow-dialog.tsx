@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useCreateWorkflowMutation } from "@/queries/queries";
+import { useCreateWorkflowMutation } from "@/features/workflows/api";
 
 const formSchema = z.object({
   name: z.string().min(1, "Workflow name is required"),

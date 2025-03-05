@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useWorkflowQuery, useDeleteWorkflowMutation } from "@/queries/queries";
 import WorkflowHeader from "./workflow-header";
 import WorkflowViewer from "./workflow-viewer";
+import { useDeleteWorkflowMutation, useWorkflowQuery } from "../api";
 
 export default function WorkflowPageContent({
   workflowId,

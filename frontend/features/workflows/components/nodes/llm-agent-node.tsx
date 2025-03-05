@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { LlmAgentConfig } from "@/types/workflow-types";
@@ -8,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Trash, X } from "lucide-react";
-import ModelSelector from "@/components/ModelSelector";
+import { ModelSelector } from "@/features/chat/messages/components";
 
 // A simple pencil icon, can be inlined or replaced
 function PencilIcon(props: React.SVGProps<SVGSVGElement>) {

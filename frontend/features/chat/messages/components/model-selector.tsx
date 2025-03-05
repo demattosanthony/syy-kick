@@ -17,17 +17,16 @@ import {
 import { useEffect, useState } from "react";
 import { useAtom } from "jotai";
 import { AUTO_MODEL_CONFIG, modelAtom } from "@/atoms/chat";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
-<<<<<<< HEAD:frontend/components/ModelSelector.tsx
-import { useModelsQuery } from "@/queries/queries";
 import { Model } from "@/types/model";
-=======
-import { getModelIconPath, getModelImage } from "../utils";
 import { useModelsQuery } from "@/features/commons/models/api";
->>>>>>> main:frontend/features/chat/messages/components/model-selector.tsx
 
 export interface ModelSelectorProps {
   projectId?: string;
@@ -271,7 +270,6 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 
 export default ModelSelector;
 
-<<<<<<< HEAD:frontend/components/ModelSelector.tsx
 export function getModelImage(provider: string, className = "w-5 h-5 rounded") {
   const iconPath = getModelIconPath(provider);
   if (!iconPath) return null;
@@ -305,5 +303,3 @@ export function getModelIconPath(provider: string) {
       return null;
   }
 }
-=======
->>>>>>> main:frontend/features/chat/messages/components/model-selector.tsx

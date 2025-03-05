@@ -1,14 +1,9 @@
 "use client";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  useDeleteWorkflowMutation,
-  useWorkflowsQuery,
-} from "@/queries/queries";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
-import { Skeleton } from "../ui/skeleton";
 import { Workflow } from "@/types/workflow-types";
 import { getRelativeTimeString } from "@/lib/utils";
 import { GitBranch, GitBranchPlus, MoreHorizontal, Trash2 } from "lucide-react";
@@ -17,8 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
-import { Button } from "../ui/button";
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialogHeader,
   AlertDialogFooter,
@@ -28,7 +22,10 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogTitle,
-} from "../ui/alert-dialog";
+} from "@/components/ui/alert-dialog";
+import { useDeleteWorkflowMutation, useWorkflowsQuery } from "../api";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WorkflowsList() {
   const searchParams = useSearchParams();

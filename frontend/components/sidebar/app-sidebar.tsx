@@ -36,10 +36,8 @@ import {
   Workflow,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { CreateProjectDialog } from "../projects/create-project-dialog";
 import { CreateWorkflowDialog } from "./create-workflow-dialog";
+import { CreateProjectDialog } from "@/features/projects/components";
 
 export function AppSidebar({
   user,

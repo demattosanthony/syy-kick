@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback } from "react";
 import ReactFlow, {
   Background,
@@ -16,13 +18,6 @@ import {
   WorkflowWithRelations,
   WorkflowNode as WorkflowNodeType,
 } from "@/types/workflow-types";
-import {
-  useCreateNodeMutation,
-  useUpdateNodeMutation,
-  useDeleteNodeMutation,
-  useCreateEdgeMutation,
-  useDeleteEdgeMutation,
-} from "@/queries/queries";
 
 import InputNode from "./nodes/input-node";
 import LlmAgentNode from "./nodes/llm-agent-node";
@@ -34,6 +29,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  useCreateEdgeMutation,
+  useCreateNodeMutation,
+  useDeleteEdgeMutation,
+  useDeleteNodeMutation,
+  useUpdateNodeMutation,
+} from "../api";
 
 interface WorkflowViewerProps {
   workflow: WorkflowWithRelations;

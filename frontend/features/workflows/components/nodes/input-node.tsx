@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { InputNodeConfig } from "@/types/workflow-types";

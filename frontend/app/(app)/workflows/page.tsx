@@ -1,7 +1,7 @@
 "use client";
 
-import SearchBar from "@/components/threads/threads-search";
-import WorkflowsList from "@/components/workflows/workflows-list";
+import { SearchBar } from "@/features/chat/threads/components";
+import { WorkflowsList } from "@/features/workflows/components";
 
 export default function WorkflowsPage() {
   return (

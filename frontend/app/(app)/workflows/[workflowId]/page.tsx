@@ -1,4 +1,4 @@
-import WorkflowPageContent from "@/components/workflows/workflow-page-content";
+import { WorkflowPageContent } from "@/features/workflows/components";
 
 export default async function WorkflowPage({
   params,
