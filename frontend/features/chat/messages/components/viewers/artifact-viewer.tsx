@@ -254,9 +254,29 @@ const ArtifactViewer: React.FC<{
       mimeType.includes("typescript") ||
       mimeType.includes("python")
     ) {
-      const language = mimeType.split("/")[1] || "";
+      // Extract language from MIME type
+      let language = "";
+
+      // Check if the MIME type contains a language attribute
+      if (mimeType.includes("language=")) {
+        // Try to extract the language value
+        const match = mimeType.match(/language=["']?([^"'\s;]+)["']?/);
+        if (match && match[1]) {
+          language = match[1];
+        }
+      } else {
+        // Fall back to MIME type parsing
+        language = mimeType.split("/")[1] || "";
+        // Clean up any additional parameters
+        language = language.split(";")[0].split(" ")[0];
+      }
+
       const wrappedContent = `\`\`\`${language}\n${content}\n\`\`\``;
-      return <MarkdownViewer content={wrappedContent} />;
+      return (
+        <div className="w-full max-w-full">
+          <MarkdownViewer content={wrappedContent} />
+        </div>
+      );
     }
 
     return (
