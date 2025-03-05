@@ -1,33 +1,15 @@
 "use client";
 
-import api from "@/lib/api";
+import SearchBar from "@/components/threads/threads-search";
+import WorkflowsList from "@/components/workflows/workflows-list";
 
 export default function WorkflowsPage() {
-  async function startWorkflow() {
-    const { workflowRunId } = await api.workflows.runWorkflow(
-      "Analyze the mechanical drawings"
-    );
-    console.log("Started workflow:", workflowRunId);
-
-    // Poll for workflow logs every 10 seconds
-    const intervalId = setInterval(async () => {
-      try {
-        const status = await api.workflows.getWorkflowLogs(workflowRunId);
-        console.log("Workflow status:", status);
-      } catch (error) {
-        console.error("Error fetching workflow logs:", error);
-        clearInterval(intervalId);
-      }
-    }, 10000);
-
-    // Initial fetch
-    const status = await api.workflows.getWorkflowLogs(workflowRunId);
-    console.log("Initial workflow status:", status);
-  }
-
   return (
-    <div>
-      <button onClick={startWorkflow}>Start Workflow</button>
+    <div className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">
+      <h1 className="text-2xl font-bold mb-6">Workflows</h1>
+      <SearchBar />
+
+      <WorkflowsList />
     </div>
   );
 }

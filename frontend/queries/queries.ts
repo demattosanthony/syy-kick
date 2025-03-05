@@ -461,8 +461,13 @@ export function useDeleteWorkflowMutation() {
     mutationFn: (workflowId: string) =>
       api.workflows.deleteWorkflow(workflowId),
     onSuccess: () => {
+      // Fix: Use predicate to match the exact query key structure
       queryClient.invalidateQueries({
-        queryKey: ["workflows", activeWorkspace?.id],
+        queryKey: ["workflows"],
+        predicate: (query) => {
+          const [key, workspaceId] = query.queryKey;
+          return key === "workflows" && workspaceId === activeWorkspace?.id;
+        },
       });
     },
   });

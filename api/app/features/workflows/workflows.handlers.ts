@@ -105,7 +105,7 @@ const workflowHandlers = {
         await tx.delete(workflows).where(eq(workflows.id, id));
       });
 
-      res.status(204).end();
+      res.json({ message: "Workflow deleted" });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }
@@ -139,7 +139,7 @@ const workflowHandlers = {
           })
           .returning();
 
-        res.status(201).json({ node });
+        res.json({ node });
       } catch (error) {
         if (error instanceof z.ZodError) {
           res.status(400).json({ error: error.errors });
@@ -209,7 +209,7 @@ const workflowHandlers = {
             );
         });
 
-        res.status(204).end();
+        res.json({ message: "Node deleted" });
       } catch (error) {
         res.status(500).json({ error: "Internal server error" });
       }
@@ -255,7 +255,7 @@ const workflowHandlers = {
           })
           .returning();
 
-        res.status(201).json({ edge });
+        res.json({ edge });
       } catch (error) {
         if (error instanceof z.ZodError) {
           res.status(400).json({ error: error.errors });
@@ -276,7 +276,7 @@ const workflowHandlers = {
               eq(workflowEdges.id, edgeId)
           );
 
-        res.status(204).end();
+        res.json({ message: "Edge deleted" });
       } catch (error) {
         res.status(500).json({ error: "Internal server error" });
       }
