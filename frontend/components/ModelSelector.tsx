@@ -1,5 +1,3 @@
-"use client";
-
 import { Check, WandSparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,23 +22,48 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useModelsQuery } from "@/queries/queries";
+import { Model } from "@/types/model";
 
-interface ModelSelectorProps {
-  proejctId?: string;
+export interface ModelSelectorProps {
+  projectId?: string;
+  variant?: "icon-only" | "with-name" | "compact";
+  value?: any;
+  onChange?: (model: Model) => void;
+  showAuto?: boolean;
+  className?: string;
+  buttonClassName?: string;
+  triggerClassName?: string;
 }
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({
-  proejctId,
+  projectId,
+  variant = "icon-only",
+  value,
+  onChange,
+  showAuto = true,
+  buttonClassName,
+  triggerClassName,
 }: ModelSelectorProps) => {
   const [open, setOpen] = useState(false);
-  const [selectedModel, setSelectedModel] = useAtom(modelAtom);
+  const [globalModel, setGlobalModel] = useAtom(modelAtom);
   const { data: models } = useModelsQuery();
 
-  const [isMounted, setIsMounted] = useState(false); // Add mounted state because selected model atom loads async
+  // Use either controlled or global state
+  const selectedModel = value || globalModel;
+  const handleModelChange = (model: any) => {
+    if (onChange) {
+      onChange(model);
+    } else {
+      setGlobalModel(model);
+    }
+    setOpen(false);
+  };
+
+  const [isMounted, setIsMounted] = useState(false);
 
   // Filter out models with "thinking" in the name if projectId is provided
   const filteredModels = models?.filter((model) => {
-    if (proejctId) {
+    if (projectId) {
       return !model.name.toLowerCase().includes("thinking");
     }
     return true;
@@ -49,11 +72,15 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    setIsMounted(true); // Set mounted when component loads
+    setIsMounted(true);
 
     // Reset to AUTO if project ID is provided and current model has "thinking" in its name
-    if (proejctId && selectedModel.name.toLowerCase().includes("thinking")) {
-      setSelectedModel(AUTO_MODEL_CONFIG);
+    if (
+      projectId &&
+      selectedModel.name.toLowerCase().includes("thinking") &&
+      !value
+    ) {
+      setGlobalModel(AUTO_MODEL_CONFIG);
     }
 
     // Add keyboard shortcut listener
@@ -77,76 +104,91 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <PopoverTrigger asChild className={triggerClassName}>
         <Button
           variant="ghost"
           role="combobox"
           aria-expanded={open}
-          className="h-8 justify-between gap-0 p-2"
+          className={cn(
+            "h-8 justify-between gap-0 p-2",
+            variant === "compact" && "h-7 px-2 py-1 text-xs",
+            buttonClassName
+          )}
         >
           <div className="flex items-center">
             {selectedModel.provider === "Auto" ? (
-              <WandSparkles className="w-4 h-4" />
+              <WandSparkles
+                className={cn("w-4 h-4", variant === "compact" && "w-3 h-3")}
+              />
             ) : (
-              getModelImage(selectedModel.provider)
+              getModelImage(
+                selectedModel.provider,
+                variant === "compact" ? "w-3 h-3" : "w-5 h-5"
+              )
             )}
-            {/* <div className="hidden md:flex truncate ">
-              {selectedModel.name || "Select model..."}
-            </div> */}
+            {variant !== "icon-only" && (
+              <div
+                className={cn(
+                  "ml-2 truncate",
+                  variant === "compact" && "text-xs"
+                )}
+              >
+                {selectedModel.name || "Select model..."}
+              </div>
+            )}
           </div>
-          {/* <ChevronsUpDown className="md:ml-2 h-4 w-4 shrink-0 opacity-50" /> */}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0 ">
+      <PopoverContent className="p-0">
         <Command>
           {!isMobile && <CommandInput placeholder="Search models..." />}
 
           <CommandList className="max-h-[450px]">
             <CommandEmpty>No model found.</CommandEmpty>
             <CommandGroup>
-              <HoverCard openDelay={0.5} closeDelay={0}>
-                <HoverCardTrigger>
-                  <CommandItem
-                    key={"Auto"}
-                    value={"Auto"}
-                    onSelect={() => {
-                      setSelectedModel(AUTO_MODEL_CONFIG);
-                      setOpen(false);
-                    }}
+              {showAuto && (
+                <HoverCard openDelay={0.5} closeDelay={0}>
+                  <HoverCardTrigger>
+                    <CommandItem
+                      key={"Auto"}
+                      value={"Auto"}
+                      onSelect={() => handleModelChange(AUTO_MODEL_CONFIG)}
+                    >
+                      <div className="flex items-center">
+                        <WandSparkles className="w-5 h-5 mr-2 p-[2px]" />
+                        <span>Auto</span>
+                      </div>
+                      <Check
+                        className={cn(
+                          "ml-auto h-4 w-4",
+                          selectedModel.name === "auto"
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                    </CommandItem>
+                  </HoverCardTrigger>
+                  <HoverCardContent
+                    side="left"
+                    align="center"
+                    className="w-[400px]"
                   >
-                    <div className="flex items-center">
-                      <WandSparkles className="w-5 h-5 mr-2 p-[2px]" />
-                      <span>Auto</span>
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold flex items-center">
+                        <WandSparkles className="w-4 h-4 mr-2" />
+                        Auto Model Selection
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        Automatically selects the most suitable model based on
+                        your message content. For example, it will choose models
+                        with image capabilities for messages containing images,
+                        or models optimized for code when discussing
+                        programming.
+                      </p>
                     </div>
-                    <Check
-                      className={cn(
-                        "ml-auto h-4 w-4",
-                        selectedModel.name === "auto"
-                          ? "opacity-100"
-                          : "opacity-0"
-                      )}
-                    />
-                  </CommandItem>
-                </HoverCardTrigger>
-                <HoverCardContent
-                  side="left"
-                  align="center"
-                  className="w-[400px]"
-                >
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold flex items-center">
-                      <WandSparkles className="w-4 h-4 mr-2" />
-                      Auto Model Selection
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      Automatically selects the most suitable model based on
-                      your message content. For example, it will choose models
-                      with image capabilities for messages containing images, or
-                      models optimized for code when discussing programming.
-                    </p>
-                  </div>
-                </HoverCardContent>
-              </HoverCard>
+                  </HoverCardContent>
+                </HoverCard>
+              )}
 
               {filteredModels?.map((model) => (
                 <HoverCard key={model.name} openDelay={0.5} closeDelay={0}>
@@ -154,10 +196,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                     <CommandItem
                       key={model.name}
                       value={model.name}
-                      onSelect={() => {
-                        setSelectedModel(model);
-                        setOpen(false);
-                      }}
+                      onSelect={() => handleModelChange(model)}
                     >
                       <div className="flex items-center">
                         {getModelImage(model.provider)}
@@ -227,13 +266,13 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 
 export default ModelSelector;
 
-export function getModelImage(provider: string) {
+export function getModelImage(provider: string, className = "w-5 h-5 rounded") {
   const iconPath = getModelIconPath(provider);
   if (!iconPath) return null;
 
   const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
 
-  return <img src={iconPath} alt={providerName} className="w-5 h-5  rounded" />;
+  return <img src={iconPath} alt={providerName} className={className} />;
 }
 
 export function getModelIconPath(provider: string) {

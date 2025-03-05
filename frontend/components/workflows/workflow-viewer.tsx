@@ -28,7 +28,13 @@ import {
 import InputNode from "./nodes/input-node";
 import LlmAgentNode from "./nodes/llm-agent-node";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 interface WorkflowViewerProps {
   workflow: WorkflowWithRelations;
@@ -150,6 +156,12 @@ export default function WorkflowViewer({ workflow }: WorkflowViewerProps) {
                 workflowId: workflow.id,
                 config: newNode.node.config,
               },
+              style: {
+                background: "transparent",
+                border: "none",
+                boxShadow: "none",
+                padding: 0,
+              },
             };
             setNodes((nds) => [...nds, reactFlowNode]);
           },
@@ -199,21 +211,39 @@ export default function WorkflowViewer({ workflow }: WorkflowViewerProps) {
 
   return (
     <div className="h-[calc(100vh-200px)] w-full">
-      <div className="flex gap-2 mb-4">
-        <Button
-          onClick={() => addNode("input")}
-          variant="outline"
-          className="flex items-center gap-1"
-        >
-          <Plus className="h-4 w-4" /> Add Input Node
-        </Button>
-        <Button
-          onClick={() => addNode("llm_agent")}
-          variant="outline"
-          className="flex items-center gap-1"
-        >
-          <Plus className="h-4 w-4" /> Add LLM Agent
-        </Button>
+      <div className="flex justify-start p-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="default" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Add Node{" "}
+              <ChevronDown className="h-4 w-4 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem
+              onClick={() => addNode("input")}
+              className="cursor-pointer"
+            >
+              <div className="flex flex-col">
+                <span className="font-medium">Input Node</span>
+                <span className="text-xs text-muted-foreground">
+                  Collect user input data
+                </span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => addNode("llm_agent")}
+              className="cursor-pointer"
+            >
+              <div className="flex flex-col">
+                <span className="font-medium">LLM Agent</span>
+                <span className="text-xs text-muted-foreground">
+                  Process data with AI models
+                </span>
+              </div>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <ReactFlow
@@ -224,6 +254,7 @@ export default function WorkflowViewer({ workflow }: WorkflowViewerProps) {
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
+        attributionPosition="bottom-right"
         fitView
       >
         <Background />

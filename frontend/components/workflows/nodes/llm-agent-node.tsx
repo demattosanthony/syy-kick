@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Trash, X } from "lucide-react";
+import ModelSelector from "@/components/ModelSelector";
 
 // A simple pencil icon, can be inlined or replaced
 function PencilIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -101,22 +102,18 @@ export default function LlmAgentNode({ data, id }: NodeProps) {
             <div className="space-y-2">
               <div>
                 <Label className="text-xs">Model</Label>
-                <Select
-                  value={nodeConfig.model || "gpt-4"}
-                  onValueChange={(value) => updateConfig({ model: value })}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gpt-4">GPT-4</SelectItem>
-                    <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                    <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
-                    <SelectItem value="claude-3-sonnet">
-                      Claude 3 Sonnet
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <ModelSelector
+                  variant="with-name"
+                  value={{
+                    name: nodeConfig.model || "gpt-4",
+                    provider: getProviderFromModel(nodeConfig.model || "gpt-4"),
+                  }}
+                  triggerClassName="border shadow-sm"
+                  onChange={(model) => updateConfig({ model: model.name })}
+                  showAuto={false}
+                  className="w-full"
+                  buttonClassName="w-full justify-start h-8 text-xs"
+                />
               </div>
 
               <div>
@@ -220,4 +217,14 @@ export default function LlmAgentNode({ data, id }: NodeProps) {
       <Handle type="source" position={Position.Bottom} className="w-2 h-2" />
     </Card>
   );
+}
+
+// Helper function to determine provider from model name
+function getProviderFromModel(modelName: string): string {
+  if (modelName.startsWith("gpt")) return "openai";
+  if (modelName.startsWith("claude")) return "anthropic";
+  if (modelName.startsWith("gemini")) return "google";
+  if (modelName.startsWith("grok")) return "xai";
+  // Add more mappings as needed
+  return "openai"; // Default fallback
 }

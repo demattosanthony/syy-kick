@@ -58,7 +58,7 @@ function ChatInputForm(
 ) {
   const isMobile = useIsMobile();
   const [isMounted, setIsMounted] = useState(false);
-  const [selectedModel] = useAtom(modelAtom);
+  const [selectedModel, setSelectedModel] = useAtom(modelAtom);
   const [focused, setFocused] = useState(true);
   const [showFileExplorer, setShowFileExplorer] = useState(false);
   const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
@@ -297,7 +297,13 @@ function ChatInputForm(
         </div>
 
         <div className="w-full flex justify-between items-center px-1">
-          <ModelSelector proejctId={projectId} />
+          <ModelSelector
+            projectId={projectId}
+            variant="icon-only"
+            onChange={(model) => {
+              setSelectedModel(model);
+            }}
+          />
 
           {isMounted &&
             selectedModel.supportedMimeTypes &&
