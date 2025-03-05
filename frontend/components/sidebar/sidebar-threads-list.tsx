@@ -9,13 +9,13 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { useDeleteThreadMutation, useThreadsQuery } from "@/queries/queries";
 import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { SidebarItem } from "./sidebar-item";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { ChevronRight, History } from "lucide-react";
+import { useDeleteThreadMutation, useThreadsQuery } from "@/features/chat/threads/api";
 
 interface ThreadsListProps {
   user: User;

@@ -1,7 +1,7 @@
 "use client";
 
-import ChatThread from "@/components/chat/chat-thread";
-import { useThreadQuery } from "@/queries/queries";
+import { useThreadQuery } from "@/features/chat/threads/api";
+import { ChatThread } from "@/features/chat/threads/components";
 import { Message } from "ai/react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useMemo } from "react";

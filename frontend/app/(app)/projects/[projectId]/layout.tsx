@@ -1,4 +1,4 @@
-import ProjectsHeader from "@/components/projects/projects-header";
+import { ProjectsHeader } from "@/features/projects/components";
 
 export default async function ProjectPageLayout({
   children,

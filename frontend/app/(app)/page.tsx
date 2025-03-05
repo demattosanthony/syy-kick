@@ -4,7 +4,6 @@ import api from "@/lib/api";
 
 // Hooks
 import { useAtom } from "jotai";
-import { useMeQuery } from "@/queries/queries";
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 
@@ -13,14 +12,12 @@ import { initalInputAtom } from "@/atoms/chat";
 import { pricingPlanDialogOpenAtom } from "@/components/PricingDialog";
 
 // Components
-import ConversationStarters from "@/components/ConversationStarters";
-import { AnimatedGreeting } from "@/components/AnimatedGreeting";
+import ConversationStarters from "@/features/chat/messages/components/conversation-starters";
 import InstallPrompt from "@/components/InstallPrompt";
 import { toast } from "sonner";
-import ChatInputForm, {
-  ChatInputFormRef,
-} from "@/components/chat/ChatInputForm";
-import Syyclops3dEye from "@/components/syy-eye";
+import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
+import { AnimatedGreeting, ChatInputForm, ChatInputFormRef } from "@/features/chat/messages/components";
+import { useMeQuery } from "@/features/user/api";
 
 export default function Home() {
   const router = useRouter();
