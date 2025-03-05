@@ -2,6 +2,12 @@ import { Thread } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
+import {
+  Workflow,
+  WorkflowEdge,
+  WorkflowNode,
+  WorkflowWithRelations,
+} from "@/types/workflow-types";
 
 /**
  * Base ApiRequest class to handle common request logic
@@ -788,6 +794,89 @@ class ProjectsApi extends ApiRequest {
  * Workflows API Module
  */
 class WorkflowsApi extends ApiRequest {
+  async createWorkflow(name: string): Promise<Workflow> {
+    return await this.request("/workflows", "POST", { name });
+  }
+
+  async listWorkflows(): Promise<Workflow[]> {
+    return await this.request("/workflows");
+  }
+
+  async getWorkflow(id: string): Promise<WorkflowWithRelations> {
+    return await this.request(`/workflows/${id}`);
+  }
+
+  async updateWorkflow(id: string, name: string): Promise<Workflow> {
+    return await this.request(`/workflows/${id}`, "PUT", { name });
+  }
+
+  async deleteWorkflow(id: string): Promise<void> {
+    return await this.request(`/workflows/${id}`, "DELETE");
+  }
+
+  // Node operations
+  async createNode(
+    workflowId: string,
+    nodeData: {
+      type: string;
+      positionX: number;
+      positionY: number;
+      config?: Record<string, any>;
+    }
+  ): Promise<{ node: WorkflowNode }> {
+    return await this.request(
+      `/workflows/${workflowId}/nodes`,
+      "POST",
+      nodeData
+    );
+  }
+
+  async updateNode(
+    workflowId: string,
+    nodeId: string,
+    nodeData: Partial<{
+      type: string;
+      positionX: number;
+      positionY: number;
+      config: Record<string, any>;
+    }>
+  ): Promise<{ node: WorkflowNode }> {
+    return await this.request(
+      `/workflows/${workflowId}/nodes/${nodeId}`,
+      "PUT",
+      nodeData
+    );
+  }
+
+  async deleteNode(workflowId: string, nodeId: string): Promise<void> {
+    return await this.request(
+      `/workflows/${workflowId}/nodes/${nodeId}`,
+      "DELETE"
+    );
+  }
+
+  // Edge operations
+  async createEdge(
+    workflowId: string,
+    edgeData: {
+      sourceNodeId: string;
+      targetNodeId: string;
+    }
+  ): Promise<{ edge: WorkflowEdge }> {
+    return await this.request(
+      `/workflows/${workflowId}/edges`,
+      "POST",
+      edgeData
+    );
+  }
+
+  async deleteEdge(workflowId: string, edgeId: string): Promise<void> {
+    return await this.request(
+      `/workflows/${workflowId}/edges/${edgeId}`,
+      "DELETE"
+    );
+  }
+
   async runWorkflow(message: string): Promise<{ workflowRunId: string }> {
     return await this.request<{ workflowRunId: string }>(
       "/workflows/run",
@@ -796,10 +885,6 @@ class WorkflowsApi extends ApiRequest {
         message,
       }
     );
-  }
-
-  async getWorkflowLogs(workflowId: string): Promise<{ runs: any[] }> {
-    return await this.request<{ runs: any[] }>(`/workflows/${workflowId}/logs`);
   }
 }
 

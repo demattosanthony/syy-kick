@@ -22,19 +22,30 @@ import { NewThreadButton } from "./new-thread-button";
 import { ThreadsList } from "./sidebar-threads-list";
 import { ThreadsLink } from "./threads-link";
 import { SidebarProjectsList } from "./sidebar-projects-list";
-import { ProjectsButton } from "./projects-button";
+import { SidebarButton } from "./sidebar-button";
 import { DropdownMenuGroup } from "../ui/dropdown-menu";
 import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "./workspace-context";
 import { Button } from "../ui/button";
-import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
+import {
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  FolderClosed,
+  FolderOpen,
+  Plus,
+  Workflow,
+} from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { CreateProjectDialog } from "../projects/create-project-dialog";
+import { CreateWorkflowDialog } from "./create-workflow-dialog";
 
 export function AppSidebar({
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & { user: User }) {
-  const { state, setOpen } = useSidebar();
+  const { state, setOpen, toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
   const { activeWorkspace } = useWorkspace();
   const [isPinned, setIsPinned] = React.useState(true);
@@ -111,7 +122,47 @@ export function AppSidebar({
                 {!(
                   activeWorkspace?.type === "personal" &&
                   user.subscriptionStatus !== "active"
-                ) && <ProjectsButton />}
+                ) && (
+                  <SidebarButton
+                    href="/projects"
+                    icon={FolderClosed}
+                    hoverIcon={FolderOpen}
+                    label="Projects"
+                    actionTrigger={
+                      <CreateProjectDialog
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                          >
+                            <Plus className="h-6 w-6" />
+                          </Button>
+                        }
+                      />
+                    }
+                  />
+                )}
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarButton
+                  href="/workflows"
+                  icon={Workflow}
+                  hoverIcon={Workflow}
+                  label="Workflows"
+                  actionTrigger={
+                    <CreateWorkflowDialog
+                      trigger={
+                        <Button
+                          variant="ghost"
+                          className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                        >
+                          <Plus className="h-6 w-6" />
+                        </Button>
+                      }
+                    />
+                  }
+                />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

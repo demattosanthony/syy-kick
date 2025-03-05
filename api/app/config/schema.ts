@@ -450,6 +450,28 @@ export const workflowsRelations = relations(workflows, ({ many }) => ({
   edges: many(workflowEdges),
 }));
 
+export const workflowNodesRelations = relations(workflowNodes, ({ one }) => ({
+  workflow: one(workflows, {
+    fields: [workflowNodes.workflowId],
+    references: [workflows.id],
+  }),
+}));
+
+export const workflowEdgesRelations = relations(workflowEdges, ({ one }) => ({
+  workflow: one(workflows, {
+    fields: [workflowEdges.workflowId],
+    references: [workflows.id],
+  }),
+  sourceNode: one(workflowNodes, {
+    fields: [workflowEdges.sourceNodeId],
+    references: [workflowNodes.id],
+  }),
+  targetNode: one(workflowNodes, {
+    fields: [workflowEdges.targetNodeId],
+    references: [workflowNodes.id],
+  }),
+}));
+
 export type MessageAttachment = {
   id: string;
   messageId: string;

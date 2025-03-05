@@ -7,15 +7,29 @@ import { MODELS } from "../models";
 import { createProjectSearchTool } from "../threads/threads.utils";
 import db from "../../config/db";
 import { workflows, workflowEdges, workflowNodes } from "../../config/schema";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import workflowSchemas from "./workflows.schemas";
 import exa from "../../config/exa";
 
 const workflowHandlers = {
+  getAll: async (req: Request, res: Response) => {
+    try {
+      const allWorkflows = await db.query.workflows.findMany({
+        orderBy: desc(workflows.createdAt),
+      });
+      res.json(allWorkflows);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
   create: async (req: Request, res: Response) => {
     try {
       const { name } = workflowSchemas.create.parse(req.body);
-      const workflow = await db.insert(workflows).values({ name }).returning();
+      const [workflow] = await db
+        .insert(workflows)
+        .values({ name })
+        .returning();
       res.json(workflow);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -45,6 +59,7 @@ const workflowHandlers = {
 
       res.json(workflow);
     } catch (error) {
+      console.log(error);
       res.status(500).json({ error: "Internal server error" });
     }
   },
@@ -69,7 +84,7 @@ const workflowHandlers = {
         return;
       }
 
-      res.json({ workflow: updatedWorkflow });
+      res.json(updatedWorkflow);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: error.errors });

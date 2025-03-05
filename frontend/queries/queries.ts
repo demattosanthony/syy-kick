@@ -1,5 +1,6 @@
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import api from "@/lib/api";
+import { InputNodeConfig, LlmAgentConfig } from "@/types/workflow-types";
 import {
   useInfiniteQuery,
   useMutation,
@@ -399,5 +400,176 @@ export function useProjectDocQuery(projectId: string, path: string) {
     queryKey: ["project-doc", projectId, path, activeWorkspace?.id],
     queryFn: () => api.projects.getDocument(projectId, path),
     refetchOnWindowFocus: false,
+  });
+}
+
+// WORKFLOWS
+
+export function useWorkflowsQuery() {
+  const { activeWorkspace } = useWorkspace();
+
+  return useQuery({
+    queryKey: ["workflows", activeWorkspace?.id],
+    queryFn: () => api.workflows.listWorkflows(),
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useWorkflowQuery(workflowId: string) {
+  const { activeWorkspace } = useWorkspace();
+
+  return useQuery({
+    queryKey: ["workflow", workflowId, activeWorkspace?.id],
+    queryFn: () => api.workflows.getWorkflow(workflowId),
+    enabled: !!workflowId,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useCreateWorkflowMutation() {
+  const queryClient = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
+
+  return useMutation({
+    mutationFn: (name: string) => api.workflows.createWorkflow(name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["workflows", activeWorkspace?.id],
+      });
+    },
+  });
+}
+
+export function useUpdateWorkflowMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ workflowId, name }: { workflowId: string; name: string }) =>
+      api.workflows.updateWorkflow(workflowId, name),
+    onSuccess: (_, { workflowId }) => {
+      queryClient.invalidateQueries({ queryKey: ["workflow", workflowId] });
+      queryClient.invalidateQueries({ queryKey: ["workflows"] });
+    },
+  });
+}
+
+export function useDeleteWorkflowMutation() {
+  const queryClient = useQueryClient();
+  const { activeWorkspace } = useWorkspace();
+
+  return useMutation({
+    mutationFn: (workflowId: string) =>
+      api.workflows.deleteWorkflow(workflowId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["workflows", activeWorkspace?.id],
+      });
+    },
+  });
+}
+
+export function useCreateNodeMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      workflowId,
+      nodeData,
+    }: {
+      workflowId: string;
+      nodeData: {
+        type: string;
+        positionX: number;
+        positionY: number;
+        config?: InputNodeConfig | LlmAgentConfig;
+      };
+    }) => api.workflows.createNode(workflowId, nodeData),
+    onSuccess: (_, { workflowId }) => {
+      queryClient.invalidateQueries({ queryKey: ["workflow", workflowId] });
+    },
+  });
+}
+
+export function useUpdateNodeMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      workflowId,
+      nodeId,
+      nodeData,
+    }: {
+      workflowId: string;
+      nodeId: string;
+      nodeData: Partial<{
+        type: string;
+        positionX: number;
+        positionY: number;
+        config: InputNodeConfig | LlmAgentConfig;
+      }>;
+    }) => api.workflows.updateNode(workflowId, nodeId, nodeData),
+    onSuccess: (_, { workflowId }) => {
+      queryClient.invalidateQueries({ queryKey: ["workflow", workflowId] });
+    },
+  });
+}
+
+export function useDeleteNodeMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      workflowId,
+      nodeId,
+    }: {
+      workflowId: string;
+      nodeId: string;
+    }) => api.workflows.deleteNode(workflowId, nodeId),
+    onSuccess: (_, { workflowId }) => {
+      queryClient.invalidateQueries({ queryKey: ["workflow", workflowId] });
+    },
+  });
+}
+
+export function useCreateEdgeMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      workflowId,
+      edgeData,
+    }: {
+      workflowId: string;
+      edgeData: {
+        sourceNodeId: string;
+        targetNodeId: string;
+      };
+    }) => api.workflows.createEdge(workflowId, edgeData),
+    onSuccess: (_, { workflowId }) => {
+      queryClient.invalidateQueries({ queryKey: ["workflow", workflowId] });
+    },
+  });
+}
+
+export function useDeleteEdgeMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      workflowId,
+      edgeId,
+    }: {
+      workflowId: string;
+      edgeId: string;
+    }) => api.workflows.deleteEdge(workflowId, edgeId),
+    onSuccess: (_, { workflowId }) => {
+      queryClient.invalidateQueries({ queryKey: ["workflow", workflowId] });
+    },
+  });
+}
+
+export function useRunWorkflowMutation() {
+  return useMutation({
+    mutationFn: (message: string) => api.workflows.runWorkflow(message),
   });
 }

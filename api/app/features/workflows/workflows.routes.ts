@@ -4,6 +4,7 @@ import workflowHandlers from "./workflows.handlers";
 const router = Router();
 
 // Workflow routes
+router.get("", workflowHandlers.getAll);
 router.post("", workflowHandlers.create);
 router.get("/:id", workflowHandlers.getById);
 router.put("/:id", workflowHandlers.update);
