@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -28,6 +29,7 @@ const SUBSCRIPTION_STATUS = [
 const SUBSCRIPTION_PLAN = ["free", "pro", "teams", "enterprise"] as const;
 const IDENTITY_PROVIDER = ["google", "saml", "microsoft"] as const;
 const DOCUMENT_TYPE = ["file", "folder"] as const;
+export const WORKFLOW_NODE_TYPES = ["input", "llm_agent"] as const;
 
 // Custom type for bytea columns (pgcrypto extension)
 export const bytea = customType<{
@@ -288,6 +290,40 @@ export const toolCalls = pgTable("tool_calls", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const workflows = pgTable("workflows", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export type Workflow = typeof workflows.$inferSelect;
+
+export const workflowNodes = pgTable("workflow_nodes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workflowId: uuid("workflow_id")
+    .notNull()
+    .references(() => workflows.id, { onDelete: "cascade" }),
+  type: text("type", { enum: WORKFLOW_NODE_TYPES }).notNull(),
+  positionX: doublePrecision("position_x"),
+  positionY: doublePrecision("position_y"),
+  config: jsonb("config"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export type WorkflowNode = typeof workflowNodes.$inferSelect;
+
+export const workflowEdges = pgTable("workflow_edges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workflowId: uuid("workflow_id")
+    .notNull()
+    .references(() => workflows.id, { onDelete: "cascade" }),
+  sourceNodeId: uuid("source_node_id").notNull(),
+  targetNodeId: uuid("target_node_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export type WorkflowEdge = typeof workflowEdges.$inferSelect;
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   threads: many(threads),
@@ -407,6 +443,11 @@ export const projectsRelations = relations(projects, ({ one }) => ({
     fields: [projects.userId],
     references: [users.id],
   }),
+}));
+
+export const workflowsRelations = relations(workflows, ({ many }) => ({
+  nodes: many(workflowNodes),
+  edges: many(workflowEdges),
 }));
 
 export type MessageAttachment = {
