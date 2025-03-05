@@ -1,9 +1,8 @@
 "use client";
 
-import { CreateProjectDialog } from "@/components/projects/create-project-dialog";
-import ProjectsList from "@/components/projects/projects-list";
-import SearchBar from "@/components/threads/threads-search";
+import { CreateProjectDialog, ProjectsList } from "@/features/projects/components";
 import { Button } from "@/components/ui/button";
+import { SearchBar } from "@/features/chat/threads/components";
 
 export default function ProjectsPage() {
   return (

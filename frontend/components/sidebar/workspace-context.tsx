@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { type Workspace } from "@/types/workspace";
-import { useMeQuery } from "@/queries/queries";
 import { setActiveWorkspaceCookie } from "@/app/workspace-actions";
+import { useMeQuery } from "@/features/user/api";
 
 type WorkspaceContextType = {
   activeWorkspace: Workspace | null;

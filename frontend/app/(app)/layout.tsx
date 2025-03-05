@@ -2,9 +2,9 @@ import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { DragAndDropProvider } from "@/components/DragDropProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
+import { LoginButtons } from "@/features/auth/components";
+import { FinishOrgSetupBanner } from "@/features/organizations/components";
 import { me } from "../actions";
-import FinishOrgSetupBanner from "@/components/organizations/finish-org-setup-banner";
-import LoginButtons from "@/components/login-buttons";
 
 export default async function MainAppLayout({
   children,

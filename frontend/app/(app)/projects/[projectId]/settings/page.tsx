@@ -1,4 +1,4 @@
-import ProjectSettings from "@/components/projects/project-settings";
+import { ProjectSettings } from "@/features/projects/components";
 
 export default async function ProjectSettingsPage({
   params,
