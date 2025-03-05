@@ -13,6 +13,7 @@ import threadRoutes from "./features/threads/threads.routes";
 import paymentRoutes, { webhook } from "./features/payments";
 import organizationRoutes from "./features/organizations";
 import projectRoutes from "./features/projects";
+import workflowRoutes from "./features/workflows/workflows.routes";
 
 export default Router()
   .use("/auth", authRoutes)
@@ -66,6 +67,7 @@ export default Router()
   )
   .use("/organizations", auth, organizationRoutes)
   .use("/projects", auth, checkSub, projectRoutes)
+  .use("/workflows", workflowRoutes)
   .post(
     "/presigned-url",
     auth,

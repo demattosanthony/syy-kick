@@ -785,6 +785,25 @@ class ProjectsApi extends ApiRequest {
 }
 
 /**
+ * Workflows API Module
+ */
+class WorkflowsApi extends ApiRequest {
+  async runWorkflow(message: string): Promise<{ workflowRunId: string }> {
+    return await this.request<{ workflowRunId: string }>(
+      "/workflows/run",
+      "POST",
+      {
+        message,
+      }
+    );
+  }
+
+  async getWorkflowLogs(workflowId: string): Promise<{ runs: any[] }> {
+    return await this.request<{ runs: any[] }>(`/workflows/${workflowId}/logs`);
+  }
+}
+
+/**
  *  Centralized ApiClient class that uses the modules
  */
 class ApiClient {
@@ -796,6 +815,7 @@ class ApiClient {
   uploads: UploadApi;
   threads: ThreadApi;
   projects: ProjectsApi;
+  workflows: WorkflowsApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -806,6 +826,7 @@ class ApiClient {
     this.uploads = new UploadApi(baseUrl);
     this.threads = new ThreadApi(baseUrl);
     this.projects = new ProjectsApi(baseUrl);
+    this.workflows = new WorkflowsApi(baseUrl);
   }
 }
 
