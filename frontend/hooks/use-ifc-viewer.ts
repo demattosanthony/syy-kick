@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import * as OBC from "@thatopen/components";
-import { OrientationGizmo } from "@/components/viewers/ifc/ifc-orientation-gizmo";
+import { OrientationGizmo } from "@/features/projects/components/files/ifc/ifc-orientation-gizmo";
 import {
   worldAtom,
   cameraAtom,

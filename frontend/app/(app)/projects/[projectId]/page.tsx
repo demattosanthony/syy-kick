@@ -1,17 +1,21 @@
-import ProjectFileExplorer from "@/components/projects/project-file-explorer";
-import { Card, CardContent } from "@/components/ui/card";
-import ProjectChatInput from "@/components/projects/project-chat-input";
-import ProjectHeader from "@/components/projects/project-header";
-import ProjectStatusCard from "@/components/projects/project-status-card";
-import { getProject } from "@/app/actions";
+"use client";
 
-export default async function ProjectPage({
-  params,
-}: {
-  params: Promise<{ projectId: string }>;
-}) {
-  const pid = (await params).projectId;
-  const project = await getProject(pid);
+import { Card, CardContent } from "@/components/ui/card";
+import { useProjectQuery } from "@/features/projects/api";
+import {
+  ProjectChatInput,
+  ProjectStatusCard,
+} from "@/features/projects/components";
+import {
+  ProjectFileExplorer,
+  ProjectHeader,
+} from "@/features/projects/components";
+import { useParams } from "next/navigation";
+
+export default function ProjectPage() {
+  const params = useParams();
+  const projectId = params.projectId as string;
+  const { data: project } = useProjectQuery(projectId);
 
   if (!project) {
     return null;
@@ -26,7 +30,7 @@ export default async function ProjectPage({
           <div className="grid grid-cols-1 md:grid-cols-[1fr_265px] gap-4 w-full mt-4 max-w-full">
             <Card className="w-full min-w-0 shadow-none max-h-[min(calc(100vh-300px),700px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
               <CardContent className="p-2 w-full max-w-full overflow-x-hidden">
-                <ProjectFileExplorer projectId={pid} />
+                <ProjectFileExplorer projectId={projectId} />
               </CardContent>
             </Card>
 
@@ -39,7 +43,7 @@ export default async function ProjectPage({
         <footer className="absolute bottom-4 inset-x-0 w-full group">
           <div className="w-full flex items-center justify-center transition-all duration-300 ease-in-out">
             <div className="w-full max-w-3xl px-4">
-              <ProjectChatInput projectId={pid} />
+              <ProjectChatInput projectId={projectId} />
             </div>
           </div>
         </footer>

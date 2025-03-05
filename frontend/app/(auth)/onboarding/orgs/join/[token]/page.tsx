@@ -1,4 +1,4 @@
-import JoinOrgHandler from "@/components/organizations/join-org-handler";
+import { JoinOrgHandler } from "@/features/organizations/components";
 
 export default async function Page({
   params,

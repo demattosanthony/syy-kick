@@ -1,7 +1,7 @@
 "use client";
 
-import ProjectFileLayout from "@/components/projects/project-file-layout";
-import ProjectFileExplorer from "@/components/projects/project-file-explorer";
+import ProjectFileLayout from "@/features/projects/components/files/project-file-layout";
+import ProjectFileExplorer from "@/features/projects/components/project-file-explorer";
 import { Card, CardContent } from "@/components/ui/card";
 import { useParams } from "next/navigation";
 
