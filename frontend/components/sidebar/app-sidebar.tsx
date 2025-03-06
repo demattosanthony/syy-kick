@@ -28,7 +28,6 @@ import { useWorkspace } from "./workspace-context";
 import { Button } from "../ui/button";
 import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-
 import { NewThreadButton } from "./new-thread-button";
 
 export function AppSidebar({
@@ -66,8 +65,6 @@ export function AppSidebar({
   const togglePin = React.useCallback(() => {
     setIsPinned((prev) => !prev);
   }, []);
-
-  //   const isHomePage = window.location.pathname === "/";
 
   return (
     <Sidebar
