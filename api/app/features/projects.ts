@@ -408,6 +408,7 @@ export async function getDocContent(projectId: string, path: string) {
   });
 
   if (!document) {
+    console.log(`Document not found at path: ${path}`);
     throw new Error("File not found");
   }
 
