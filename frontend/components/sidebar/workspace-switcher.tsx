@@ -80,7 +80,11 @@ export function WorkSpaceSwitcher({
     return (
       <div className="flex h-5 w-5 items-center justify-center  shrink-0">
         {workspace.logo ? (
-          <img src={workspace.logo} alt={workspace.name} className="h-5 w-5 " />
+          <img
+            src={workspace.logo}
+            alt={workspace.name}
+            className="h-5 w-5 rounded"
+          />
         ) : (
           <Building className="h-4 w-4" />
         )}
