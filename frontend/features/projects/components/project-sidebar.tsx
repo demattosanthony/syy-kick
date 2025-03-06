@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchBar, ThreadsList } from "@/features/chat/threads/components";
 import { Project } from "@/types/project";
 import { Search } from "lucide-react";
-import { cn, scrollbarStyle } from "@/lib/utils";
 import ProjectStatusCard from "./project-status-card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ProjectSidebarProps {
   project: Project;
@@ -60,13 +60,10 @@ export default function ProjectSidebar({
           </CardTitle>
         </CardHeader>
 
-        <CardContent
-          className={cn(
-            "p-2 max-h-[min(calc(100vh-400px),600px)] overflow-y-auto min-h-[300px]",
-            scrollbarStyle
-          )}
-        >
-          <ThreadsList projectId={projectId} compact />
+        <CardContent className="p-2 h-[min(calc(100vh-400px),600px)] min-h-[300px] overflow-hidden">
+          <ScrollArea className="h-full w-full">
+            <ThreadsList projectId={projectId} compact />
+          </ScrollArea>
         </CardContent>
       </Card>
     </div>
