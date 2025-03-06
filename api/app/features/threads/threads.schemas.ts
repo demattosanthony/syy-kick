@@ -7,6 +7,7 @@ const createThreadSchema = z.object({
 const getThreadsSchema = z.object({
   page: z.string().optional(),
   search: z.string().optional(),
+  projectId: z.string().optional(),
 });
 
 const updateThreadSchema = z.object({
