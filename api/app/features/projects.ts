@@ -248,8 +248,12 @@ export async function getProjectDocs(projectId: string, path: string = "") {
           eq(documents.type, "folder")
         ),
       });
+      // Instead of throwing an error, return an empty array if folder not found
       if (!folder) {
-        throw new Error("Folder not found");
+        console.log(
+          `Folder not found at path: ${normalizedPath} for project: ${projectId}`
+        );
+        return [];
       }
       parentId = folder.id;
     }
