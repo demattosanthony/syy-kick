@@ -48,19 +48,27 @@ export default function ThreadsList({
 
   return (
     <div>
-      {threads?.map((thread, i) => (
-        <ThreadItem key={i} thread={thread} compact={compact} />
-      ))}
+      {threads?.length === 0 && !isLoading ? (
+        <div className="flex items-center justify-center h-40 text-muted-foreground">
+          No threads found
+        </div>
+      ) : (
+        <>
+          {threads?.map((thread, i) => (
+            <ThreadItem key={i} thread={thread} compact={compact} />
+          ))}
 
-      <div ref={scrollRef} className="h-10">
-        {(isFetchingNextPage || isLoading) && (
-          <div className="space-y-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <ThreadSkeleton key={i} compact={compact} />
-            ))}
+          <div ref={scrollRef} className="h-10">
+            {(isFetchingNextPage || isLoading) && (
+              <div className="space-y-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <ThreadSkeleton key={i} compact={compact} />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }

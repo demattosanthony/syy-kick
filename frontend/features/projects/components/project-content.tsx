@@ -11,7 +11,7 @@ interface ProjectContentProps {
 export default function ProjectContent({ projectId }: ProjectContentProps) {
   return (
     <div className="flex flex-col gap-4">
-      <Card className="w-full min-w-0 shadow-none h-[min(calc(100vh-300px),700px)]">
+      <Card className="w-full min-w-0 shadow-none h-[max-content] max-h-[calc(100vh*0.65)]">
         <CardContent className="p-2 h-full">
           <ScrollArea className="h-full w-full">
             <ProjectFileExplorer projectId={projectId} />

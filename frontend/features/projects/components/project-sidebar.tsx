@@ -60,7 +60,7 @@ export default function ProjectSidebar({
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="px-2 pt-0 h-[min(calc(100vh-400px),calc(100vh*0.42))] min-h-[300px] max-h-[800px] overflow-hidden">
+        <CardContent className="px-2 pt-0 max-h-[calc(100vh*0.42)] min-h-[200px] overflow-hidden">
           <ScrollArea className="h-full w-full">
             <ThreadsList projectId={projectId} compact />
           </ScrollArea>
