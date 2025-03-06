@@ -78,7 +78,7 @@ const JoinOrgHandler = ({ token }: { token: string }) => {
           <img
             src={orgDetails.organization.logoUrl}
             alt={`${orgDetails.organization.name} logo`}
-            className="h-[75px] w-[75px] object-contain"
+            className="h-[75px] w-[75px] object-cover rounded-full"
           />
         ) : (
           <Syyclops3dEye size={155} />
