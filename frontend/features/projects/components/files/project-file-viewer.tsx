@@ -5,7 +5,10 @@ import ReactPlayer from "react-player";
 import { ArrowDown, File } from "lucide-react";
 import { useEffect, useState } from "react";
 import PdfViewer from "@/features/chat/messages/components/viewers/pdf-viewer";
-import { MarkdownViewer, MultiSheetViewer } from "@/features/chat/messages/components";
+import {
+  MarkdownViewer,
+  MultiSheetViewer,
+} from "@/features/chat/messages/components";
 
 export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
   const [textContent, setTextContent] = useState<string>("");
@@ -149,21 +152,21 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
       );
     default:
       return (
-        <div className="h-full w-full flex items-center justify-center ">
+        <div className="h-full w-full flex items-center justify-center">
           <div className="text-center max-w-md">
             <div className="mb-4">
-              <File className="h-12 w-12 text-gray-400 mx-auto" />
+              <File className="h-12 w-12 text-muted-foreground mx-auto" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Preview Not Available Yet
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               This file type cannot be previewed in the browser, but you can
               download it to view it locally.
             </p>
             <a
               href={doc.url}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-priamry bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
               download={doc.name}
             >
               <ArrowDown className="h-4 w-4 mr-2" />

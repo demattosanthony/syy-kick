@@ -28,7 +28,7 @@ export default function ProjectPage() {
 
         <div className="flex-1 h-full w-full px-4">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_265px] gap-4 w-full mt-4 max-w-full">
-            <Card className="w-full min-w-0 shadow-none max-h-[min(calc(100vh-300px),700px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
+            <Card className="w-full min-w-0 shadow-none max-h-[min(calc(100vh-300px),700px)] h-min overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
               <CardContent className="p-2 w-full max-w-full overflow-x-hidden">
                 <ProjectFileExplorer projectId={projectId} />
               </CardContent>
