@@ -1,22 +1,18 @@
 "use client";
 
-import { useThreadQuery } from "@/features/chat/threads/api";
+import { usePublicThreadQuery } from "@/features/chat/threads/api";
 import { ChatThread } from "@/features/chat/threads/components";
 import { Message } from "ai/react";
-import { useParams, useSearchParams } from "next/navigation";
+import { redirect, useParams } from "next/navigation";
 import { useMemo } from "react";
 
-export default function ThreadsPage() {
-  const searchParams = useSearchParams();
+export default function ShareThreadPage() {
   const params = useParams<{ threadId: string }>();
-  const isNew = searchParams.get("new") === "true";
   const threadId = params.threadId;
 
-  const { data: thread, isLoading } = useThreadQuery(threadId, isNew);
+  const { data: thread, isFetched, isLoading } = usePublicThreadQuery(threadId);
 
   const initalMessages = useMemo(() => {
-    if (isNew) return [];
-
     if (!thread) return [];
 
     return (
@@ -47,12 +43,17 @@ export default function ThreadsPage() {
         })
       ) ?? []
     );
-  }, [isNew, thread]);
+  }, [thread]);
+
+  if (isFetched && thread?.isPublic !== true) {
+    return redirect("/");
+  }
 
   return (
     <ChatThread
       initalMessages={initalMessages}
       thread={thread}
+      viewOnly
       messagesAreBeingFetched={isLoading}
     />
   );
