@@ -7,10 +7,10 @@ import {
   serial,
   text,
   timestamp,
-  uniqueIndex,
   uuid,
   varchar,
   vector,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { customType } from "drizzle-orm/pg-core";
 
@@ -216,6 +216,7 @@ export const threads = pgTable("threads", {
   title: varchar("title", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  isPublic: boolean("is_public").default(false).notNull(),
   organizationId: uuid("organization_id").references(() => organizations.id, {
     onDelete: "cascade",
   }),

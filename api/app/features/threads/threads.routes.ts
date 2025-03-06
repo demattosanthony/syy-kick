@@ -10,6 +10,7 @@ import {
   createThreadSchema,
   getThreadsSchema,
   inferenceSchema,
+  updateThreadSchema,
 } from "./threads.schemas";
 
 const router = Router();
@@ -43,6 +44,19 @@ router.get(
   "/:threadId",
   handle(async (req) => {
     return threadsOps.getThread(req.params.threadId);
+  })
+);
+
+// Update thread
+router.put(
+  "/:threadId",
+  handle(async (req) => {
+    const { projectId, title, isPublic } = updateThreadSchema.parse(req.body);
+    return threadsOps.updateThread(req.params.threadId, req.dbUser!.id, {
+      isPublic,
+      title,
+      projectId,
+    });
   })
 );
 

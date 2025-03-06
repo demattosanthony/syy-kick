@@ -1,4 +1,4 @@
-import { Thread } from "@/types/chat";
+import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
@@ -434,11 +434,19 @@ class ThreadApi extends ApiRequest {
     }
   }
 
-  async getThread(threadId: string, organizationId?: string): Promise<Thread> {
-    const endpoint = organizationId
-      ? `/threads/${threadId}?organizationId=${organizationId}`
-      : `/threads/${threadId}`;
-    return await this.request<Thread>(endpoint);
+  async getThread(threadId: string): Promise<Thread> {
+    return await this.request<Thread>(`/threads/${threadId}`);
+  }
+
+  async getPublicThread(threadId: string): Promise<Thread> {
+    return await this.request<Thread>(`/public/threads/${threadId}`);
+  }
+
+  async updateThread(
+    threadId: string,
+    data: UpdateThreadMutationData
+  ): Promise<Thread> {
+    return await this.request<Thread>(`/threads/${threadId}`, "PUT", data);
   }
 
   async deleteThread(
