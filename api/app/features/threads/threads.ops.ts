@@ -134,8 +134,6 @@ const threadsOps = {
       })),
     };
 
-    console.log("Thread:", typedThread);
-
     // Return the thread with processed attachments
     return processThreadMessages(typedThread);
   },
