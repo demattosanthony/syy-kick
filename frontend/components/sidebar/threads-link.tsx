@@ -27,7 +27,7 @@ export function ThreadsLink() {
           state === "collapsed" && !isMobile
             ? "justify-center"
             : "justify-start",
-          isThreadsPage ? "bg-accent text-accent-foreground" : ""
+          isThreadsPage && "bg-accent text-accent-foreground"
         )}
       >
         {state === "collapsed" && !isMobile ? (

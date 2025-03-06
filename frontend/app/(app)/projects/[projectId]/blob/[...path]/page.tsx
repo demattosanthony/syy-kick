@@ -1,10 +1,10 @@
 "use client";
 
-import ProjectFileLayout from "@/components/projects/project-file-layout";
-import ProjectFileViewer from "@/components/projects/project-file-viewer";
+import { ProjectFileLayout } from "@/features/projects/components";
+import ProjectFileViewer from "@/features/projects/components/files/project-file-viewer";
 import { Card, CardContent } from "@/components/ui/card";
-import { useProjectDocQuery } from "@/queries/queries";
 import { useParams, usePathname } from "next/navigation";
+import { useProjectDocQuery } from "@/features/projects/api";
 
 export default function Page() {
   const pathname = usePathname();
@@ -21,7 +21,7 @@ export default function Page() {
   const { data: doc } = useProjectDocQuery(projectId, currentPath);
 
   const rightContent = (
-    <Card className="h-full overflow-y-auto">
+    <Card className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
       <CardContent className="flex flex-col h-full p-0">
         {doc && <ProjectFileViewer doc={doc} />}
       </CardContent>

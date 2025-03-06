@@ -23,10 +23,11 @@ import { ThreadsLink } from "./threads-link";
 import { SidebarProjectsList } from "./sidebar-projects-list";
 import { ProjectsButton } from "./projects-button";
 import { DropdownMenuGroup } from "../ui/dropdown-menu";
-import { Button } from "../ui/button";
-import { useAtom } from "jotai";
-import { pricingPlanDialogOpenAtom } from "../PricingDialog";
+import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "./workspace-context";
+import { Button } from "../ui/button";
+import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
 import { NewThreadButton } from "./new-thread-button";
 
@@ -34,20 +35,66 @@ export function AppSidebar({
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & { user: User }) {
-  const { state } = useSidebar();
+  const { state, setOpen } = useSidebar();
   const isMobile = useIsMobile();
-  const [, setShowPricingPlanDialog] = useAtom(pricingPlanDialogOpenAtom);
   const { activeWorkspace } = useWorkspace();
+  const [isPinned, setIsPinned] = React.useState(true);
+  const sidebarRef = React.useRef<HTMLDivElement>(null);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
+
+  // Keep pin state in sync with sidebar state
+  React.useEffect(() => {
+    if (state === "collapsed") {
+      setIsPinned(false);
+    }
+  }, [state]);
+
+  // Handle hover behavior
+  const handleMouseEnter = React.useCallback(() => {
+    if (state === "collapsed" && !isMobile) {
+      setOpen(true);
+    }
+  }, [state, isMobile, setOpen]);
+
+  const handleMouseLeave = React.useCallback(() => {
+    if (state === "expanded" && !isPinned && !isMobile && !isPopoverOpen) {
+      setOpen(false);
+    }
+  }, [isPinned, state, isMobile, setOpen, isPopoverOpen]);
+
+  // Toggle pin state
+  const togglePin = React.useCallback(() => {
+    setIsPinned((prev) => !prev);
+  }, []);
 
   //   const isHomePage = window.location.pathname === "/";
 
   return (
-    <Sidebar collapsible={"icon"} {...props}>
+    <Sidebar
+      collapsible={"icon"}
+      ref={sidebarRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      {...props}
+    >
       <SidebarHeader>
         <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between">
-          <WorkSpaceSwitcher />
+          <WorkSpaceSwitcher onDropdownOpenChange={setIsPopoverOpen} />
 
-          {state === "expanded" && <SidebarTrigger />}
+          {state === "expanded" && (
+            <div className="flex items-center">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={togglePin} variant={"ghost"} size={"icon"}>
+                    {isPinned ? <ArrowLeftToLine /> : <ArrowRightToLine />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isPinned ? "Unpin sidebar" : "Pin sidebar"}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </SidebarMenu>
       </SidebarHeader>
 
@@ -86,7 +133,10 @@ export function AppSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <ProjectsButton />
+                {!(
+                  activeWorkspace?.type === "personal" &&
+                  user.subscriptionStatus !== "active"
+                ) && <ProjectsButton />}
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -102,29 +152,20 @@ export function AppSidebar({
       <SidebarFooter className="mb-4 md:mb-0">
         <SidebarMenu className="flex flex-col w-full items-center group-data-[collapsible=icon]:justify-center justify-between">
           {state === "collapsed" && !isMobile && (
-            <SidebarTrigger className=" mb-1" />
+            <SidebarMenuItem>
+              <SidebarTrigger className=" mb-1" />
+            </SidebarMenuItem>
           )}
 
           {state === "expanded" &&
             user.subscriptionStatus !== "active" &&
             activeWorkspace?.type === "personal" && (
               <DropdownMenuGroup className="w-full mb-1">
-                <Button
-                  className="w-full"
-                  variant={"default"}
-                  onClick={(e) => {
-                    console.log("Upgrade to Pro");
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setShowPricingPlanDialog(true);
-                  }}
-                >
-                  Upgrade to Pro
-                </Button>
+                <PricingDialog />
               </DropdownMenuGroup>
             )}
 
-          <NavUser user={user} />
+          <NavUser user={user} onDropdownOpenChange={setIsPopoverOpen} />
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

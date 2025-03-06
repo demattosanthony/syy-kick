@@ -46,55 +46,86 @@
   }
 
   .dark {
-    /* Darker background with pure blacks */
-    --background: 0 0% 7%;
+    /* Slightly lighter dark background */
+    --background: 0 0% 10%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 7;
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 7%;
+    --popover: 0 0% 10%;
     --popover-foreground: 0 0% 98%;
 
     /* Clean white for primary in dark mode */
     --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 7%;
+    --primary-foreground: 0 0% 10%;
 
-    /* Darker greys for secondary elements */
-    --secondary: 0 0% 15%;
+    /* Slightly lighter greys for secondary elements */
+    --secondary: 0 0% 18%;
     --secondary-foreground: 0 0% 98%;
 
-    /* Muted dark greys */
-    --muted: 0 0% 15%;
+    /* Slightly lighter muted dark greys */
+    --muted: 0 0% 18%;
     --muted-foreground: 0 0% 65%;
 
-    /* Accent colors matching secondary */
-    --accent: 0 0% 15%;
+    /* Accent colors slightly lighter */
+    --accent: 0 0% 18%;
     --accent-foreground: 0 0% 98%;
 
     /* Deeper destructive red for dark mode */
     --destructive: 0 65% 30%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
     --ring: 0 0% 85%;
 
-    /* Sidebar with slightly different dark shade */
-    --sidebar-background: 0 0% 7%;
+    /* Sidebar with slightly lighter dark shade */
+    --sidebar-background: 0 0% 10%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 0 0% 7%;
-    --sidebar-accent: 0 0% 15%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 18%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 15%;
+    --sidebar-border: 0 0% 18%;
     --sidebar-ring: 0 0% 85%;
 
-    --theme-color: hsl(0 0% 7%);
+    --theme-color: hsl(0 0% 10%);
   }
+}
+
+.rpv-core__viewer {
+  box-shadow: none !important;
+}
+
+.rpv-core__viewer-page,
+.rpv-core__page-layer,
+.rpv-core__canvas-layer,
+.rpv-core__text-layer,
+.rpv-core__page-wrapper,
+.rpv-core__inner-page,
+.rpv-core__annotation-layer,
+.rpv-core__page-container {
+  box-shadow: none !important;
+  margin: 0;
+  border: none !important;
+  padding: 0 !important;
+  outline: none !important;
+}
+
+.dark .rpv-core__viewer-page,
+.dark .rpv-core__page-layer,
+.dark .rpv-core__canvas-layer,
+.dark .rpv-core__text-layer,
+.dark .rpv-core__page-wrapper,
+.dark .rpv-core__inner-page,
+.dark .rpv-core__annotation-layer,
+.dark .rpv-core__page-container {
+  background-color: hsl(var(--card));
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border outline-ring/50;
+
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: none;
     /* Prevent element dragging */
@@ -132,34 +163,4 @@
     /* -webkit-user-drag: none; */
     user-select: text;
   }
-}
-
-.rpv-core__viewer {
-  box-shadow: none !important;
-}
-
-.rpv-core__viewer-page,
-.rpv-core__page-layer,
-.rpv-core__canvas-layer,
-.rpv-core__text-layer,
-.rpv-core__page-wrapper,
-.rpv-core__inner-page,
-.rpv-core__annotation-layer,
-.rpv-core__page-container {
-  box-shadow: none !important;
-  margin: 0;
-  border: none !important;
-  padding: 0 !important;
-  outline: none !important;
-}
-
-.dark .rpv-core__viewer-page,
-.dark .rpv-core__page-layer,
-.dark .rpv-core__canvas-layer,
-.dark .rpv-core__text-layer,
-.dark .rpv-core__page-wrapper,
-.dark .rpv-core__inner-page,
-.dark .rpv-core__annotation-layer,
-.dark .rpv-core__page-container {
-  background-color: hsl(var(--card));
 }

@@ -9,12 +9,13 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { useDeleteThreadMutation, useThreadsQuery } from "@/queries/queries";
 import { User } from "@/types/user";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { SidebarItem } from "./sidebar-item";
 import { useParams, usePathname, useRouter } from "next/navigation";
+import { ChevronRight, History } from "lucide-react";
+import { useDeleteThreadMutation, useThreadsQuery } from "@/features/chat/threads/api";
 
 interface ThreadsListProps {
   user: User;
@@ -47,7 +48,10 @@ export function ThreadsList({ user }: ThreadsListProps) {
 
   return (
     <SidebarGroup key={"Recents"}>
-      <SidebarGroupLabel>{"Recent Threads"}</SidebarGroupLabel>
+      <SidebarGroupLabel className="gap-1">
+        <History className="max-h-[12px] max-w-[12px]" />
+        {"Recent Threads"}
+      </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {isLoading
@@ -77,10 +81,11 @@ export function ThreadsList({ user }: ThreadsListProps) {
             <Link href={"/threads"}>
               <Button
                 variant={"link"}
-                className="justify-start px-2"
+                className="justify-start px-2 gap-1 text-muted-foreground"
                 size={"sm"}
               >
                 View All
+                <ChevronRight className="max-h-[10px] max-w-[10px]" />
               </Button>
             </Link>
           )}

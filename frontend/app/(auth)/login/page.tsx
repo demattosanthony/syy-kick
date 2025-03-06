@@ -2,13 +2,13 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, ArrowRight, Key } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import Syyclops3dEye from "@/components/syy-eye";
+import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
+import { useAuth } from "@/features/auth/hooks";
 
 export default function LoginPage() {
   const router = useRouter();

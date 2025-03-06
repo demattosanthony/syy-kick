@@ -1,7 +1,6 @@
 "use server";
 
-import ThreadsList from "@/components/threads/threads-list";
-import SearchBar from "@/components/threads/threads-search";
+import { SearchBar, ThreadsList } from "@/features/chat/threads/components";
 
 export default async function ThreadsPage() {
   return (

@@ -15,7 +15,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useMeQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import {
   Dialog,
@@ -23,15 +22,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { CreateOrgForm } from "../organizations/create-org-form";
 import api from "@/lib/api";
 import { Workspace } from "@/types/workspace";
 import { useWorkspace } from "./workspace-context";
 import { Skeleton } from "../ui/skeleton";
 import { useRouter } from "next/navigation";
 import { PRICING_PLANS } from "@/lib/pricing";
+import { CreateOrgForm } from "@/features/organizations/components";
+import { useMeQuery } from "@/features/user/api";
 
-export function WorkSpaceSwitcher() {
+export function WorkSpaceSwitcher({
+  onDropdownOpenChange,
+}: {
+  onDropdownOpenChange?: (open: boolean) => void;
+}) {
   const router = useRouter();
   const { isMobile } = useSidebar();
   const { data: user } = useMeQuery();
@@ -74,13 +78,9 @@ export function WorkSpaceSwitcher() {
     }
 
     return (
-      <div className="flex h-6 w-6 items-center justify-center rounded-full shrink-0">
+      <div className="flex h-5 w-5 items-center justify-center  shrink-0">
         {workspace.logo ? (
-          <img
-            src={workspace.logo}
-            alt={workspace.name}
-            className="h-6 w-6 rounded-full"
-          />
+          <img src={workspace.logo} alt={workspace.name} className="h-5 w-5 " />
         ) : (
           <Building className="h-4 w-4" />
         )}
@@ -96,7 +96,7 @@ export function WorkSpaceSwitcher() {
 
   return (
     <SidebarMenuItem className="flex items-center flex-col">
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground flex w-full group-data-[collapsible=icon]:justify-center justify-start items-center gap-2 px-1">
             <WorkspaceLogo workspace={activeWorkspace} />
@@ -121,7 +121,7 @@ export function WorkSpaceSwitcher() {
             <DropdownMenuItem
               key={workspace.id}
               onClick={handleWorkspaceChange.bind(null, workspace)}
-              className="gap-2 p-2"
+              className="gap-2 p-2 cursor-pointer"
             >
               <WorkspaceLogo workspace={workspace} />
               <div className="flex flex-col">

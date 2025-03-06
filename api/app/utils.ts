@@ -2,6 +2,11 @@ import { generateText } from "ai";
 import { MODELS } from "./features/models";
 import { ApiResponse } from "./config/schema";
 import { Request, Response } from "express";
+import { Workspace } from "./middleware";
+
+export function getOrgIdOrUnedfined(workspace?: Workspace) {
+  return workspace?.type === "organization" ? workspace.id : undefined;
+}
 
 export async function generateThreadTitle(message: string) {
   const { text } = await generateText({

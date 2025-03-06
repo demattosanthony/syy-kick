@@ -6,7 +6,7 @@ import { useSidebar } from "../ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { CreateProjectDialog } from "../projects/create-project-dialog";
+import { CreateProjectDialog } from "@/features/projects/components";
 
 export function ProjectsButton() {
   const router = useRouter();
@@ -49,9 +49,9 @@ export function ProjectsButton() {
           trigger={
             <Button
               variant="ghost"
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 p-0 opacity-0 group-hover/projects:opacity-100 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 h-7 w-7 p-0 opacity-0 group-hover/projects:opacity-100 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-6 w-6" />
             </Button>
           }
         />

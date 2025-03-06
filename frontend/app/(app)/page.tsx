@@ -4,39 +4,29 @@ import api from "@/lib/api";
 
 // Hooks
 import { useAtom } from "jotai";
-import { useMeQuery } from "@/queries/queries";
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
-import { useWorkspace } from "@/components/sidebar/workspace-context";
 
 // State
 import { initalInputAtom } from "@/atoms/chat";
+import { pricingPlanDialogOpenAtom } from "@/components/PricingDialog";
 
 // Components
-import ConversationStarters from "@/components/ConversationStarters";
-import {
-  PricingDialog,
-  pricingPlanDialogOpenAtom,
-} from "@/components/PricingDialog";
-import { AnimatedGreeting } from "@/components/AnimatedGreeting";
+import ConversationStarters from "@/features/chat/messages/components/conversation-starters";
 import InstallPrompt from "@/components/InstallPrompt";
 import { toast } from "sonner";
-import ChatInputForm, {
-  ChatInputFormRef,
-} from "@/components/chat/ChatInputForm";
-import Syyclops3dEye from "@/components/syy-eye";
+import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
+import { AnimatedGreeting, ChatInputForm, ChatInputFormRef } from "@/features/chat/messages/components";
+import { useMeQuery } from "@/features/user/api";
 
 export default function Home() {
   const router = useRouter();
 
   const [initalInput, setInitalInput] = useAtom(initalInputAtom);
 
-  const [showPricingDialog, setShowPricingDialog] = useAtom(
-    pricingPlanDialogOpenAtom
-  );
+  const [, setShowPricingDialog] = useAtom(pricingPlanDialogOpenAtom);
 
   const { data: user } = useMeQuery();
-  const { activeWorkspace } = useWorkspace();
 
   const chatInputRef = useRef<ChatInputFormRef>(null);
 
@@ -55,11 +45,7 @@ export default function Home() {
 
     try {
       // Create thread in background
-      const { id: threadId } = await api.threads.createThread(
-        activeWorkspace?.type === "organization"
-          ? activeWorkspace.id
-          : undefined
-      );
+      const { id: threadId } = await api.threads.createThread();
       router.prefetch(`/threads/${threadId}?new=true`);
       router.push(`/threads/${threadId}?new=true`);
     } catch (error: unknown) {
@@ -81,16 +67,8 @@ export default function Home() {
     <>
       <InstallPrompt />
 
-      {user &&
-        user?.subscriptionStatus !== "active" &&
-        showPricingDialog &&
-        !(
-          activeWorkspace?.type === "organization" &&
-          activeWorkspace.subscriptionStatus === "active"
-        ) && <PricingDialog />}
-
       <div className="w-full flex flex-1 items-center justify-center">
-        <div className="flex flex-col h-[65%] md:h-[50%] items-center w-full ">
+        <div className="flex flex-col h-[65%] md:h-[55%] items-center w-full ">
           <div className="w-[175px] flex items-center justify-center">
             <Syyclops3dEye size={175} />
           </div>
