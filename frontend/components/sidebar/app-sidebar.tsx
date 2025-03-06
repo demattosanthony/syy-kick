@@ -18,7 +18,6 @@ import { NavUser } from "./nav-user";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@/types/user";
 import { WorkSpaceSwitcher } from "./workspace-switcher";
-import { NewThreadButton } from "./new-thread-button";
 import { ThreadsList } from "./sidebar-threads-list";
 import { ThreadsLink } from "./threads-link";
 import { SidebarProjectsList } from "./sidebar-projects-list";
@@ -29,6 +28,7 @@ import { useWorkspace } from "./workspace-context";
 import { Button } from "../ui/button";
 import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { NewThreadButton } from "./new-thread-button";
 
 export function AppSidebar({
   user,
