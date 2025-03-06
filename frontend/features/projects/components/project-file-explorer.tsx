@@ -11,12 +11,20 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, getRelativeTimeString } from "@/lib/utils";
 import { DocumentContent } from "@/types/project";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useProjectDocsQuery, useDeleteProjectContentMutation } from "../api";
 
 interface ProjectFileExplorerProps {
