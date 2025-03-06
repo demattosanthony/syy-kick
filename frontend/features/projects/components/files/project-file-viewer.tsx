@@ -80,35 +80,37 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
       const bodyRows = rows.slice(1);
 
       return (
-        <div className="h-full w-full overflow-auto whitespace-nowrap">
-          <table className="min-w-full table-fixed border-collapse">
-            <thead>
-              <tr className="bg-gray-100 font-semibold">
-                {headerRow?.split(",").map((cell, cellIndex) => (
-                  <td
-                    key={cellIndex}
-                    className="px-4 py-2 border overflow-hidden text-ellipsis"
-                  >
-                    {cell.trim()}
-                  </td>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {bodyRows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-t">
-                  {row.split(",").map((cell, cellIndex) => (
+        <div className="flex flex-1 w-full max-w-[70rem]">
+          <div className="h-full w-full overflow-auto whitespace-nowrap">
+            <table className="min-w-full table-fixed border-collapse">
+              <thead>
+                <tr className="bg-secondary font-semibold">
+                  {headerRow?.split(",").map((cell, i) => (
                     <td
-                      key={cellIndex}
+                      key={i}
                       className="px-4 py-2 border overflow-hidden text-ellipsis"
                     >
                       {cell.trim()}
                     </td>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {bodyRows.map((row, i) => (
+                  <tr key={i} className="border-t">
+                    {row.split(",").map((cell, j) => (
+                      <td
+                        key={j}
+                        className="px-4 py-2 border overflow-hidden text-ellipsis"
+                      >
+                        {cell.trim()}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       );
     case "text/plain":
