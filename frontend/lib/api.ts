@@ -435,7 +435,6 @@ class ThreadApi extends ApiRequest {
   }
 
   async getThread(threadId: string): Promise<Thread> {
-    console.log("Fetching thread", threadId);
     return await this.request<Thread>(`/threads/${threadId}`);
   }
 
