@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useThreadsQuery } from "@/features/chat/threads/api";
 import { getModelIconPath } from "../../messages/utils";
-import { getRelativeTimeString } from "@/lib/utils";
+import { cn, getRelativeTimeString } from "@/lib/utils";
 
 export default function ThreadsList({
   projectId,
@@ -99,7 +99,9 @@ function ThreadItem({
 
           <div className="flex-1 min-w-0">
             <div
-              className={`font-semibold ${compact ? "text-sm" : "text-base"}`}
+              className={` ${
+                compact ? "text-sm font-medium" : "text-base font-semibold"
+              }`}
             >
               {title
                 ? title
@@ -109,12 +111,17 @@ function ThreadItem({
                 ? model
                 : "AI Assistant"}
             </div>
-            <p className="text-sm text-muted-foreground line-clamp-2 max-w-[calc(100vw-8rem)] md:max-w-[calc(100vw-8rem)]">
+            <p
+              className={cn(
+                "text-sm text-muted-foreground line-clamp-2",
+                compact ? "max-w-[230px]" : "max-w-[calc(100vw-8rem)]",
+                compact ? "md:max-w-[230px]" : "md:max-w-[calc(100vw-8rem)]"
+              )}
+            >
               {lastMessage.text}
             </p>
             <time className="text-xs text-muted-foreground">
               {getRelativeTimeString(lastMessage.createdAt)}
-              {/* {new Date(lastMessage.createdAt).toLocaleDateString()} */}
             </time>
           </div>
         </div>

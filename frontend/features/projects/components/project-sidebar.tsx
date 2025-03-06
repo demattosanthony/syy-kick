@@ -25,7 +25,7 @@ export default function ProjectSidebar({
       <ProjectStatusCard project={project} />
 
       <Card className="overflow-hidden">
-        <CardHeader className="px-4 py-3 border-b">
+        <CardHeader className="px-4 pt-2 pb-1">
           <CardTitle className="text-base font-semibold flex items-center justify-between gap-2">
             <div
               className="flex items-center transition-opacity duration-300"
@@ -60,7 +60,7 @@ export default function ProjectSidebar({
           </CardTitle>
         </CardHeader>
 
-        <CardContent className="p-2 h-[min(calc(100vh-400px),calc(100vh*0.42))] min-h-[300px] max-h-[800px] overflow-hidden">
+        <CardContent className="px-2 pt-0 h-[min(calc(100vh-400px),calc(100vh*0.42))] min-h-[300px] max-h-[800px] overflow-hidden">
           <ScrollArea className="h-full w-full">
             <ThreadsList projectId={projectId} compact />
           </ScrollArea>
