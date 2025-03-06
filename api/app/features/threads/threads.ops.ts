@@ -138,6 +138,32 @@ const threadsOps = {
     return processThreadMessages(typedThread);
   },
 
+  async updateThread(
+    threadId: string,
+    userId: string,
+    data: { isPublic?: boolean; projectId?: string; title?: string }
+  ) {
+    const updateData: any = {
+      ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
+      ...(data.projectId !== undefined && { projectId: data.projectId }),
+      ...(data.title !== undefined && { title: data.title }),
+      updatedAt: new Date(),
+    };
+
+    if (Object.keys(updateData).length === 1) {
+      // Only updatedAt exists
+      return { message: "No changes to update" };
+    }
+
+    await db
+      .update(threads)
+      .set(updateData)
+      .where(eq(threads.id, threadId))
+      .returning();
+
+    return { message: "Thread updated successfully" };
+  },
+
   async listThreads(
     userId: string,
     page: number,

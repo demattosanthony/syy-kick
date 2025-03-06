@@ -9,6 +9,12 @@ const getThreadsSchema = z.object({
   search: z.string().optional(),
 });
 
+const updateThreadSchema = z.object({
+  projectId: z.string().optional(),
+  title: z.string().optional(),
+  isPublic: z.boolean().optional(),
+});
+
 const inferenceSchema = z.object({
   model: z.string(),
   maxTokens: z.number().optional(),
@@ -33,4 +39,9 @@ const inferenceSchema = z.object({
   }),
 });
 
-export { createThreadSchema, getThreadsSchema, inferenceSchema };
+export {
+  createThreadSchema,
+  getThreadsSchema,
+  inferenceSchema,
+  updateThreadSchema,
+};

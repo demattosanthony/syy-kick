@@ -71,6 +71,7 @@ export interface Thread {
   organizationId?: string;
   projectId?: string;
   project?: Project;
+  isPublic?: boolean;
   messages: ChatMessage[];
 }
 
@@ -83,3 +84,9 @@ export type Artifact = {
   version?: number;
   autoSelected?: boolean;
 };
+
+export interface UpdateThreadMutationData {
+  title?: string;
+  projectId?: string;
+  isPublic?: boolean;
+}
