@@ -11,6 +11,7 @@ interface SearchBarProps {
   debounceMs?: number;
   className?: string;
   searchParamKey?: string;
+  onClose?: () => void;
 }
 
 export default function SearchBar({
@@ -18,6 +19,7 @@ export default function SearchBar({
   debounceMs = 300,
   className = "mb-6",
   searchParamKey = "search",
+  onClose,
 }: SearchBarProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -53,6 +55,8 @@ export default function SearchBar({
         className="w-full pl-9 py-2 border-none bg-accent"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
+        onBlur={() => onClose && onClose()}
+        autoFocus
       />
     </div>
   );

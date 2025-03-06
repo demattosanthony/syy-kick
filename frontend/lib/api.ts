@@ -418,12 +418,12 @@ class ThreadApi extends ApiRequest {
   async getThreads(
     page: number = 1,
     search: string = "",
-    organizationId?: string
+    projectId?: string
   ): Promise<Thread[]> {
     const queryParams = new URLSearchParams({
       page: page.toString(),
       search: search,
-      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
     });
     const endpoint = `/threads?${queryParams.toString()}`;
 

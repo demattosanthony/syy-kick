@@ -168,7 +168,8 @@ const threadsOps = {
     userId: string,
     page: number,
     search: string,
-    organizationId?: string
+    organizationId?: string,
+    projectId?: string
   ) {
     const LIMIT = 10;
     const offset = (page - 1) * LIMIT;
@@ -179,6 +180,11 @@ const threadsOps = {
     } else {
       // organizationId is null
       conditions.push(sql`${threads.organizationId} IS NULL`);
+    }
+
+    // Add project filtering if projectId is provided
+    if (projectId) {
+      conditions.push(eq(threads.projectId, projectId));
     }
 
     let baseQuery;

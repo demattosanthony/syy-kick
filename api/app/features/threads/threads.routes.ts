@@ -28,13 +28,14 @@ router.post(
 router.get(
   "/",
   handle(async (req) => {
-    const { page, search } = getThreadsSchema.parse(req.query);
+    const { page, search, projectId } = getThreadsSchema.parse(req.query);
     const orgId = getOrgIdOrUnedfined(req.workspace);
     return threadsOps.listThreads(
       req.dbUser!.id,
       parseInt(page || "1", 10),
       (search || "").trim(),
-      orgId
+      orgId,
+      projectId
     );
   })
 );
