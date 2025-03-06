@@ -29,6 +29,7 @@ import { Button } from "../ui/button";
 import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { NewThreadButton } from "./new-thread-button";
+import { scrollbarStyle } from "@/lib/utils";
 
 export function AppSidebar({
   user,
@@ -95,7 +96,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className={scrollbarStyle}>
         <SidebarGroup>
           <SidebarGroupContent className="px-1.5 md:px-0">
             <SidebarMenu>
