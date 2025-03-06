@@ -187,7 +187,13 @@ function FileExplorerItem({
       }
       router.push(`/projects/${projectId}/tree/${item.path}`);
     } else {
-      router.push(`/projects/${projectId}/blob/${item.path}`);
+      // Properly encode the path to handle special characters like #
+      const encodedPath = item.path
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+
+      router.push(`/projects/${projectId}/blob/${encodedPath}`);
     }
   };
 
