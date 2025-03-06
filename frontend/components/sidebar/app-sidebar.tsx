@@ -102,28 +102,6 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupContent className="px-1.5 md:px-0">
             <SidebarMenu>
-              {/* <Link href={"/"} prefetch>
-                <Button
-                  variant={"ghost"}
-                  className={cn(
-                    "w-full px-2",
-                    state === "collapsed" && !isMobile
-                      ? "justify-center"
-                      : "justify-start",
-                    isHomePage ? "bg-accent text-accent-foreground" : ""
-                  )}
-                >
-                  {state === "collapsed" && !isMobile ? (
-                    <House />
-                  ) : (
-                    <>
-                      <House />
-                      Home
-                    </>
-                  )}
-                </Button>
-              </Link> */}
-
               <SidebarMenuItem>
                 <NewThreadButton />
               </SidebarMenuItem>
