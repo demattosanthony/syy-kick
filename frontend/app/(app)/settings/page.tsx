@@ -9,17 +9,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useMeQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { useAtom } from "jotai";
 import { instructionsAtom } from "@/atoms/chat";
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import AdminSettings from "@/components/settings/admin-settings";
+import AdminSettings from "@/features/settings/components/admin-settings";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useWorkspace } from "@/components/sidebar/workspace-context";
-import { OrganizationSettings } from "@/components/organizations/org-settings";
+import { OrganizationSettings } from "@/features/organizations/components";
+import { useMeQuery } from "@/features/user/api";
 
 export default function UserSettings() {
   const { data: user } = useMeQuery();

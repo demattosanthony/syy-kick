@@ -15,7 +15,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useMeQuery } from "@/queries/queries";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import {
   Dialog,
@@ -23,13 +22,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { CreateOrgForm } from "../organizations/create-org-form";
 import api from "@/lib/api";
 import { Workspace } from "@/types/workspace";
 import { useWorkspace } from "./workspace-context";
 import { Skeleton } from "../ui/skeleton";
 import { useRouter } from "next/navigation";
 import { PRICING_PLANS } from "@/lib/pricing";
+import { CreateOrgForm } from "@/features/organizations/components";
+import { useMeQuery } from "@/features/user/api";
 
 export function WorkSpaceSwitcher({
   onDropdownOpenChange,
@@ -80,7 +80,11 @@ export function WorkSpaceSwitcher({
     return (
       <div className="flex h-5 w-5 items-center justify-center  shrink-0">
         {workspace.logo ? (
-          <img src={workspace.logo} alt={workspace.name} className="h-5 w-5 " />
+          <img
+            src={workspace.logo}
+            alt={workspace.name}
+            className="h-5 w-5 rounded"
+          />
         ) : (
           <Building className="h-4 w-4" />
         )}
