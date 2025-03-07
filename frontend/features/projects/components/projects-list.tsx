@@ -3,44 +3,87 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Project } from "@/types/project";
 import { getRelativeTimeString } from "@/lib/utils";
 import { FolderClosed, FolderOpen } from "lucide-react";
-import { useProjectsQuery } from "../api";
+import { useInfiniteProjectsQuery } from "../api";
 
 const ProjectsList = () => {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { data: projects, isLoading } = useProjectsQuery({
-    search: search,
-  });
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+    useInfiniteProjectsQuery({
+      search: search,
+      limit: 10,
+    });
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = scrollRef.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) observer.unobserve(currentTarget);
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Use a Set to deduplicate projects by ID
+  const uniqueProjects = useMemo(() => {
+    const projectsMap = new Map<string, Project>();
+
+    if (data?.pages) {
+      data.pages.forEach((page) => {
+        page.data.forEach((project) => {
+          if (!projectsMap.has(project.id)) {
+            projectsMap.set(project.id, project);
+          }
+        });
+      });
+    }
+
+    return Array.from(projectsMap.values());
+  }, [data?.pages]);
 
   return (
     <ScrollArea className="h-[calc(100vh-175px)] px-2">
-      {projects?.length === 0 ? (
+      {uniqueProjects.length === 0 && !isLoading ? (
         <div className="flex items-center justify-center h-full">
           <p className="text-muted-foreground">No projects found</p>
         </div>
       ) : (
-        projects?.map((project, i) => <ProjectItem key={i} project={project} />)
-      )}
+        <>
+          {uniqueProjects.map((project) => (
+            <ProjectItem key={project.id} project={project} />
+          ))}
 
-      <div ref={scrollRef} className="h-10">
-        {isLoading && (
-          <div className="space-y-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <ProjectSkeleton key={i} />
-            ))}
+          <div ref={scrollRef} className="h-10">
+            {(isFetchingNextPage || isLoading) && (
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <ProjectSkeleton key={i} />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </ScrollArea>
   );
-}
+};
 
 function ProjectItem({ project }: { project: Project }) {
   return (
@@ -55,7 +98,7 @@ function ProjectItem({ project }: { project: Project }) {
           <div className="flex-1 min-w-0">
             <p className="text-xl font-medium">{project.name}</p>
 
-            <p className="text-xs text-muted-foreground ">
+            <p className="text-xs text-muted-foreground">
               Updated {getRelativeTimeString(project.updatedAt)}
             </p>
           </div>
@@ -69,10 +112,10 @@ function ProjectSkeleton() {
   return (
     <div className="p-4">
       <div className="flex items-start gap-4">
-        <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+        <Skeleton className="w-6 h-6 rounded flex-shrink-0" />
         <div className="flex-1">
-          <Skeleton className="h-4 w-1/4 mb-2" />
-          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-5 w-1/3 mb-2" />
+          <Skeleton className="h-3 w-1/4" />
         </div>
       </div>
     </div>

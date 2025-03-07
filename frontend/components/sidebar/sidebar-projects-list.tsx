@@ -34,7 +34,9 @@ export function SidebarProjectsList({ user }: ProjectsListProps) {
       : null
     : null;
 
-  const { data: projects, isLoading } = useProjectsQuery();
+  const { data: projects, isLoading } = useProjectsQuery({
+    limit: 8,
+  });
   const deleteProjectMutatio = useDeleteProjectMutation();
 
   const handleDeleteProject = async (id: string) => {
