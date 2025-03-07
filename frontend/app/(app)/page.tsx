@@ -16,7 +16,11 @@ import ConversationStarters from "@/features/chat/messages/components/conversati
 import InstallPrompt from "@/components/InstallPrompt";
 import { toast } from "sonner";
 import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
-import { AnimatedGreeting, ChatInputForm, ChatInputFormRef } from "@/features/chat/messages/components";
+import {
+  AnimatedGreeting,
+  ChatInputForm,
+  ChatInputFormRef,
+} from "@/features/chat/messages/components";
 import { useMeQuery } from "@/features/user/api";
 
 export default function Home() {
@@ -26,7 +30,7 @@ export default function Home() {
 
   const [, setShowPricingDialog] = useAtom(pricingPlanDialogOpenAtom);
 
-  const { data: user } = useMeQuery();
+  const { data: user, isFetched: userIsFetched } = useMeQuery();
 
   const chatInputRef = useRef<ChatInputFormRef>(null);
 
@@ -85,13 +89,34 @@ export default function Home() {
       </div>
 
       <div className="w-full flex items-center justify-center mx-auto p-6 pb-8 md:pb-4 md:p-2 absolute bottom-0 left-0 right-0">
-        <ChatInputForm
-          input={initalInput}
-          setInput={setInitalInput}
-          handleInputChange={handleInputChange}
-          ref={chatInputRef}
-          onSubmit={handleSubmit}
-        />
+        <div className="flex flex-col w-full max-w-3xl">
+          <ChatInputForm
+            input={initalInput}
+            setInput={setInitalInput}
+            handleInputChange={handleInputChange}
+            ref={chatInputRef}
+            onSubmit={handleSubmit}
+          />
+
+          {!user && userIsFetched && (
+            <div className="text-xs text-gray-500 text-center mt-2">
+              By using our service, you agree to our{" "}
+              <a
+                href="/policies/terms-of-use"
+                className="underline hover:text-gray-700"
+              >
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a
+                href="/policies/privacy-policy"
+                className="underline hover:text-gray-700"
+              >
+                Privacy Policy
+              </a>
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
