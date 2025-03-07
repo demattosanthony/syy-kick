@@ -12,7 +12,7 @@ export default function ShareThreadPage() {
   const threadId = params.threadId;
 
   const { data: thread, isFetched, isLoading } = usePublicThreadQuery(threadId);
-  const {data: me} = useMeQuery()
+  const { data: me } = useMeQuery();
 
   const initalMessages = useMemo(() => {
     if (!thread) return [];
@@ -20,11 +20,11 @@ export default function ShareThreadPage() {
     return mapThreadMessagesToMessages(thread);
   }, [thread]);
 
-const isAllowedToCloneThread = !thread?.organizationId || !!(
-  me?.organizationMembers?.some(
-    (member) => member.organization.id === thread?.organizationId
-  )
-);
+  const isAllowedToCloneThread =
+    !thread?.organizationId ||
+    !!me?.organizationMembers?.some(
+      (member) => member.organization.id === thread?.organizationId
+    );
 
   if (isFetched && thread?.isPublic !== true) {
     return redirect("/");
