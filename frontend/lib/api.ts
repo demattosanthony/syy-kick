@@ -459,6 +459,13 @@ class ThreadApi extends ApiRequest {
     const endpoint = `/threads/${threadId}?${queryParams.toString()}`;
     return await this.request<{ success: boolean }>(endpoint, "DELETE");
   }
+
+  async cloneThread(threadId: string): Promise<{ id: string }> {
+    return await this.request<{ id: string }>(
+      `/threads/${threadId}/clone`,
+      "POST"
+    );
+  }
 }
 
 /**

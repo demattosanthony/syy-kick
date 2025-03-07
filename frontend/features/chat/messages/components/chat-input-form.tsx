@@ -215,7 +215,7 @@ function ChatInputForm(
                 open={showFileExplorer}
                 onOpenChange={setShowFileExplorer}
               >
-                <DialogContent className="sm:max-w-[500px] h-auto max-h-[600px]">
+                <DialogContent className="max-w-[500px] h-auto max-h-[600px] md:max-w-[650px] overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>Select files for context</DialogTitle>
                     <DialogDescription>

@@ -314,7 +314,7 @@ const threadsOps = {
         instructions && instructions.length > 0 ? instructions : undefined
       );
 
-      //   console.log("Inference messages:", inferenceMsgs);
+      // console.log("Inference messages:", inferenceMsgs);
 
       // 5) Generate a thread title if missing
       await maybeGenerateTitle(threadId, inferenceMsgs, thread.title);
@@ -503,6 +503,101 @@ const threadsOps = {
         )
       );
     return { success: true };
+  },
+
+  async cloneThread(userId: string, threadId: string) {
+    const sourceThread = await threadsOps.getThread(threadId);
+    if (!sourceThread) {
+      throw new Error("Thread not found");
+    }
+
+    // Create a new thread with all properties from source thread
+    const [newThread] = await db
+      .insert(threads)
+      .values({
+        userId,
+        organizationId: sourceThread.organizationId,
+        projectId: sourceThread.organizationId
+          ? sourceThread.projectId
+          : undefined, // Only clone project if it's part of the same organization, as the user can only clone a thread if they have access to the project. So both users have access to the project.
+        isPublic: false, // Always set cloned threads to private initially
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    // Fetch original messages with embeddings
+    const originalMessages = await db.query.messages.findMany({
+      where: eq(messages.threadId, threadId),
+      orderBy: messages.createdAt,
+      with: { attachments: true, toolCalls: true },
+    });
+
+    // Clone all messages with embeddings
+    const messagesToCopy = originalMessages.map((msg) => ({
+      userId,
+      threadId: newThread.id,
+      role: msg.role,
+      text: msg.text || "",
+      reasoning: msg.reasoning || null,
+      model: msg.model || null,
+      provider: msg.provider || null,
+      embedding: msg.embedding, // Copy embedding for search functionality
+      createdAt: new Date(),
+    }));
+
+    // Insert all messages first to get their IDs
+    const insertedMessages = [];
+    for (const msg of messagesToCopy) {
+      const [insertedMsg] = await db
+        .insert(messages)
+        .values({
+          ...msg,
+          id: crypto.randomUUID(),
+        })
+        .returning();
+
+      insertedMessages.push(insertedMsg);
+    }
+
+    // Now handle attachments and tool calls for each message
+    for (let i = 0; i < sourceThread.messages.length; i++) {
+      const sourceMsg = sourceThread.messages[i];
+      const newMsg = insertedMessages[i];
+
+      // Clone attachments
+      if (sourceMsg.attachments && sourceMsg.attachments.length > 0) {
+        for (const att of sourceMsg.attachments) {
+          await db.insert(messageAttachments).values({
+            messageId: newMsg.id,
+            fileName: att.fileName || null,
+            mimeType: att.mimeType || null,
+            fileKey: att.fileKey,
+            type: att.type || null,
+            size: att.size || null,
+          });
+        }
+      }
+
+      // Clone tool calls
+      if (sourceMsg.toolCalls && sourceMsg.toolCalls.length > 0) {
+        for (const call of sourceMsg.toolCalls) {
+          await db.insert(toolCallsTable).values({
+            id: crypto.randomUUID(), // Generate new ID for tool call
+            messageId: newMsg.id,
+            toolName: call.toolName,
+            toolCallId: call.toolCallId,
+            args: call.args,
+            status: call.status as any,
+            result: call.result,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      }
+    }
+
+    return { id: newThread.id };
   },
 };
 
