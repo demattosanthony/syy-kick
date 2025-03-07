@@ -86,4 +86,12 @@ router.delete(
   })
 );
 
+// Clone a thread
+router.post(
+  "/:threadId/clone",
+  handle(async (req) => {
+    return threadsOps.cloneThread(req.dbUser!.id, req.params.threadId);
+  })
+);
+
 export default router;
