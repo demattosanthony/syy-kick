@@ -863,8 +863,6 @@ ${
 </users_current_project>`;
   }
 
-  console.log(systemMsg);
-
   return systemMsg;
 }
 
