@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Key } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
 import { useAuth } from "@/features/auth/hooks";
@@ -154,10 +153,17 @@ export default function LoginPage() {
         )}
       </main>
 
-      <div className="absolute bottom-2">
-        <Link href={"https://syyclops.com"} target="_blank">
-          <Button variant={"link"}>By Syyclops</Button>
-        </Link>
+      <div className="absolute bottom-8 flex flex-col items-center gap-2">
+        <div className="text-xs text-gray-500 text-center">
+          By using our service, you agree to our{" "}
+          <a href="/terms" className="underline hover:text-gray-700">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="/privacy" className="underline hover:text-gray-700">
+            Privacy Policy
+          </a>
+        </div>
       </div>
     </div>
   );

@@ -241,7 +241,7 @@ function FileExplorerItem({
               )}
             </span>
           )}
-          <span className="text-sm hover:underline hover:text-blue-500 truncate flex-1 min-w-0">
+          <span className="text-sm hover:underline hover:text-blue-500 truncate min-w-0 max-w-[calc(100vw*0.55)] md:max-w-[calc(100vw*0.30)]">
             {item.name}
           </span>
 
@@ -250,7 +250,7 @@ function FileExplorerItem({
               <TooltipTrigger>
                 <div
                   className={cn(
-                    "h-2 w-2 rounded-full shadow-md flex-shrink-0",
+                    "h-2 w-2 rounded-full shadow-md flex-shrink-0 ml-2",
                     {
                       "bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20":
                         item.processingJob.status === "failed",
