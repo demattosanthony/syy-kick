@@ -43,8 +43,14 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
   switch (doc.mimeType) {
     case "application/pdf":
       return (
-        <div className="h-full w-full overflow-hidden">
-          <PdfViewer content={doc.url || ""} fileName={doc.name} />
+        <div className="h-full w-full overflow-hidden flex flex-col">
+          <div className="flex-1 relative">
+            <embed
+              src={`${doc.url}#navpanes=0&statusbar=0`}
+              className="w-full h-full absolute inset-0 border-none"
+              title={doc.name}
+            />
+          </div>
         </div>
       );
     case "image/jpeg":
