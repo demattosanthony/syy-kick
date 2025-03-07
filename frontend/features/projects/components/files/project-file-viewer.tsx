@@ -4,7 +4,6 @@ import { DocumentContent } from "@/types/project";
 import ReactPlayer from "react-player";
 import { ArrowDown, File } from "lucide-react";
 import { useEffect, useState } from "react";
-import PdfViewer from "@/features/chat/messages/components/viewers/pdf-viewer";
 import {
   MarkdownViewer,
   MultiSheetViewer,
