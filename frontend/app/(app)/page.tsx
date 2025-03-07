@@ -68,56 +68,58 @@ export default function Home() {
   };
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen max-h-screen overflow-hidden">
       <InstallPrompt />
 
-      <div className="w-full flex flex-1 items-center justify-center">
-        <div className="flex flex-col h-[65%] md:h-[55%] items-center w-full ">
-          <div className="w-[175px] flex items-center justify-center">
-            <Syyclops3dEye size={175} />
+      <main className="flex-1 flex flex-col py-6 overflow-y-auto">
+        <div className="flex flex-col items-center w-full gap-6 pb-4">
+          <div className="w-[115px] flex items-center justify-center min-h-[115px]">
+            <Syyclops3dEye size={115} animate={false} />
           </div>
 
           <div className="flex flex-col gap-6">
             <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
+          </div>
 
-            <ConversationStarters
-              triggerFileInput={() => chatInputRef.current?.triggerFileInput()}
-              triggerTextAreaFocus={() => chatInputRef.current?.focusTextArea()}
+          <div className="flex flex-col w-full max-w-3xl px-6 md:px-2">
+            <ChatInputForm
+              input={initalInput}
+              setInput={setInitalInput}
+              handleInputChange={handleInputChange}
+              ref={chatInputRef}
+              onSubmit={handleSubmit}
             />
+
+            <div className="mt-6">
+              <ConversationStarters
+                triggerFileInput={() =>
+                  chatInputRef.current?.triggerFileInput()
+                }
+                triggerTextAreaFocus={() =>
+                  chatInputRef.current?.focusTextArea()
+                }
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
-      <div className="w-full flex items-center justify-center mx-auto p-6 pb-8 md:pb-4 md:p-2 absolute bottom-0 left-0 right-0">
-        <div className="flex flex-col w-full max-w-3xl">
-          <ChatInputForm
-            input={initalInput}
-            setInput={setInitalInput}
-            handleInputChange={handleInputChange}
-            ref={chatInputRef}
-            onSubmit={handleSubmit}
-          />
-
-          {!user && userIsFetched && (
-            <div className="text-xs text-gray-500 text-center mt-2">
-              By using our service, you agree to our{" "}
-              <a
-                href="/policies/terms-of-use"
-                className="underline hover:text-gray-700"
-              >
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a
-                href="/policies/privacy-policy"
-                className="underline hover:text-gray-700"
-              >
-                Privacy Policy
-              </a>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+      <footer className="text-xs text-gray-500 text-center p-4 shrink-0">
+        By using our service, you agree to our{" "}
+        <a
+          href="/policies/terms-of-use"
+          className="underline hover:text-gray-700"
+        >
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a
+          href="/policies/privacy-policy"
+          className="underline hover:text-gray-700"
+        >
+          Privacy Policy
+        </a>
+      </footer>
+    </div>
   );
 }
