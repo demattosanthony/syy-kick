@@ -34,6 +34,7 @@ import {
   ChatInputForm,
   ChatMessagesList,
 } from "@/features/chat/messages/components";
+import { CloneThreadButton } from "./clone-thread-button";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -44,11 +45,13 @@ export default function ThreadPage({
   thread,
   viewOnly = false,
   messagesAreBeingFetched = false,
+  showCloneThreadButton = false,
 }: {
   initalMessages: Message[];
   thread?: Thread;
   viewOnly?: boolean;
   messagesAreBeingFetched?: boolean;
+  showCloneThreadButton?: boolean;
 }) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -241,6 +244,12 @@ export default function ThreadPage({
               showContextSelector={thread?.project !== null}
               projectId={thread?.project?.id}
             />
+          </div>
+        )}
+
+        {showCloneThreadButton && (
+          <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
+            <CloneThreadButton threadId={threadId} />
           </div>
         )}
       </div>

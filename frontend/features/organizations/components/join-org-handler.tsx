@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import Syyclops3dEye from "../../chat/messages/components/syy-eye";
 import { useAuth } from "@/features/auth/hooks";
 import { useOrgFromInviteToken } from "../api";
@@ -45,7 +44,7 @@ const JoinOrgHandler = ({ token }: { token: string }) => {
         return;
       }
 
-      router.push("/?orgId=" + orgDetails?.organization.id);
+      window.location.href = "/?orgId=" + orgDetails?.organization.id;
     } catch {
       setError("Failed to join organization");
     } finally {
