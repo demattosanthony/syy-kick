@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Key } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
 import { useAuth } from "@/features/auth/hooks";
