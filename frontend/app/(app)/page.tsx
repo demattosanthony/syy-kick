@@ -73,7 +73,7 @@ export default function Home() {
 
       <main className="flex-1 flex flex-col py-6 overflow-y-auto">
         <div className="flex flex-col items-center w-full gap-6 pb-4">
-          <div className="w-[115px] flex items-center justify-center min-h-[115px]">
+          <div className="w-[115px] flex items-center justify-center min-h-[115px] mt-[8vh]">
             <Syyclops3dEye size={115} animate={false} />
           </div>
 
@@ -104,22 +104,24 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="text-xs text-gray-500 text-center p-4 shrink-0">
-        By using our service, you agree to our{" "}
-        <a
-          href="/policies/terms-of-use"
-          className="underline hover:text-gray-700"
-        >
-          Terms of Service
-        </a>{" "}
-        and{" "}
-        <a
-          href="/policies/privacy-policy"
-          className="underline hover:text-gray-700"
-        >
-          Privacy Policy
-        </a>
-      </footer>
+      {userIsFetched && !user && (
+        <footer className="text-xs text-gray-500 text-center p-4 shrink-0">
+          By using our service, you agree to our{" "}
+          <a
+            href="/policies/terms-of-use"
+            className="underline hover:text-gray-700"
+          >
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a
+            href="/policies/privacy-policy"
+            className="underline hover:text-gray-700"
+          >
+            Privacy Policy
+          </a>
+        </footer>
+      )}
     </div>
   );
 }
