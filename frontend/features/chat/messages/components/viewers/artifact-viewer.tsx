@@ -11,7 +11,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useSidebar } from "@/components/ui/sidebar";
 
 // Icons and animations
 import { motion } from "framer-motion";
@@ -44,7 +43,6 @@ const ArtifactViewer: React.FC<{
     artifact,
     messages
   );
-  const { setOpen } = useSidebar();
   const mermaidRef = useRef<HTMLDivElement>(null);
   const mimeType = artifact.type || "text/markdown";
 
@@ -342,7 +340,6 @@ const ArtifactViewer: React.FC<{
                 <Button
                   onClick={() => {
                     setSelectedArtifact(null);
-                    setOpen(true);
                   }}
                   size="icon"
                   variant="ghost"

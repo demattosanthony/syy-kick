@@ -12,7 +12,6 @@ import {
   extractSpecialContent,
   getArtifactVersionInfo,
 } from "@/lib/artifact-utils";
-import { useSidebar } from "@/components/ui/sidebar";
 import ThinkingDropdown from "./thinking-dropdown";
 import ToolCallMessageContent from "./tool-call-result";
 
@@ -22,7 +21,6 @@ const TextContent: React.FC<{
   index: number;
 }> = ({ text, messages, index }) => {
   const { artifact, cleanContent } = extractSpecialContent(text);
-  const { open, setOpen } = useSidebar();
   const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
   const [alreadyAutoSelected, setAlreadyAutoSelected] = useAtom(
     alreadyAutoSelectedArtifactAtom
@@ -43,7 +41,6 @@ const TextContent: React.FC<{
         };
         setSelectedArtifact(artifactWithVersion);
         setAlreadyAutoSelected(artifactKey);
-        if (open) setOpen(false);
       }
     }
   }, [
@@ -52,8 +49,6 @@ const TextContent: React.FC<{
     setSelectedArtifact,
     alreadyAutoSelected,
     setAlreadyAutoSelected,
-    open,
-    setOpen,
   ]);
 
   const elements = [];
