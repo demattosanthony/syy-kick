@@ -257,6 +257,12 @@ export const messages = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    parentMessageId: uuid("parent_message_id").references(
+      (): any => messages.id,
+      {
+        onDelete: "set null",
+      }
+    ),
     role: text("role", { enum: MESSAGE_ROLES }).notNull(),
     text: text("text"),
     reasoning: text("reasoning"),
@@ -264,12 +270,15 @@ export const messages = pgTable(
     provider: text("provider"),
     embedding: vector("embedding", { dimensions: 1536 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     index("embeddingIndex").using(
       "hnsw",
       table.embedding.op("vector_cosine_ops")
     ),
+    index("messages_thread_id_idx").on(table.threadId),
+    index("messages_parent_message_id_idx").on(table.parentMessageId),
   ]
 );
 export type Message = typeof messages.$inferSelect;
@@ -337,6 +346,14 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
   user: one(users, {
     fields: [messages.userId],
     references: [users.id],
+  }),
+  parent: one(messages, {
+    fields: [messages.parentMessageId],
+    references: [messages.id],
+    relationName: "parent",
+  }),
+  children: many(messages, {
+    relationName: "parent",
   }),
   attachments: many(messageAttachments),
   toolCalls: many(toolCalls),

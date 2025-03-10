@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Check, Copy } from "lucide-react";
+import React, { useState } from "react";
+import { Check, CheckIcon, Copy, Pencil, X } from "lucide-react";
 
 interface MessageBubbleProps {
   content: string;
@@ -61,9 +61,21 @@ const MessageBubble = ({
 
 import ChatAttachment from "./chat-attachment";
 
-const UserMessage = ({ message }: { message: Message }) => {
-  // Removed React.memo
-  const [copied, setCopied] = React.useState<boolean>(false);
+// Update the UserMessage component
+const UserMessage = ({
+  message,
+  threadId,
+}: {
+  message: Message;
+  threadId: string;
+}) => {
+  const [copied, setCopied] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editedContent, setEditedContent] = useState<string>(
+    message.content || ""
+  );
+
+  const { mutate: editMessage, isPending } = useEditMessage();
 
   const handleCopy = () => {
     if (message.content) {
@@ -74,18 +86,87 @@ const UserMessage = ({ message }: { message: Message }) => {
     }
   };
 
+  const handleEdit = () => {
+    setIsEditing(true);
+    setEditedContent(message.content || "");
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditedContent(message.content || "");
+  };
+
+  const handleSave = () => {
+    console.log(message);
+
+    if (editedContent.trim() && editedContent !== message.content) {
+      editMessage({
+        threadId,
+        messageId: message.id,
+        content: editedContent,
+        attachments: message.experimental_attachments,
+      });
+    }
+    setIsEditing(false);
+  };
+
   return (
     <div className="mb-4">
       {message.experimental_attachments?.map((attachment, idx) => (
         <ChatAttachment key={idx} attachment={attachment} />
       ))}
-      {message.content && (
-        <MessageBubble
-          content={message.content || ""}
-          isUser={true}
-          onCopy={handleCopy}
-          copied={copied}
-        />
+
+      {isEditing ? (
+        <div className="flex flex-col gap-2 max-w-[85%] ml-auto">
+          <Textarea
+            value={editedContent}
+            onChange={(e) => setEditedContent(e.target.value)}
+            className="min-h-[100px] resize-none"
+            placeholder="Edit your message..."
+            disabled={isPending}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancel}
+              disabled={isPending}
+            >
+              <X className="w-4 h-4 mr-1" /> Cancel
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleSave}
+              disabled={isPending || !editedContent.trim()}
+            >
+              {isPending ? (
+                "Saving..."
+              ) : (
+                <>
+                  <CheckIcon className="w-4 h-4 mr-1" /> Save
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        message.content && (
+          <div className="group relative">
+            <MessageBubble
+              content={message.content || ""}
+              isUser={true}
+              onCopy={handleCopy}
+              copied={copied}
+            />
+            <div className="absolute -bottom-6 right-0 group-hover:opacity-100 opacity-0 transition-all duration-200">
+              <Pencil
+                className="w-4 h-4 cursor-pointer text-primary"
+                onClick={handleEdit}
+              />
+            </div>
+          </div>
+        )
       )}
     </div>
   );
@@ -102,6 +183,9 @@ import {
   AssistantSkeletonMessage,
   UserSkeletonMessage,
 } from "./message-skeletons";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { useEditMessage } from "../api/edit-messsage";
 
 const LoadingMessage = React.memo(() => {
   return (
@@ -143,10 +227,12 @@ const ChatMessagesList = React.memo(
   ({
     messages,
     isLoading,
+    threadId,
     showSkeletons = false,
   }: {
     messages: Message[];
     isLoading: boolean;
+    threadId: string;
     showSkeletons?: boolean;
   }) => {
     useEffect(() => {
@@ -183,7 +269,11 @@ const ChatMessagesList = React.memo(
                   !isLoading;
 
                 return message.role === MessageRole.user ? (
-                  <UserMessage key={index} message={message} />
+                  <UserMessage
+                    key={index}
+                    message={message}
+                    threadId={threadId}
+                  />
                 ) : (
                   <AssistantMessage
                     key={index}

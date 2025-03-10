@@ -21,6 +21,7 @@ const inferenceSchema = z.object({
   maxTokens: z.number().optional(),
   temperature: z.number().optional(),
   instructions: z.string().optional(),
+  parentMessageId: z.string().optional(),
   proejctId: z.string().optional(), // preserving original name
   // We'll also allow message data in here
   message: z.object({

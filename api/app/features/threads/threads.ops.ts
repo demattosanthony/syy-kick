@@ -1,6 +1,6 @@
 // External dependencies
 import { streamText } from "ai";
-import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
+import { and, cosineDistance, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { Request, Response } from "express";
 import { z } from "zod";
 
@@ -50,7 +50,8 @@ const threadsOps = {
     userId: string,
     threadId: string,
     role: "system" | "user" | "assistant" | "tool",
-    message: MyMessage
+    message: MyMessage,
+    parentMessageId?: string
   ) {
     const messageId = crypto.randomUUID();
     let embedding = null;
@@ -71,6 +72,7 @@ const threadsOps = {
       id: messageId,
       threadId,
       role,
+      parentMessageId,
       text: (message.content as string) ?? null,
       embedding,
       createdAt: new Date(),
@@ -88,7 +90,7 @@ const threadsOps = {
         });
       }
     }
-    return { message: "Message created successfully" };
+    return { message: "Message created successfully", messageId };
   },
 
   async getThread(threadId: string) {
@@ -102,6 +104,7 @@ const threadsOps = {
             id: true,
             threadId: true,
             userId: true,
+            parentMessageId: true,
             role: true,
             text: true,
             reasoning: true,
@@ -112,6 +115,25 @@ const threadsOps = {
           with: {
             attachments: true,
             toolCalls: true,
+            children: {
+              columns: {
+                embedding: false,
+                id: true,
+                threadId: true,
+                userId: true,
+                parentMessageId: true,
+                role: true,
+                text: true,
+                reasoning: true,
+                model: true,
+                provider: true,
+                createdAt: true,
+              },
+              with: {
+                attachments: true,
+                toolCalls: true,
+              },
+            },
           },
         },
         project: true,
@@ -131,8 +153,10 @@ const threadsOps = {
           mimeType: att.mimeType || undefined,
           size: att.size || undefined,
         })),
+        children: msg.children || [],
       })),
     };
+    // console.log("Thread:", typedThread);
 
     // Return the thread with processed attachments
     return processThreadMessages(typedThread);
@@ -267,9 +291,9 @@ const threadsOps = {
   async inference(req: Request, res: Response) {
     try {
       const { threadId } = req.params;
-      const { model, maxTokens, instructions, message } = req.body as z.infer<
-        typeof inferenceSchema
-      >;
+      const { model, maxTokens, instructions, message, parentMessageId } =
+        req.body as z.infer<typeof inferenceSchema>;
+      console.log("parentMessageId", parentMessageId);
 
       // SSE Setup
       res.setHeader("Content-Type", "text/event-stream");
@@ -288,20 +312,74 @@ const threadsOps = {
       }
 
       // 2) Add the user message to DB
+      let newMessageId: string | undefined;
       if (message) {
-        await threadsOps.createMessage(req.dbUser!.id, threadId, "user", {
-          content: message.content || "",
-          experimental_attachments: message.experimental_attachments as any,
-          role: message.role as any,
+        const result = await threadsOps.createMessage(
+          req.dbUser!.id,
+          threadId,
+          "user",
+          {
+            content: message.content || "",
+            experimental_attachments: message.experimental_attachments as any,
+            role: message.role as any,
+          },
+          parentMessageId
+        );
+        newMessageId = result.messageId;
+      }
+
+      // 3) Re-fetch messages from DB to build inference context
+      // If parentMessageId is provided, only fetch messages in that branch
+      // Otherwise, fetch all messages in the thread
+      let rawMessages: any[] = [];
+
+      if (parentMessageId) {
+        // Get the conversation branch by starting from the parent message
+        // and collecting all messages in the path from root to that message,
+        // plus any direct children of those messages
+
+        // First, build the path from the parent message to the root
+        const messagePath = new Set<string>();
+        let currentId: string | null = parentMessageId;
+
+        while (currentId) {
+          messagePath.add(currentId);
+
+          const currentMessage: { parentMessageId: string | null } | undefined =
+            await db.query.messages.findFirst({
+              where: eq(messages.id, currentId),
+              columns: { parentMessageId: true },
+            });
+
+          currentId = currentMessage?.parentMessageId || null;
+        }
+
+        // Now fetch all messages in this conversation branch:
+        // 1. All messages in the path from root to parent
+        // 2. All direct children of any message in that path
+        rawMessages = await db.query.messages.findMany({
+          where: and(
+            eq(messages.threadId, threadId),
+            or(
+              // Messages that are part of the path from root to parent
+              inArray(messages.id, Array.from(messagePath)),
+              // Direct children of any message in the path
+              inArray(messages.parentMessageId, Array.from(messagePath))
+            )
+          ),
+          orderBy: messages.createdAt,
+          with: { attachments: true, toolCalls: true },
+        });
+      } else {
+        // If no parentMessageId, get all messages in the thread
+        rawMessages = await db.query.messages.findMany({
+          where: eq(messages.threadId, threadId),
+          orderBy: messages.createdAt,
+          with: { attachments: true, toolCalls: true },
         });
       }
 
-      // 3) Re-fetch all messages from DB to build inference context
-      const rawMessages = await db.query.messages.findMany({
-        where: eq(messages.threadId, threadId),
-        orderBy: messages.createdAt,
-        with: { attachments: true, toolCalls: true },
-      });
+      console.log("Raw messages:", rawMessages);
 
       // 4) Determine appropriate model
       const modelConfig = await getModelConfig(model);
@@ -375,6 +453,7 @@ const threadsOps = {
                 reasoning,
                 model,
                 provider: modelConfig.provider,
+                parentMessageId: newMessageId,
               })
               .returning();
 
@@ -462,6 +541,7 @@ const threadsOps = {
               model,
               embedding: embedding,
               provider: modelConfig.provider,
+              parentMessageId: newMessageId,
             });
             return;
           }
@@ -478,6 +558,76 @@ const threadsOps = {
         error: "An error occurred during inference",
       });
     }
+  },
+
+  async editMessage(
+    userId: string,
+    threadId: string,
+    originalMessageId: string,
+    newContent: string,
+    attachments?: any[]
+  ) {
+    console.log("Editing message:", originalMessageId);
+    console.log("New content:", newContent);
+    // 1. Verify the original message exists and belongs to this thread
+    const originalMessage = await db.query.messages.findFirst({
+      where: and(
+        eq(messages.id, originalMessageId),
+        eq(messages.threadId, threadId)
+      ),
+    });
+
+    if (!originalMessage) {
+      throw new Error("Original message not found in this thread");
+    }
+
+    // 2. Create a new message that points to the parent of the original message
+    // This creates a new branch in the conversation
+    const newMessageId = crypto.randomUUID();
+    let embedding = null;
+
+    console.log("New message id:", newMessageId);
+
+    // Attempt to embed the new content
+    try {
+      const embeddingResult = await embeddingModel.doEmbed({
+        values: [newContent],
+      });
+      embedding = embeddingResult.embeddings[0];
+    } catch (error) {
+      console.error("Error embedding edited message", error);
+    }
+
+    // Insert the new message
+    await db.insert(messages).values({
+      userId,
+      id: newMessageId,
+      threadId,
+      role: originalMessage.role,
+      parentMessageId: originalMessage.parentMessageId, // Point to same parent as original
+      text: newContent,
+      embedding,
+      createdAt: new Date(),
+    });
+
+    // 3. Add any attachments to the new message
+    if (attachments?.length) {
+      for (const attachment of attachments) {
+        await db.insert(messageAttachments).values({
+          messageId: newMessageId,
+          fileName: attachment.name,
+          mimeType: attachment.contentType,
+          fileKey: attachment.file_key,
+          type: attachment.contentType?.includes("image") ? "image" : "file",
+        });
+      }
+    }
+
+    return {
+      message: "Message edited successfully",
+      messageId: newMessageId,
+      originalMessageId,
+    };
   },
 
   async deleteThread(

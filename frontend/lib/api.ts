@@ -460,6 +460,22 @@ class ThreadApi extends ApiRequest {
     return await this.request<{ success: boolean }>(endpoint, "DELETE");
   }
 
+  async editMessage(
+    threadId: string,
+    messageId: string,
+    content: string,
+    attachments?: any[]
+  ): Promise<{ messageId: string; originalMessageId: string }> {
+    return await this.request<{ messageId: string; originalMessageId: string }>(
+      `/threads/${threadId}/messages/${messageId}/edit`,
+      "POST",
+      {
+        content,
+        attachments,
+      }
+    );
+  }
+
   async cloneThread(threadId: string): Promise<{ id: string }> {
     return await this.request<{ id: string }>(
       `/threads/${threadId}/clone`,

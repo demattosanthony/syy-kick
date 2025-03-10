@@ -70,6 +70,12 @@ export default function ThreadPage({
     selectedProjectDocsAtom
   );
 
+  // Get the last message id
+  const lastMessageId =
+    initalMessages.length > 0
+      ? initalMessages[initalMessages.length - 1].id
+      : undefined;
+
   const {
     input,
     setInput,
@@ -91,6 +97,7 @@ export default function ThreadPage({
         model: model.name,
         temperature: temperature,
         instructions,
+        parentMessageId: lastMessageId,
       };
     },
   });
@@ -199,6 +206,8 @@ export default function ThreadPage({
 
   const { splitPosition, handleMouseDown } = useResizeLayout();
 
+  console.log(thread);
+
   return (
     <div id="chat-container" className="flex h-full w-full relative">
       {selectedArtifact && (
@@ -228,6 +237,7 @@ export default function ThreadPage({
           <ChatMessagesList
             messages={messages}
             isLoading={status === "submitted"}
+            threadId={threadId}
             showSkeletons={messagesAreBeingFetched}
           />
         </div>

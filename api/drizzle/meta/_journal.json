@@ -239,6 +239,13 @@
       "when": 1741273142098,
       "tag": "0033_brief_expediter",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1741635841222,
+      "tag": "0034_red_callisto",
+      "breakpoints": true
     }
   ]
 }

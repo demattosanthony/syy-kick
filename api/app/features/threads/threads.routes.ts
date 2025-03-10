@@ -61,6 +61,26 @@ router.put(
   })
 );
 
+// Edit message (create new branch)
+router.post(
+  "/:threadId/messages/:messageId/edit",
+  handle(async (req) => {
+    const { content, attachments } = req.body;
+
+    if (!content || typeof content !== "string") {
+      throw new Error("Message content is required");
+    }
+
+    return threadsOps.editMessage(
+      req.dbUser!.id,
+      req.params.threadId,
+      req.params.messageId,
+      content,
+      attachments
+    );
+  })
+);
+
 // Inference (SSE)
 router.post("/:threadId/inference", async (req: Request, res: Response) => {
   try {
