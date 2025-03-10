@@ -350,69 +350,114 @@ const ChatMessagesList = React.memo(
       }
     }, [messages.length]);
 
-    // Find all root user messages - these are potential branches
-    const rootUserMessages = React.useMemo(() => {
-      return (messages as ExtendedMessage[]).filter(
-        (msg) => msg.role === "user" && !msg.parentId
+    // Find messages that have the same parent (these are branches/edits)
+    const messageVariants = React.useMemo(() => {
+      const variants = new Map<string | undefined, ExtendedMessage[]>();
+
+      // Group messages by parentId
+      (messages as ExtendedMessage[]).forEach((msg) => {
+        if (!variants.has(msg.parentId)) {
+          variants.set(msg.parentId, []);
+        }
+        variants.get(msg.parentId)!.push(msg);
+      });
+
+      // Keep only groups with multiple messages (these are branches)
+      return new Map(
+        Array.from(variants.entries()).filter(([_, msgs]) => msgs.length > 1)
       );
     }, [messages]);
 
-    console.log("Root user messages:", rootUserMessages);
+    // Get all descendants of a message
+    const getDescendants = (messageId: string): Set<string> => {
+      const descendants = new Set<string>();
+      const queue = [messageId];
 
-    // If there are multiple root user messages, treat them as branches of each other
-    const userMessagesWithBranches = React.useMemo(() => {
-      const result = new Map<string, ExtendedMessage[]>();
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        const children = messages.filter(
+          (m) => (m as ExtendedMessage).parentId === currentId
+        );
 
-      if (rootUserMessages.length > 1) {
-        // For each root user message, add all root user messages as its branches
-        rootUserMessages.forEach((msg) => {
-          result.set(msg.id, rootUserMessages);
+        children.forEach((child) => {
+          descendants.add(child.id);
+          queue.push(child.id);
         });
       }
 
-      return result;
-    }, [rootUserMessages]);
+      return descendants;
+    };
 
-    // Filter messages to display based on active branch
+    // Filter messages to show based on selected branch
     const displayedMessages = React.useMemo(() => {
-      if (!activeBranchMessageId || rootUserMessages.length <= 1) {
-        // If no active branch or only one root message, show all messages
-        return messages;
-      }
+      const selectedMessages = new Set<string>();
 
-      // Find the active root message
-      const activeRootMessage = rootUserMessages.find(
-        (msg) => msg.id === activeBranchMessageId
-      );
+      if (!activeBranchMessageId) {
+        // Show most recent version of each message branch by default
+        const processedParents = new Set<string>();
 
-      if (!activeRootMessage) {
-        // If active branch is not a root message, show all messages
-        return messages;
-      }
+        // Process messages in chronological order
+        const sortedMessages = [...messages].sort(
+          (a, b) =>
+            new Date(a.createdAt || 0).getTime() -
+            new Date(b.createdAt || 0).getTime()
+        );
 
-      // Filter out other root user messages and their responses
-      // First, create a set of IDs to exclude
-      const excludeIds = new Set<string>();
+        sortedMessages.forEach((msg) => {
+          const msgExt = msg as ExtendedMessage;
 
-      // Add all root user messages except the active one
-      rootUserMessages.forEach((msg) => {
-        if (msg.id !== activeBranchMessageId) {
-          excludeIds.add(msg.id);
+          // If this message is a variant and we haven't processed its parent
+          const variants = messageVariants.get(msgExt.parentId);
+          if (variants && !processedParents.has(msgExt.parentId!)) {
+            // Get the most recent variant
+            const mostRecent = [...variants].sort(
+              (a, b) =>
+                new Date(b.createdAt || 0).getTime() -
+                new Date(a.createdAt || 0).getTime()
+            )[0];
 
-          // Also find and exclude any direct responses to this message
-          messages.forEach((response) => {
-            if ((response as ExtendedMessage).parentId === msg.id) {
-              excludeIds.add(response.id);
+            selectedMessages.add(mostRecent.id);
+            // Add all descendants of this variant
+            getDescendants(mostRecent.id).forEach((id) =>
+              selectedMessages.add(id)
+            );
+
+            processedParents.add(msgExt.parentId!);
+          } else if (!variants) {
+            // If message has no variants and its parent is selected (or it's a root message)
+            const parentId = msgExt.parentId;
+            if (!parentId || selectedMessages.has(parentId)) {
+              selectedMessages.add(msg.id);
             }
-          });
+          }
+        });
+      } else {
+        // When a specific branch is selected
+        // Add the selected message
+        selectedMessages.add(activeBranchMessageId);
+
+        // Add all ancestors
+        let currentId = activeBranchMessageId;
+        while (currentId) {
+          const msg = messages.find(
+            (m) => m.id === currentId
+          ) as ExtendedMessage;
+          if (msg?.parentId) {
+            selectedMessages.add(msg.parentId);
+            currentId = msg.parentId;
+          } else {
+            break;
+          }
         }
-      });
 
-      // Return only messages that aren't in the exclude set
-      return messages.filter((msg) => !excludeIds.has(msg.id));
-    }, [messages, rootUserMessages, activeBranchMessageId]);
+        // Add all descendants of the selected message
+        getDescendants(activeBranchMessageId).forEach((id) =>
+          selectedMessages.add(id)
+        );
+      }
 
-    console.log("Displayed messages:", displayedMessages);
+      return messages.filter((m) => selectedMessages.has(m.id));
+    }, [messages, messageVariants, activeBranchMessageId]);
 
     return (
       <div className="flex-1 w-full h-full relative">
@@ -441,10 +486,9 @@ const ChatMessagesList = React.memo(
                   !isLoading;
 
                 // Get branches for this message if it's a user message
-                const branches =
-                  message.role === MessageRole.user
-                    ? userMessagesWithBranches.get(message.id)
-                    : undefined;
+                const variants = messageVariants.get(
+                  (message as ExtendedMessage).parentId
+                );
 
                 return (
                   <div key={message.id} id={`message-${message.id}`}>
@@ -452,7 +496,7 @@ const ChatMessagesList = React.memo(
                       <UserMessage
                         message={message}
                         threadId={threadId}
-                        branches={branches}
+                        branches={variants}
                         onSelectBranch={onSelectBranch}
                         activeBranchId={activeBranchMessageId}
                       />

@@ -13,13 +13,13 @@ export function mapThreadMessagesToMessages(
   const flattenedMessages: (Message & { parentId?: string })[] = [];
 
   // Helper function to flatten the message tree
-  const flattenMessageTree = (messages: any[]) => {
+  const flattenMessageTree = (messages: any[], parentId?: string) => {
     messages.forEach((msg) => {
       flattenedMessages.push({
         content: msg.text,
         role: msg.role as "user" | "assistant",
         id: msg.id,
-        parentId: msg.parentMessageId,
+        parentId: msg.parentMessageId || parentId, // Use explicit parentMessageId or the parent we're traversing from
         createdAt: msg.createdAt ? new Date(msg.createdAt) : undefined,
         reasoning: msg.reasoning,
         experimental_attachments: msg.attachments?.map((attachment: any) => ({
@@ -39,9 +39,9 @@ export function mapThreadMessagesToMessages(
         })),
       });
 
-      // Process children recursively
+      // Process children recursively, passing current message as parent
       if (msg.children?.length) {
-        flattenMessageTree(msg.children);
+        flattenMessageTree(msg.children, msg.id);
       }
     });
   };

@@ -93,7 +93,7 @@ export default function ThreadPage({
       });
       return sortedMessages[0].id;
     }
-    return undefined;
+    return undefined; // Only set a default if there are multiple branches
   });
 
   // Get the last message id based on the active branch
@@ -105,8 +105,43 @@ export default function ThreadPage({
         : undefined;
     }
 
-    // Otherwise, use the active branch message ID
-    return activeBranchMessageId;
+    // Find the last message in the active branch
+    const messagesInBranch = new Set<string>();
+    const messagesToProcess = [activeBranchMessageId];
+
+    // Add the active branch message
+    messagesInBranch.add(activeBranchMessageId);
+
+    // Add all descendants (children)
+    while (messagesToProcess.length > 0) {
+      const currentId = messagesToProcess.shift()!;
+
+      // Find all direct children
+      const children = initalMessages.filter(
+        (msg) => (msg as any).parentId === currentId
+      );
+
+      // Add them to the set and queue
+      children.forEach((child) => {
+        messagesInBranch.add(child.id);
+        messagesToProcess.push(child.id);
+      });
+    }
+
+    // Find the most recent message in the branch
+    const branchMessages = initalMessages.filter((msg) =>
+      messagesInBranch.has(msg.id)
+    );
+    const sortedBranchMessages = [...branchMessages].sort((a, b) => {
+      return (
+        new Date(b.createdAt || 0).getTime() -
+        new Date(a.createdAt || 0).getTime()
+      );
+    });
+
+    return sortedBranchMessages.length > 0
+      ? sortedBranchMessages[0].id
+      : activeBranchMessageId;
   }, [initalMessages, activeBranchMessageId]);
 
   // Handle branch selection

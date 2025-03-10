@@ -7,6 +7,7 @@ import { z } from "zod";
 // Internal configuration
 import db from "../../config/db";
 import {
+  Message,
   messageAttachments,
   messages,
   threads,
@@ -24,6 +25,12 @@ import {
   maybeGenerateTitle,
   processThreadMessages,
 } from "./threads.utils";
+
+interface MessageNode extends Message {
+  children: MessageNode[];
+  attachments?: any[];
+  toolCalls?: any[];
+}
 
 const threadsOps = {
   async createThread(
@@ -100,41 +107,9 @@ const threadsOps = {
       with: {
         messages: {
           orderBy: messages.createdAt,
-          columns: {
-            embedding: false,
-            id: true,
-            threadId: true,
-            userId: true,
-            parentMessageId: true,
-            role: true,
-            text: true,
-            reasoning: true,
-            model: true,
-            provider: true,
-            createdAt: true,
-          },
           with: {
             attachments: true,
             toolCalls: true,
-            children: {
-              columns: {
-                embedding: false,
-                id: true,
-                threadId: true,
-                userId: true,
-                parentMessageId: true,
-                role: true,
-                text: true,
-                reasoning: true,
-                model: true,
-                provider: true,
-                createdAt: true,
-              },
-              with: {
-                attachments: true,
-                toolCalls: true,
-              },
-            },
           },
         },
         project: true,
@@ -142,66 +117,42 @@ const threadsOps = {
       },
     });
 
-    console.log("Thread:", thread);
+    // console.log("Thread:", thread);
 
     if (!thread) return null;
 
     // Create a map of all messages for easy lookup
-    const messageMap = new Map();
-    thread.messages.forEach((msg) => {
-      messageMap.set(msg.id, { ...msg, children: [] });
+    const messageMap = new Map<string, MessageNode>();
+
+    thread.messages.forEach((message) => {
+      messageMap.set(message.id, {
+        ...message,
+        children: [],
+      });
     });
 
-    // Build the message tree structure
-    const rootMessages: any[] = [];
-    thread.messages.forEach((msg) => {
-      const messageWithChildren = messageMap.get(msg.id);
+    const rootMessages: MessageNode[] = [];
 
-      if (msg.parentMessageId === null) {
-        // This is a root message
-        rootMessages.push(messageWithChildren);
-      } else if (messageMap.has(msg.parentMessageId)) {
-        // This is a child message, add it to its parent's children
-        const parent = messageMap.get(msg.parentMessageId);
+    // Organize messages into parent-child relationships
+    thread.messages.forEach((message) => {
+      const messageNode = messageMap.get(message.id)!;
 
-        // Check if this message already exists in the parent's children
-        const existingChildIndex = parent.children.findIndex(
-          (child: any) => child.id === messageWithChildren.id
-        );
-
-        if (existingChildIndex === -1) {
-          // Only add if not already present
-          parent.children.push(messageWithChildren);
-        }
+      if (message.parentMessageId && messageMap.has(message.parentMessageId)) {
+        // This message has a parent, add it to the parent's children
+        const parent = messageMap.get(message.parentMessageId)!;
+        parent.children.push(messageNode);
+      } else {
+        // This is a root message (no parent or parent not in this thread)
+        rootMessages.push(messageNode);
       }
     });
 
-    // Sort children by creation date for each message in the tree
-    const sortMessageChildren = (message: any) => {
-      if (message.children && message.children.length > 0) {
-        // Sort this message's children by creation date
-        message.children.sort(
-          (a: any, b: any) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-
-        // Recursively sort children of children
-        message.children.forEach(sortMessageChildren);
-      }
-    };
-
-    // Sort all root messages and their children
-    rootMessages.forEach(sortMessageChildren);
-
-    // Replace the flat messages array with the tree structure
-    thread.messages = rootMessages;
-
-    console.log("Thread with tree structure:", thread);
+    console.log("Root messages:", rootMessages);
 
     // Cast the thread to match ThreadWithMessages type
     const typedThread: ThreadWithMessages = {
       ...thread,
-      messages: thread.messages.map((msg) => ({
+      messages: rootMessages.map((msg) => ({
         ...msg,
         attachments: (msg.attachments || []).map((att) => ({
           ...att,
@@ -209,13 +160,13 @@ const threadsOps = {
           mimeType: att.mimeType || undefined,
           size: att.size || undefined,
         })),
-        // Children are already properly structured
+        // Children are already properly structured in the rootMessages
       })),
     };
 
     // Return the thread with processed attachments
     const processedThread = await processThreadMessages(typedThread);
-    console.log("\n\n\n", processedThread);
+    // console.log("\n\n\n", processedThread);
     return processedThread;
   },
 
@@ -644,6 +595,7 @@ const threadsOps = {
     let embedding = null;
 
     console.log("New message id:", newMessageId);
+    console.log("Original message:", originalMessage);
 
     // Attempt to embed the new content
     try {
