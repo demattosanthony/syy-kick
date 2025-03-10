@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Syyclops3dEye from "../../chat/messages/components/syy-eye";
 import { useAuth } from "@/features/auth/hooks";
@@ -9,7 +8,6 @@ import { useOrgFromInviteToken } from "../api";
 
 const JoinOrgHandler = ({ token }: { token: string }) => {
   const { handleJoinOrg } = useAuth();
-  const router = useRouter();
   const [, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
