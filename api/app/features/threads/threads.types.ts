@@ -22,6 +22,7 @@ type ThreadWithMessages = {
     id: string;
     threadId: string;
     userId: string;
+    parentMessageId?: string | null;
     role: "system" | "user" | "assistant" | "tool";
     text: string | null;
     reasoning?: string | null;

@@ -303,41 +303,55 @@ Returns:
 
 async function processThreadMessages(thread: ThreadWithMessages | null) {
   if (!thread) return null;
-  for (const msg of thread.messages) {
-    msg.attachments = await processAttachments(msg.attachments);
 
-    msg.toolCalls = msg.toolCalls?.map((call) => {
-      if (
-        (call.toolName === "search_project_information" ||
-          call.toolName === "search_documents") &&
-        call.result?.docs
-      ) {
-        const uniqueDocs = getUniqueDocuments(call.result.docs);
+  // Process messages recursively
+  const processMessagesRecursively = async (messages: any[]) => {
+    for (const msg of messages) {
+      // Process attachments for this message
+      msg.attachments = await processAttachments(msg.attachments);
 
-        return {
-          ...call,
-          result: {
-            ...call.result, // Preserve existing result properties
-            dataForFrontend: uniqueDocs.map((doc) => ({
-              document_id: doc.documentId,
-              source: doc.documentName,
-              snippet: doc.text,
-              path: doc.path,
-              score: doc.similarity,
-              page: doc.pageNumber,
-              projectId: doc.projectId,
-              url: doc.fileKey
-                ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
-                : undefined,
-            })),
-          },
-        };
+      // Process tool calls for this message
+      msg.toolCalls = msg.toolCalls?.map((call: any) => {
+        if (
+          (call.toolName === "search_project_information" ||
+            call.toolName === "search_documents") &&
+          call.result?.docs
+        ) {
+          const uniqueDocs = getUniqueDocuments(call.result.docs);
+
+          return {
+            ...call,
+            result: {
+              ...call.result, // Preserve existing result properties
+              dataForFrontend: uniqueDocs.map((doc) => ({
+                document_id: doc.documentId,
+                source: doc.documentName,
+                snippet: doc.text,
+                path: doc.path,
+                score: doc.similarity,
+                page: doc.pageNumber,
+                projectId: doc.projectId,
+                url: doc.fileKey
+                  ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+                  : undefined,
+              })),
+            },
+          };
+        }
+
+        // For other tool calls
+        return call;
+      });
+
+      // Recursively process children if they exist
+      if (msg.children && msg.children.length > 0) {
+        await processMessagesRecursively(msg.children);
       }
+    }
+  };
 
-      // For other tool calls
-      return call;
-    });
-  }
+  // Start processing from the root messages
+  await processMessagesRecursively(thread.messages);
 
   return thread;
 }

@@ -51,10 +51,12 @@ export type ChatMessage = {
   text: string;
   createdAt: string;
   attachments?: MessageAttachment[];
+  parentMessageId?: string;
   toolCalls?: ChatToolCall[];
   model?: string;
   provider?: string;
   reasoning?: string;
+  children?: ChatMessage[];
 };
 
 export type FileUpload = {

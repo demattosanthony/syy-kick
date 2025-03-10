@@ -1,7 +1,20 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, CheckIcon, Copy, Pencil, X } from "lucide-react";
+import {
+  Check,
+  CheckIcon,
+  ChevronDown,
+  Copy,
+  GitBranch,
+  Pencil,
+  X,
+} from "lucide-react";
+
+type ExtendedMessage = Message & {
+  branchLevel?: number;
+  parentId?: string;
+};
 
 interface MessageBubbleProps {
   content: string;
@@ -9,6 +22,73 @@ interface MessageBubbleProps {
   onCopy?: () => void;
   copied?: boolean;
 }
+
+const BranchSelector = ({
+  messageId,
+  branches,
+  onSelectBranch,
+  activeBranchId,
+}: {
+  messageId: string;
+  branches: ExtendedMessage[];
+  onSelectBranch: (messageId: string) => void;
+  activeBranchId?: string;
+}) => {
+  if (!branches || branches.length <= 1) return null;
+
+  // Sort branches by creation date
+  const sortedBranches = [...branches].sort((a, b) => {
+    return (
+      new Date(a.createdAt || 0).getTime() -
+      new Date(b.createdAt || 0).getTime()
+    );
+  });
+
+  return (
+    <div className="mt-2 flex justify-end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs flex items-center gap-1 border-dashed border-primary/50"
+          >
+            <GitBranch className="h-3 w-3" />
+            <span>Message Versions ({branches.length})</span>
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[200px]">
+          {sortedBranches.map((branch, index) => (
+            <DropdownMenuItem
+              key={branch.id}
+              className={cn(
+                activeBranchId === branch.id ? "bg-muted" : "",
+                "flex flex-col items-start gap-1 py-2"
+              )}
+              onClick={() => onSelectBranch(branch.id)}
+            >
+              <div className="flex items-center gap-2 w-full">
+                <span className="font-medium">Version {index + 1}</span>
+                {branch.id === messageId && (
+                  <span className="text-xs bg-primary/10 text-primary px-1 py-0.5 rounded">
+                    Current
+                  </span>
+                )}
+              </div>
+              {branch.content && (
+                <span className="text-xs text-muted-foreground truncate max-w-full">
+                  "{branch.content.substring(0, 30)}
+                  {branch.content.length > 30 ? "..." : ""}"
+                </span>
+              )}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+};
 
 const MessageBubble = ({
   content,
@@ -65,9 +145,15 @@ import ChatAttachment from "./chat-attachment";
 const UserMessage = ({
   message,
   threadId,
+  branches,
+  onSelectBranch,
+  activeBranchId,
 }: {
   message: Message;
   threadId: string;
+  branches?: ExtendedMessage[];
+  onSelectBranch?: (messageId: string) => void;
+  activeBranchId?: string;
 }) => {
   const [copied, setCopied] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -97,7 +183,7 @@ const UserMessage = ({
   };
 
   const handleSave = () => {
-    console.log(message);
+    console.log("Editing message:", message);
 
     if (editedContent.trim() && editedContent !== message.content) {
       editMessage({
@@ -109,6 +195,9 @@ const UserMessage = ({
     }
     setIsEditing(false);
   };
+
+  // Log branches to debug
+  console.log(`Message ${message.id} branches:`, branches);
 
   return (
     <div className="mb-4">
@@ -168,6 +257,16 @@ const UserMessage = ({
           </div>
         )
       )}
+
+      {/* Always show branch selector if there are branches */}
+      {!isEditing && branches && branches.length > 1 && onSelectBranch && (
+        <BranchSelector
+          messageId={message.id}
+          branches={branches}
+          onSelectBranch={onSelectBranch}
+          activeBranchId={activeBranchId}
+        />
+      )}
     </div>
   );
 };
@@ -186,6 +285,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useEditMessage } from "../api/edit-messsage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const LoadingMessage = React.memo(() => {
   return (
@@ -222,18 +327,21 @@ const LoadingMessage = React.memo(() => {
 
 LoadingMessage.displayName = "LoadingMessage";
 
-// Memo helps to prevent unnecessary re-renders. Fixes issue when lots of messages and user types in chat input form is laggy
 const ChatMessagesList = React.memo(
   ({
     messages,
     isLoading,
     threadId,
     showSkeletons = false,
+    onSelectBranch,
+    activeBranchMessageId,
   }: {
     messages: Message[];
     isLoading: boolean;
     threadId: string;
     showSkeletons?: boolean;
+    onSelectBranch?: (messageId: string) => void;
+    activeBranchMessageId?: string;
   }) => {
     useEffect(() => {
       const container = document.querySelector(".overflow-y-auto");
@@ -241,6 +349,70 @@ const ChatMessagesList = React.memo(
         container.scrollTop = container.scrollHeight;
       }
     }, [messages.length]);
+
+    // Find all root user messages - these are potential branches
+    const rootUserMessages = React.useMemo(() => {
+      return (messages as ExtendedMessage[]).filter(
+        (msg) => msg.role === "user" && !msg.parentId
+      );
+    }, [messages]);
+
+    console.log("Root user messages:", rootUserMessages);
+
+    // If there are multiple root user messages, treat them as branches of each other
+    const userMessagesWithBranches = React.useMemo(() => {
+      const result = new Map<string, ExtendedMessage[]>();
+
+      if (rootUserMessages.length > 1) {
+        // For each root user message, add all root user messages as its branches
+        rootUserMessages.forEach((msg) => {
+          result.set(msg.id, rootUserMessages);
+        });
+      }
+
+      return result;
+    }, [rootUserMessages]);
+
+    // Filter messages to display based on active branch
+    const displayedMessages = React.useMemo(() => {
+      if (!activeBranchMessageId || rootUserMessages.length <= 1) {
+        // If no active branch or only one root message, show all messages
+        return messages;
+      }
+
+      // Find the active root message
+      const activeRootMessage = rootUserMessages.find(
+        (msg) => msg.id === activeBranchMessageId
+      );
+
+      if (!activeRootMessage) {
+        // If active branch is not a root message, show all messages
+        return messages;
+      }
+
+      // Filter out other root user messages and their responses
+      // First, create a set of IDs to exclude
+      const excludeIds = new Set<string>();
+
+      // Add all root user messages except the active one
+      rootUserMessages.forEach((msg) => {
+        if (msg.id !== activeBranchMessageId) {
+          excludeIds.add(msg.id);
+
+          // Also find and exclude any direct responses to this message
+          messages.forEach((response) => {
+            if ((response as ExtendedMessage).parentId === msg.id) {
+              excludeIds.add(response.id);
+            }
+          });
+        }
+      });
+
+      // Return only messages that aren't in the exclude set
+      return messages.filter((msg) => !excludeIds.has(msg.id));
+    }, [messages, rootUserMessages, activeBranchMessageId]);
+
+    console.log("Displayed messages:", displayedMessages);
 
     return (
       <div className="flex-1 w-full h-full relative">
@@ -260,27 +432,38 @@ const ChatMessagesList = React.memo(
                 <AssistantSkeletonMessage />
               </>
             ) : (
-              // Show actual messages
-              messages.map((message, index) => {
-                const nextMessage = messages[index + 1];
+              // Show filtered messages
+              displayedMessages.map((message, index) => {
+                const nextMessage = displayedMessages[index + 1];
                 const showEye =
                   message.role !== MessageRole.user &&
                   (!nextMessage || nextMessage.role === MessageRole.user) &&
                   !isLoading;
 
-                return message.role === MessageRole.user ? (
-                  <UserMessage
-                    key={index}
-                    message={message}
-                    threadId={threadId}
-                  />
-                ) : (
-                  <AssistantMessage
-                    key={index}
-                    message={message}
-                    showEye={showEye}
-                    messages={messages}
-                  />
+                // Get branches for this message if it's a user message
+                const branches =
+                  message.role === MessageRole.user
+                    ? userMessagesWithBranches.get(message.id)
+                    : undefined;
+
+                return (
+                  <div key={message.id} id={`message-${message.id}`}>
+                    {message.role === MessageRole.user ? (
+                      <UserMessage
+                        message={message}
+                        threadId={threadId}
+                        branches={branches}
+                        onSelectBranch={onSelectBranch}
+                        activeBranchId={activeBranchMessageId}
+                      />
+                    ) : (
+                      <AssistantMessage
+                        message={message}
+                        showEye={showEye}
+                        messages={displayedMessages}
+                      />
+                    )}
+                  </div>
                 );
               })
             )}

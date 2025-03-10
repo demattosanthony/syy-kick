@@ -22,7 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import { useAtom } from "jotai";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // Components
 import { Thread } from "@/types/chat";
@@ -35,6 +35,8 @@ import {
   ChatMessagesList,
 } from "@/features/chat/messages/components";
 import { CloneThreadButton } from "./clone-thread-button";
+import { GitBranch } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -70,11 +72,56 @@ export default function ThreadPage({
     selectedProjectDocsAtom
   );
 
-  // Get the last message id
-  const lastMessageId =
-    initalMessages.length > 0
-      ? initalMessages[initalMessages.length - 1].id
-      : undefined;
+  // Find all root user messages
+  const rootUserMessages = useMemo(() => {
+    return initalMessages.filter(
+      (msg) => msg.role === "user" && !(msg as any).parentId
+    );
+  }, [initalMessages]);
+
+  // Set the active branch to the most recent root user message by default
+  const [activeBranchMessageId, setActiveBranchMessageId] = useState<
+    string | undefined
+  >(() => {
+    if (rootUserMessages.length > 1) {
+      // Sort by creation date and get the most recent
+      const sortedMessages = [...rootUserMessages].sort((a, b) => {
+        return (
+          new Date(b.createdAt || 0).getTime() -
+          new Date(a.createdAt || 0).getTime()
+        );
+      });
+      return sortedMessages[0].id;
+    }
+    return undefined;
+  });
+
+  // Get the last message id based on the active branch
+  const lastMessageId = useMemo(() => {
+    if (!activeBranchMessageId) {
+      // If no active branch, use the last message in the initial messages
+      return initalMessages.length > 0
+        ? initalMessages[initalMessages.length - 1].id
+        : undefined;
+    }
+
+    // Otherwise, use the active branch message ID
+    return activeBranchMessageId;
+  }, [initalMessages, activeBranchMessageId]);
+
+  // Handle branch selection
+  const handleBranchSelect = (messageId: string) => {
+    console.log("Selected branch:", messageId);
+    setActiveBranchMessageId(messageId);
+
+    // Optional: You could also scroll to the selected branch
+    setTimeout(() => {
+      const element = document.getElementById(`message-${messageId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+  };
 
   const {
     input,
@@ -239,11 +286,29 @@ export default function ThreadPage({
             isLoading={status === "submitted"}
             threadId={threadId}
             showSkeletons={messagesAreBeingFetched}
+            onSelectBranch={handleBranchSelect}
+            activeBranchMessageId={activeBranchMessageId}
           />
         </div>
 
         {!viewOnly && (
-          <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
+          <div className="w-full flex flex-col items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
+            {activeBranchMessageId && (
+              <div className="w-full mb-2 text-center">
+                <div className="text-xs text-muted-foreground flex items-center justify-center">
+                  <GitBranch className="h-3 w-3 mr-1" />
+                  Replying to a specific branch
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs p-0 h-auto ml-1"
+                    onClick={() => setActiveBranchMessageId(undefined)}
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </div>
+            )}
             <ChatInputForm
               input={input}
               setInput={setInput}

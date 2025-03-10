@@ -141,15 +141,62 @@ const threadsOps = {
         organization: true,
       },
     });
-    if (!thread) return null;
-
-    // Filter out messages that are children of other messages to avoid duplication
-    // Only keep root messages (those with parentMessageId = null) in the main messages array
-    thread.messages = thread.messages.filter(
-      (msg) => msg.parentMessageId === null
-    );
 
     console.log("Thread:", thread);
+
+    if (!thread) return null;
+
+    // Create a map of all messages for easy lookup
+    const messageMap = new Map();
+    thread.messages.forEach((msg) => {
+      messageMap.set(msg.id, { ...msg, children: [] });
+    });
+
+    // Build the message tree structure
+    const rootMessages: any[] = [];
+    thread.messages.forEach((msg) => {
+      const messageWithChildren = messageMap.get(msg.id);
+
+      if (msg.parentMessageId === null) {
+        // This is a root message
+        rootMessages.push(messageWithChildren);
+      } else if (messageMap.has(msg.parentMessageId)) {
+        // This is a child message, add it to its parent's children
+        const parent = messageMap.get(msg.parentMessageId);
+
+        // Check if this message already exists in the parent's children
+        const existingChildIndex = parent.children.findIndex(
+          (child: any) => child.id === messageWithChildren.id
+        );
+
+        if (existingChildIndex === -1) {
+          // Only add if not already present
+          parent.children.push(messageWithChildren);
+        }
+      }
+    });
+
+    // Sort children by creation date for each message in the tree
+    const sortMessageChildren = (message: any) => {
+      if (message.children && message.children.length > 0) {
+        // Sort this message's children by creation date
+        message.children.sort(
+          (a: any, b: any) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+
+        // Recursively sort children of children
+        message.children.forEach(sortMessageChildren);
+      }
+    };
+
+    // Sort all root messages and their children
+    rootMessages.forEach(sortMessageChildren);
+
+    // Replace the flat messages array with the tree structure
+    thread.messages = rootMessages;
+
+    console.log("Thread with tree structure:", thread);
 
     // Cast the thread to match ThreadWithMessages type
     const typedThread: ThreadWithMessages = {
@@ -162,13 +209,14 @@ const threadsOps = {
           mimeType: att.mimeType || undefined,
           size: att.size || undefined,
         })),
-        children: msg.children || [],
+        // Children are already properly structured
       })),
     };
 
     // Return the thread with processed attachments
-    const processThread = await processThreadMessages(typedThread);
-    return processThread;
+    const processedThread = await processThreadMessages(typedThread);
+    console.log("\n\n\n", processedThread);
+    return processedThread;
   },
 
   async updateThread(
