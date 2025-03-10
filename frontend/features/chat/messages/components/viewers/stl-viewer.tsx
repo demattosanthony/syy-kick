@@ -41,7 +41,8 @@ export default function STLViewer({
       scene = new THREE.Scene();
       scene.background = null;
 
-      camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+      // Use a slightly wider field of view to better fill the canvas
+      camera = new THREE.PerspectiveCamera(70, 1, 0.1, 1000);
       camera.position.z = 5;
 
       renderer = new THREE.WebGLRenderer({
@@ -111,13 +112,27 @@ export default function STLViewer({
           const box = new THREE.Box3().setFromObject(mesh);
           const size = box.getSize(new THREE.Vector3());
           const maxDim = Math.max(size.x, size.y, size.z);
-          const scale = 3.5 / maxDim;
+
+          // Increase the scale factor to fill more of the canvas
+          const scale = 4.5 / maxDim;
           mesh.scale.set(scale, scale, scale);
 
           // Position the mesh at the center of the scene
           mesh.position.set(0, 0, 0);
 
           scene.add(mesh);
+
+          // Adjust camera position based on object size for better framing
+          const objectCenter = new THREE.Vector3();
+          box.getCenter(objectCenter);
+
+          // Set camera position to better frame the object
+          camera.position.set(0, 0, 4);
+          camera.lookAt(objectCenter);
+
+          // Update controls target to the center of the object
+          controls.target.copy(objectCenter);
+          controls.update();
         } catch (error) {
           console.error("Error parsing STL file:", error);
           setError("Error parsing STL file. Please try another file.");
@@ -153,7 +168,7 @@ export default function STLViewer({
         controls.dispose();
       }
     };
-  }, [file, resolvedTheme, animate]);
+  }, [file, resolvedTheme, animate, size, color]);
 
   return (
     <div className="flex relative h-full w-full">

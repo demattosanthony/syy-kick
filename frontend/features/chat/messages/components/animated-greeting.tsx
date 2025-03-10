@@ -99,6 +99,6 @@ const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
       </div>
     </div>
   );
-}
+};
 
 export default AnimatedGreeting;
