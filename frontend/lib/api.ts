@@ -502,11 +502,34 @@ class ProjectsApi extends ApiRequest {
     );
   }
 
-  async listProjects(search?: string): Promise<Project[]> {
+  async listProjects(options?: {
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    data: Project[];
+    pagination: {
+      page: number;
+      limit: number;
+      totalCount: number;
+      totalPages: number;
+      hasMore: boolean;
+    };
+  }> {
     const queryParams = new URLSearchParams();
-    if (search) {
-      queryParams.append("search", search);
+
+    if (options?.search) {
+      queryParams.append("search", options.search);
     }
+
+    if (options?.page !== undefined) {
+      queryParams.append("page", options.page.toString());
+    }
+
+    if (options?.limit !== undefined) {
+      queryParams.append("limit", options.limit.toString());
+    }
+
     return await this.request(`/projects?${queryParams.toString()}`);
   }
 
