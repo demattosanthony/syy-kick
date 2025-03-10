@@ -148,12 +148,14 @@ const UserMessage = ({
   branches,
   onSelectBranch,
   activeBranchId,
+  onEditComplete,
 }: {
   message: Message;
   threadId: string;
   branches?: ExtendedMessage[];
   onSelectBranch?: (messageId: string) => void;
   activeBranchId?: string;
+  onEditComplete?: (message: Message) => void;
 }) => {
   const [copied, setCopied] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -183,17 +185,31 @@ const UserMessage = ({
   };
 
   const handleSave = () => {
-    console.log("Editing message:", message);
-
     if (editedContent.trim() && editedContent !== message.content) {
-      editMessage({
-        threadId,
-        messageId: message.id,
-        content: editedContent,
-        attachments: message.experimental_attachments,
-      });
+      editMessage(
+        {
+          threadId,
+          messageId: message.id,
+          content: editedContent,
+          attachments: message.experimental_attachments,
+        },
+        {
+          onSuccess: (editedMessage) => {
+            setIsEditing(false);
+            // Call onEditComplete after successful edit
+            onEditComplete?.({
+              id: message.id,
+              content: editedContent,
+              role: message.role,
+              createdAt: message.createdAt,
+              experimental_attachments: message.experimental_attachments,
+            });
+          },
+        }
+      );
+    } else {
+      setIsEditing(false);
     }
-    setIsEditing(false);
   };
 
   // Log branches to debug
@@ -335,6 +351,7 @@ const ChatMessagesList = React.memo(
     showSkeletons = false,
     onSelectBranch,
     activeBranchMessageId,
+    onEditComplete,
   }: {
     messages: Message[];
     isLoading: boolean;
@@ -342,6 +359,7 @@ const ChatMessagesList = React.memo(
     showSkeletons?: boolean;
     onSelectBranch?: (messageId: string) => void;
     activeBranchMessageId?: string;
+    onEditComplete?: (message: Message) => void;
   }) => {
     useEffect(() => {
       const container = document.querySelector(".overflow-y-auto");
@@ -499,6 +517,7 @@ const ChatMessagesList = React.memo(
                         branches={variants}
                         onSelectBranch={onSelectBranch}
                         activeBranchId={activeBranchMessageId}
+                        onEditComplete={onEditComplete}
                       />
                     ) : (
                       <AssistantMessage

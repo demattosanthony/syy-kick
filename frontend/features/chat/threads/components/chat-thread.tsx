@@ -255,6 +255,14 @@ export default function ThreadPage({
     setSelectedProjectDocs([]);
   }
 
+  const handleEditComplete = async (editedMessage: Message) => {
+    console.log("Edit complete:", editedMessage);
+    // Set the input to empty since we're auto-submitting
+    setInput("");
+
+    onSubmit({ preventDefault: () => {} } as React.FormEvent);
+  };
+
   useEffect(() => {
     // If its a new thread, send the message right away
     if (isNew) {
@@ -323,6 +331,7 @@ export default function ThreadPage({
             showSkeletons={messagesAreBeingFetched}
             onSelectBranch={handleBranchSelect}
             activeBranchMessageId={activeBranchMessageId}
+            onEditComplete={handleEditComplete}
           />
         </div>
 

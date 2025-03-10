@@ -111,6 +111,19 @@ const threadsOps = {
             attachments: true,
             toolCalls: true,
           },
+          columns: {
+            id: true,
+            threadId: true,
+            userId: true,
+            parentMessageId: true,
+            role: true,
+            text: true,
+            reasoning: true,
+            model: true,
+            provider: true,
+            createdAt: true,
+            updatedAt: true,
+          },
         },
         project: true,
         organization: true,
@@ -127,6 +140,7 @@ const threadsOps = {
     thread.messages.forEach((message) => {
       messageMap.set(message.id, {
         ...message,
+        embedding: null,
         children: [],
       });
     });
@@ -147,7 +161,7 @@ const threadsOps = {
       }
     });
 
-    console.log("Root messages:", rootMessages);
+    // console.log();
 
     // Cast the thread to match ThreadWithMessages type
     const typedThread: ThreadWithMessages = {
@@ -166,7 +180,7 @@ const threadsOps = {
 
     // Return the thread with processed attachments
     const processedThread = await processThreadMessages(typedThread);
-    // console.log("\n\n\n", processedThread);
+    console.log(JSON.stringify(processedThread, null, 2));
     return processedThread;
   },
 
@@ -336,56 +350,39 @@ const threadsOps = {
         newMessageId = result.messageId;
       }
 
-      // 3) Re-fetch messages from DB to build inference context
-      // If parentMessageId is provided, only fetch messages in that branch
-      // Otherwise, fetch all messages in the thread
-      let rawMessages: any[] = [];
+      // 3) Get the conversation branch
+      const messagePath = new Set<string>();
+      let currentId: string | null = parentMessageId || newMessageId || null;
 
-      if (parentMessageId) {
-        // Get the conversation branch by starting from the parent message
-        // and collecting all messages in the path from root to that message,
-        // plus any direct children of those messages
-
-        // First, build the path from the parent message to the root
-        const messagePath = new Set<string>();
-        let currentId: string | null = parentMessageId;
-
-        while (currentId) {
-          messagePath.add(currentId);
-
-          const currentMessage: { parentMessageId: string | null } | undefined =
-            await db.query.messages.findFirst({
-              where: eq(messages.id, currentId),
-              columns: { parentMessageId: true },
-            });
-
-          currentId = currentMessage?.parentMessageId || null;
-        }
-
-        // Now fetch all messages in this conversation branch:
-        // 1. All messages in the path from root to parent
-        // 2. All direct children of any message in that path
-        rawMessages = await db.query.messages.findMany({
-          where: and(
-            eq(messages.threadId, threadId),
-            or(
-              // Messages that are part of the path from root to parent
-              inArray(messages.id, Array.from(messagePath)),
-              // Direct children of any message in the path
-              inArray(messages.parentMessageId, Array.from(messagePath))
-            )
-          ),
-          orderBy: messages.createdAt,
-          with: { attachments: true, toolCalls: true },
+      // Build path from current message to root
+      while (currentId) {
+        messagePath.add(currentId);
+        const currentMessage = await db.query.messages.findFirst({
+          where: eq(messages.id, currentId),
+          columns: { parentMessageId: true },
         });
-      } else {
-        // If no parentMessageId, get all messages in the thread
-        rawMessages = await db.query.messages.findMany({
-          where: eq(messages.threadId, threadId),
-          orderBy: messages.createdAt,
-          with: { attachments: true, toolCalls: true },
-        });
+        currentId = currentMessage?.parentMessageId || null;
       }
+
+      // If we have a new message but no parent message, add it to the path
+      if (newMessageId && !parentMessageId) {
+        messagePath.add(newMessageId);
+      }
+
+      // Fetch messages in the current branch
+      const rawMessages = await db.query.messages.findMany({
+        where: and(
+          eq(messages.threadId, threadId),
+          or(
+            // Get messages in the path
+            inArray(messages.id, Array.from(messagePath)),
+            // Get the new message if it exists
+            newMessageId ? eq(messages.id, newMessageId) : undefined
+          )
+        ),
+        orderBy: messages.createdAt,
+        with: { attachments: true, toolCalls: true },
+      });
 
       console.log("Raw messages:", rawMessages);
 
