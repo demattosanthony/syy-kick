@@ -96,6 +96,7 @@ const threadsOps = {
   async getThread(threadId: string) {
     const thread = await db.query.threads.findFirst({
       where: eq(threads.id, threadId),
+      orderBy: threads.createdAt,
       with: {
         messages: {
           orderBy: messages.createdAt,
@@ -142,6 +143,14 @@ const threadsOps = {
     });
     if (!thread) return null;
 
+    // Filter out messages that are children of other messages to avoid duplication
+    // Only keep root messages (those with parentMessageId = null) in the main messages array
+    thread.messages = thread.messages.filter(
+      (msg) => msg.parentMessageId === null
+    );
+
+    console.log("Thread:", thread);
+
     // Cast the thread to match ThreadWithMessages type
     const typedThread: ThreadWithMessages = {
       ...thread,
@@ -156,10 +165,10 @@ const threadsOps = {
         children: msg.children || [],
       })),
     };
-    // console.log("Thread:", typedThread);
 
     // Return the thread with processed attachments
-    return processThreadMessages(typedThread);
+    const processThread = await processThreadMessages(typedThread);
+    return processThread;
   },
 
   async updateThread(
