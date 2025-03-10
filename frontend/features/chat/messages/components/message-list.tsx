@@ -106,8 +106,8 @@ import {
 const LoadingMessage = React.memo(() => {
   return (
     <div className="mb-4 flex flex-col justify-start">
-      <div className="flex gap-2">
-        <div className="mr-[1px] w-[32px] h-[32px]">
+      <div className="flex items-center gap-1">
+        <div className="w-[32px] h-full">
           <Syyclops3dEye size={22} animate={false} />
         </div>
 

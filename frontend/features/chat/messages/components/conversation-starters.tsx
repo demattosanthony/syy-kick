@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAtom } from "jotai";
 import { AUTO_MODEL_CONFIG, initalInputAtom, modelAtom } from "@/atoms/chat";
@@ -10,116 +9,65 @@ import {
   LucideIcon,
   Building,
   Files,
-  FileText,
-  ChevronDown,
-  ChevronUp,
-  BarChart,
-  ClipboardList,
-  Lightbulb,
-  Compass,
-  Gauge,
+  Shield,
+  BarChart2,
+  DollarSign,
+  ClipboardCheck,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { animatedAtom } from "@/features/chat/messages/components/animated-greeting";
+import { animatedAtom } from "./animated-greeting";
 
 interface ConversationStartersProps {
   triggerFileInput: () => void;
   triggerTextAreaFocus: () => void;
 }
 
-interface StarterButtonProps {
+interface StarterCardProps {
   icon: LucideIcon;
   iconColor: string;
   label: string;
+  description: string;
   inputText: string;
   requiresFile?: boolean;
   requiresWebSearch?: boolean;
-  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  description?: string; // Short description of what the starter does
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-interface CategoryProps {
-  id: string;
-  name: string;
-  icon: LucideIcon;
-  iconColor: string;
-  starters: StarterButtonProps[];
-}
-
-const CATEGORIES: CategoryProps[] = [
+const CONVERSATION_STARTERS: StarterCardProps[] = [
   {
-    id: "mep-systems",
-    name: "MEP Systems",
+    icon: Search,
+    iconColor: "text-red-500",
+    label: "Mechanical Room Layout Review",
+    description:
+      "Evaluate mechanical room designs for optimization and serviceability",
+    inputText:
+      "Please analyze this mechanical room drawing/documentation and provide a detailed assessment focused on:\n\n1. Space utilization efficiency (equipment clearances, service access, pipe/duct routing)\n2. Code compliance specific to mechanical rooms (ventilation, emergency access, fire separations)\n3. Equipment arrangement optimization for:\n   - Maintenance accessibility (filter replacement, coil cleaning, valve access)\n   - Future equipment replacement pathways\n   - Noise/vibration isolation between critical components\n4. Pipe and duct routing efficiency evaluation\n5. Safety considerations (relief valve discharge, combustion air, emergency ventilation)\n6. Specific recommendations for layout improvements with sketched annotations if possible\n\nIdentify any critical spatial conflicts, maintenance accessibility concerns, or code violations that should be addressed during design development. Format your analysis as a professional review document with clear sections for each evaluation category.",
+    requiresFile: true,
+  },
+  {
     icon: Plug,
-    iconColor: "text-blue-500",
-    starters: [
-      {
-        icon: Building,
-        iconColor: "text-purple-500",
-        label: "Generate BOD",
-        description: "Create a Basis of Design document",
-        inputText:
-          "Analyze this document and create a comprehensive Basis of Design (BOD) document. First, carefully review the content to extract all relevant engineering requirements, specifications, and project parameters. Then, generate a well-structured markdown BOD document that includes:\n\n1. Project Overview\n2. Design Criteria and Standards\n3. System Descriptions (HVAC, Plumbing, Electrical, etc.)\n4. Load Calculations and Assumptions\n5. Equipment Selections\n6. Control Strategies\n7. Energy Efficiency Measures\n8. Sustainability Considerations\n\nFormat the BOD as a professional markdown document with appropriate headings, tables, and bullet points. This document should serve as a clear reference for all engineering design decisions and requirements. MAKE SURE to return the document as an artifact in markdown format.",
-        requiresFile: true,
-      },
-      {
-        icon: Compass,
-        iconColor: "text-orange-500",
-        label: "HVAC Load Analysis",
-        description: "Calculate heating and cooling loads from plans",
-        inputText:
-          "Analyze this document and calculate the heating and cooling loads for the building. Extract room dimensions, occupancy, equipment loads, and envelope details to provide a comprehensive load analysis. Present results in a table format.",
-        requiresFile: true,
-      },
-    ],
+    iconColor: "text-teal-500",
+    label: "Extract Energy Usage",
+    description: "Get usage data from your energy bill in table format",
+    inputText:
+      "Extract my energy usage from this bill and return it in a table format",
+    requiresFile: true,
   },
   {
-    id: "energy-sustainability",
-    name: "Energy & Sustainability",
-    icon: Gauge,
-    iconColor: "text-green-500",
-    starters: [
-      {
-        icon: BarChart,
-        iconColor: "text-green-500",
-        label: "Energy Performance",
-        description: "Analyze building energy performance metrics",
-        inputText:
-          "Analyze the energy performance data in this document. Calculate EUI, identify efficiency opportunities, and compare against industry benchmarks. Present findings in clear, visual format.",
-        requiresFile: true,
-      },
-      {
-        icon: Plug,
-        iconColor: "text-teal-500",
-        label: "Extract Energy Usage",
-        description: "Get usage data from energy bills",
-        inputText:
-          "Extract my energy usage from this bill and return it in a table format. Calculate month-to-month changes and identify consumption patterns.",
-        requiresFile: true,
-      },
-      {
-        icon: Lightbulb,
-        iconColor: "text-yellow-500",
-        label: "LEED Credit Analysis",
-        description: "Evaluate project LEED certification potential",
-        inputText:
-          "Review this document and identify potential LEED credits the project could achieve. Organize by credit category and provide recommendations to maximize certification level.",
-        requiresFile: true,
-      },
-    ],
-  },
-  {
-    id: "structural-construction",
-    name: "Structural & Construction",
     icon: Building,
-    iconColor: "text-amber-500",
-    starters: [
-      {
-        icon: Files,
-        iconColor: "text-blue-500",
-        label: "Generate RFP",
-        description: "Create a detailed Request for Proposal",
-        inputText: `You are an experienced MEP (Mechanical, Electrical, Plumbing) engineer tasked with analyzing project documents and generating fee estimates. Your goal is to extract key information from the provided document and calculate appropriate MEP design fees based on industry standards.
+    iconColor: "text-purple-500",
+    label: "Generate Basis of Design",
+    description:
+      "Create a comprehensive BOD document from project specifications",
+    inputText:
+      "Analyze this document and create a comprehensive Basis of Design (BOD) document. First, carefully review the content to extract all relevant engineering requirements, specifications, and project parameters. Then, generate a well-structured markdown BOD document that includes:\n\n1. Project Overview\n2. Design Criteria and Standards\n3. System Descriptions (HVAC, Plumbing, Electrical, etc.)\n4. Load Calculations and Assumptions\n5. Equipment Selections\n6. Control Strategies\n7. Energy Efficiency Measures\n8. Sustainability Considerations\n\nFormat the BOD as a professional markdown document with appropriate headings, tables, and bullet points. This document should serve as a clear reference for all engineering design decisions and requirements. MAKE SURE to return the document as an artifact in markdown format.",
+    requiresFile: true,
+  },
+  {
+    icon: Files,
+    iconColor: "text-blue-500",
+    label: "Draft Request for Proposal",
+    description: "Create a professional MEP fee estimate and RFP document",
+    inputText: `You are an experienced MEP (Mechanical, Electrical, Plumbing) engineer tasked with analyzing project documents and generating fee estimates. Your goal is to extract key information from the provided document and calculate appropriate MEP design fees based on industry standards.
 
 Please follow these steps to analyze the document and generate a fee estimate:
 
@@ -172,97 +120,46 @@ After your analysis, provide a summary of your findings in the following format:
 Please proceed with your analysis and summary of the project document.
 
 Return the RFP as an artifact in markdown format.`,
-        requiresFile: true,
-      },
-      {
-        icon: ClipboardList,
-        iconColor: "text-red-500",
-        label: "Material Takeoff",
-        description: "Calculate material quantities from plans",
-        inputText:
-          "Create a detailed material takeoff from this document. Extract dimensions, quantities, and specifications for key construction materials. Organize results by CSI division.",
-        requiresFile: true,
-      },
-      {
-        icon: Building,
-        iconColor: "text-amber-500",
-        label: "Construction Schedule",
-        description: "Develop project timeline from documents",
-        inputText:
-          "Generate a construction schedule based on this document. Identify key milestones, critical path activities, and required sequencing. Present as a timeline with durations.",
-        requiresFile: true,
-      },
-    ],
+    requiresFile: true,
   },
   {
-    id: "codes-documentation",
-    name: "Codes & Documentation",
-    icon: FileText,
-    iconColor: "text-purple-500",
-    starters: [
-      {
-        icon: Search,
-        iconColor: "text-red-500",
-        label: "Code Compliance Check",
-        description: "Verify compliance with building codes",
-        inputText:
-          "Review this document and identify any potential building code compliance issues. Focus on structural, fire, accessibility, and energy code requirements.",
-        requiresFile: true,
-      },
-      {
-        icon: ClipboardList,
-        iconColor: "text-amber-500",
-        label: "Generate Specifications",
-        description: "Create technical specifications from plans",
-        inputText:
-          "Generate detailed technical specifications based on this document. Extract material requirements, performance criteria, and installation standards. Format as a proper specification section.",
-        requiresFile: true,
-      },
-      {
-        icon: FileText,
-        iconColor: "text-blue-500",
-        label: "Permit Documentation",
-        description: "Prepare permit submission requirements",
-        inputText:
-          "Analyze this document and create a list of all required documentation needed for permitting. Include drawings, calculations, forms and other submissions required by typical jurisdictions.",
-        requiresFile: true,
-      },
-    ],
+    icon: Shield,
+    iconColor: "text-amber-500",
+    label: "Code Compliance Review",
+    description:
+      "Analyze designs for compliance with building codes and standards",
+    inputText:
+      "Please review this document for code compliance issues and provide a comprehensive analysis that includes:\n\n1. Applicable codes and standards identified\n2. Areas of potential non-compliance\n3. Life safety considerations\n4. Accessibility requirements\n5. Energy code provisions\n6. Recommendations to address compliance gaps\n\nOrganize your findings by system type (architectural, structural, mechanical, electrical, plumbing) with specific code references where possible. Highlight critical issues that require immediate attention and suggest practical solutions for resolving them.",
+    requiresFile: true,
   },
   {
-    id: "project-management",
-    name: "Project Management",
-    icon: ClipboardList,
+    icon: BarChart2,
+    iconColor: "text-green-500",
+    label: "Energy Model Analysis",
+    description:
+      "Interpret energy simulation results and recommend optimizations",
+    inputText:
+      "Please analyze this energy modeling report and provide:\n\n1. A summary of key performance metrics (EUI, peak loads, energy consumption by end use)\n2. Comparison to industry benchmarks (ASHRAE 90.1, CBECS, etc.)\n3. Analysis of the proposed mechanical/electrical systems' efficiency\n4. Identification of high-impact optimization opportunities\n5. Potential energy cost savings for each recommendation\n6. Carbon reduction potential\n\nPresent your findings with visual aids where appropriate and provide actionable recommendations prioritized by impact and implementation complexity.",
+    requiresFile: true,
+  },
+  {
+    icon: DollarSign,
+    iconColor: "text-yellow-500",
+    label: "Value Engineering",
+    description:
+      "Identify cost-saving opportunities while maintaining performance",
+    inputText:
+      "Review this project documentation and develop a value engineering analysis that:\n\n1. Identifies high-cost items or systems with potential for cost reduction\n2. Suggests alternative materials, equipment, or design approaches\n3. Evaluates each alternative for initial cost savings, life-cycle cost impact, and performance implications\n4. Considers construction schedule implications\n5. Highlights any code compliance or warranty implications\n\nPresent your recommendations in a table format that includes estimated cost savings, pros/cons of each alternative, and implementation considerations. Focus on solutions that maintain or improve functionality while reducing costs.",
+    requiresFile: true,
+  },
+  {
+    icon: ClipboardCheck,
     iconColor: "text-indigo-500",
-    starters: [
-      {
-        icon: Lightbulb,
-        iconColor: "text-yellow-500",
-        label: "Risk Assessment",
-        description: "Identify project risks and mitigation strategies",
-        inputText:
-          "Analyze this document and create a comprehensive risk assessment. Identify potential risks, rate their likelihood and impact, and suggest mitigation strategies.",
-        requiresFile: true,
-      },
-      {
-        icon: BarChart,
-        iconColor: "text-green-500",
-        label: "Cost Estimation",
-        description: "Generate detailed project cost estimates",
-        inputText:
-          "Review this document and create a detailed cost estimate. Break down costs by category, identify key assumptions, and provide a confidence range for the estimate.",
-        requiresFile: true,
-      },
-      {
-        icon: ClipboardList,
-        iconColor: "text-amber-500",
-        label: "Quality Control Plan",
-        description: "Create QC procedures for engineering projects",
-        inputText:
-          "Develop a quality control plan based on this document. Include inspection points, testing requirements, acceptance criteria, and documentation needs.",
-        requiresFile: true,
-      },
-    ],
+    label: "Commissioning Plan",
+    description: "Generate a comprehensive building systems commissioning plan",
+    inputText:
+      "Based on this project documentation, develop a comprehensive building commissioning plan that includes:\n\n1. Systems to be commissioned (HVAC, lighting, plumbing, specialty systems, etc.)\n2. Commissioning scope and process for each system\n3. Testing requirements and acceptance criteria\n4. Required documentation and deliverables\n5. Roles and responsibilities of team members\n6. Commissioning schedule aligned with construction milestones\n7. Training requirements for facility staff\n\nFormat the plan as a detailed document with appropriate sections, tables, and checklists that can be used throughout the construction process. Include recommendations for specific testing procedures that address critical performance aspects of each system.",
+    requiresFile: true,
   },
 ];
 
@@ -271,63 +168,28 @@ function StarterCard({
   iconColor,
   label,
   description,
+  requiresFile,
   onClick,
-}: StarterButtonProps) {
+}: StarterCardProps) {
   return (
-    <Button
-      variant="outline"
+    <motion.div
+      className="bg-card text-card-foreground rounded-lg shadow-sm border border-border px-3 py-2.5 cursor-pointer w-[220px] h-[100px] flex flex-col"
+      initial={{ y: 0, boxShadow: "var(--shadow-sm)" }}
+      whileHover={{
+        y: -2,
+        boxShadow: "var(--shadow-md)",
+      }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       onClick={onClick}
-      className="flex flex-col items-start gap-1 h-auto p-4 text-left w-full hover:bg-secondary"
     >
-      <div className="flex items-center gap-2 w-full">
-        <Icon className={iconColor} size={16} />
-        <span className="font-medium">{label}</span>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Icon className={`${iconColor}`} size={16} />
+        <h3 className="font-medium text-sm">{label}</h3>
       </div>
-      {description && (
-        <p className="text-xs text-gray-500 mt-1">{description}</p>
-      )}
-    </Button>
-  );
-}
-
-function CategorySection({
-  category,
-  handleButtonClick,
-}: {
-  category: CategoryProps;
-  handleButtonClick: (starter: StarterButtonProps) => void;
-}) {
-  const [expanded, setExpanded] = useState(true);
-
-  return (
-    <div className="w-full border rounded-md overflow-hidden">
-      <button
-        className="flex items-center justify-between w-full p-3 bg-secondary/20"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="flex items-center gap-2">
-          <category.icon className={category.iconColor} size={18} />
-          <h3 className="font-medium">{category.name}</h3>
-        </div>
-        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </button>
-
-      {expanded && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3">
-          {category.starters.map((starter, index) => (
-            <StarterCard
-              key={index}
-              {...starter}
-              onClick={(e) => {
-                e?.preventDefault();
-                e?.stopPropagation();
-                handleButtonClick(starter);
-              }}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+      <p className="text-xs text-muted-foreground line-clamp-2">
+        {description}
+      </p>
+    </motion.div>
   );
 }
 
@@ -339,14 +201,13 @@ const ConversationStarters = ({
   const [, setModel] = useAtom(modelAtom);
   const [alreadyAnimated] = useAtom(animatedAtom);
 
-  const handleButtonClick = async (starter: StarterButtonProps) => {
+  const handleCardClick = async (starter: StarterCardProps) => {
     const { requiresFile, inputText } = starter;
 
     setModel(AUTO_MODEL_CONFIG);
 
     if (requiresFile) {
       await new Promise((r) => setTimeout(r, 100));
-
       triggerFileInput();
     }
 
@@ -356,18 +217,24 @@ const ConversationStarters = ({
 
   return (
     <motion.div
-      className="flex flex-col w-full max-w-[750px] gap-4"
+      className="w-full max-w-[950px] mx-auto"
       initial={alreadyAnimated ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={alreadyAnimated ? {} : { delay: 1, duration: 1 }}
     >
-      {CATEGORIES.map((category, index) => (
-        <CategorySection
-          key={index}
-          category={category}
-          handleButtonClick={handleButtonClick}
-        />
-      ))}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 justify-items-center">
+        {CONVERSATION_STARTERS.map((starter, index) => (
+          <StarterCard
+            key={index}
+            {...starter}
+            onClick={(e) => {
+              e?.preventDefault();
+              e?.stopPropagation();
+              handleCardClick(starter);
+            }}
+          />
+        ))}
+      </div>
     </motion.div>
   );
 };

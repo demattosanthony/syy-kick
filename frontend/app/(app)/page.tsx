@@ -73,7 +73,7 @@ export default function Home() {
 
       <main className="flex-1 flex flex-col py-6 overflow-y-auto">
         <div className="flex flex-col items-center w-full gap-6 pb-4">
-          <div className="w-[115px] flex items-center justify-center min-h-[115px] mt-[8vh]">
+          <div className="w-[115px] flex items-center justify-center min-h-[115px] mt-[16vh]">
             <Syyclops3dEye size={115} animate={false} />
           </div>
 
@@ -81,7 +81,7 @@ export default function Home() {
             <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
           </div>
 
-          <div className="flex flex-col w-full max-w-3xl px-6 md:px-2">
+          <div className="flex flex-col w-full px-6 mt-4 md:px-2">
             <ChatInputForm
               input={initalInput}
               setInput={setInitalInput}
@@ -89,17 +89,13 @@ export default function Home() {
               ref={chatInputRef}
               onSubmit={handleSubmit}
             />
+          </div>
 
-            <div className="mt-6">
-              <ConversationStarters
-                triggerFileInput={() =>
-                  chatInputRef.current?.triggerFileInput()
-                }
-                triggerTextAreaFocus={() =>
-                  chatInputRef.current?.focusTextArea()
-                }
-              />
-            </div>
+          <div className="max-w-5xl mt-6">
+            <ConversationStarters
+              triggerFileInput={() => chatInputRef.current?.triggerFileInput()}
+              triggerTextAreaFocus={() => chatInputRef.current?.focusTextArea()}
+            />
           </div>
         </div>
       </main>
