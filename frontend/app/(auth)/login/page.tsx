@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Key } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -67,7 +67,9 @@ export default function LoginPage() {
       <main className="flex flex-col gap-8 items-center w-full justify-center h-[75%]">
         {/** Title and description */}
         <div className="flex flex-col items-center w-[400px] gap-2">
-          <Syyclops3dEye size={125} animate={false} />
+          <div className="mb-4">
+            <Syyclops3dEye size={95} animate={false} />
+          </div>
 
           <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">
             Yo! Let&apos;s get started
@@ -108,14 +110,14 @@ export default function LoginPage() {
               />
               Continue with Microsoft
             </Button>
-            <Button
+            {/* <Button
               className="font-semibold w-[320px] flex justify-start h-[50px]"
               onClick={() => setSsoSelected(true)}
               variant={"outline"}
             >
               <Key className="mr-1 h-5 w-5" />
               Continue with Organization
-            </Button>
+            </Button> */}
           </div>
         )}
 
