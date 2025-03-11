@@ -92,3 +92,46 @@ export interface UpdateThreadMutationData {
   projectId?: string;
   isPublic?: boolean;
 }
+
+export interface MessageNode {
+  id: string;
+  threadId: string;
+  userId: string;
+  parentMessageId?: string | null;
+  role: "system" | "user" | "assistant" | "tool";
+  text: string | null;
+  reasoning?: string | null;
+  model?: string | null;
+  provider?: string | null;
+  createdAt: Date;
+  attachments: Array<{
+    fileName?: string;
+    mimeType?: string;
+    size?: number;
+    fileKey: string;
+    type?: string;
+  }>;
+  toolCalls?: Array<{
+    args: any;
+    id: string;
+    result: any;
+    status: string;
+    toolName: string;
+    toolCallId: string;
+  }>;
+  children: MessageNode[];
+}
+
+export interface ThreadWithMessageTree {
+  id: string;
+  title?: string | null;
+  userId: string;
+  organizationId?: string | null;
+  projectId?: string | null;
+  isPublic?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  messages: MessageNode[];
+  project?: any;
+  organization?: any;
+}

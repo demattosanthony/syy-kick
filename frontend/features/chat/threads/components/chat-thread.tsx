@@ -22,10 +22,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import { useAtom } from "jotai";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 
 // Components
-import { Thread } from "@/types/chat";
+import { Thread, ThreadWithMessageTree } from "@/types/chat";
 import { toast } from "sonner";
 import ThreadHeader from "./thread-header";
 import { useResizeLayout } from "../hooks";
@@ -35,8 +35,7 @@ import {
   ChatMessagesList,
 } from "@/features/chat/messages/components";
 import { CloneThreadButton } from "./clone-thread-button";
-import { GitBranch } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { activeMessagePathAtom, getActivePathMessages } from "../utils";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -50,7 +49,7 @@ export default function ThreadPage({
   showCloneThreadButton = false,
 }: {
   initalMessages: Message[];
-  thread?: Thread;
+  thread?: ThreadWithMessageTree;
   viewOnly?: boolean;
   messagesAreBeingFetched?: boolean;
   showCloneThreadButton?: boolean;
@@ -72,91 +71,16 @@ export default function ThreadPage({
     selectedProjectDocsAtom
   );
 
-  // Find all root user messages
-  const rootUserMessages = useMemo(() => {
-    return initalMessages.filter(
-      (msg) => msg.role === "user" && !(msg as any).parentId
-    );
-  }, [initalMessages]);
+  const [activePath, setActivePath] = useAtom(activeMessagePathAtom);
 
-  // Set the active branch to the most recent root user message by default
-  const [activeBranchMessageId, setActiveBranchMessageId] = useState<
-    string | undefined
-  >(() => {
-    if (rootUserMessages.length > 1) {
-      // Sort by creation date and get the most recent
-      const sortedMessages = [...rootUserMessages].sort((a, b) => {
-        return (
-          new Date(b.createdAt || 0).getTime() -
-          new Date(a.createdAt || 0).getTime()
-        );
-      });
-      return sortedMessages[0].id;
+  // Update messages when active path changes
+  useEffect(() => {
+    if (thread?.messages && activePath.length > 0) {
+      const pathMessages = getActivePathMessages(thread.messages, activePath);
+      // We need to update the chat UI with these messages
+      // This might require modifying the useChat hook or its state
     }
-    return undefined; // Only set a default if there are multiple branches
-  });
-
-  // Get the last message id based on the active branch
-  const lastMessageId = useMemo(() => {
-    if (!activeBranchMessageId) {
-      // If no active branch, use the last message in the initial messages
-      return initalMessages.length > 0
-        ? initalMessages[initalMessages.length - 1].id
-        : undefined;
-    }
-
-    // Find the last message in the active branch
-    const messagesInBranch = new Set<string>();
-    const messagesToProcess = [activeBranchMessageId];
-
-    // Add the active branch message
-    messagesInBranch.add(activeBranchMessageId);
-
-    // Add all descendants (children)
-    while (messagesToProcess.length > 0) {
-      const currentId = messagesToProcess.shift()!;
-
-      // Find all direct children
-      const children = initalMessages.filter(
-        (msg) => (msg as any).parentId === currentId
-      );
-
-      // Add them to the set and queue
-      children.forEach((child) => {
-        messagesInBranch.add(child.id);
-        messagesToProcess.push(child.id);
-      });
-    }
-
-    // Find the most recent message in the branch
-    const branchMessages = initalMessages.filter((msg) =>
-      messagesInBranch.has(msg.id)
-    );
-    const sortedBranchMessages = [...branchMessages].sort((a, b) => {
-      return (
-        new Date(b.createdAt || 0).getTime() -
-        new Date(a.createdAt || 0).getTime()
-      );
-    });
-
-    return sortedBranchMessages.length > 0
-      ? sortedBranchMessages[0].id
-      : activeBranchMessageId;
-  }, [initalMessages, activeBranchMessageId]);
-
-  // Handle branch selection
-  const handleBranchSelect = (messageId: string) => {
-    console.log("Selected branch:", messageId);
-    setActiveBranchMessageId(messageId);
-
-    // Optional: You could also scroll to the selected branch
-    setTimeout(() => {
-      const element = document.getElementById(`message-${messageId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }, 100);
-  };
+  }, [activePath, thread]);
 
   const {
     input,
@@ -179,7 +103,6 @@ export default function ThreadPage({
         model: model.name,
         temperature: temperature,
         instructions,
-        parentMessageId: lastMessageId,
       };
     },
   });
@@ -255,14 +178,6 @@ export default function ThreadPage({
     setSelectedProjectDocs([]);
   }
 
-  const handleEditComplete = async (editedMessage: Message) => {
-    console.log("Edit complete:", editedMessage);
-    // Set the input to empty since we're auto-submitting
-    setInput("");
-
-    onSubmit({ preventDefault: () => {} } as React.FormEvent);
-  };
-
   useEffect(() => {
     // If its a new thread, send the message right away
     if (isNew) {
@@ -288,6 +203,11 @@ export default function ThreadPage({
     };
   }, [threadId]);
 
+  // Reset active path when thread changes
+  useEffect(() => {
+    setActivePath([]);
+  }, [threadId]);
+
   useEffect(() => {
     if (error) {
       toast.error("An error occurred. Please try again later.");
@@ -295,8 +215,6 @@ export default function ThreadPage({
   }, [error]);
 
   const { splitPosition, handleMouseDown } = useResizeLayout();
-
-  console.log(thread);
 
   return (
     <div id="chat-container" className="flex h-full w-full relative">
@@ -327,32 +245,12 @@ export default function ThreadPage({
           <ChatMessagesList
             messages={messages}
             isLoading={status === "submitted"}
-            threadId={threadId}
             showSkeletons={messagesAreBeingFetched}
-            onSelectBranch={handleBranchSelect}
-            activeBranchMessageId={activeBranchMessageId}
-            onEditComplete={handleEditComplete}
           />
         </div>
 
         {!viewOnly && (
-          <div className="w-full flex flex-col items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
-            {activeBranchMessageId && (
-              <div className="w-full mb-2 text-center">
-                <div className="text-xs text-muted-foreground flex items-center justify-center">
-                  <GitBranch className="h-3 w-3 mr-1" />
-                  Replying to a specific branch
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs p-0 h-auto ml-1"
-                    onClick={() => setActiveBranchMessageId(undefined)}
-                  >
-                    Reset
-                  </Button>
-                </div>
-              </div>
-            )}
+          <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
             <ChatInputForm
               input={input}
               setInput={setInput}

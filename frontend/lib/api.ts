@@ -1,4 +1,8 @@
-import { Thread, UpdateThreadMutationData } from "@/types/chat";
+import {
+  Thread,
+  ThreadWithMessageTree,
+  UpdateThreadMutationData,
+} from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
@@ -434,8 +438,8 @@ class ThreadApi extends ApiRequest {
     }
   }
 
-  async getThread(threadId: string): Promise<Thread> {
-    return await this.request<Thread>(`/threads/${threadId}`);
+  async getThread(threadId: string): Promise<ThreadWithMessageTree> {
+    return await this.request<ThreadWithMessageTree>(`/threads/${threadId}`);
   }
 
   async getPublicThread(threadId: string): Promise<Thread> {
