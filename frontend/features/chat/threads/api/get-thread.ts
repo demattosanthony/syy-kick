@@ -12,3 +12,11 @@ export function useThreadQuery(threadId: string, isNewThread: boolean) {
     refetchOnWindowFocus: false,
   });
 }
+
+export function usePublicThreadQuery(threadId: string) {
+  return useQuery({
+    queryKey: ["public-thread", threadId],
+    queryFn: () => api.threads.getPublicThread(threadId),
+    refetchOnWindowFocus: false,
+  });
+}

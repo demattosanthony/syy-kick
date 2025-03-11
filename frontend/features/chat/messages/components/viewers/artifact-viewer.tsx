@@ -1,22 +1,35 @@
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+// React and hooks
+import React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useSetAtom } from "jotai";
-import { selectedArtifactAtom } from "@/atoms/chat";
-import { Check, Copy, Download, X } from "lucide-react";
-import MarkdownViewer from "./markdown-viewer";
-import { cn } from "@/lib/utils";
+
+// UI Components
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getArtifactVersionInfo } from "@/lib/artifact-utils";
-import { Artifact } from "@/types/chat";
-import { Message } from "ai";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+// Icons and animations
+import { motion } from "framer-motion";
+import { Check, Copy, Download, X } from "lucide-react";
+
+// State management
+import { selectedArtifactAtom } from "@/atoms/chat";
+
+// Utilities and helpers
+import { cn } from "@/lib/utils";
+import { getArtifactVersionInfo } from "@/lib/artifact-utils";
+
+// Types
+import { Artifact } from "@/types/chat";
+import { Message } from "ai";
+
+// Content renderers
+import MarkdownViewer from "./markdown-viewer";
 import { marked } from "marked";
-import { useSidebar } from "@/components/ui/sidebar";
 import mermaid from "mermaid";
 
 const ArtifactViewer: React.FC<{
@@ -30,7 +43,6 @@ const ArtifactViewer: React.FC<{
     artifact,
     messages
   );
-  const { setOpen } = useSidebar();
   const mermaidRef = useRef<HTMLDivElement>(null);
   const mimeType = artifact.type || "text/markdown";
 
@@ -328,7 +340,6 @@ const ArtifactViewer: React.FC<{
                 <Button
                   onClick={() => {
                     setSelectedArtifact(null);
-                    setOpen(true);
                   }}
                   size="icon"
                   variant="ghost"
@@ -424,4 +435,4 @@ const ArtifactViewer: React.FC<{
   );
 };
 
-export default ArtifactViewer;
+export default React.memo(ArtifactViewer);

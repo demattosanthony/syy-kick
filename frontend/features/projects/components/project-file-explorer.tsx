@@ -11,12 +11,20 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, getRelativeTimeString } from "@/lib/utils";
 import { DocumentContent } from "@/types/project";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useProjectDocsQuery, useDeleteProjectContentMutation } from "../api";
 
 interface ProjectFileExplorerProps {
@@ -179,7 +187,13 @@ function FileExplorerItem({
       }
       router.push(`/projects/${projectId}/tree/${item.path}`);
     } else {
-      router.push(`/projects/${projectId}/blob/${item.path}`);
+      // Properly encode the path to handle special characters like #
+      const encodedPath = item.path
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+
+      router.push(`/projects/${projectId}/blob/${encodedPath}`);
     }
   };
 
@@ -227,7 +241,7 @@ function FileExplorerItem({
               )}
             </span>
           )}
-          <span className="text-sm hover:underline hover:text-blue-500 truncate flex-1 min-w-0">
+          <span className="text-sm hover:underline hover:text-blue-500 truncate min-w-0 max-w-[calc(100vw*0.55)] md:max-w-[calc(100vw*0.30)]">
             {item.name}
           </span>
 
@@ -236,7 +250,7 @@ function FileExplorerItem({
               <TooltipTrigger>
                 <div
                   className={cn(
-                    "h-2 w-2 rounded-full shadow-md flex-shrink-0",
+                    "h-2 w-2 rounded-full shadow-md flex-shrink-0 ml-2",
                     {
                       "bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20":
                         item.processingJob.status === "failed",

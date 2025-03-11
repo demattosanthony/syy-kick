@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import s3 from "./config/s3";
 import { handle } from "./utils";
 import { auth, checkSub } from "./middleware";
+import threadsOps from "./features/threads/threads.ops";
 
 // Routes
 import authRoutes from "./features/auth";
@@ -18,6 +19,13 @@ import workflowRoutes from "./features/workflows/workflows.routes";
 export default Router()
   .use("/auth", authRoutes)
   .use("/models", modelRoutes)
+  // Add a public endpoint for accessing shared threads
+  .get(
+    "/public/threads/:threadId",
+    handle(async (req) => {
+      return threadsOps.getThread(req.params.threadId);
+    })
+  )
   .use("/threads", auth, checkSub, threadRoutes)
   .post("/payments/webhook", webhook)
   .use("/payments", auth, paymentRoutes)

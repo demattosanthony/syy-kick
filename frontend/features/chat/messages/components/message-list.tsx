@@ -98,13 +98,17 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Message } from "ai";
 import AssistantMessage from "./assistant-message";
+import {
+  AssistantSkeletonMessage,
+  UserSkeletonMessage,
+} from "./message-skeletons";
 
 const LoadingMessage = React.memo(() => {
   return (
     <div className="mb-4 flex flex-col justify-start">
-      <div className="flex gap-2">
-        <div className="mr-[1px] w-[32px] h-[32px]">
-          <Syyclops3dEye size={32} animate={false} />
+      <div className="flex items-center gap-1">
+        <div className="w-[32px] h-full">
+          <Syyclops3dEye size={22} animate={false} />
         </div>
 
         <div className="flex items-center rounded-lg bg-background">
@@ -136,7 +140,15 @@ LoadingMessage.displayName = "LoadingMessage";
 
 // Memo helps to prevent unnecessary re-renders. Fixes issue when lots of messages and user types in chat input form is laggy
 const ChatMessagesList = React.memo(
-  ({ messages, isLoading }: { messages: Message[]; isLoading: boolean }) => {
+  ({
+    messages,
+    isLoading,
+    showSkeletons = false,
+  }: {
+    messages: Message[];
+    isLoading: boolean;
+    showSkeletons?: boolean;
+  }) => {
     useEffect(() => {
       const container = document.querySelector(".overflow-y-auto");
       if (container) {
@@ -153,25 +165,36 @@ const ChatMessagesList = React.memo(
           )}
         >
           <div className="max-w-[840px] mx-auto pt-20 p-4 flex flex-col gap-2">
-            {messages.map((message, index) => {
-              const nextMessage = messages[index + 1];
-              const showEye =
-                message.role !== MessageRole.user &&
-                (!nextMessage || nextMessage.role === MessageRole.user) &&
-                !isLoading;
+            {showSkeletons ? (
+              // Show skeleton messages when loading the thread
+              <>
+                <UserSkeletonMessage />
+                <AssistantSkeletonMessage />
+                <UserSkeletonMessage />
+                <AssistantSkeletonMessage />
+              </>
+            ) : (
+              // Show actual messages
+              messages.map((message, index) => {
+                const nextMessage = messages[index + 1];
+                const showEye =
+                  message.role !== MessageRole.user &&
+                  (!nextMessage || nextMessage.role === MessageRole.user) &&
+                  !isLoading;
 
-              return message.role === MessageRole.user ? (
-                <UserMessage key={index} message={message} />
-              ) : (
-                <AssistantMessage
-                  key={index}
-                  message={message}
-                  showEye={showEye}
-                  messages={messages}
-                />
-              );
-            })}
-            {isLoading && <LoadingMessage />}
+                return message.role === MessageRole.user ? (
+                  <UserMessage key={index} message={message} />
+                ) : (
+                  <AssistantMessage
+                    key={index}
+                    message={message}
+                    showEye={showEye}
+                    messages={messages}
+                  />
+                );
+              })
+            )}
+            {isLoading && !showSkeletons && <LoadingMessage />}
           </div>
         </div>
       </div>

@@ -18,7 +18,6 @@ import { NavUser } from "./nav-user";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@/types/user";
 import { WorkSpaceSwitcher } from "./workspace-switcher";
-import { NewThreadButton } from "./new-thread-button";
 import { ThreadsList } from "./sidebar-threads-list";
 import { ThreadsLink } from "./threads-link";
 import { SidebarProjectsList } from "./sidebar-projects-list";
@@ -38,6 +37,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { CreateWorkflowDialog } from "./create-workflow-dialog";
 import { CreateProjectDialog } from "@/features/projects/components";
+import { NewThreadButton } from "./new-thread-button";
+import { scrollbarStyle } from "@/lib/utils";
 
 export function AppSidebar({
   user,
@@ -104,7 +105,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className={scrollbarStyle}>
         <SidebarGroup>
           <SidebarGroupContent className="px-1.5 md:px-0">
             <SidebarMenu>

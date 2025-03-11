@@ -12,7 +12,6 @@ import {
   extractSpecialContent,
   getArtifactVersionInfo,
 } from "@/lib/artifact-utils";
-import { useSidebar } from "@/components/ui/sidebar";
 import ThinkingDropdown from "./thinking-dropdown";
 import ToolCallMessageContent from "./tool-call-result";
 
@@ -22,7 +21,6 @@ const TextContent: React.FC<{
   index: number;
 }> = ({ text, messages, index }) => {
   const { artifact, cleanContent } = extractSpecialContent(text);
-  const { open, setOpen } = useSidebar();
   const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
   const [alreadyAutoSelected, setAlreadyAutoSelected] = useAtom(
     alreadyAutoSelectedArtifactAtom
@@ -43,7 +41,6 @@ const TextContent: React.FC<{
         };
         setSelectedArtifact(artifactWithVersion);
         setAlreadyAutoSelected(artifactKey);
-        if (open) setOpen(false);
       }
     }
   }, [
@@ -52,8 +49,6 @@ const TextContent: React.FC<{
     setSelectedArtifact,
     alreadyAutoSelected,
     setAlreadyAutoSelected,
-    open,
-    setOpen,
   ]);
 
   const elements = [];
@@ -142,8 +137,8 @@ const AssistantMessage: React.FC<{
 }> = ({ message, showEye, messages }) => (
   <div className="flex flex-col justify-start">
     <div className="flex">
-      <div className="mr-1 w-[32px] h-[32px]">
-        {showEye && <Syyclops3dEye size={32} animate={false} />}
+      <div className="mr-[1px] mt-1 w-[32px] h-[32px]">
+        {showEye && <Syyclops3dEye size={22} animate={false} />}
       </div>
 
       <div className="max-w-full md:max-w-[750px] overflow-hidden bg-background break-words mt-[1px] flex flex-col gap-2">

@@ -4,8 +4,10 @@ import { DocumentContent } from "@/types/project";
 import ReactPlayer from "react-player";
 import { ArrowDown, File } from "lucide-react";
 import { useEffect, useState } from "react";
-import PdfViewer from "@/features/chat/messages/components/viewers/pdf-viewer";
-import { MarkdownViewer, MultiSheetViewer } from "@/features/chat/messages/components";
+import {
+  MarkdownViewer,
+  MultiSheetViewer,
+} from "@/features/chat/messages/components";
 
 export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
   const [textContent, setTextContent] = useState<string>("");
@@ -40,8 +42,14 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
   switch (doc.mimeType) {
     case "application/pdf":
       return (
-        <div className="h-full w-full overflow-hidden">
-          <PdfViewer content={doc.url || ""} fileName={doc.name} />
+        <div className="h-full w-full overflow-hidden flex flex-col">
+          <div className="flex-1 relative">
+            <embed
+              src={`${doc.url}#navpanes=0&statusbar=0`}
+              className="w-full h-full absolute inset-0 border-none"
+              title={doc.name}
+            />
+          </div>
         </div>
       );
     case "image/jpeg":
@@ -77,35 +85,37 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
       const bodyRows = rows.slice(1);
 
       return (
-        <div className="h-full w-full overflow-auto whitespace-nowrap">
-          <table className="min-w-full table-fixed border-collapse">
-            <thead>
-              <tr className="bg-gray-100 font-semibold">
-                {headerRow?.split(",").map((cell, cellIndex) => (
-                  <td
-                    key={cellIndex}
-                    className="px-4 py-2 border overflow-hidden text-ellipsis"
-                  >
-                    {cell.trim()}
-                  </td>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {bodyRows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="border-t">
-                  {row.split(",").map((cell, cellIndex) => (
+        <div className="flex flex-1 w-full max-w-[70rem]">
+          <div className="h-full w-full overflow-auto whitespace-nowrap">
+            <table className="min-w-full table-fixed border-collapse">
+              <thead>
+                <tr className="bg-secondary font-semibold">
+                  {headerRow?.split(",").map((cell, i) => (
                     <td
-                      key={cellIndex}
+                      key={i}
                       className="px-4 py-2 border overflow-hidden text-ellipsis"
                     >
                       {cell.trim()}
                     </td>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {bodyRows.map((row, i) => (
+                  <tr key={i} className="border-t">
+                    {row.split(",").map((cell, j) => (
+                      <td
+                        key={j}
+                        className="px-4 py-2 border overflow-hidden text-ellipsis"
+                      >
+                        {cell.trim()}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       );
     case "text/plain":
@@ -149,21 +159,21 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
       );
     default:
       return (
-        <div className="h-full w-full flex items-center justify-center ">
+        <div className="h-full w-full flex items-center justify-center">
           <div className="text-center max-w-md">
             <div className="mb-4">
-              <File className="h-12 w-12 text-gray-400 mx-auto" />
+              <File className="h-12 w-12 text-muted-foreground mx-auto" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Preview Not Available Yet
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               This file type cannot be previewed in the browser, but you can
               download it to view it locally.
             </p>
             <a
               href={doc.url}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-priamry bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
               download={doc.name}
             >
               <ArrowDown className="h-4 w-4 mr-2" />

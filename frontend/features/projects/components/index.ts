@@ -9,4 +9,8 @@ export { default as LocationSearch } from "./location-search";
 export { default as ProjectFileLayout } from "./files/project-file-layout";
 export { default as ProjectAddFileButton } from "./files/project-add-file-button";
 export { default as ProjectSettings } from "./project-settings";
-export { default as ProjectsList } from "./projects-list"
+export { default as ProjectsList } from "./projects-list";
+export { default as ProjectContent } from "./project-content";
+export { default as ProjectLayout } from "./project-layout";
+export { default as ProjectSidebar } from "./project-sidebar";
+export { default as ProjectFooter } from "./project-footer";

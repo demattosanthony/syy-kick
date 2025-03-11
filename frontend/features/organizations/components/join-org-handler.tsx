@@ -1,16 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import Syyclops3dEye from "../../chat/messages/components/syy-eye";
 import { useAuth } from "@/features/auth/hooks";
 import { useOrgFromInviteToken } from "../api";
 
 const JoinOrgHandler = ({ token }: { token: string }) => {
   const { handleJoinOrg } = useAuth();
-  const router = useRouter();
   const [, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,7 +42,7 @@ const JoinOrgHandler = ({ token }: { token: string }) => {
         return;
       }
 
-      router.push("/?orgId=" + orgDetails?.organization.id);
+      window.location.href = "/?orgId=" + orgDetails?.organization.id;
     } catch {
       setError("Failed to join organization");
     } finally {
@@ -78,7 +75,7 @@ const JoinOrgHandler = ({ token }: { token: string }) => {
           <img
             src={orgDetails.organization.logoUrl}
             alt={`${orgDetails.organization.name} logo`}
-            className="h-[75px] w-[75px] object-contain"
+            className="h-[75px] w-[75px] object-cover rounded-full"
           />
         ) : (
           <Syyclops3dEye size={155} />
@@ -123,10 +120,17 @@ const JoinOrgHandler = ({ token }: { token: string }) => {
         </div>
       </main>
 
-      <div className="absolute bottom-2">
-        <Link href="https://syyclops.com" target="_blank">
-          <Button variant="link">By Syyclops</Button>
-        </Link>
+      <div className="absolute bottom-8 flex flex-col items-center gap-2">
+        <div className="text-xs text-gray-500 text-center">
+          By using our service, you agree to our{" "}
+          <a href="/terms" className="underline hover:text-gray-700">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="/privacy" className="underline hover:text-gray-700">
+            Privacy Policy
+          </a>
+        </div>
       </div>
     </div>
   );

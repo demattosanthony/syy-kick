@@ -1,17 +1,17 @@
 "use client";
 
-import { Loader2, Paperclip, SendHorizonal, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { useAtom } from "jotai";
-import { useFileUpload } from "@/hooks/use-file-upload";
-import { modelAtom, selectedProjectDocsAtom } from "@/atoms/chat";
+// React and hooks
 import React from "react";
-import { Card } from "@/components/ui/card";
-import ModelSelector from "./model-selector";
-import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
+import { useAtom } from "jotai";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useFileUpload } from "@/hooks/use-file-upload";
+
+// UI Components
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -19,10 +19,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { DocumentContent } from "@/types/project";
+
+// Icons
+import { Loader2, Paperclip, SendHorizonal, X } from "lucide-react";
+
+// Local components
+import ModelSelector from "./model-selector";
 import PdfThumbnail from "./pdf-thumbnail";
 import { ProjectFileExplorer } from "@/features/projects/components";
+
+// Utils and state
+import { cn } from "@/lib/utils";
+import { modelAtom, selectedProjectDocsAtom } from "@/atoms/chat";
+import { toast } from "sonner";
+
+// Types
+import { DocumentContent } from "@/types/project";
 
 interface ChatInputFormProps {
   onSubmit: (e: React.FormEvent) => void;
@@ -173,8 +185,8 @@ function ChatInputForm(
   return (
     <Card
       className={cn(
-        "relative flex flex-col h-auto min-h-[105px] max-h-[600px] w-full mx-auto max-w-[750px] p-0 rounded-2xl bg-background",
-        focused && !isMobile ? "shadow-sm border-2" : "shadow-none"
+        "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[750px] p-0 rounded-xl bg-background",
+        focused && !isMobile ? "shadow-md border" : "shadow-none"
       )}
     >
       <form
@@ -203,19 +215,21 @@ function ChatInputForm(
                 open={showFileExplorer}
                 onOpenChange={setShowFileExplorer}
               >
-                <DialogContent className="sm:max-w-[500px] h-auto max-h-[600px]">
+                <DialogContent className="max-w-[500px] h-auto max-h-[600px] md:max-w-[650px] overflow-hidden">
                   <DialogHeader>
                     <DialogTitle>Select files for context</DialogTitle>
                     <DialogDescription>
                       Choose files to add as context for your question
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="flex-1 overflow-y-auto max-h-[500px]">
-                    <ProjectFileExplorer
-                      projectId={projectId || ""}
-                      variant="compact"
-                      onFileSelect={handleFileSelect}
-                    />
+                  <div className="flex-1 h-[500px]">
+                    <ScrollArea className="h-full w-full">
+                      <ProjectFileExplorer
+                        projectId={projectId || ""}
+                        variant="compact"
+                        onFileSelect={handleFileSelect}
+                      />
+                    </ScrollArea>
                   </div>
                 </DialogContent>
               </Dialog>

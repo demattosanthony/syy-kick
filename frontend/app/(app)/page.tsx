@@ -16,7 +16,11 @@ import ConversationStarters from "@/features/chat/messages/components/conversati
 import InstallPrompt from "@/components/InstallPrompt";
 import { toast } from "sonner";
 import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
-import { AnimatedGreeting, ChatInputForm, ChatInputFormRef } from "@/features/chat/messages/components";
+import {
+  AnimatedGreeting,
+  ChatInputForm,
+  ChatInputFormRef,
+} from "@/features/chat/messages/components";
 import { useMeQuery } from "@/features/user/api";
 
 export default function Home() {
@@ -26,7 +30,7 @@ export default function Home() {
 
   const [, setShowPricingDialog] = useAtom(pricingPlanDialogOpenAtom);
 
-  const { data: user } = useMeQuery();
+  const { data: user, isFetched: userIsFetched } = useMeQuery();
 
   const chatInputRef = useRef<ChatInputFormRef>(null);
 
@@ -64,35 +68,56 @@ export default function Home() {
   };
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen max-h-screen overflow-hidden">
       <InstallPrompt />
 
-      <div className="w-full flex flex-1 items-center justify-center">
-        <div className="flex flex-col h-[65%] md:h-[55%] items-center w-full ">
-          <div className="w-[175px] flex items-center justify-center">
-            <Syyclops3dEye size={175} />
+      <main className="flex-1 flex flex-col py-6 overflow-y-auto">
+        <div className="flex flex-col items-center w-full gap-6 pb-4">
+          <div className="w-[115px] flex items-center justify-center min-h-[115px] mt-[16vh]">
+            <Syyclops3dEye size={115} animate={false} />
           </div>
 
           <div className="flex flex-col gap-6">
             <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
+          </div>
 
+          <div className="flex flex-col w-full px-6 mt-4 md:px-2">
+            <ChatInputForm
+              input={initalInput}
+              setInput={setInitalInput}
+              handleInputChange={handleInputChange}
+              ref={chatInputRef}
+              onSubmit={handleSubmit}
+            />
+          </div>
+
+          <div className="max-w-5xl mt-6">
             <ConversationStarters
               triggerFileInput={() => chatInputRef.current?.triggerFileInput()}
               triggerTextAreaFocus={() => chatInputRef.current?.focusTextArea()}
             />
           </div>
         </div>
-      </div>
+      </main>
 
-      <div className="w-full flex items-center justify-center mx-auto p-6 pb-8 md:pb-4 md:p-2 absolute bottom-0 left-0 right-0">
-        <ChatInputForm
-          input={initalInput}
-          setInput={setInitalInput}
-          handleInputChange={handleInputChange}
-          ref={chatInputRef}
-          onSubmit={handleSubmit}
-        />
-      </div>
-    </>
+      {userIsFetched && !user && (
+        <footer className="text-xs text-gray-500 text-center p-4 shrink-0">
+          By using our service, you agree to our{" "}
+          <a
+            href="/policies/terms-of-use"
+            className="underline hover:text-gray-700"
+          >
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a
+            href="/policies/privacy-policy"
+            className="underline hover:text-gray-700"
+          >
+            Privacy Policy
+          </a>
+        </footer>
+      )}
+    </div>
   );
 }
