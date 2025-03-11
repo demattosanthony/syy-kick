@@ -35,7 +35,6 @@ import {
   ChatMessagesList,
 } from "@/features/chat/messages/components";
 import { CloneThreadButton } from "./clone-thread-button";
-import { activeMessagePathAtom, getActivePathMessages } from "../utils";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -70,17 +69,6 @@ export default function ThreadPage({
   const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
     selectedProjectDocsAtom
   );
-
-  const [activePath, setActivePath] = useAtom(activeMessagePathAtom);
-
-  // Update messages when active path changes
-  useEffect(() => {
-    if (thread?.messages && activePath.length > 0) {
-      const pathMessages = getActivePathMessages(thread.messages, activePath);
-      // We need to update the chat UI with these messages
-      // This might require modifying the useChat hook or its state
-    }
-  }, [activePath, thread]);
 
   const {
     input,
@@ -201,11 +189,6 @@ export default function ThreadPage({
       setSelectedArtifact(null);
       setAlreadyOpenedArtifact(null);
     };
-  }, [threadId]);
-
-  // Reset active path when thread changes
-  useEffect(() => {
-    setActivePath([]);
   }, [threadId]);
 
   useEffect(() => {

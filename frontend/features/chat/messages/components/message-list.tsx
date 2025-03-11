@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Check, Copy } from "lucide-react";
 
 interface MessageBubbleProps {
@@ -61,6 +61,34 @@ const MessageBubble = ({
 
 import ChatAttachment from "./chat-attachment";
 
+// Add new interface for tree-based messages
+interface MessageTreeProps {
+  messages: MessageNode[];
+  currentBranchId?: string;
+  onBranchSelect: (messageId: string) => void;
+}
+
+// New component to show branch selection UI
+const MessageBranchSelector = ({
+  message,
+  onSelect,
+  isSelected,
+}: {
+  message: MessageNode;
+  onSelect: (id: string) => void;
+  isSelected: boolean;
+}) => (
+  <div
+    className={cn(
+      "px-2 py-1 text-sm rounded cursor-pointer hover:bg-secondary/50",
+      isSelected && "bg-secondary"
+    )}
+    onClick={() => onSelect(message.id)}
+  >
+    {message.text?.slice(0, 50)}...
+  </div>
+);
+
 const UserMessage = ({ message }: { message: Message }) => {
   // Removed React.memo
   const [copied, setCopied] = React.useState<boolean>(false);
@@ -92,7 +120,7 @@ const UserMessage = ({ message }: { message: Message }) => {
 };
 
 import { useEffect } from "react";
-import { MessageRole } from "@/types/chat";
+import { MessageNode, MessageRole } from "@/types/chat";
 import Syyclops3dEye from "./syy-eye";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -145,7 +173,7 @@ const ChatMessagesList = React.memo(
     isLoading,
     showSkeletons = false,
   }: {
-    messages: Message[];
+    messages: MessageNode[];
     isLoading: boolean;
     showSkeletons?: boolean;
   }) => {
@@ -155,6 +183,39 @@ const ChatMessagesList = React.memo(
         container.scrollTop = container.scrollHeight;
       }
     }, [messages.length]);
+
+    const [currentBranchId, setCurrentBranchId] = useState<string>();
+
+    // Function to get current branch messages
+    const getCurrentBranchMessages = () => {
+      if (!currentBranchId) {
+        return messages;
+      }
+
+      // Find the selected message and its ancestors
+      const messageChain: MessageNode[] = [];
+      const findMessageChain = (
+        msgs: MessageNode[],
+        targetId: string
+      ): boolean => {
+        for (const msg of msgs) {
+          if (msg.id === targetId) {
+            messageChain.push(msg);
+            return true;
+          }
+          if (findMessageChain(msg.children, targetId)) {
+            messageChain.push(msg);
+            return true;
+          }
+        }
+        return false;
+      };
+
+      findMessageChain(messages, currentBranchId);
+      return messageChain.reverse();
+    };
+
+    const currentMessages = getCurrentBranchMessages();
 
     return (
       <div className="flex-1 w-full h-full relative">
@@ -174,25 +235,47 @@ const ChatMessagesList = React.memo(
                 <AssistantSkeletonMessage />
               </>
             ) : (
-              // Show actual messages
-              messages.map((message, index) => {
-                const nextMessage = messages[index + 1];
-                const showEye =
-                  message.role !== MessageRole.user &&
-                  (!nextMessage || nextMessage.role === MessageRole.user) &&
-                  !isLoading;
+              <>
+                {currentMessages.map((message, index) => {
+                  const nextMessage = currentMessages[index + 1];
+                  const showEye =
+                    message.role !== MessageRole.user &&
+                    (!nextMessage || nextMessage.role === MessageRole.user) &&
+                    !isLoading;
 
-                return message.role === MessageRole.user ? (
-                  <UserMessage key={index} message={message} />
-                ) : (
-                  <AssistantMessage
-                    key={index}
-                    message={message}
-                    showEye={showEye}
-                    messages={messages}
-                  />
-                );
-              })
+                  return (
+                    <div key={message.id} className="relative">
+                      {message.children.length > 0 && (
+                        <div className="absolute right-0 top-0 z-10">
+                          <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg p-2">
+                            <div className="text-xs text-muted-foreground mb-1">
+                              Alternative responses:
+                            </div>
+                            {message.children.map((child) => (
+                              <MessageBranchSelector
+                                key={child.id}
+                                message={child}
+                                onSelect={setCurrentBranchId}
+                                isSelected={currentBranchId === child.id}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {message.role === MessageRole.user ? (
+                        <UserMessage message={message} />
+                      ) : (
+                        <AssistantMessage
+                          message={message}
+                          showEye={showEye}
+                          messages={currentMessages}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </>
             )}
             {isLoading && !showSkeletons && <LoadingMessage />}
           </div>
