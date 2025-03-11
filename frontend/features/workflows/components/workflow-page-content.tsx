@@ -11,6 +11,8 @@ import api from "@/lib/api";
 import { extractSpecialContent } from "@/lib/artifact-utils";
 import { cn } from "@/lib/utils";
 import { MarkdownViewer } from "@/features/chat/messages/components";
+import { CsvViewer } from "@/features/chat/messages/components/viewers/artifact-viewer";
+import { useCsvActions } from "@/hooks/use-csv-actions";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -60,8 +62,10 @@ export default function WorkflowPageContent({
   const [showReasoning, setShowReasoning] = useState(true);
   const hasAutoHiddenReasoning = useRef(false);
 
+  const { downloadCsv, previewCsv } = useCsvActions();
+
   const { data: workflow, isLoading } = useWorkflowQuery(workflowId);
-  const { handleSubmit, messages, setInput, status } = useChat({
+  const { handleSubmit, messages, setInput, status, reload } = useChat({
     api: `${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/run`,
     credentials: "include",
     experimental_prepareRequestBody({ messages, id }) {
@@ -75,6 +79,14 @@ export default function WorkflowPageContent({
   console.log("response", response);
   console.log("messages", messages);
   console.log("isProcessing", isProcessing);
+
+  const resetWorkflow = () => {
+    setFile(null);
+    setInput("");
+    hasAutoHiddenReasoning.current = false;
+    setShowReasoning(true);
+    reload();
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -316,30 +328,17 @@ export default function WorkflowPageContent({
                     );
                     if (!artifact?.content) return null;
 
-                    const rows = artifact.content.split("\n");
-                    const [header, ...body] = rows;
-
                     return (
                       <div className="space-y-4">
                         <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-medium">CSV Results</h3>
+                          <h3 className="font-medium">Results</h3>
                           <div className="flex gap-2">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                const csvContent = [header, ...body].join("\n");
-                                const blob = new Blob([csvContent], {
-                                  type: "text/csv",
-                                });
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement("a");
-                                a.href = url;
-                                a.download = "results.csv";
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                URL.revokeObjectURL(url);
+                                const csvContent = artifact.content;
+                                downloadCsv(csvContent);
                               }}
                             >
                               Download CSV
@@ -348,55 +347,8 @@ export default function WorkflowPageContent({
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                const csvContent = [header, ...body].join("\n");
-                                const newWindow = window.open("", "_blank");
-                                if (newWindow) {
-                                  newWindow.document.write(`
-                                    <html>
-                                      <head>
-                                        <title>CSV Results</title>
-                                        <style>
-                                          body { font-family: sans-serif; margin: 20px; }
-                                          table { border-collapse: collapse; width: 100%; }
-                                          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                                          th { background-color: #f2f2f2; }
-                                        </style>
-                                      </head>
-                                      <body>
-                                        <table>
-                                          <thead>
-                                            <tr>
-                                              ${header
-                                                .split(",")
-                                                .map(
-                                                  (cell) =>
-                                                    `<th>${cell.trim()}</th>`
-                                                )
-                                                .join("")}
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            ${body
-                                              .map(
-                                                (row) => `
-                                              <tr>
-                                                ${row
-                                                  .split(",")
-                                                  .map(
-                                                    (cell) =>
-                                                      `<td>${cell.trim()}</td>`
-                                                  )
-                                                  .join("")}
-                                              </tr>
-                                            `
-                                              )
-                                              .join("")}
-                                          </tbody>
-                                        </table>
-                                      </body>
-                                    </html>
-                                  `);
-                                }
+                                const csvContent = artifact.content;
+                                previewCsv(csvContent, "CSV Results");
                               }}
                             >
                               View Full Screen
@@ -404,38 +356,22 @@ export default function WorkflowPageContent({
                           </div>
                         </div>
                         <div className="overflow-x-auto max-h-[400px] overflow-y-auto border rounded">
-                          <table className="w-full border-collapse">
-                            <thead className="sticky top-0 bg-muted z-10">
-                              <tr>
-                                {header.split(",").map((cell, i) => (
-                                  <th
-                                    key={i}
-                                    className="p-3 text-left font-medium"
-                                  >
-                                    {cell.trim()}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {body.map((row, i) => (
-                                <tr
-                                  key={i}
-                                  className="border-t hover:bg-muted/30"
-                                >
-                                  {row.split(",").map((cell, j) => (
-                                    <td key={j} className="p-3">
-                                      {cell.trim()}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          <div className="min-w-max">
+                            <CsvViewer content={artifact.content} />
+                          </div>
                         </div>
                       </div>
                     );
                   })()}
+              </div>
+            )}
+
+            {/* Add Run Again button outside the CSV card and only when streaming is complete */}
+            {response && response?.content && status !== "submitted" && (
+              <div className="mt-8 flex justify-center">
+                <Button size="lg" onClick={resetWorkflow} className="px-8">
+                  Reset
+                </Button>
               </div>
             )}
           </div>

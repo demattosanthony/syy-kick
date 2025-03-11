@@ -32,28 +32,101 @@ import MarkdownViewer from "./markdown-viewer";
 import { marked } from "marked";
 import mermaid from "mermaid";
 
-const ArtifactViewer: React.FC<{
-  artifact: Artifact;
-  splitPosition: number;
-  messages: Message[];
-}> = ({ artifact, splitPosition, messages }) => {
-  const [copied, setCopied] = useState(false);
-  const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
-  const { version, content, title } = getArtifactVersionInfo(
-    artifact,
-    messages
-  );
-  const mermaidRef = useRef<HTMLDivElement>(null);
-  const mimeType = artifact.type || "text/markdown";
+// New reusable components
+export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
+  // Helper function to parse CSV line respecting quotes
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          // Handle escaped quotes
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === "," && !inQuotes) {
+        result.push(current);
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    result.push(current);
+    return result;
   };
 
+  const rows = content.split("\n") || [];
+  const headerRow = rows[0];
+  const bodyRows = rows.slice(1);
+
+  // Parse header and body using the new parsing function
+  const headerCells = headerRow ? parseCSVLine(headerRow) : [];
+  const parsedBodyRows = bodyRows.map((row) => parseCSVLine(row));
+
+  // Find the maximum number of columns
+  const maxColumns = Math.max(
+    headerCells.length,
+    ...parsedBodyRows.map((row) => row.length)
+  );
+
+  // Pad header cells if needed
+  while (headerCells.length < maxColumns) {
+    headerCells.push("");
+  }
+
+  return (
+    <div className="h-full w-full overflow-auto whitespace-nowrap">
+      <table className="min-w-full table-fixed border-collapse">
+        <thead>
+          <tr className="bg-secondary font-semibold">
+            {headerCells.map((cell, i) => (
+              <td
+                key={i}
+                className="px-4 py-2 border overflow-hidden text-ellipsis"
+              >
+                {cell.trim()}
+              </td>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {parsedBodyRows.map((row, i) => {
+            // Pad row cells with empty strings if needed
+            const cells = [...row];
+            while (cells.length < maxColumns) {
+              cells.push("");
+            }
+            return (
+              <tr key={i} className="border-t">
+                {cells.map((cell, j) => (
+                  <td
+                    key={j}
+                    className="px-4 py-2 border overflow-hidden text-ellipsis"
+                  >
+                    {cell.trim()}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
+  const mermaidRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (mimeType === "application/vnd.ant.mermaid" && mermaidRef.current) {
+    if (mermaidRef.current) {
       mermaid.initialize({
         startOnLoad: false,
         theme: "default",
@@ -96,8 +169,65 @@ const ArtifactViewer: React.FC<{
         // console.error("Error in mermaid setup:", error);
       }
     }
-  }, [content, mimeType]);
+  }, [content]);
 
+  return (
+    <div className="w-full flex justify-center">
+      <div
+        ref={mermaidRef}
+        className="mermaid-container max-w-full overflow-auto"
+      />
+    </div>
+  );
+};
+
+const CodeViewer: React.FC<{ content: string; mimeType: string }> = ({
+  content,
+  mimeType,
+}) => {
+  // Extract language from MIME type
+  let language = "";
+
+  // Check if the MIME type contains a language attribute
+  if (mimeType.includes("language=")) {
+    // Try to extract the language value
+    const match = mimeType.match(/language=["']?([^"'\s;]+)["']?/);
+    if (match && match[1]) {
+      language = match[1];
+    }
+  } else {
+    // Fall back to MIME type parsing
+    language = mimeType.split("/")[1] || "";
+    // Clean up any additional parameters
+    language = language.split(";")[0].split(" ")[0];
+  }
+
+  const wrappedContent = `\`\`\`${language}\n${content}\n\`\`\``;
+
+  return (
+    <div className="w-full max-w-full">
+      <MarkdownViewer content={wrappedContent} />
+    </div>
+  );
+};
+
+const SvgViewer: React.FC<{ content: string }> = ({ content }) => {
+  return (
+    <div className="flex justify-center w-full">
+      <div
+        className="max-w-full"
+        style={{ width: "100%", maxHeight: "80vh" }}
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+    </div>
+  );
+};
+
+const DownloadOptions: React.FC<{
+  title: string;
+  content: string;
+  mimeType: string;
+}> = ({ title, content, mimeType }) => {
   const getFileInfo = () => {
     const types = {
       "text/markdown": { ext: ".md", type: "text/markdown", name: "Markdown" },
@@ -192,120 +322,110 @@ const ArtifactViewer: React.FC<{
     }
   };
 
+  const { name } = getFileInfo();
+  const fileExt = getFileInfo().ext;
+  const bgColor =
+    fileExt === ".xlsx" || fileExt === ".csv"
+      ? "bg-green-700"
+      : fileExt === ".md"
+      ? "bg-blue-700"
+      : "bg-blue-700";
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 px-2 text-muted-foreground hover:text-foreground"
+        >
+          <Download className="w-[18px] h-[18px]" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2">
+        <div className="flex flex-col gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="justify-start font-normal h-auto py-2 px-2.5"
+            onClick={handleDownload}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`${bgColor} w-8 h-8 rounded-md flex items-center justify-center`}
+              >
+                <span className="text-xs font-semibold text-white">
+                  {fileExt}
+                </span>
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="text-sm">{name}</span>
+                <span className="text-xs text-muted-foreground">
+                  Raw format
+                </span>
+              </div>
+            </div>
+          </Button>
+          {mimeType === "text/markdown" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="justify-start font-normal h-auto py-2 px-2.5"
+              onClick={handlePdfDownload}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="bg-red-700 w-8 h-8 rounded-md flex items-center justify-center">
+                  <span className="text-xs font-semibold text-white">.pdf</span>
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm">PDF</span>
+                  <span className="text-xs text-muted-foreground">
+                    Print-friendly
+                  </span>
+                </div>
+              </div>
+            </Button>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+// Update the main ArtifactViewer component to use these new components
+const ArtifactViewer: React.FC<{
+  artifact: Artifact;
+  splitPosition: number;
+  messages: Message[];
+}> = ({ artifact, splitPosition, messages }) => {
+  const [copied, setCopied] = useState(false);
+  const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
+  const { version, content, title } = getArtifactVersionInfo(
+    artifact,
+    messages
+  );
+  const mimeType = artifact.type || "text/markdown";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const renderViewer = () => {
     if (mimeType === "application/vnd.ant.mermaid") {
-      return (
-        <div className="w-full flex justify-center">
-          <div
-            ref={mermaidRef}
-            className="mermaid-container max-w-full overflow-auto"
-          />
-        </div>
-      );
+      return <MermaidViewer content={content} />;
     }
 
     if (mimeType === "image/svg+xml") {
-      return (
-        <div className="flex justify-center w-full">
-          <div
-            className="max-w-full"
-            style={{ width: "100%", maxHeight: "80vh" }}
-            dangerouslySetInnerHTML={{ __html: content }}
-          />
-        </div>
-      );
+      return <SvgViewer content={content} />;
     }
 
     if (
       mimeType.startsWith("application/vnd.ant.code") &&
       mimeType.includes("csv")
     ) {
-      // Helper function to parse CSV line respecting quotes
-      const parseCSVLine = (line: string): string[] => {
-        const result: string[] = [];
-        let current = "";
-        let inQuotes = false;
-
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
-
-          if (char === '"') {
-            if (inQuotes && line[i + 1] === '"') {
-              // Handle escaped quotes
-              current += '"';
-              i++;
-            } else {
-              inQuotes = !inQuotes;
-            }
-          } else if (char === "," && !inQuotes) {
-            result.push(current);
-            current = "";
-          } else {
-            current += char;
-          }
-        }
-        result.push(current);
-        return result;
-      };
-
-      const rows = content.split("\n") || [];
-      const headerRow = rows[0];
-      const bodyRows = rows.slice(1);
-
-      // Parse header and body using the new parsing function
-      const headerCells = headerRow ? parseCSVLine(headerRow) : [];
-      const parsedBodyRows = bodyRows.map((row) => parseCSVLine(row));
-
-      // Find the maximum number of columns
-      const maxColumns = Math.max(
-        headerCells.length,
-        ...parsedBodyRows.map((row) => row.length)
-      );
-
-      // Pad header cells if needed
-      while (headerCells.length < maxColumns) {
-        headerCells.push("");
-      }
-
-      return (
-        <div className="h-full w-full overflow-auto whitespace-nowrap">
-          <table className="min-w-full table-fixed border-collapse">
-            <thead>
-              <tr className="bg-secondary font-semibold">
-                {headerCells.map((cell, i) => (
-                  <td
-                    key={i}
-                    className="px-4 py-2 border overflow-hidden text-ellipsis"
-                  >
-                    {cell.trim()}
-                  </td>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {parsedBodyRows.map((row, i) => {
-                // Pad row cells with empty strings if needed
-                const cells = [...row];
-                while (cells.length < maxColumns) {
-                  cells.push("");
-                }
-                return (
-                  <tr key={i} className="border-t">
-                    {cells.map((cell, j) => (
-                      <td
-                        key={j}
-                        className="px-4 py-2 border overflow-hidden text-ellipsis"
-                      >
-                        {cell.trim()}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      );
+      return <CsvViewer content={content} />;
     }
 
     if (
@@ -316,29 +436,7 @@ const ArtifactViewer: React.FC<{
       mimeType.includes("typescript") ||
       mimeType.includes("python")
     ) {
-      // Extract language from MIME type
-      let language = "";
-
-      // Check if the MIME type contains a language attribute
-      if (mimeType.includes("language=")) {
-        // Try to extract the language value
-        const match = mimeType.match(/language=["']?([^"'\s;]+)["']?/);
-        if (match && match[1]) {
-          language = match[1];
-        }
-      } else {
-        // Fall back to MIME type parsing
-        language = mimeType.split("/")[1] || "";
-        // Clean up any additional parameters
-        language = language.split(";")[0].split(" ")[0];
-      }
-
-      const wrappedContent = `\`\`\`${language}\n${content}\n\`\`\``;
-      return (
-        <div className="w-full max-w-full">
-          <MarkdownViewer content={wrappedContent} />
-        </div>
-      );
+      return <CodeViewer content={content} mimeType={mimeType} />;
     }
 
     return (
@@ -347,15 +445,6 @@ const ArtifactViewer: React.FC<{
       </div>
     );
   };
-
-  const { name } = getFileInfo();
-  const fileExt = getFileInfo().ext;
-  const bgColor =
-    fileExt === ".xlsx" || fileExt === ".csv"
-      ? "bg-green-700"
-      : fileExt === ".md"
-      ? "bg-blue-700"
-      : "bg-blue-700";
 
   return (
     <motion.div
@@ -402,65 +491,11 @@ const ArtifactViewer: React.FC<{
                 <Badge variant="secondary">v{version}</Badge>
               </div>
               <div className="flex items-center gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                    >
-                      <Download className="w-[18px] h-[18px]" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-56 p-2">
-                    <div className="flex flex-col gap-1.5">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="justify-start font-normal h-auto py-2 px-2.5"
-                        onClick={handleDownload}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className={`${bgColor} w-8 h-8 rounded-md flex items-center justify-center`}
-                          >
-                            <span className="text-xs font-semibold text-white">
-                              {fileExt}
-                            </span>
-                          </div>
-                          <div className="flex flex-col items-start">
-                            <span className="text-sm">{name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              Raw format
-                            </span>
-                          </div>
-                        </div>
-                      </Button>
-                      {mimeType === "text/markdown" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="justify-start font-normal h-auto py-2 px-2.5"
-                          onClick={handlePdfDownload}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="bg-red-700 w-8 h-8 rounded-md flex items-center justify-center">
-                              <span className="text-xs font-semibold text-white">
-                                .pdf
-                              </span>
-                            </div>
-                            <div className="flex flex-col items-start">
-                              <span className="text-sm">PDF</span>
-                              <span className="text-xs text-muted-foreground">
-                                Print-friendly
-                              </span>
-                            </div>
-                          </div>
-                        </Button>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                <DownloadOptions
+                  title={title}
+                  content={content}
+                  mimeType={mimeType}
+                />
                 <Button
                   onClick={handleCopy}
                   size="sm"
