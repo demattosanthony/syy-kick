@@ -35,7 +35,6 @@ import {
   Workflow,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { CreateWorkflowDialog } from "./create-workflow-dialog";
 import { CreateProjectDialog } from "@/features/projects/components";
 import { NewThreadButton } from "./new-thread-button";
 import { scrollbarStyle } from "@/lib/utils";
@@ -149,18 +148,6 @@ export function AppSidebar({
                   icon={Workflow}
                   hoverIcon={Workflow}
                   label="Workflows"
-                  actionTrigger={
-                    <CreateWorkflowDialog
-                      trigger={
-                        <Button
-                          variant="ghost"
-                          className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
-                        >
-                          <Plus className="h-6 w-6" />
-                        </Button>
-                      }
-                    />
-                  }
                 />
               </SidebarMenuItem>
             </SidebarMenu>

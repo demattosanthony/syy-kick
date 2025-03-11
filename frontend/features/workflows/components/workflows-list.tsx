@@ -3,28 +3,10 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Workflow } from "@/types/workflow-types";
-import { getRelativeTimeString } from "@/lib/utils";
-import { GitBranch, GitBranchPlus, MoreHorizontal, Trash2 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialogHeader,
-  AlertDialogFooter,
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useDeleteWorkflowMutation, useWorkflowsQuery } from "../api";
-import { Button } from "@/components/ui/button";
+import { GitBranch, GitBranchPlus } from "lucide-react";
+import { useWorkflowsQuery } from "../api";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function WorkflowsList() {
@@ -37,7 +19,7 @@ export default function WorkflowsList() {
   // Filter workflows by search term if provided
   const filteredWorkflows = search
     ? workflows?.filter((workflow) =>
-        workflow.name.toLowerCase().includes(search.toLowerCase())
+        workflow.title.toLowerCase().includes(search.toLowerCase())
       )
     : workflows;
 
@@ -67,13 +49,6 @@ export default function WorkflowsList() {
 }
 
 function WorkflowItem({ workflow }: { workflow: Workflow }) {
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const deleteWorkflow = useDeleteWorkflowMutation();
-
-  const handleDelete = () => {
-    deleteWorkflow.mutate(workflow.id);
-  };
-
   return (
     <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full group relative">
       <Link href={`/workflows/${workflow.id}`} prefetch className="block">
@@ -84,60 +59,13 @@ function WorkflowItem({ workflow }: { workflow: Workflow }) {
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="text-xl font-medium">{workflow.name}</p>
-
-            <p className="text-xs text-muted-foreground">
-              Updated {getRelativeTimeString(workflow.updatedAt)}
+            <p className="text-xl font-medium">{workflow.title}</p>
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              {workflow.description}
             </p>
           </div>
         </div>
       </Link>
-
-      {/* Ellipsis menu - positioned absolutely to not interfere with the link */}
-      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="h-5 w-5" />
-              <span className="sr-only">Open menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={(e) => {
-                e.preventDefault();
-                setShowDeleteDialog(true);
-              }}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the workflow "{workflow.name}". This
-              action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
