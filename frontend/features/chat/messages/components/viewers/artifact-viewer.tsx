@@ -220,16 +220,59 @@ const ArtifactViewer: React.FC<{
       mimeType.startsWith("application/vnd.ant.code") &&
       mimeType.includes("csv")
     ) {
+      // Helper function to parse CSV line respecting quotes
+      const parseCSVLine = (line: string): string[] => {
+        const result: string[] = [];
+        let current = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+
+          if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              // Handle escaped quotes
+              current += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (char === "," && !inQuotes) {
+            result.push(current);
+            current = "";
+          } else {
+            current += char;
+          }
+        }
+        result.push(current);
+        return result;
+      };
+
       const rows = content.split("\n") || [];
       const headerRow = rows[0];
       const bodyRows = rows.slice(1);
+
+      // Parse header and body using the new parsing function
+      const headerCells = headerRow ? parseCSVLine(headerRow) : [];
+      const parsedBodyRows = bodyRows.map((row) => parseCSVLine(row));
+
+      // Find the maximum number of columns
+      const maxColumns = Math.max(
+        headerCells.length,
+        ...parsedBodyRows.map((row) => row.length)
+      );
+
+      // Pad header cells if needed
+      while (headerCells.length < maxColumns) {
+        headerCells.push("");
+      }
 
       return (
         <div className="h-full w-full overflow-auto whitespace-nowrap">
           <table className="min-w-full table-fixed border-collapse">
             <thead>
               <tr className="bg-secondary font-semibold">
-                {headerRow?.split(",").map((cell, i) => (
+                {headerCells.map((cell, i) => (
                   <td
                     key={i}
                     className="px-4 py-2 border overflow-hidden text-ellipsis"
@@ -240,18 +283,25 @@ const ArtifactViewer: React.FC<{
               </tr>
             </thead>
             <tbody>
-              {bodyRows.map((row, i) => (
-                <tr key={i} className="border-t">
-                  {row.split(",").map((cell, j) => (
-                    <td
-                      key={j}
-                      className="px-4 py-2 border overflow-hidden text-ellipsis"
-                    >
-                      {cell.trim()}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {parsedBodyRows.map((row, i) => {
+                // Pad row cells with empty strings if needed
+                const cells = [...row];
+                while (cells.length < maxColumns) {
+                  cells.push("");
+                }
+                return (
+                  <tr key={i} className="border-t">
+                    {cells.map((cell, j) => (
+                      <td
+                        key={j}
+                        className="px-4 py-2 border overflow-hidden text-ellipsis"
+                      >
+                        {cell.trim()}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

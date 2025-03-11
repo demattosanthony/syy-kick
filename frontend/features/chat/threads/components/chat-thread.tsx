@@ -80,7 +80,7 @@ export default function ThreadPage({
     stop,
     error,
   } = useChat({
-    api: `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference`,
+    api: `${process.env.NEXT_PUBLIC_API_URL}/workflows/run`,
     credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,
