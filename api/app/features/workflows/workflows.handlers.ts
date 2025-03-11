@@ -321,7 +321,7 @@ Headquartered in Fairfax, Virginia, Setty & Associates operates multiple offices
 Their integrated approach combines HVAC, mechanical, electrical, plumbing, and fire protection engineering skills with in-depth knowledge of building design and environmental best practices
 
 As a Minority Business Enterprise (MBE) and Small Business Enterprise (SBE), Setty & Associates is committed to diversity and inclusion within the engineering industry. 
-      
+
 # SETTY WIN/NO WIN EVALUATION FORM
 
 ## Project Information
@@ -430,16 +430,15 @@ Here is a template of what the csv artifact result should look like:
    <assistant_response>
       Based on my analysis, here are the results:
 
-
-        <antArtifact identifier="evaluation-results" type="application/vnd.ant.code" language="csv" title="RFP Evaluation Results" />
+        <antArtifact identifier="evaluation-results" type="application/vnd.ant.code" language="csv" title="Dulles International Airport Evaluation Results">
             Project Information
-            Project Name,Dulles International Airport
-            Project Location,Washington, D.C.
-            Client,Washington Metropolitan Airports Authority
+            Project Name,"Dulles International Airport"
+            Project Location,"Washington, D.C."
+            Client,"Washington Metropolitan Airports Authority"
             Project Budget,"$500,000,000"
-            Potential Team Members,Clark Construction, HOK, Gensler
+            Potential Team Members,"Clark Construction, HOK, Gensler"
             Identified Decision Makers,John Smith, Jane Doe
-            Anticipated Completion,January 2025
+            Anticipated Completion,"January 2025"
             Market Segment,Aviation & Transportation
 
             Evaluation Criteria
