@@ -239,13 +239,6 @@
       "when": 1741273142098,
       "tag": "0033_brief_expediter",
       "breakpoints": true
-    },
-    {
-      "idx": 34,
-      "version": "7",
-      "when": 1741202574972,
-      "tag": "0034_lazy_praxagora",
-      "breakpoints": true
     }
   ]
 }
