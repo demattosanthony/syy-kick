@@ -155,17 +155,23 @@ export default function LoginPage() {
         )}
       </main>
 
-      <div className="absolute bottom-8 flex flex-col items-center gap-2">
-        <div className="text-xs text-gray-500 text-center">
+      <div className="absolute bottom-4 flex flex-col items-center gap-2">
+        <footer className="text-xs text-gray-500 text-center shrink-0">
           By using our service, you agree to our{" "}
-          <a href="/terms" className="underline hover:text-gray-700">
+          <a
+            href="/policies/terms-of-use"
+            className="underline hover:text-gray-700"
+          >
             Terms of Service
           </a>{" "}
           and{" "}
-          <a href="/privacy" className="underline hover:text-gray-700">
+          <a
+            href="/policies/privacy-policy"
+            className="underline hover:text-gray-700"
+          >
             Privacy Policy
           </a>
-        </div>
+        </footer>
       </div>
     </div>
   );
