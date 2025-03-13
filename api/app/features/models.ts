@@ -53,18 +53,6 @@ export const anthropicModels = (
       description:
         "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
     },
-    "claude-3.7-sonnet-thinking": {
-      model: anthropic("claude-3-7-sonnet-20250219"),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "anthropic",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 5 * 1024 * 1024, // 5MB
-      maxFileSize: 32 * 1024 * 1024, // 32MB
-      description:
-        "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
-    },
     "claude-3.5-haiku": {
       model: anthropic("claude-3-5-haiku-latest"),
       supportsToolUse: true,

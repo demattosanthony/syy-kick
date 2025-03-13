@@ -311,7 +311,7 @@ function ChatInputForm(
         </div>
 
         <div className="w-full flex justify-between items-center px-1">
-          <ModelSelector proejctId={projectId} />
+          <ModelSelector />
 
           {isMounted &&
             selectedModel.supportedMimeTypes &&

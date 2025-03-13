@@ -19,43 +19,28 @@ import {
 import { useEffect, useState } from "react";
 import { useAtom } from "jotai";
 import { AUTO_MODEL_CONFIG, modelAtom } from "@/atoms/chat";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getModelIconPath, getModelImage } from "../utils";
 import { useModelsQuery } from "@/features/commons/models/api";
 
-interface ModelSelectorProps {
-  proejctId?: string;
-}
-
-const ModelSelector: React.FC<ModelSelectorProps> = ({
-  proejctId,
-}: ModelSelectorProps) => {
+const ModelSelector: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useAtom(modelAtom);
   const { data: models } = useModelsQuery();
 
   const [isMounted, setIsMounted] = useState(false); // Add mounted state because selected model atom loads async
 
-  // Filter out models with "thinking" in the name if projectId is provided
-  const filteredModels = models?.filter((model) => {
-    if (proejctId) {
-      return !model.name.toLowerCase().includes("thinking");
-    }
-    return true;
-  });
-
   const isMobile = useIsMobile();
 
   useEffect(() => {
     setIsMounted(true); // Set mounted when component loads
-
-    // Reset to AUTO if project ID is provided and current model has "thinking" in its name
-    if (proejctId && selectedModel.name.toLowerCase().includes("thinking")) {
-      setSelectedModel(AUTO_MODEL_CONFIG);
-    }
 
     // Add keyboard shortcut listener
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -149,7 +134,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                 </HoverCardContent>
               </HoverCard>
 
-              {filteredModels?.map((model) => (
+              {models?.map((model) => (
                 <HoverCard key={model.name} openDelay={0.5} closeDelay={0}>
                   <HoverCardTrigger>
                     <CommandItem
@@ -227,4 +212,3 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
 };
 
 export default ModelSelector;
-
