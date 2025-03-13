@@ -182,17 +182,29 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
-    "gemini-2.0-pro-exp": {
-      model: google("gemini-2.0-pro-exp-02-05"),
+    // "gemini-2.0-pro-exp": {
+    //   model: google("gemini-2.0-pro-exp-02-05"),
+    //   supportsToolUse: true,
+    //   supportsStreaming: true,
+    //   provider: "google",
+    //   supportsSystemMessages: true,
+    //   supportedMimeTypes,
+    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+    //   maxFileSize: 50 * 1024 * 1024, // 50MB
+    //   description:
+    //     "Improved quality, especially for world knowledge, code, and long context",
+    // },
+    "gemini-2.0-flash": {
+      model: google("gemini-2.0-flash"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "google",
       supportsSystemMessages: true,
       supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+      maxImageSize: 2 * 1024 * 1024 * 1024, //
       maxFileSize: 50 * 1024 * 1024, // 50MB
       description:
-        "Improved quality, especially for world knowledge, code, and long context",
+        "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
     },
     "gemini-1.5-pro": {
       model: google("gemini-1.5-pro-latest"),
@@ -205,18 +217,6 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       maxFileSize: 50 * 1024 * 1024, // 50MB
       description:
         "Gemini 1.5 Pro is the latest model of the Gemini family. It's a mid-size multimodal model that supports up to 1 million tokens and excels at long-context tasks.",
-    },
-    "gemini-2.0-flash": {
-      model: google("gemini-2.0-flash"),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, //
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      description:
-        "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
     },
     // "gemini-2.0-flash-online": {
     //   model: google("gemini-2.0-flash", {

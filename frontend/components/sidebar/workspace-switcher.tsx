@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Building, ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,16 +77,18 @@ export function WorkSpaceSwitcher({
       );
     }
 
+    if (!workspace.logo) {
+      return null;
+    }
+
     return (
       <div className="flex h-6 w-6 items-center justify-center  shrink-0">
-        {workspace.logo ? (
+        {workspace.logo && (
           <img
             src={workspace.logo}
             alt={workspace.name}
-            className="h-6 w-6 rounded"
+            className="h-6 w-6 rounded-full"
           />
-        ) : (
-          <Building className="h-4 w-4" />
         )}
       </div>
     );

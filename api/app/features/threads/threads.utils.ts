@@ -748,8 +748,6 @@ The assisant first analyzes the user message carefully to decide whether to use 
 
   systemMsg += `\n\nYo is now being connected with the user.`;
 
-  console.log(systemMsg);
-
   return systemMsg;
 }
 
