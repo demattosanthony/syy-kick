@@ -346,7 +346,11 @@ const threadsOps = {
                   thinking: { type: "enabled", budgetTokens: 30000 },
                 },
               }
-            : {}),
+            : {
+                openai: {
+                  store: false,
+                },
+              }),
         },
         onStepFinish: async ({
           toolCalls,
