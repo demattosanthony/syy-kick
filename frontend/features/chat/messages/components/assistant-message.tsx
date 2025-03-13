@@ -100,25 +100,29 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
     if (message.parts?.length) {
       return (
         <React.Fragment>
-          {message.parts.map((part, index) =>
-            part.type === "tool-invocation" ? (
-              <ToolCallMessageContent
-                key={`tool-${index}`}
-                tool={part.toolInvocation}
-              />
-            ) : part.type === "text" ? (
-              <TextContent
-                key={`text-${index}`}
-                text={part.text}
-                messages={messages}
-                index={index}
-              />
-            ) : part.type === "reasoning" ? (
-              <ThinkingDropdown key={`reasoning-${index}`}>
-                <MarkdownViewer content={part.reasoning} />
-              </ThinkingDropdown>
-            ) : null
-          )}
+          {message.parts
+            .sort((a, b) =>
+              a.type === "reasoning" ? -1 : b.type === "reasoning" ? 1 : 0
+            )
+            .map((part, index) =>
+              part.type === "reasoning" ? (
+                <ThinkingDropdown key={`reasoning-${index}`}>
+                  <MarkdownViewer content={part.reasoning} />
+                </ThinkingDropdown>
+              ) : part.type === "tool-invocation" ? (
+                <ToolCallMessageContent
+                  key={`tool-${index}`}
+                  tool={part.toolInvocation}
+                />
+              ) : part.type === "text" ? (
+                <TextContent
+                  key={`text-${index}`}
+                  text={part.text}
+                  messages={messages}
+                  index={index}
+                />
+              ) : null
+            )}
         </React.Fragment>
       );
     }
