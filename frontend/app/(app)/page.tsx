@@ -78,7 +78,7 @@ export default function Home() {
             <Syyclops3dEye size={115} animate={false} />
           </div>
 
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6 min-h-[72px]">
             {userIsFetched && (
               <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
             )}

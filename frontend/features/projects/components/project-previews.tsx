@@ -2,8 +2,6 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { useAtom } from "jotai";
-import { animatedAtom } from "@/features/chat/messages/components/animated-greeting";
 import { useInfiniteProjectsQuery } from "../api";
 import { Project } from "@/types/project";
 import { useRouter } from "next/navigation";
@@ -54,7 +52,6 @@ const PinStyles = () => (
 
 const ProjectPreviews = () => {
   const router = useRouter();
-  const [alreadyAnimated] = useAtom(animatedAtom);
 
   const { data, isLoading } = useInfiniteProjectsQuery({
     limit: 6,
@@ -94,7 +91,7 @@ const ProjectPreviews = () => {
       )}
 
       {isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
           {Array.from({ length: 6 }).map((_, i) => (
             <ProjectCardSkeleton key={i} />
           ))}
@@ -258,12 +255,11 @@ function AddProjectCard() {
 
 function ProjectCardSkeleton() {
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden w-[288px]">
       <div className="h-[120px] w-full bg-muted animate-pulse"></div>
       <div className="p-3">
         <div className="h-4 bg-muted rounded animate-pulse w-3/4 mb-2"></div>
         <div className="flex items-center justify-between">
-          <div className="h-3 bg-muted rounded animate-pulse w-1/4"></div>
           <div className="h-3 bg-muted rounded animate-pulse w-1/3"></div>
         </div>
       </div>
