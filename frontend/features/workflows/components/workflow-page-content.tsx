@@ -65,27 +65,24 @@ export default function WorkflowPageContent({
   const { downloadCsv, previewCsv } = useCsvActions();
 
   const { data: workflow, isLoading } = useWorkflowQuery(workflowId);
-  const { handleSubmit, messages, setInput, status, reload } = useChat({
-    api: `${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/run`,
-    credentials: "include",
-    experimental_prepareRequestBody({ messages, id }) {
-      return { message: messages[messages.length - 1], id };
-    },
-  });
+  const { handleSubmit, messages, setInput, status, setMessages, error } =
+    useChat({
+      api: `${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/run`,
+      credentials: "include",
+      experimental_prepareRequestBody({ messages, id }) {
+        return { message: messages[messages.length - 1], id };
+      },
+    });
 
   const isProcessing = status === "submitted" || messages.length > 0;
   const response = messages[1];
-
-  console.log("response", response);
-  console.log("messages", messages);
-  console.log("isProcessing", isProcessing);
 
   const resetWorkflow = () => {
     setFile(null);
     setInput("");
     hasAutoHiddenReasoning.current = false;
     setShowReasoning(true);
-    reload();
+    setMessages([]);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -189,6 +186,17 @@ export default function WorkflowPageContent({
             {workflow.description}
           </p>
         </div>
+
+        {/* Display error message if there's an error */}
+        {error && (
+          <div className="mb-8 p-4 bg-destructive/10 border border-destructive text-destructive rounded-lg">
+            <h3 className="font-medium mb-1">Error</h3>
+            <p>
+              {error.message ||
+                "An error occurred while running the workflow. Please try again."}
+            </p>
+          </div>
+        )}
 
         <div className="flex flex-col gap-8">
           {/* Step 1: Upload RFP document */}
@@ -304,7 +312,7 @@ export default function WorkflowPageContent({
             </div>
 
             {response?.reasoning && showReasoning ? (
-              <div className="bg-muted/30 p-4 rounded-lg">
+              <div className="bg-muted/30 p-4 rounded-lg max-h-[400px] overflow-y-auto">
                 <MarkdownViewer content={response.reasoning || ""} />
               </div>
             ) : null}

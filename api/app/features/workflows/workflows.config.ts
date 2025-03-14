@@ -5,7 +5,7 @@ const workflows = [
     description:
       "This workflow evaluates a Request for Proposal (RFP) pdf file based on the setty criteria.",
     maxSteps: 10,
-    modelName: "claude-3.7-sonnet-thinking",
+    modelName: "claude-3.7-sonnet",
     // modelName: "gpt-4o",
     prompt: "Evaluate this RFP.",
     systemMessage: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
