@@ -21,13 +21,21 @@ import { WorkSpaceSwitcher } from "./workspace-switcher";
 import { ThreadsList } from "./sidebar-threads-list";
 import { ThreadsLink } from "./threads-link";
 import { SidebarProjectsList } from "./sidebar-projects-list";
-import { ProjectsButton } from "./projects-button";
+import { SidebarButton } from "./sidebar-button";
 import { DropdownMenuGroup } from "../ui/dropdown-menu";
 import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "./workspace-context";
 import { Button } from "../ui/button";
-import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
+import {
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  FolderClosed,
+  FolderOpen,
+  Plus,
+  Workflow,
+} from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { CreateProjectDialog } from "@/features/projects/components";
 import { NewThreadButton } from "./new-thread-button";
 import { scrollbarStyle } from "@/lib/utils";
 
@@ -112,8 +120,38 @@ export function AppSidebar({
                 {!(
                   activeWorkspace?.type === "personal" &&
                   user.subscriptionStatus !== "active"
-                ) && <ProjectsButton />}
+                ) && (
+                  <SidebarButton
+                    href="/projects"
+                    icon={FolderClosed}
+                    hoverIcon={FolderOpen}
+                    label="Projects"
+                    actionTrigger={
+                      <CreateProjectDialog
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                          >
+                            <Plus className="h-6 w-6" />
+                          </Button>
+                        }
+                      />
+                    }
+                  />
+                )}
               </SidebarMenuItem>
+
+              {activeWorkspace?.type === "organization" && (
+                <SidebarMenuItem>
+                  <SidebarButton
+                    href="/workflows"
+                    icon={Workflow}
+                    hoverIcon={Workflow}
+                    label="Workflows"
+                  />
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
