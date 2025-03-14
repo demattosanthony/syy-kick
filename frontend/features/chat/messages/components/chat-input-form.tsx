@@ -185,8 +185,8 @@ function ChatInputForm(
   return (
     <Card
       className={cn(
-        "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[750px] p-0 rounded-xl bg-background",
-        focused && !isMobile ? "shadow-md border" : "shadow-none"
+        "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-radius bg-background border",
+        focused && !isMobile ? "shadow-sm border-2" : "shadow-none"
       )}
     >
       <form
@@ -311,7 +311,7 @@ function ChatInputForm(
         </div>
 
         <div className="w-full flex justify-between items-center px-1">
-          <ModelSelector proejctId={projectId} />
+          <ModelSelector />
 
           {isMounted &&
             selectedModel.supportedMimeTypes &&

@@ -7,7 +7,7 @@ interface ThinkingDropdownProps {
 }
 
 const ThinkingDropdown = ({ children }: ThinkingDropdownProps) => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(true);
 
   return (
     <div className="w-fit rounded-lg mb-2 border border-border p-3">
@@ -48,6 +48,6 @@ const ThinkingDropdown = ({ children }: ThinkingDropdownProps) => {
       </AnimatePresence>
     </div>
   );
-}
+};
 
 export default ThinkingDropdown;

@@ -340,13 +340,12 @@ const threadsOps = {
         toolCallStreaming: true,
         maxTokens: maxTokens,
         providerOptions: {
-          ...(model === "claude-3.7-sonnet-thinking" && !tools
-            ? {
-                anthropic: {
-                  thinking: { type: "enabled", budgetTokens: 30000 },
-                },
-              }
-            : {}),
+          openai: {
+            store: false,
+          },
+          anthropic: {
+            thinking: { type: "enabled", budgetTokens: 12_000 },
+          },
         },
         onStepFinish: async ({
           toolCalls,
@@ -355,9 +354,9 @@ const threadsOps = {
           finishReason,
           reasoning,
         }) => {
-          //   console.log("Tool calls:", toolCalls);
-          //   console.log("Tool results:", toolResults.length);
           //   console.log("Finish reason:", finishReason);
+          //   console.log("Tool calls:", toolCalls);
+          //   // console.log("Tool results:", toolResults.length);
           //   console.log("Text:", text);
           //   console.log("Reasoning:", reasoning);
 
