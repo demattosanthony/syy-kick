@@ -1,3 +1,5 @@
+"use client";
+
 import { Check, WandSparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,11 +27,12 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getModelIconPath, getModelImage } from "../utils";
 import { useModelsQuery } from "@/features/commons/models/api";
 
 const ModelSelector: React.FC = () => {
   const [open, setOpen] = useState(false);
-  const [globalModel, setGlobalModel] = useAtom(modelAtom);
+  const [selectedModel, setSelectedModel] = useAtom(modelAtom);
   const { data: models } = useModelsQuery();
 
   const [isMounted, setIsMounted] = useState(false); // Add mounted state because selected model atom loads async
@@ -60,91 +63,76 @@ const ModelSelector: React.FC = () => {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild className={triggerClassName}>
+      <PopoverTrigger asChild>
         <Button
           variant="ghost"
           role="combobox"
           aria-expanded={open}
-          className={cn(
-            "h-8 justify-between gap-0 p-2",
-            variant === "compact" && "h-7 px-2 py-1 text-xs",
-            buttonClassName
-          )}
+          className="h-8 justify-between gap-0 p-2"
         >
           <div className="flex items-center">
             {selectedModel.provider === "Auto" ? (
-              <WandSparkles
-                className={cn("w-4 h-4", variant === "compact" && "w-3 h-3")}
-              />
+              <WandSparkles className="w-4 h-4" />
             ) : (
-              getModelImage(
-                selectedModel.provider,
-                variant === "compact" ? "w-3 h-3" : "w-5 h-5"
-              )
+              getModelImage(selectedModel.provider)
             )}
-            {variant !== "icon-only" && (
-              <div
-                className={cn(
-                  "ml-2 truncate",
-                  variant === "compact" && "text-xs"
-                )}
-              >
-                {selectedModel.name || "Select model..."}
-              </div>
-            )}
+            {/* <div className="hidden md:flex truncate ">
+              {selectedModel.name || "Select model..."}
+            </div> */}
           </div>
+          {/* <ChevronsUpDown className="md:ml-2 h-4 w-4 shrink-0 opacity-50" /> */}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0">
+      <PopoverContent className="p-0 ">
         <Command>
           {!isMobile && <CommandInput placeholder="Search models..." />}
 
           <CommandList className="max-h-[450px]">
             <CommandEmpty>No model found.</CommandEmpty>
             <CommandGroup>
-              {showAuto && (
-                <HoverCard openDelay={0.5} closeDelay={0}>
-                  <HoverCardTrigger>
-                    <CommandItem
-                      key={"Auto"}
-                      value={"Auto"}
-                      onSelect={() => handleModelChange(AUTO_MODEL_CONFIG)}
-                    >
-                      <div className="flex items-center">
-                        <WandSparkles className="w-5 h-5 mr-2 p-[2px]" />
-                        <span>Auto</span>
-                      </div>
-                      <Check
-                        className={cn(
-                          "ml-auto h-4 w-4",
-                          selectedModel.name === "auto"
-                            ? "opacity-100"
-                            : "opacity-0"
-                        )}
-                      />
-                    </CommandItem>
-                  </HoverCardTrigger>
-                  <HoverCardContent
-                    side="left"
-                    align="center"
-                    className="w-[400px]"
+              <HoverCard openDelay={0.5} closeDelay={0}>
+                <HoverCardTrigger>
+                  <CommandItem
+                    key={"Auto"}
+                    value={"Auto"}
+                    onSelect={() => {
+                      setSelectedModel(AUTO_MODEL_CONFIG);
+                      setOpen(false);
+                    }}
                   >
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-semibold flex items-center">
-                        <WandSparkles className="w-4 h-4 mr-2" />
-                        Auto Model Selection
-                      </h4>
-                      <p className="text-xs text-muted-foreground">
-                        Automatically selects the most suitable model based on
-                        your message content. For example, it will choose models
-                        with image capabilities for messages containing images,
-                        or models optimized for code when discussing
-                        programming.
-                      </p>
+                    <div className="flex items-center">
+                      <WandSparkles className="w-5 h-5 mr-2 p-[2px]" />
+                      <span>Auto</span>
                     </div>
-                  </HoverCardContent>
-                </HoverCard>
-              )}
+                    <Check
+                      className={cn(
+                        "ml-auto h-4 w-4",
+                        selectedModel.name === "auto"
+                          ? "opacity-100"
+                          : "opacity-0"
+                      )}
+                    />
+                  </CommandItem>
+                </HoverCardTrigger>
+                <HoverCardContent
+                  side="left"
+                  align="center"
+                  className="w-[400px]"
+                >
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold flex items-center">
+                      <WandSparkles className="w-4 h-4 mr-2" />
+                      Auto Model Selection
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically selects the most suitable model based on
+                      your message content. For example, it will choose models
+                      with image capabilities for messages containing images, or
+                      models optimized for code when discussing programming.
+                    </p>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
 
               {models?.map((model) => (
                 <HoverCard key={model.name} openDelay={0.5} closeDelay={0}>
@@ -152,7 +140,10 @@ const ModelSelector: React.FC = () => {
                     <CommandItem
                       key={model.name}
                       value={model.name}
-                      onSelect={() => handleModelChange(model)}
+                      onSelect={() => {
+                        setSelectedModel(model);
+                        setOpen(false);
+                      }}
                     >
                       <div className="flex items-center">
                         {getModelImage(model.provider)}
@@ -221,37 +212,3 @@ const ModelSelector: React.FC = () => {
 };
 
 export default ModelSelector;
-
-export function getModelImage(provider: string, className = "w-5 h-5 rounded") {
-  const iconPath = getModelIconPath(provider);
-  if (!iconPath) return null;
-
-  const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-
-  return <img src={iconPath} alt={providerName} className={className} />;
-}
-
-export function getModelIconPath(provider: string) {
-  switch (provider) {
-    case "openai":
-      return "/logos/openai.ico";
-    case "anthropic":
-      return "/logos/anthropic.ico";
-    case "perplexity":
-      return "/logos/perplexity.ico";
-    case "google":
-      return "/logos/google.svg";
-    case "xai":
-      return "/logos/xai.svg";
-    case "mistral":
-      return "/logos/mistral.svg";
-    case "groq":
-      return "/logos/meta.svg";
-    case "meta":
-      return "/logos/meta.svg";
-    case "deepseek":
-      return "/logos/deepseek.ico";
-    default:
-      return null;
-  }
-}
