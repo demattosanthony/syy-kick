@@ -42,7 +42,6 @@
     "drizzle-orm": "^0.39.1",
     "exa-js": "^1.4.10",
     "express": "^4.21.2",
-    "install": "^0.13.0",
     "jsonwebtoken": "^9.0.2",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",

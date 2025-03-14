@@ -70,7 +70,7 @@ function ChatInputForm(
 ) {
   const isMobile = useIsMobile();
   const [isMounted, setIsMounted] = useState(false);
-  const [selectedModel, setSelectedModel] = useAtom(modelAtom);
+  const [selectedModel] = useAtom(modelAtom);
   const [focused, setFocused] = useState(true);
   const [showFileExplorer, setShowFileExplorer] = useState(false);
   const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
@@ -309,58 +309,57 @@ function ChatInputForm(
             />
           </div>
         </div>
+
         <div className="w-full flex justify-between items-center px-1">
           <ModelSelector />
 
-          <div className="flex items-center">
-            {isMounted &&
-              selectedModel.supportedMimeTypes &&
-              selectedModel.supportedMimeTypes.length > 0 && (
-                <>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept={selectedModel.supportedMimeTypes?.join(",")}
-                    multiple
-                    onChange={handleFiles}
-                  />
-                  <Button
-                    className="h-8 w-8"
-                    variant="ghost"
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      fileInputRef?.current?.click();
-                    }}
-                  >
-                    <Paperclip />
-                  </Button>
-                </>
-              )}
+          {isMounted &&
+            selectedModel.supportedMimeTypes &&
+            selectedModel.supportedMimeTypes.length > 0 && (
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept={selectedModel.supportedMimeTypes?.join(",")}
+                  multiple
+                  onChange={handleFiles}
+                />
+                <Button
+                  className="h-8 w-8"
+                  variant="ghost"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fileInputRef?.current?.click();
+                  }}
+                >
+                  <Paperclip />
+                </Button>
+              </>
+            )}
 
-            <Button
-              ref={buttonRef}
-              className="h-8 w-8"
-              disabled={isGenerating || !input}
-              variant="ghost"
-              onClick={(e) => {
-                e.preventDefault();
-                if (isGenerating && stop) {
-                  // stop();
-                } else {
-                  onSubmit(e);
-                }
-              }}
-            >
-              {isGenerating ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <SendHorizonal />
-              )}
-            </Button>
-          </div>
+          <Button
+            ref={buttonRef}
+            className="h-8 w-8 ml-auto"
+            disabled={isGenerating || !input}
+            variant="ghost"
+            onClick={(e) => {
+              e.preventDefault();
+              if (isGenerating && stop) {
+                // stop();
+              } else {
+                onSubmit(e);
+              }
+            }}
+          >
+            {isGenerating ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <SendHorizonal />
+            )}
+          </Button>
         </div>
       </form>
     </Card>

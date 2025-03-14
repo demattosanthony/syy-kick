@@ -43,7 +43,7 @@ export function AppSidebar({
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & { user: User }) {
-  const { state, setOpen, toggleSidebar } = useSidebar();
+  const { state, setOpen } = useSidebar();
   const isMobile = useIsMobile();
   const { activeWorkspace } = useWorkspace();
   const [isPinned, setIsPinned] = React.useState(true);
