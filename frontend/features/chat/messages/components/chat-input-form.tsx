@@ -310,7 +310,9 @@ function ChatInputForm(
           </div>
         </div>
         <div className="w-full flex justify-between items-center px-1">
-          <ModelSelector />
+          <div>
+            <ModelSelector />
+          </div>
 
           <div className="flex items-center">
             {isMounted &&
