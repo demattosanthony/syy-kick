@@ -266,19 +266,21 @@ const threadsOps = {
   },
 
   async inference(req: Request, res: Response) {
+    const controller = new AbortController();
+
+    // SSE Setup
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.flushHeaders();
+
     try {
       const { threadId } = req.params;
       const { model, maxTokens, instructions, message } = req.body as z.infer<
         typeof inferenceSchema
       >;
-
-      // SSE Setup
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Accel-Buffering", "no");
-      res.setHeader("Transfer-Encoding", "chunked");
-      res.flushHeaders();
 
       // 1) Fetch thread
       const thread = await threadsOps.getThread(threadId);
@@ -330,6 +332,9 @@ const threadsOps = {
         ),
       };
 
+      let aiResponse = "";
+      let requestCompleted = false;
+
       // Start the streaming from the AI
       const result = streamText({
         model: modelConfig.model,
@@ -340,6 +345,7 @@ const threadsOps = {
         toolChoice: "auto",
         toolCallStreaming: true,
         maxTokens: maxTokens,
+        abortSignal: controller.signal,
         providerOptions: {
           openai: {
             store: false,
@@ -352,6 +358,14 @@ const threadsOps = {
                 },
               }
             : {}),
+        },
+        onChunk: async ({ chunk }) => {
+          if (chunk.type === "text-delta") {
+            aiResponse += chunk.textDelta;
+          }
+        },
+        onFinish: async () => {
+          requestCompleted = true;
         },
         onStepFinish: async ({
           toolCalls,
@@ -476,11 +490,53 @@ const threadsOps = {
         },
       });
 
+      req.on("close", () => {
+        // If the request completed normally, we don't need to do anything
+        if (requestCompleted) {
+          console.log("Request completed normally");
+          return;
+        }
+
+        console.log("Client aborted inference");
+        try {
+          // Abort the controller first
+          controller.abort();
+        } catch (error) {
+          console.error("Error aborting controller:", error);
+        }
+
+        // Save the AI response if it's not empty - this will now execute even if abort() throws
+        if (aiResponse && aiResponse.trim().length > 0) {
+          console.log("Saving partial AI response after client disconnect");
+          db.insert(messages)
+            .values({
+              userId: req.dbUser!.id,
+              id: crypto.randomUUID(),
+              threadId,
+              role: "assistant",
+              reasoning: null,
+              text: aiResponse,
+              createdAt: new Date(),
+              model,
+              embedding: null,
+              provider: modelConfig.provider,
+            })
+            .then(() => console.log("Successfully saved partial response"))
+            .catch((err) =>
+              console.error("Failed to save partial response:", err)
+            );
+        } else {
+          console.log("No AI response to save after client disconnect");
+        }
+      });
+
       // Pipe the data out as SSE
-      return result.pipeDataStreamToResponse(res, {
+      const streamResult = result.pipeDataStreamToResponse(res, {
         sendReasoning: true,
       });
-    } catch (error) {
+
+      return streamResult;
+    } catch (error: any) {
       console.error("Error in inference:", error);
       res.status(500).json({
         error: "An error occurred during inference",

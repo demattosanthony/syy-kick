@@ -44,17 +44,29 @@ function CodeBlockCode({
 
   useEffect(() => {
     async function highlight() {
+      // Don't attempt to highlight if code is undefined or null
+      if (!code) {
+        setHighlightedHtml("");
+        return;
+      }
+
       // Map the system theme to Shiki theme
       const systemTheme =
         resolvedTheme === "dark" ? "github-dark" : "github-light";
       // Use provided theme or fall back to system theme
       const themeToUse = propTheme || systemTheme;
 
-      const html = await codeToHtml(code, {
-        lang: language,
-        theme: themeToUse,
-      });
-      setHighlightedHtml(html);
+      try {
+        const html = await codeToHtml(code, {
+          lang: language,
+          theme: themeToUse,
+        });
+        setHighlightedHtml(html);
+      } catch (error) {
+        console.error("Error highlighting code:", error);
+        // Fallback to plain text if highlighting fails
+        setHighlightedHtml(`<pre><code>${code}</code></pre>`);
+      }
     }
     highlight();
   }, [code, language, propTheme, resolvedTheme]);
