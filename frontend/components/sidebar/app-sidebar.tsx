@@ -142,14 +142,16 @@ export function AppSidebar({
                 )}
               </SidebarMenuItem>
 
-              <SidebarMenuItem>
-                <SidebarButton
-                  href="/workflows"
-                  icon={Workflow}
-                  hoverIcon={Workflow}
-                  label="Workflows"
-                />
-              </SidebarMenuItem>
+              {activeWorkspace?.type === "organization" && (
+                <SidebarMenuItem>
+                  <SidebarButton
+                    href="/workflows"
+                    icon={Workflow}
+                    hoverIcon={Workflow}
+                    label="Workflows"
+                  />
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

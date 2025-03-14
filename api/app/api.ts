@@ -75,7 +75,7 @@ export default Router()
   )
   .use("/organizations", auth, organizationRoutes)
   .use("/projects", auth, checkSub, projectRoutes)
-  .use("/workflows", workflowRoutes)
+  .use("/workflows", auth, workflowRoutes)
   .post(
     "/presigned-url",
     auth,

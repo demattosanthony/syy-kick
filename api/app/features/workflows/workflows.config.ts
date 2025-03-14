@@ -4,10 +4,13 @@ const workflows = [
     title: "RFP Evaluation",
     description:
       "This workflow evaluates a Request for Proposal (RFP) pdf file based on the setty criteria.",
-    maxSteps: 10,
+    maxSteps: 5,
     modelName: "claude-3.7-sonnet",
-    // modelName: "gpt-4o",
     prompt: "Evaluate this RFP.",
+    authorizedOrganizationIds: [
+      "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+      "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+    ],
     systemMessage: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
 
 # Setty & Associates Overview
@@ -170,4 +173,30 @@ function getWorkflowById(id: "rfpEvaluation") {
   return workflows.find((workflow) => workflow.id === id);
 }
 
-export { workflows, getWorkflowById };
+function isOrganizationAuthorized(
+  workflowId: string,
+  organizationId: string
+): boolean {
+  const workflow = workflows.find((w) => w.id === workflowId);
+  if (!workflow) return false;
+
+  // If no authorized organizations are specified, assume it's available to all
+  if (!workflow.authorizedOrganizationIds) return true;
+
+  return workflow.authorizedOrganizationIds.includes(organizationId);
+}
+
+function getWorkflowsForOrganization(organizationId: string) {
+  return workflows.filter(
+    (workflow) =>
+      !workflow.authorizedOrganizationIds ||
+      workflow.authorizedOrganizationIds.includes(organizationId)
+  );
+}
+
+export {
+  workflows,
+  getWorkflowById,
+  isOrganizationAuthorized,
+  getWorkflowsForOrganization,
+};
