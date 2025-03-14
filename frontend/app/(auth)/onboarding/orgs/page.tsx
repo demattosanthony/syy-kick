@@ -4,9 +4,9 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { CreateOrgForm } from "@/components/organizations/create-org-form";
 import api from "@/lib/api";
 import { PRICING_PLANS } from "@/lib/pricing";
+import { CreateOrgForm } from "@/features/organizations/components";
 
 export default function CreateOrgPage() {
   const router = useRouter();

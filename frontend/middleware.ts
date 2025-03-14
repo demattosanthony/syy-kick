@@ -20,5 +20,7 @@ export const config = {
     "/projects",
     "/threads/:threadId",
     "/projects/:projectId",
+    "/projects/:projectId/blob/:path",
+    "/projects/:projectId/tree/:path",
   ],
 };

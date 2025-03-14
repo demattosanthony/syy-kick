@@ -53,18 +53,6 @@ export const anthropicModels = (
       description:
         "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
     },
-    "claude-3.7-sonnet-thinking": {
-      model: anthropic("claude-3-7-sonnet-20250219"),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "anthropic",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 5 * 1024 * 1024, // 5MB
-      maxFileSize: 32 * 1024 * 1024, // 32MB
-      description:
-        "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
-    },
     "claude-3.5-haiku": {
       model: anthropic("claude-3-5-haiku-latest"),
       supportsToolUse: true,
@@ -101,7 +89,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
     //     "GPT-4.5 is OpenAI's largest and best model for chat yet, representing a significant advancement in scaling unsupervised learning. It features broader knowledge, improved ability to follow user intent, and greater emotional intelligence. GPT-4.5 excels at creative tasks, writing, and problem-solving while demonstrating reduced hallucinations and more natural conversation. It supports tool use, streaming, system messages, and image inputs.",
     // },
     o1: {
-      model: openai("o1"),
+      model: openai.responses("o1"),
       supportsToolUse: true,
       supportsStreaming: true,
       supportsSystemMessages: true,
@@ -111,7 +99,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
         "o1 is a versatile model from OpenAI, capable of handling a wide range of tasks with good performance. It supports tool use, streaming, system messages, and image inputs, making it a solid all-around choice.",
     },
     "o3-mini": {
-      model: openai("o3-mini"),
+      model: openai.responses("o3-mini"),
       supportsToolUse: true,
       supportsStreaming: true,
       supportsSystemMessages: true,
@@ -121,7 +109,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
         "o3-mini is a smaller, more efficient version of o3, designed for faster responses and lower resource usage. It's suitable for tasks where speed and cost-effectiveness are priorities, while still offering good performance and supporting tool use, streaming, system messages, and image inputs.",
     },
     "gpt-4o": {
-      model: openai("gpt-4o"),
+      model: openai.responses("gpt-4o"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "openai",
@@ -132,7 +120,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
         "GPT-4o from OpenAI has broad general knowledge and domain expertise allowing it to follow complex instructions in natural language and solve difficult problems accurately. It matches GPT-4 Turbo performance with a faster and cheaper API.",
     },
     "gpt-4o-mini": {
-      model: openai("gpt-4o-mini"),
+      model: openai.responses("gpt-4o-mini"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "openai",
@@ -182,7 +170,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
-    // "gemini-2.0-pro": {
+    // "gemini-2.0-pro-exp": {
     //   model: google("gemini-2.0-pro-exp-02-05"),
     //   supportsToolUse: true,
     //   supportsStreaming: true,
@@ -192,7 +180,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
     //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
     //   maxFileSize: 50 * 1024 * 1024, // 50MB
     //   description:
-    //     "Gemini 2.0 Pro is a robust model from Google, well-suited for a variety of tasks including text generation, translation, and code completion. It supports tool use, streaming, image and PDF inputs, making it a versatile option for many applications.",
+    //     "Improved quality, especially for world knowledge, code, and long context",
     // },
     "gemini-2.0-flash": {
       model: google("gemini-2.0-flash"),
@@ -205,6 +193,18 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       maxFileSize: 50 * 1024 * 1024, // 50MB
       description:
         "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
+    },
+    "gemini-1.5-pro": {
+      model: google("gemini-1.5-pro-latest"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "google",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+      maxFileSize: 50 * 1024 * 1024, // 50MB
+      description:
+        "Gemini 1.5 Pro is the latest model of the Gemini family. It's a mid-size multimodal model that supports up to 1 million tokens and excels at long-context tasks.",
     },
     // "gemini-2.0-flash-online": {
     //   model: google("gemini-2.0-flash", {

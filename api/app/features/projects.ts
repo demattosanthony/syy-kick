@@ -177,6 +177,8 @@ async function listProjects(params: {
   organizationId?: string;
   userId?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 }) {
   if (!params.organizationId && !params.userId) {
     throw new Error("Either organizationId or userId must be provided");
@@ -194,12 +196,37 @@ async function listProjects(params: {
     conditions.push(ilike(projects.name, `%${params.search}%`));
   }
 
+  // Set default pagination values
+  const page = params.page || 1;
+  const limit = params.limit || 10;
+  const offset = (page - 1) * limit;
+
+  // Get total count for pagination metadata
+  const countResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(projects)
+    .where(and(...conditions));
+
+  const totalCount = countResult[0]?.count || 0;
+
+  // Get paginated projects
   const projs = await db.query.projects.findMany({
     where: and(...conditions),
     orderBy: (projects, { desc }) => [desc(projects.createdAt)],
+    limit: limit,
+    offset: offset,
   });
 
-  return projs;
+  return {
+    data: projs,
+    pagination: {
+      page,
+      limit,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      hasMore: page * limit < totalCount,
+    },
+  };
 }
 
 async function getProject(projectId: string) {
@@ -248,8 +275,12 @@ export async function getProjectDocs(projectId: string, path: string = "") {
           eq(documents.type, "folder")
         ),
       });
+      // Instead of throwing an error, return an empty array if folder not found
       if (!folder) {
-        throw new Error("Folder not found");
+        console.log(
+          `Folder not found at path: ${normalizedPath} for project: ${projectId}`
+        );
+        return [];
       }
       parentId = folder.id;
     }
@@ -404,6 +435,7 @@ export async function getDocContent(projectId: string, path: string) {
   });
 
   if (!document) {
+    console.log(`Document not found at path: ${path}`);
     throw new Error("File not found");
   }
 
@@ -703,12 +735,14 @@ const handlers = {
   },
 
   listProjects: async (req: Request, res: Response) => {
-    const { search } = req.query;
+    const { search, page, limit } = req.query;
     const orgId = getOrgIdOrUnedfined(req.workspace);
     const projectsList = await listProjects({
       organizationId: orgId,
       userId: req.dbUser?.id,
       search: search as string,
+      page: page ? parseInt(page as string, 10) : undefined,
+      limit: limit ? parseInt(limit as string, 10) : undefined,
     });
     res.json(projectsList);
   },

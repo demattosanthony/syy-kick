@@ -18,7 +18,6 @@ import { NavUser } from "./nav-user";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@/types/user";
 import { WorkSpaceSwitcher } from "./workspace-switcher";
-import { NewThreadButton } from "./new-thread-button";
 import { ThreadsList } from "./sidebar-threads-list";
 import { ThreadsLink } from "./threads-link";
 import { SidebarProjectsList } from "./sidebar-projects-list";
@@ -26,26 +25,78 @@ import { ProjectsButton } from "./projects-button";
 import { DropdownMenuGroup } from "../ui/dropdown-menu";
 import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "./workspace-context";
+import { Button } from "../ui/button";
+import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { NewThreadButton } from "./new-thread-button";
+import { scrollbarStyle } from "@/lib/utils";
 
 export function AppSidebar({
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & { user: User }) {
-  const { state } = useSidebar();
+  const { state, setOpen } = useSidebar();
   const isMobile = useIsMobile();
   const { activeWorkspace } = useWorkspace();
+  const [isPinned, setIsPinned] = React.useState(true);
+  const sidebarRef = React.useRef<HTMLDivElement>(null);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
+
+  // Keep pin state in sync with sidebar state
+  React.useEffect(() => {
+    if (state === "collapsed") {
+      setIsPinned(false);
+    }
+  }, [state]);
+
+  // Handle hover behavior
+  const handleMouseEnter = React.useCallback(() => {
+    if (state === "collapsed" && !isMobile) {
+      setOpen(true);
+    }
+  }, [state, isMobile, setOpen]);
+
+  const handleMouseLeave = React.useCallback(() => {
+    if (state === "expanded" && !isPinned && !isMobile && !isPopoverOpen) {
+      setOpen(false);
+    }
+  }, [isPinned, state, isMobile, setOpen, isPopoverOpen]);
+
+  // Toggle pin state
+  const togglePin = React.useCallback(() => {
+    setIsPinned((prev) => !prev);
+  }, []);
 
   return (
-    <Sidebar collapsible={"icon"} {...props}>
+    <Sidebar
+      collapsible={"icon"}
+      ref={sidebarRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      {...props}
+    >
       <SidebarHeader>
         <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between">
-          <WorkSpaceSwitcher />
+          <WorkSpaceSwitcher onDropdownOpenChange={setIsPopoverOpen} />
 
-          {state === "expanded" && <SidebarTrigger />}
+          {state === "expanded" && (
+            <div className="flex items-center">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={togglePin} variant={"ghost"} size={"icon"}>
+                    {isPinned ? <ArrowLeftToLine /> : <ArrowRightToLine />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isPinned ? "Unpin sidebar" : "Pin sidebar"}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className={scrollbarStyle}>
         <SidebarGroup>
           <SidebarGroupContent className="px-1.5 md:px-0">
             <SidebarMenu>
@@ -90,7 +141,7 @@ export function AppSidebar({
               </DropdownMenuGroup>
             )}
 
-          <NavUser user={user} />
+          <NavUser user={user} onDropdownOpenChange={setIsPopoverOpen} />
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />

@@ -25,15 +25,21 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/useAuth";
 import api from "@/lib/api";
 import { User } from "@/types/user";
 import { Button } from "../ui/button";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { useWorkspace } from "./workspace-context";
+import { useAuth } from "@/features/auth/hooks";
 
-export function NavUser({ user }: { user: User }) {
+export function NavUser({
+  user,
+  onDropdownOpenChange,
+}: {
+  user: User;
+  onDropdownOpenChange?: (open: boolean) => void;
+}) {
   const { isMobile } = useSidebar();
   const { logOut } = useAuth();
   const { setTheme } = useTheme();
@@ -56,7 +62,7 @@ export function NavUser({ user }: { user: User }) {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={onDropdownOpenChange}>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
@@ -107,7 +113,10 @@ export function NavUser({ user }: { user: User }) {
               activeWorkspace?.type === "personal" && (
                 <>
                   <DropdownMenuGroup>
-                    <DropdownMenuItem onClick={handleBillingPortal}>
+                    <DropdownMenuItem
+                      onClick={handleBillingPortal}
+                      className="cursor-pointer"
+                    >
                       <CreditCard />
                       Billing
                     </DropdownMenuItem>
@@ -118,7 +127,7 @@ export function NavUser({ user }: { user: User }) {
 
             <DropdownMenuGroup>
               <Link href="/settings">
-                <DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer">
                   <Settings />
                   Settings
                 </DropdownMenuItem>
@@ -168,7 +177,7 @@ export function NavUser({ user }: { user: User }) {
               </div>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logOut}>
+            <DropdownMenuItem onClick={logOut} className="cursor-pointer">
               <LogOut />
               Log out
             </DropdownMenuItem>

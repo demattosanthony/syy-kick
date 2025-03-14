@@ -139,11 +139,38 @@ const threadsOps = {
     return processThreadMessages(typedThread);
   },
 
+  async updateThread(
+    threadId: string,
+    userId: string,
+    data: { isPublic?: boolean; projectId?: string; title?: string }
+  ) {
+    const updateData: any = {
+      ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
+      ...(data.projectId !== undefined && { projectId: data.projectId }),
+      ...(data.title !== undefined && { title: data.title }),
+      updatedAt: new Date(),
+    };
+
+    if (Object.keys(updateData).length === 1) {
+      // Only updatedAt exists
+      return { message: "No changes to update" };
+    }
+
+    await db
+      .update(threads)
+      .set(updateData)
+      .where(eq(threads.id, threadId))
+      .returning();
+
+    return { message: "Thread updated successfully" };
+  },
+
   async listThreads(
     userId: string,
     page: number,
     search: string,
-    organizationId?: string
+    organizationId?: string,
+    projectId?: string
   ) {
     const LIMIT = 10;
     const offset = (page - 1) * LIMIT;
@@ -154,6 +181,11 @@ const threadsOps = {
     } else {
       // organizationId is null
       conditions.push(sql`${threads.organizationId} IS NULL`);
+    }
+
+    // Add project filtering if projectId is provided
+    if (projectId) {
+      conditions.push(eq(threads.projectId, projectId));
     }
 
     let baseQuery;
@@ -283,7 +315,7 @@ const threadsOps = {
         instructions && instructions.length > 0 ? instructions : undefined
       );
 
-      //   console.log("Inference messages:", inferenceMsgs);
+      // console.log("Inference messages:", inferenceMsgs);
 
       // 5) Generate a thread title if missing
       await maybeGenerateTitle(threadId, inferenceMsgs, thread.title);
@@ -305,20 +337,19 @@ const threadsOps = {
       const result = streamText({
         model: modelConfig.model,
         messages: inferenceMsgs,
-        temperature: 0.45,
+        temperature: 0.4,
         tools: tools ? tools : undefined,
         maxSteps: tools ? 8 : undefined,
         toolChoice: "auto",
         toolCallStreaming: true,
         maxTokens: maxTokens,
         providerOptions: {
-          ...(model === "claude-3.7-sonnet-thinking" && !tools
-            ? {
-                anthropic: {
-                  thinking: { type: "enabled", budgetTokens: 30000 },
-                },
-              }
-            : {}),
+          openai: {
+            store: false,
+          },
+          anthropic: {
+            thinking: { type: "enabled", budgetTokens: 12_000 },
+          },
         },
         onStepFinish: async ({
           toolCalls,
@@ -327,9 +358,9 @@ const threadsOps = {
           finishReason,
           reasoning,
         }) => {
-          //   console.log("Tool calls:", toolCalls);
-          //   console.log("Tool results:", toolResults.length);
           //   console.log("Finish reason:", finishReason);
+          //   console.log("Tool calls:", toolCalls);
+          //   // console.log("Tool results:", toolResults.length);
           //   console.log("Text:", text);
           //   console.log("Reasoning:", reasoning);
 
@@ -372,7 +403,8 @@ const threadsOps = {
 
               if (
                 result &&
-                toolCall.toolName === "search_project_information"
+                (toolCall.toolName === "search_project_information" ||
+                  toolCall.toolName === "search_documents")
               ) {
                 console.log("Project search tool result:", toolCall);
                 await db
@@ -408,7 +440,7 @@ const threadsOps = {
           }
 
           // Create a message for the assistant's response
-          if (finishReason === "stop" && text) {
+          if ((finishReason === "stop" || finishReason === "length") && text) {
             let embedding = null;
             if (text && text.length > 0) {
               try {
@@ -474,6 +506,101 @@ const threadsOps = {
         )
       );
     return { success: true };
+  },
+
+  async cloneThread(userId: string, threadId: string) {
+    const sourceThread = await threadsOps.getThread(threadId);
+    if (!sourceThread) {
+      throw new Error("Thread not found");
+    }
+
+    // Create a new thread with all properties from source thread
+    const [newThread] = await db
+      .insert(threads)
+      .values({
+        userId,
+        organizationId: sourceThread.organizationId,
+        projectId: sourceThread.organizationId
+          ? sourceThread.projectId
+          : undefined, // Only clone project if it's part of the same organization, as the user can only clone a thread if they have access to the project. So both users have access to the project.
+        isPublic: false, // Always set cloned threads to private initially
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    // Fetch original messages with embeddings
+    const originalMessages = await db.query.messages.findMany({
+      where: eq(messages.threadId, threadId),
+      orderBy: messages.createdAt,
+      with: { attachments: true, toolCalls: true },
+    });
+
+    // Clone all messages with embeddings
+    const messagesToCopy = originalMessages.map((msg) => ({
+      userId,
+      threadId: newThread.id,
+      role: msg.role,
+      text: msg.text || "",
+      reasoning: msg.reasoning || null,
+      model: msg.model || null,
+      provider: msg.provider || null,
+      embedding: msg.embedding, // Copy embedding for search functionality
+      createdAt: new Date(),
+    }));
+
+    // Insert all messages first to get their IDs
+    const insertedMessages = [];
+    for (const msg of messagesToCopy) {
+      const [insertedMsg] = await db
+        .insert(messages)
+        .values({
+          ...msg,
+          id: crypto.randomUUID(),
+        })
+        .returning();
+
+      insertedMessages.push(insertedMsg);
+    }
+
+    // Now handle attachments and tool calls for each message
+    for (let i = 0; i < sourceThread.messages.length; i++) {
+      const sourceMsg = sourceThread.messages[i];
+      const newMsg = insertedMessages[i];
+
+      // Clone attachments
+      if (sourceMsg.attachments && sourceMsg.attachments.length > 0) {
+        for (const att of sourceMsg.attachments) {
+          await db.insert(messageAttachments).values({
+            messageId: newMsg.id,
+            fileName: att.fileName || null,
+            mimeType: att.mimeType || null,
+            fileKey: att.fileKey,
+            type: att.type || null,
+            size: att.size || null,
+          });
+        }
+      }
+
+      // Clone tool calls
+      if (sourceMsg.toolCalls && sourceMsg.toolCalls.length > 0) {
+        for (const call of sourceMsg.toolCalls) {
+          await db.insert(toolCallsTable).values({
+            id: crypto.randomUUID(), // Generate new ID for tool call
+            messageId: newMsg.id,
+            toolName: call.toolName,
+            toolCallId: call.toolCallId,
+            args: call.args,
+            status: call.status as any,
+            result: call.result,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      }
+    }
+
+    return { id: newThread.id };
   },
 };
 

@@ -1,4 +1,4 @@
-import { Thread } from "@/types/chat";
+import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
@@ -418,12 +418,12 @@ class ThreadApi extends ApiRequest {
   async getThreads(
     page: number = 1,
     search: string = "",
-    organizationId?: string
+    projectId?: string
   ): Promise<Thread[]> {
     const queryParams = new URLSearchParams({
       page: page.toString(),
       search: search,
-      ...(organizationId && { organizationId }),
+      ...(projectId && { projectId }),
     });
     const endpoint = `/threads?${queryParams.toString()}`;
 
@@ -434,11 +434,19 @@ class ThreadApi extends ApiRequest {
     }
   }
 
-  async getThread(threadId: string, organizationId?: string): Promise<Thread> {
-    const endpoint = organizationId
-      ? `/threads/${threadId}?organizationId=${organizationId}`
-      : `/threads/${threadId}`;
-    return await this.request<Thread>(endpoint);
+  async getThread(threadId: string): Promise<Thread> {
+    return await this.request<Thread>(`/threads/${threadId}`);
+  }
+
+  async getPublicThread(threadId: string): Promise<Thread> {
+    return await this.request<Thread>(`/public/threads/${threadId}`);
+  }
+
+  async updateThread(
+    threadId: string,
+    data: UpdateThreadMutationData
+  ): Promise<Thread> {
+    return await this.request<Thread>(`/threads/${threadId}`, "PUT", data);
   }
 
   async deleteThread(
@@ -450,6 +458,13 @@ class ThreadApi extends ApiRequest {
     });
     const endpoint = `/threads/${threadId}?${queryParams.toString()}`;
     return await this.request<{ success: boolean }>(endpoint, "DELETE");
+  }
+
+  async cloneThread(threadId: string): Promise<{ id: string }> {
+    return await this.request<{ id: string }>(
+      `/threads/${threadId}/clone`,
+      "POST"
+    );
   }
 }
 
@@ -487,11 +502,34 @@ class ProjectsApi extends ApiRequest {
     );
   }
 
-  async listProjects(search?: string): Promise<Project[]> {
+  async listProjects(options?: {
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    data: Project[];
+    pagination: {
+      page: number;
+      limit: number;
+      totalCount: number;
+      totalPages: number;
+      hasMore: boolean;
+    };
+  }> {
     const queryParams = new URLSearchParams();
-    if (search) {
-      queryParams.append("search", search);
+
+    if (options?.search) {
+      queryParams.append("search", options.search);
     }
+
+    if (options?.page !== undefined) {
+      queryParams.append("page", options.page.toString());
+    }
+
+    if (options?.limit !== undefined) {
+      queryParams.append("limit", options.limit.toString());
+    }
+
     return await this.request(`/projects?${queryParams.toString()}`);
   }
 
