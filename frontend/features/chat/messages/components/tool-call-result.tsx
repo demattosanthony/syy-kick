@@ -9,6 +9,7 @@ const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
   switch (tool.toolName) {
     case "search_project_information":
     case "search_documents":
+    case "search_projects_information":
       return <SearchDocumentsTool tool={tool} />;
     default:
       return null;
