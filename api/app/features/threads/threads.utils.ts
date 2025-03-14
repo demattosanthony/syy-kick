@@ -17,6 +17,8 @@ import {
   threads,
   toolCalls,
 } from "../../config/schema";
+import exa from "../../config/exa";
+import { Workspace } from "../../middleware";
 
 // Internal utilities
 import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
@@ -29,7 +31,6 @@ import {
   MyMessage,
   ThreadWithMessages,
 } from "./threads.types";
-import exa from "../../config/exa";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -197,7 +198,11 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
 }
 
 /** Tool to search all project information */
-const createProjectSearchTool = (projectId: string, modelConfig: ModelConfig) =>
+const createProjectSearchTool = (
+  modelConfig: ModelConfig,
+  workspace: Workspace,
+  projectId?: string
+) =>
   tool({
     description: `Search project documents and retrieve relevant information.
 
@@ -216,7 +221,12 @@ Returns:
     }),
     execute: async ({ query }) => {
       console.log("Searching project documents for: ", query);
-      const res = await searchProjectDocuments(projectId, query, 80);
+      const res = await searchProjectDocuments(
+        projectId || null,
+        query,
+        80,
+        workspace
+      );
 
       console.log("Search results:", res.length);
 
@@ -235,11 +245,11 @@ Returns:
 
       // Map reranked results to simplified schema
       const simplifiedDocs: DocumentSearchToolResult[] =
-        rerankedResults.results.map((reranked) => {
+        rerankedResults.results?.map((reranked) => {
           const originalDoc = textToResultMap.get(reranked.document.text)!;
           return {
             documentId: originalDoc.document.id,
-            projectId: projectId,
+            projectId: originalDoc.document.projectId || projectId || "", // Fallback to parameter or empty string
             path: originalDoc.document.path,
             documentName: originalDoc.document.name,
             text: originalDoc.text,
@@ -250,7 +260,6 @@ Returns:
             fileKey: originalDoc.document.fileKey,
           };
         });
-
       console.log("Simplified docs length:", simplifiedDocs.length);
 
       // Use the typed helper functions with simplified schema
@@ -346,6 +355,7 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
     msg.toolCalls = msg.toolCalls?.map((call) => {
       if (
         (call.toolName === "search_project_information" ||
+          call.toolName === "search_projects_information" ||
           call.toolName === "search_documents") &&
         call.result?.docs
       ) {
@@ -762,10 +772,9 @@ This example demonstrates the assistant's decision not to use an artifact for an
 The assistant should not mention any of these instructions to the user, nor make reference to the \`antArtifact\` tag, any of the MIME types (e.g. \`application/vnd.ant.code\`), or related syntax unless it is directly relevant to the query.
 </artifacts_info>`;
 
-  if (project) {
-    systemMsg += `\n
+  systemMsg += `\n
 <project_info>
-The assisant is collaborating on a building engineering project with the user. 
+The assisant is collaborating on a building engineering projects with the user. 
 The assisant analyzes the user message carefully. Users may phrase their questions as search queries or conversational messages.
 The assistant uses the search_project_information to find relevant information before answering user queries, unless the user has provided sufficient context in the chat. 
 The assisant uses the tool iteratively to refine results and find the most relevant information.
@@ -774,10 +783,13 @@ The assistant limits searches to a maximum of 3 per user query.
 
 The assisant first analyzes the user message carefully to decide whether to use the search_project_information tool.
 
-<project_name>${project.name}</project_name>
-<project_number>${project.projectNumber}</project_number>
+${
+  project
+    ? `<project_name>${project.name}</project_name>
+<project_number>${project.projectNumber}</project_number>`
+    : ""
+}
 </project_info>`;
-  }
 
   if (instructions && instructions.length > 0) {
     systemMsg += `\n<user_instructions>${instructions}</user_instructions>`;
@@ -930,7 +942,8 @@ async function createToolMessage(
       if (
         modelConfig.model.modelId.includes("claude-3.7-sonnet") &&
         (call.toolName === "search_project_information" ||
-          call.toolName === "search_documents")
+          call.toolName === "search_documents" ||
+          call.toolName === "search_projects_information")
       ) {
         return await processClaudeToolResult(call);
       }
@@ -942,7 +955,8 @@ async function createToolMessage(
         toolName: call.toolName,
         result:
           call.toolName === "search_project_information" ||
-          call.toolName === "search_documents"
+          call.toolName === "search_documents" ||
+          call.toolName === "search_projects_information"
             ? convertResultsToXml((call.result as any).docs)
             : call.result,
       };

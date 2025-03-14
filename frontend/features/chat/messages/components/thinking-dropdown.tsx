@@ -1,4 +1,4 @@
-import { Brain, ChevronDown } from "lucide-react";
+import { Brain, ChevronDown, ChevronRight, Lightbulb } from "lucide-react";
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -10,7 +10,7 @@ const ThinkingDropdown = ({ children }: ThinkingDropdownProps) => {
   const [isOpen, setIsOpen] = React.useState(true);
 
   return (
-    <div className="w-fit rounded-lg mb-2 border border-border p-3">
+    <div className=" w-fit rounded-lg mb-2 p-3 bg-card border border-border">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex w-full items-center justify-between gap-1 rounded-lg text-sm text-muted-foreground hover:text-primary transition-colors duration-200"
@@ -18,16 +18,16 @@ const ThinkingDropdown = ({ children }: ThinkingDropdownProps) => {
         aria-controls="thinking-content"
       >
         <div className="flex items-center gap-2">
-          <Brain className="h-4 w-4" />
+          <Lightbulb className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">
             {isOpen ? "Hide thoughts" : "Read my mind"}
           </span>
         </div>
-        <ChevronDown
-          className={`h-4 w-4 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
+        {isOpen ? (
+          <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+        ) : (
+          <ChevronRight className="h-4 w-4 transition-transform duration-200" />
+        )}
       </button>
 
       <AnimatePresence>
@@ -38,9 +38,9 @@ const ThinkingDropdown = ({ children }: ThinkingDropdownProps) => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            className="overflow-hidden max-h-[400px] overflow-y-auto mt-3 border-t"
           >
-            <div className="text-muted-foreground mt-3 pt-3 border-t text-sm leading-relaxed">
+            <div className="text-muted-foreground  pt-3  text-sm leading-relaxed">
               {children}
             </div>
           </motion.div>
