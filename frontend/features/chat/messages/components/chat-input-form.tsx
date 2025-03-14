@@ -186,7 +186,7 @@ function ChatInputForm(
     <Card
       className={cn(
         "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-radius bg-background border",
-        focused && !isMobile ? "shadow-md border-2" : "shadow-none"
+        focused && !isMobile ? "shadow-sm border-2" : "shadow-none"
       )}
     >
       <form

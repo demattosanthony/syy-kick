@@ -22,6 +22,7 @@ import {
   ChatInputFormRef,
 } from "@/features/chat/messages/components";
 import { useMeQuery } from "@/features/user/api";
+import ProjectPreviews from "@/features/projects/components/project-previews";
 
 export default function Home() {
   const router = useRouter();
@@ -78,7 +79,9 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col gap-6">
-            <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
+            {userIsFetched && (
+              <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
+            )}
           </div>
 
           <div className="flex flex-col w-full px-6 mt-4 md:px-2">
@@ -91,11 +94,19 @@ export default function Home() {
             />
           </div>
 
-          <div className="max-w-5xl mt-6">
-            <ConversationStarters
-              triggerFileInput={() => chatInputRef.current?.triggerFileInput()}
-              triggerTextAreaFocus={() => chatInputRef.current?.focusTextArea()}
-            />
+          <div className="max-w-5xl mt-6 w-full">
+            {user ? (
+              <ProjectPreviews />
+            ) : (
+              <ConversationStarters
+                triggerFileInput={() =>
+                  chatInputRef.current?.triggerFileInput()
+                }
+                triggerTextAreaFocus={() =>
+                  chatInputRef.current?.focusTextArea()
+                }
+              />
+            )}
           </div>
         </div>
       </main>
