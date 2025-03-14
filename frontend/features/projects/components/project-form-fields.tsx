@@ -65,6 +65,29 @@ const ProjectFormFields = ({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="location">
+          Location <span className="text-red-500">*</span>
+        </Label>
+        <LocationSearch
+          value={formData.location}
+          onChange={(locationData) =>
+            setFormData((prev) => ({
+              ...prev,
+              location: {
+                address: locationData.address || "",
+                city: locationData.city || "",
+                state: locationData.state || "",
+                country: locationData.country || "",
+                postalCode: locationData.postalCode || "",
+                latitude: locationData.latitude || "",
+                longitude: locationData.longitude || "",
+              },
+            }))
+          }
+        />
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="projectNumber">Project Number</Label>
         <Input
           id="projectNumber"
@@ -86,27 +109,6 @@ const ProjectFormFields = ({
             setFormData((prev) => ({
               ...prev,
               description: e.target.value,
-            }))
-          }
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="location">Location</Label>
-        <LocationSearch
-          value={formData.location}
-          onChange={(locationData) =>
-            setFormData((prev) => ({
-              ...prev,
-              location: {
-                address: locationData.address || "",
-                city: locationData.city || "",
-                state: locationData.state || "",
-                country: locationData.country || "",
-                postalCode: locationData.postalCode || "",
-                latitude: locationData.latitude || "",
-                longitude: locationData.longitude || "",
-              },
             }))
           }
         />
@@ -211,6 +213,6 @@ const ProjectFormFields = ({
       </DialogFooter>
     </>
   );
-}
+};
 
 export default ProjectFormFields;

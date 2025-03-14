@@ -185,8 +185,8 @@ function ChatInputForm(
   return (
     <Card
       className={cn(
-        "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[750px] p-0 rounded-xl bg-background",
-        focused && !isMobile ? "shadow-md border" : "shadow-none"
+        "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-radius bg-background border",
+        focused && !isMobile ? "shadow-sm border-2" : "shadow-none"
       )}
     >
       <form
@@ -309,63 +309,58 @@ function ChatInputForm(
             />
           </div>
         </div>
-
         <div className="w-full flex justify-between items-center px-1">
-          <ModelSelector
-            projectId={projectId}
-            variant="icon-only"
-            onChange={(model) => {
-              setSelectedModel(model);
-            }}
-          />
+          <ModelSelector />
 
-          {isMounted &&
-            selectedModel.supportedMimeTypes &&
-            selectedModel.supportedMimeTypes.length > 0 && (
-              <>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept={selectedModel.supportedMimeTypes?.join(",")}
-                  multiple
-                  onChange={handleFiles}
-                />
-                <Button
-                  className="h-8 w-8"
-                  variant="ghost"
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    fileInputRef?.current?.click();
-                  }}
-                >
-                  <Paperclip />
-                </Button>
-              </>
-            )}
+          <div className="flex items-center">
+            {isMounted &&
+              selectedModel.supportedMimeTypes &&
+              selectedModel.supportedMimeTypes.length > 0 && (
+                <>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept={selectedModel.supportedMimeTypes?.join(",")}
+                    multiple
+                    onChange={handleFiles}
+                  />
+                  <Button
+                    className="h-8 w-8"
+                    variant="ghost"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      fileInputRef?.current?.click();
+                    }}
+                  >
+                    <Paperclip />
+                  </Button>
+                </>
+              )}
 
-          <Button
-            ref={buttonRef}
-            className="h-8 w-8 ml-auto"
-            disabled={isGenerating || !input}
-            variant="ghost"
-            onClick={(e) => {
-              e.preventDefault();
-              if (isGenerating && stop) {
-                // stop();
-              } else {
-                onSubmit(e);
-              }
-            }}
-          >
-            {isGenerating ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <SendHorizonal />
-            )}
-          </Button>
+            <Button
+              ref={buttonRef}
+              className="h-8 w-8"
+              disabled={isGenerating || !input}
+              variant="ghost"
+              onClick={(e) => {
+                e.preventDefault();
+                if (isGenerating && stop) {
+                  // stop();
+                } else {
+                  onSubmit(e);
+                }
+              }}
+            >
+              {isGenerating ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <SendHorizonal />
+              )}
+            </Button>
+          </div>
         </div>
       </form>
     </Card>

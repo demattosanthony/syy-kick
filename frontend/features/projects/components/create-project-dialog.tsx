@@ -52,6 +52,13 @@ const CreateProjectDialog = ({ trigger }: CreateProjectDialogProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate location is provided
+    if (!formData.location.address) {
+      toast.error("Location is required");
+      return;
+    }
+
     try {
       const project = await createProjectMutation.mutateAsync({
         name: formData.name,
@@ -118,6 +125,6 @@ const CreateProjectDialog = ({ trigger }: CreateProjectDialogProps) => {
       </DialogContent>
     </Dialog>
   );
-}
+};
 
 export default CreateProjectDialog;

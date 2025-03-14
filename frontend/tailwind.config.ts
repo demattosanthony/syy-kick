@@ -61,6 +61,10 @@ const config: Config = {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        market: {
+          fill: "hsl(var(--market-fill))",
+          border: "hsl(var(--market-border))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

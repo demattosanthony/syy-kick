@@ -25,67 +25,19 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Model } from "@/types/model";
 import { useModelsQuery } from "@/features/commons/models/api";
 
-export interface ModelSelectorProps {
-  projectId?: string;
-  variant?: "icon-only" | "with-name" | "compact";
-  value?: any;
-  onChange?: (model: Model) => void;
-  showAuto?: boolean;
-  className?: string;
-  buttonClassName?: string;
-  triggerClassName?: string;
-}
-
-const ModelSelector: React.FC<ModelSelectorProps> = ({
-  projectId,
-  variant = "icon-only",
-  value,
-  onChange,
-  showAuto = true,
-  buttonClassName,
-  triggerClassName,
-}: ModelSelectorProps) => {
+const ModelSelector: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [globalModel, setGlobalModel] = useAtom(modelAtom);
   const { data: models } = useModelsQuery();
 
-  // Use either controlled or global state
-  const selectedModel = value || globalModel;
-  const handleModelChange = (model: any) => {
-    if (onChange) {
-      onChange(model);
-    } else {
-      setGlobalModel(model);
-    }
-    setOpen(false);
-  };
-
-  const [isMounted, setIsMounted] = useState(false);
-
-  // Filter out models with "thinking" in the name if projectId is provided
-  const filteredModels = models?.filter((model) => {
-    if (projectId) {
-      return !model.name.toLowerCase().includes("thinking");
-    }
-    return true;
-  });
+  const [isMounted, setIsMounted] = useState(false); // Add mounted state because selected model atom loads async
 
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    setIsMounted(true);
-
-    // Reset to AUTO if project ID is provided and current model has "thinking" in its name
-    if (
-      projectId &&
-      selectedModel.name.toLowerCase().includes("thinking") &&
-      !value
-    ) {
-      setGlobalModel(AUTO_MODEL_CONFIG);
-    }
+    setIsMounted(true); // Set mounted when component loads
 
     // Add keyboard shortcut listener
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -194,7 +146,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                 </HoverCard>
               )}
 
-              {filteredModels?.map((model) => (
+              {models?.map((model) => (
                 <HoverCard key={model.name} openDelay={0.5} closeDelay={0}>
                   <HoverCardTrigger>
                     <CommandItem

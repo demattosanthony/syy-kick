@@ -19,6 +19,7 @@ import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
   createProjectSearchTool,
+  createWebSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
   maybeGenerateTitle,
@@ -320,14 +321,14 @@ const threadsOps = {
       await maybeGenerateTitle(threadId, inferenceMsgs, thread.title);
 
       // 7) Create tools for the assistant if project ID exists
-      let tools = thread.projectId
-        ? {
-            search_project_information: createProjectSearchTool(
-              thread.projectId,
-              modelConfig
-            ),
-          }
-        : undefined;
+      let tools = {
+        web_search: createWebSearchTool(),
+        search_projects_information: createProjectSearchTool(
+          modelConfig,
+          req.workspace!,
+          thread.projectId || undefined
+        ),
+      };
 
       // Start the streaming from the AI
       const result = streamText({
@@ -340,10 +341,14 @@ const threadsOps = {
         toolCallStreaming: true,
         maxTokens: maxTokens,
         providerOptions: {
-          ...(model === "claude-3.7-sonnet-thinking" && !tools
+          openai: {
+            store: false,
+          },
+          ...(modelConfig.provider === "anthropic" &&
+          modelConfig.model.modelId.includes("claude-3-7")
             ? {
                 anthropic: {
-                  thinking: { type: "enabled", budgetTokens: 30000 },
+                  thinking: { type: "enabled", budgetTokens: 12_000 },
                 },
               }
             : {}),
@@ -355,9 +360,9 @@ const threadsOps = {
           finishReason,
           reasoning,
         }) => {
-          //   console.log("Tool calls:", toolCalls);
-          //   console.log("Tool results:", toolResults.length);
           //   console.log("Finish reason:", finishReason);
+          //   console.log("Tool calls:", toolCalls);
+          //   // console.log("Tool results:", toolResults.length);
           //   console.log("Text:", text);
           //   console.log("Reasoning:", reasoning);
 
@@ -400,8 +405,11 @@ const threadsOps = {
 
               if (
                 result &&
-                (toolCall.toolName === "search_project_information" ||
-                  toolCall.toolName === "search_documents")
+                ((toolCall.toolName as string) ===
+                  "search_project_information" ||
+                  (toolCall.toolName as string) === "search_documents" ||
+                  (toolCall.toolName as string) ===
+                    "search_projects_information")
               ) {
                 console.log("Project search tool result:", toolCall);
                 await db
