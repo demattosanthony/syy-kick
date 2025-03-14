@@ -323,9 +323,8 @@ const threadsOps = {
       let tools = {
         search_projects_information: createProjectSearchTool(
           modelConfig,
-          thread.projectId || undefined,
-          req.workspace?.type === "organization" ? undefined : req.dbUser!.id,
-          req.workspace?.type === "organization" ? req.workspace?.id : undefined
+          req.workspace!,
+          thread.projectId || undefined
         ),
       };
 

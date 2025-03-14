@@ -24,6 +24,7 @@ import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
 import { getOrgIdOrUnedfined } from "../utils";
+import { Workspace } from "../middleware";
 
 const schemas = {
   createProject: z
@@ -623,8 +624,7 @@ export async function searchProjectDocuments(
   projectId: string | null,
   query: string,
   limit: number = 20,
-  userId?: string,
-  organizationId?: string
+  workspace: Workspace
 ) {
   try {
     // If projectId is provided, verify it exists
@@ -638,7 +638,7 @@ export async function searchProjectDocuments(
         );
         throw new Error(`Invalid project ID: ${projectId}`);
       }
-    } else if (!userId && !organizationId) {
+    } else if (!workspace.id) {
       throw new Error(
         "Either projectId, userId, or organizationId must be provided"
       );
@@ -667,19 +667,19 @@ export async function searchProjectDocuments(
           queryEmbedding
         )}) > 0.45`
       );
-    } else if (organizationId) {
+    } else if (workspace.type === "organization") {
       // Search across all projects in an organization
       whereClause = and(
-        eq(projects.organizationId, organizationId),
+        eq(projects.organizationId, workspace.id),
         sql`1 - (${cosineDistance(
           documentEmbeddings.embedding,
           queryEmbedding
         )}) > 0.45`
       );
-    } else if (userId) {
+    } else if (workspace.type === "personal") {
       // Search across all projects owned by the user
       whereClause = and(
-        eq(projects.userId, userId),
+        eq(projects.userId, workspace.id),
         sql`1 - (${cosineDistance(
           documentEmbeddings.embedding,
           queryEmbedding

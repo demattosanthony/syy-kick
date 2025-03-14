@@ -29,6 +29,7 @@ import {
   MyMessage,
   ThreadWithMessages,
 } from "./threads.types";
+import { Workspace } from "../../middleware";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -198,9 +199,8 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
 /** Tool to search all project information */
 const createProjectSearchTool = (
   modelConfig: ModelConfig,
-  projectId?: string,
-  userId?: string,
-  organizationId?: string
+  workspace: Workspace,
+  projectId?: string
 ) =>
   tool({
     description: `Search project documents and retrieve relevant information.
@@ -224,8 +224,7 @@ Returns:
         projectId || null,
         query,
         80,
-        userId,
-        organizationId
+        workspace
       );
 
       console.log("Search results:", res.length);
