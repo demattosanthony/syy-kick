@@ -24,6 +24,7 @@ import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
 import { getOrgIdOrUnedfined } from "../utils";
+import { Workspace } from "../middleware";
 
 const schemas = {
   createProject: z
@@ -619,79 +620,134 @@ async function createFolderStructure(
   return { success: true };
 }
 
-/**
- * Search for documents within a project using semantic search
- * @param projectId The project to search within
- * @param query The search query
- * @param limit Maximum number of results to return
- * @returns Array of documents with their similarity scores
- */
 export async function searchProjectDocuments(
-  projectId: string,
+  projectId: string | null,
   query: string,
-  limit: number = 20
+  limit: number = 20,
+  workspace: Workspace
 ) {
-  // First verify the project exists
-  await getProjectOrThrow(projectId);
+  try {
+    // If projectId is provided, verify it exists
+    if (projectId) {
+      try {
+        await getProjectOrThrow(projectId);
+      } catch (error) {
+        console.error(
+          `Project verification failed for ID ${projectId}:`,
+          error
+        );
+        throw new Error(`Invalid project ID: ${projectId}`);
+      }
+    } else if (!workspace.id) {
+      throw new Error(
+        "Either projectId, userId, or organizationId must be provided"
+      );
+    }
 
-  // Get the embedding for the search query
-  const { embeddings } = await smallOpenaiEmbeddingModel.doEmbed({
-    values: [query],
-  });
-  const queryEmbedding = embeddings[0];
+    // Get the embedding for the search query
+    let queryEmbedding;
+    try {
+      const { embeddings } = await smallOpenaiEmbeddingModel.doEmbed({
+        values: [query],
+      });
+      queryEmbedding = embeddings[0];
+    } catch (error) {
+      console.error("Failed to generate embedding for search query:", error);
+      throw new Error("Failed to process search query");
+    }
 
-  // Search for similar documents using vector similarity
-  const results = await db
-    .select({
-      documentId: documentEmbeddings.documentId,
-      text: documentEmbeddings.text,
-      metadata: documentEmbeddings.metadata,
-      fileKey: documents.fileKey,
-      similarity: sql<number>`1 - (${cosineDistance(
-        documentEmbeddings.embedding,
-        queryEmbedding
-      )})`.as("similarity"),
-      document: documents,
-    })
-    .from(documentEmbeddings)
-    .innerJoin(documents, eq(documents.id, documentEmbeddings.documentId))
-    .where(
-      and(
+    // Build the where clause based on provided parameters
+    let whereClause;
+    if (projectId) {
+      // Search within a specific project
+      whereClause = and(
         eq(documents.projectId, projectId),
         sql`1 - (${cosineDistance(
           documentEmbeddings.embedding,
           queryEmbedding
         )}) > 0.45`
+      );
+    } else if (workspace.type === "organization") {
+      // Search across all projects in an organization
+      whereClause = and(
+        eq(projects.organizationId, workspace.id),
+        sql`1 - (${cosineDistance(
+          documentEmbeddings.embedding,
+          queryEmbedding
+        )}) > 0.45`
+      );
+    } else if (workspace.type === "personal") {
+      // Search across all projects owned by the user
+      whereClause = and(
+        eq(projects.userId, workspace.id),
+        sql`1 - (${cosineDistance(
+          documentEmbeddings.embedding,
+          queryEmbedding
+        )}) > 0.45`
+      );
+    }
+
+    // Search for similar documents using vector similarity
+    const results = await db
+      .select({
+        documentId: documentEmbeddings.documentId,
+        text: documentEmbeddings.text,
+        metadata: documentEmbeddings.metadata,
+        fileKey: documents.fileKey,
+        similarity: sql<number>`1 - (${cosineDistance(
+          documentEmbeddings.embedding,
+          queryEmbedding
+        )})`.as("similarity"),
+        document: documents,
+        project: projects,
+      })
+      .from(documentEmbeddings)
+      .innerJoin(documents, eq(documents.id, documentEmbeddings.documentId))
+      .innerJoin(projects, eq(projects.id, documents.projectId))
+      .where(whereClause)
+      .orderBy(
+        sql`1 - (${cosineDistance(
+          documentEmbeddings.embedding,
+          queryEmbedding
+        )}) DESC`
       )
-    )
-    .orderBy(
-      sql`1 - (${cosineDistance(
-        documentEmbeddings.embedding,
-        queryEmbedding
-      )}) DESC`
-    )
-    .limit(limit);
+      .limit(limit);
 
-  // Add presigned URLs for files that need them
-  const resultsWithUrls = await Promise.all(
-    results.map(async (result) => {
-      if (result.document.fileKey) {
-        const url = s3.presign(result.document.fileKey, {
-          expiresIn: 60 * 60, // 1 hour
-        });
-        return {
-          ...result,
-          document: {
-            ...result.document,
-            url,
-          },
-        };
-      }
-      return result;
-    })
-  );
+    console.log(`Found ${results.length} documents matching query: "${query}"`);
 
-  return resultsWithUrls;
+    // Add presigned URLs for files that need them
+    const resultsWithUrls = await Promise.all(
+      results.map(async (result) => {
+        if (result.document.fileKey) {
+          try {
+            const url = s3.presign(result.document.fileKey, {
+              expiresIn: 60 * 60, // 1 hour
+            });
+            return {
+              ...result,
+              document: {
+                ...result.document,
+                url,
+              },
+            };
+          } catch (error) {
+            console.error(
+              `Failed to generate presigned URL for file ${result.document.fileKey}:`,
+              error
+            );
+            // Return the result without URL rather than failing the entire operation
+            return result;
+          }
+        }
+        return result;
+      })
+    );
+
+    return resultsWithUrls;
+  } catch (error) {
+    console.error("Error in searchProjectDocuments:", error);
+    throw error;
+  }
 }
 
 /**

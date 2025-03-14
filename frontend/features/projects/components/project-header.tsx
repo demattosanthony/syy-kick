@@ -34,7 +34,13 @@ const ProjectHeader = ({ project }: { project: Project }) => {
               <AvatarFallback>{project?.name[0]}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col gap-1">
-              <h2 className="text-2xl font-bold">{project?.name}</h2>
+              <div className="flex items-center gap-2 ">
+                <h2 className="text-2xl font-bold">{project?.name}</h2>
+                {project?.projectNumber && (
+                  <Badge variant={"secondary"}>{project?.projectNumber}</Badge>
+                )}
+              </div>
+
               {project?.address && (
                 <span className="text-sm text-muted-foreground">
                   {project.address}
