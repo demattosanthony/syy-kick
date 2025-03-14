@@ -347,9 +347,13 @@ const threadsOps = {
           openai: {
             store: false,
           },
-          anthropic: {
-            thinking: { type: "enabled", budgetTokens: 12_000 },
-          },
+          anthropic:
+            modelConfig.provider === "anthropic" &&
+            modelConfig.model.modelId.includes("claude-3.7")
+              ? {
+                  thinking: { type: "enabled", budgetTokens: 12_000 },
+                }
+              : {},
         },
         onStepFinish: async ({
           toolCalls,
