@@ -94,18 +94,22 @@ export default function Home() {
             />
           </div>
 
-          <div className="max-w-5xl mt-6 w-full">
+          <div className="max-w-5xl w-full flex flex-col items-center">
             {user ? (
-              <ProjectPreviews />
+              <div className="mt-6">
+                <ProjectPreviews />
+              </div>
             ) : (
-              <ConversationStarters
-                triggerFileInput={() =>
-                  chatInputRef.current?.triggerFileInput()
-                }
-                triggerTextAreaFocus={() =>
-                  chatInputRef.current?.focusTextArea()
-                }
-              />
+              <div className="flex flex-col items-center max-w-[800px] w-full">
+                <ConversationStarters
+                  triggerFileInput={() =>
+                    chatInputRef.current?.triggerFileInput()
+                  }
+                  triggerTextAreaFocus={() =>
+                    chatInputRef.current?.focusTextArea()
+                  }
+                />
+              </div>
             )}
           </div>
         </div>
