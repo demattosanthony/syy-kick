@@ -17,6 +17,8 @@ import {
   threads,
   toolCalls,
 } from "../../config/schema";
+import exa from "../../config/exa";
+import { Workspace } from "../../middleware";
 
 // Internal utilities
 import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
@@ -29,7 +31,6 @@ import {
   MyMessage,
   ThreadWithMessages,
 } from "./threads.types";
-import { Workspace } from "../../middleware";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -307,6 +308,42 @@ Returns:
           text: result.context,
         },
       ];
+    },
+  });
+
+const createWebSearchTool = () =>
+  tool({
+    description: `A web search tool that retrieves relevant information from across the internet.
+When to use:
+- Looking up current events, news, or general knowledge
+- Finding technical documentation or reference materials
+- Researching companies, products, or technologies
+- Fact-checking or verifying information
+Input:
+- query: A clear, specific search phrase (e.g. "latest TypeScript features 2024" or "SpaceX Starship specifications")
+Output:
+- List of relevant search results containing:
+  - Title and URL of each result
+  - Content snippets showing relevant text
+  - Source information and metadata
+  - Relevance ranking
+Tips:
+- Use specific, focused queries for better results
+- Include key terms and any relevant date ranges
+- Avoid overly broad or vague searches`,
+    parameters: z.object({
+      query: z.string(),
+    }),
+    execute: async ({ query }) => {
+      console.log("Searching Exa for: ", query);
+      const results = await exa.searchAndContents(query, {
+        text: true,
+        numResults: 6,
+      });
+
+      console.log("Results: ", results.results.length);
+
+      return results.results;
     },
   });
 
@@ -1053,6 +1090,7 @@ export {
   processAttachments,
   processThreadMessages,
   createProjectSearchTool,
+  createWebSearchTool,
   processDocumentImages,
   dbMessagesToInferenceMessages,
   maybeGenerateTitle,

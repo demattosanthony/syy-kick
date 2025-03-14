@@ -19,6 +19,7 @@ import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
   createProjectSearchTool,
+  createWebSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
   maybeGenerateTitle,
@@ -321,6 +322,7 @@ const threadsOps = {
 
       // 7) Create tools for the assistant if project ID exists
       let tools = {
+        web_search: createWebSearchTool(),
         search_projects_information: createProjectSearchTool(
           modelConfig,
           req.workspace!,
