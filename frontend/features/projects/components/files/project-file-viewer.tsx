@@ -8,9 +8,12 @@ import {
   MarkdownViewer,
   MultiSheetViewer,
 } from "@/features/chat/messages/components";
+import { useSearchParams } from "next/navigation";
 
 export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
   const [textContent, setTextContent] = useState<string>("");
+  const searchParams = useSearchParams();
+  const page = searchParams.get("page") || undefined;
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -45,7 +48,9 @@ export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
         <div className="h-full w-full overflow-hidden flex flex-col">
           <div className="flex-1 relative">
             <embed
-              src={`${doc.url}#navpanes=0&statusbar=0`}
+              src={`${doc.url}#navpanes=0&statusbar=0${
+                page ? `&page=${page}` : ""
+              }`}
               className="w-full h-full absolute inset-0 border-none"
               title={doc.name}
             />
