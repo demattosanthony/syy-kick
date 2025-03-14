@@ -5,90 +5,90 @@
 @layer base {
   :root {
     /* Pure white background */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 10%; /* Darkened from 15% to 10% for more contrast */
-    /* Slightly whiter cards, unchanged */
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%; /* Match foreground darkening */
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%; /* Consistent with foreground */
-    /* Darker primary grey */
-    --primary: 0 0% 15%; /* Darkened from 20% to 15% */
-    --primary-foreground: 0 0% 98%; /* Near-white, unchanged */
-    /* Darker secondary grey */
-    --secondary: 0 0% 90%; /* Darkened from 94% to 90% */
-    --secondary-foreground: 0 0% 15%; /* Darkened from 20% to 15% */
-    /* Darker muted greys */
-    --muted: 0 0% 92%; /* Darkened from 96% to 92% */
-    --muted-foreground: 0 0% 40%; /* Darkened from 45% to 40% */
-    /* Darker accent greys */
-    --accent: 0 0% 92%; /* Darkened from 96% to 92% */
-    --accent-foreground: 0 0% 15%; /* Darkened from 20% to 15% */
+    --background: 210 5% 100%; /* Added slight blue tint */
+    --foreground: 215 5% 10%; /* Added slight blue tint with contrast */
+    /* Slightly whiter cards with blue hint */
+    --card: 210 5% 100%; /* Added slight blue tint */
+    --card-foreground: 215 5% 10%; /* Added slight blue tint */
+    --popover: 210 5% 100%; /* Added slight blue tint */
+    --popover-foreground: 215 5% 10%; /* Added slight blue tint */
+    /* Darker primary grey with blue hint */
+    --primary: 215 5% 15%; /* Added slight blue tint */
+    --primary-foreground: 210 5% 98%; /* Added slight blue tint */
+    /* Darker secondary grey with blue hint */
+    --secondary: 210 5% 90%; /* Added slight blue tint */
+    --secondary-foreground: 215 5% 15%; /* Added slight blue tint */
+    /* Darker muted greys with blue hint */
+    --muted: 210 5% 92%; /* Added slight blue tint */
+    --muted-foreground: 215 5% 40%; /* Added slight blue tint */
+    /* Darker accent greys with blue hint */
+    --accent: 210 5% 92%; /* Added slight blue tint */
+    --accent-foreground: 215 5% 15%; /* Added slight blue tint */
     /* Destructive red unchanged */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    /* Darker grey borders and inputs */
-    --border: 0 0% 88%; /* Darkened from 92% to 88% */
-    --input: 0 0% 88%; /* Match border darkening */
-    --ring: 0 0% 15%; /* Darkened from 20% to 15% */
+    /* Darker grey borders and inputs with blue hint */
+    --border: 210 5% 88%; /* Added slight blue tint */
+    --input: 210 5% 88%; /* Added slight blue tint */
+    --ring: 215 5% 15%; /* Added slight blue tint */
     --radius: 0.75rem; /* Unchanged */
     /* Sidebar with darker greys */
-    --sidebar-background: 0 0% 96%; /* Darkened from 98% to 96% */
-    --sidebar-foreground: 240 5.3% 20%; /* Darkened from 26.1% to 20% */
-    --sidebar-primary: 240 5.9% 8%; /* Darkened from 10% to 8% */
-    --sidebar-primary-foreground: 0 0% 98%; /* Unchanged */
-    --sidebar-accent: 240 4.8% 92%; /* Darkened from 95.9% to 92% */
-    --sidebar-accent-foreground: 240 5.9% 8%; /* Darkened from 10% to 8% */
-    --sidebar-border: 220 13% 87%; /* Darkened from 91% to 87% */
-    --sidebar-ring: 217.2 91.2% 50%; /* Darkened from 59.8% to 50% */
+    --sidebar-background: 210 10% 96%; /* Added slight blue tint to background */
+    --sidebar-foreground: 215 5.3% 20%; /* Added slight blue tint to foreground */
+    --sidebar-primary: 215 5.9% 8%; /* Added slight blue tint to primary */
+    --sidebar-primary-foreground: 210 2% 98%; /* Added very subtle blue tint */
+    --sidebar-accent: 210 4.8% 92%; /* Added slight blue tint to accent */
+    --sidebar-accent-foreground: 215 5.9% 8%; /* Added slight blue tint */
+    --sidebar-border: 215 13% 87%; /* Added slight blue tint to border */
+    --sidebar-ring: 217.2 91.2% 50%; /* Kept blue ring as is */
 
     --theme-color: #ffffff; /* White, unchanged */
   }
 
   .dark {
-    /* Slightly lighter dark background */
-    --background: 0 0% 10%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
+    /* Slightly darker background with blue hint */
+    --background: 210 8% 8%;
+    --foreground: 210 8% 98%;
+    --card: 210 8% 8%;
+    --card-foreground: 210 8% 98%;
+    --popover: 210 8% 8%;
+    --popover-foreground: 210 8% 98%;
 
-    /* Clean white for primary in dark mode */
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 10%;
+    /* Clean white with blue hint for primary in dark mode */
+    --primary: 210 8% 98%;
+    --primary-foreground: 210 8% 8%;
 
-    /* Slightly lighter greys for secondary elements */
-    --secondary: 0 0% 18%;
-    --secondary-foreground: 0 0% 98%;
+    /* Darker greys with blue hint for secondary elements */
+    --secondary: 210 8% 15%;
+    --secondary-foreground: 210 8% 98%;
 
-    /* Slightly lighter muted dark greys */
-    --muted: 0 0% 18%;
-    --muted-foreground: 0 0% 65%;
+    /* Darker muted greys with blue hint */
+    --muted: 210 8% 15%;
+    --muted-foreground: 210 8% 65%;
 
-    /* Accent colors slightly lighter */
-    --accent: 0 0% 18%;
-    --accent-foreground: 0 0% 98%;
+    /* Accent colors darker with blue hint */
+    --accent: 210 8% 15%;
+    --accent-foreground: 210 8% 98%;
 
-    /* Deeper destructive red for dark mode */
+    /* Deeper destructive red for dark mode unchanged */
     --destructive: 0 65% 30%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 0 0% 85%;
+    --border: 210 8% 15%;
+    --input: 210 8% 15%;
+    --ring: 210 8% 85%;
 
-    /* Sidebar with slightly lighter dark shade */
-    --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 0 0% 10%;
-    --sidebar-accent: 0 0% 18%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 0 0% 85%;
+    /* Sidebar with darker shade and blue hint */
+    --sidebar-background: 210 8% 8%;
+    --sidebar-foreground: 210 8% 98%;
+    --sidebar-primary: 210 8% 98%;
+    --sidebar-primary-foreground: 210 8% 8%;
+    --sidebar-accent: 210 8% 15%;
+    --sidebar-accent-foreground: 210 8% 98%;
+    --sidebar-border: 210 8% 15%;
+    --sidebar-ring: 210 8% 85%;
 
-    --theme-color: hsl(0 0% 10%);
+    --theme-color: hsl(210 8% 8%);
   }
 }
 
