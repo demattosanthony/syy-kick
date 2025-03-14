@@ -2,6 +2,7 @@ import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
+import { Workflow } from "@/types/workflow-types";
 
 /**
  * Base ApiRequest class to handle common request logic
@@ -823,6 +824,19 @@ class ProjectsApi extends ApiRequest {
 }
 
 /**
+ * Workflows API Module
+ */
+class WorkflowsApi extends ApiRequest {
+  async listWorkflows(): Promise<Workflow[]> {
+    return await this.request("/workflows");
+  }
+
+  async getWorkflow(id: string): Promise<Workflow> {
+    return await this.request(`/workflows/${id}`);
+  }
+}
+
+/**
  *  Centralized ApiClient class that uses the modules
  */
 class ApiClient {
@@ -834,6 +848,7 @@ class ApiClient {
   uploads: UploadApi;
   threads: ThreadApi;
   projects: ProjectsApi;
+  workflows: WorkflowsApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -844,6 +859,7 @@ class ApiClient {
     this.uploads = new UploadApi(baseUrl);
     this.threads = new ThreadApi(baseUrl);
     this.projects = new ProjectsApi(baseUrl);
+    this.workflows = new WorkflowsApi(baseUrl);
   }
 }
 

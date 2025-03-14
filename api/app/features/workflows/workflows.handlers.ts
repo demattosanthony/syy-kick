@@ -1,0 +1,138 @@
+import { Request, Response } from "express";
+
+import { streamText } from "ai";
+
+import { MODELS } from "../models";
+import { generateAttachmentData } from "../threads/threads.utils";
+import {
+  getWorkflowById,
+  getWorkflowsForOrganization,
+  isOrganizationAuthorized,
+} from "./workflows.config";
+
+const workflowHandlers = {
+  getAll: async (req: Request, res: Response) => {
+    try {
+      console.log("req.workspace?.id", req.workspace?.id);
+      const orgWorkflows = getWorkflowsForOrganization(
+        req.workspace?.id as string
+      );
+      res.json(orgWorkflows);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
+  getById: async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+      const isAllowedtoAcess = isOrganizationAuthorized(
+        id as any,
+        req.workspace?.id as string
+      );
+      if (!isAllowedtoAcess) {
+        res.status(403).json({ error: "Unauthorized" });
+        return;
+      }
+
+      const workflow = getWorkflowById(id as any);
+
+      if (!workflow) {
+        res.status(404).json({ error: "Workflow not found" });
+        return;
+      }
+
+      res.json(workflow);
+    } catch (error) {
+      console.log(error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
+  run: async (req: Request, res: Response) => {
+    const { workflowId } = req.params;
+    const { message } = req.body;
+
+    const workflow = getWorkflowById(workflowId as any);
+    if (!workflow) {
+      res.status(404).json({ error: "Workflow not found" });
+      return;
+    }
+
+    // SSE Setup
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.flushHeaders();
+
+    const modelConfig = MODELS[workflow.modelName];
+
+    const attachments = message.experimental_attachments;
+    const attachment = attachments[0];
+
+    try {
+      const attachmentData = await generateAttachmentData(
+        attachment.file_key,
+        "application/pdf",
+        true
+      );
+
+      const response = streamText({
+        model: modelConfig.model,
+        maxSteps: 10,
+        messages: [
+          {
+            role: "system",
+            content: workflow.systemMessage,
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "file",
+                mimeType: "application/pdf",
+                data: attachmentData,
+              },
+              {
+                type: "text",
+                text: workflow.prompt,
+              },
+            ],
+          },
+        ],
+        providerOptions: {
+          anthropic: {
+            thinking: { type: "enabled", budgetTokens: 6_000 },
+          },
+        },
+        onStepFinish: async ({
+          finishReason,
+          text,
+          toolCalls,
+          toolResults,
+          reasoning,
+        }) => {
+          // console.log("Tool calls:", toolCalls);
+          // console.log("Tool results:", toolResults.length);
+          // console.log("Finish reason:", finishReason);
+          // console.log("Text:", text);
+          // console.log("Reasoning:", reasoning);
+          // console.log("\n\n\n");
+        },
+      });
+
+      // Pipe the data out as SSE
+      return response.pipeDataStreamToResponse(res, {
+        sendReasoning: true,
+      });
+    } catch (error) {
+      console.error("Error running workflow:", error);
+      res.status(500).json({ error: "Failed to process workflow" });
+    }
+  },
+};
+
+export default workflowHandlers;
