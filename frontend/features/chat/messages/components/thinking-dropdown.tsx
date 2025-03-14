@@ -38,7 +38,7 @@ const ThinkingDropdown = ({ children }: ThinkingDropdownProps) => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden max-h-[400px] overflow-y-auto mt-3 border-t"
+            className="overflow-hidden max-h-[400px] overflow-y-auto mt-3 border-t scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
           >
             <div className="text-muted-foreground  pt-3  text-sm leading-relaxed">
               {children}

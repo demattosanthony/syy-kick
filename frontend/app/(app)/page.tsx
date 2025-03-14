@@ -48,6 +48,8 @@ export default function Home() {
       return;
     }
 
+    setInitalInput(initalInput.trim());
+
     try {
       // Create thread in background
       const { id: threadId } = await api.threads.createThread();

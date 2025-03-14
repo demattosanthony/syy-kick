@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 
 // Icons
-import { Loader2, Paperclip, SendHorizonal, X } from "lucide-react";
+import { ArrowRight, Paperclip, StopCircle, X } from "lucide-react";
 
 // Local components
 import ModelSelector from "./model-selector";
@@ -185,8 +185,8 @@ function ChatInputForm(
   return (
     <Card
       className={cn(
-        "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-radius bg-background border",
-        focused && !isMobile ? "shadow-sm border-2" : "shadow-none"
+        "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-2xl bg-background border shadow-sm",
+        focused && !isMobile && "border-2"
       )}
     >
       <form
@@ -309,12 +309,12 @@ function ChatInputForm(
             />
           </div>
         </div>
-        <div className="w-full flex justify-between items-center px-1">
+        <div className="w-full flex justify-between items-center px-1 pb-1">
           <div>
             <ModelSelector />
           </div>
 
-          <div className="flex items-center">
+          <div className="flex items-center gap-1 h-full">
             {isMounted &&
               selectedModel.supportedMimeTypes &&
               selectedModel.supportedMimeTypes.length > 0 && (
@@ -328,7 +328,7 @@ function ChatInputForm(
                     onChange={handleFiles}
                   />
                   <Button
-                    className="h-8 w-8"
+                    className="h-7 w-7 p-0 rounded-full"
                     variant="ghost"
                     type="button"
                     onClick={(e) => {
@@ -337,30 +337,26 @@ function ChatInputForm(
                       fileInputRef?.current?.click();
                     }}
                   >
-                    <Paperclip />
+                    <Paperclip className="w-4 h-4" />
                   </Button>
                 </>
               )}
 
             <Button
               ref={buttonRef}
-              className="h-8 w-8"
-              disabled={isGenerating || !input}
-              variant="ghost"
+              className="h-8 w-8 rounded-full"
+              disabled={!input && !isGenerating}
+              variant={!input ? "secondary" : "default"}
               onClick={(e) => {
                 e.preventDefault();
                 if (isGenerating && stop) {
-                  // stop();
+                  stop();
                 } else {
                   onSubmit(e);
                 }
               }}
             >
-              {isGenerating ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <SendHorizonal />
-              )}
+              {isGenerating ? <StopCircle /> : <ArrowRight />}
             </Button>
           </div>
         </div>
