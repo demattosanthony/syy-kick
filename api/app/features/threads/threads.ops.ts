@@ -320,14 +320,14 @@ const threadsOps = {
       await maybeGenerateTitle(threadId, inferenceMsgs, thread.title);
 
       // 7) Create tools for the assistant if project ID exists
-      let tools = thread.projectId
-        ? {
-            search_project_information: createProjectSearchTool(
-              thread.projectId,
-              modelConfig
-            ),
-          }
-        : undefined;
+      let tools = {
+        search_projects_information: createProjectSearchTool(
+          modelConfig,
+          thread.projectId || undefined,
+          req.workspace?.type === "organization" ? undefined : req.dbUser!.id,
+          req.workspace?.type === "organization" ? req.workspace?.id : undefined
+        ),
+      };
 
       // Start the streaming from the AI
       const result = streamText({
@@ -343,9 +343,14 @@ const threadsOps = {
           openai: {
             store: false,
           },
-          anthropic: {
-            thinking: { type: "enabled", budgetTokens: 12_000 },
-          },
+          ...(modelConfig.provider === "anthropic" &&
+          modelConfig.model.modelId.includes("claude-3-7")
+            ? {
+                anthropic: {
+                  thinking: { type: "enabled", budgetTokens: 12_000 },
+                },
+              }
+            : {}),
         },
         onStepFinish: async ({
           toolCalls,
@@ -399,8 +404,11 @@ const threadsOps = {
 
               if (
                 result &&
-                (toolCall.toolName === "search_project_information" ||
-                  toolCall.toolName === "search_documents")
+                ((toolCall.toolName as string) ===
+                  "search_project_information" ||
+                  (toolCall.toolName as string) === "search_documents" ||
+                  (toolCall.toolName as string) ===
+                    "search_projects_information")
               ) {
                 console.log("Project search tool result:", toolCall);
                 await db
