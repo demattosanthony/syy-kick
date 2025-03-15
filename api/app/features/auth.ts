@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { checkTokens, DbUser, sendAuthCookies } from "../createAuthToken";
 import db from "../config/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import myPassport, { authenticateSaml } from "../config/passport";
 import {
   organizationInvites,
@@ -13,6 +13,8 @@ import {
 import s3 from "../config/s3";
 import { CONFIG } from "../config/constants";
 import { PermissionManager } from "./permissions/permissions.tools";
+import PermissionsFactory from "./permissions/permissions.factory";
+import { Permissions } from "./permissions/permissions.types";
 
 const addLogoUrl = (org: any) => ({
   ...org,
@@ -50,13 +52,30 @@ const addOrgMember = async (orgId: string, userId: string, roleId: string) => {
       eq(organizationMemberRoles.organizationMemberId, userId)
     ),
   });
-  if (existing) return existing;
+  if (existing) return;
 
-  const [member] = await db
+  const [orgMemberRole] = await db
     .insert(organizationMemberRoles)
     .values({ organizationId: orgId, organizationMemberId: userId, roleId })
-    .returning();
-  return member;
+    .returning({ id: organizationMemberRoles.id });
+
+  if (!orgMemberRole) return null;
+
+  const orgMemberRoleWithRole =
+    await db.query.organizationMemberRoles.findFirst({
+      where: eq(organizationMemberRoles.id, orgMemberRole.id),
+      with: {
+        role: true,
+      },
+    });
+
+  if (!orgMemberRoleWithRole) return;
+
+  PermissionsFactory.createAccess(
+    orgMemberRoleWithRole.role.name as Permissions.Roles,
+    orgId,
+    userId
+  );
 };
 
 const checkOrgCapacity = async (orgId: string) => {
@@ -86,7 +105,7 @@ const handlers = {
         // Verify and process invite
         const invite = await checkInvite(state);
 
-        if (!invite?.roleId) {
+        if (!invite?.roleId || !invite.organizationId) {
           res.status(403).json({ message: "Invalid invite" });
           return;
         }
@@ -96,6 +115,16 @@ const handlers = {
           user.id,
           invite.roleId
         );
+
+        await db
+          .delete(organizationInvites)
+          .where(
+            and(
+              eq(organizationInvites.organizationId, invite.organizationId),
+              eq(organizationInvites.token, invite.token)
+            )
+          );
+
         res.redirect(
           `${process.env.FRONTEND_URL}?orgJoined=true&orgId=${invite.organizationId}`
         );
@@ -162,7 +191,7 @@ const handlers = {
         return;
       }
 
-      if (!invite?.roleId) {
+      if (!invite?.roleId || !invite.organizationId) {
         res.status(403).json({ message: "Invalid invite" });
         return;
       }
@@ -172,6 +201,15 @@ const handlers = {
         req.dbUser.id,
         invite.roleId
       );
+
+      await db
+        .delete(organizationInvites)
+        .where(
+          and(
+            eq(organizationInvites.organizationId, invite.organizationId),
+            eq(organizationInvites.token, invite.token)
+          )
+        );
       res.json({ success: true });
     } catch (error: any) {
       res.status(403).json({ message: error.message });

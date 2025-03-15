@@ -328,14 +328,14 @@ export const permissionsOps = {
 
   deleteInvitations: async (req: Request, res: Response) => {
     const orgId = req.params.orgId;
-    const invitationIds = req.body.invitationsIds as string[];
+    const invitationsIds = req.body.invitationsIds as string[];
 
     await db
       .delete(organizationInvites)
       .where(
         and(
           eq(organizationInvites.organizationId, orgId),
-          inArray(organizationInvites.id, invitationIds)
+          inArray(organizationInvites.id, invitationsIds)
         )
       );
 
