@@ -1,4 +1,4 @@
-import { relations, sql } from "drizzle-orm";
+import { or, relations, sql } from "drizzle-orm";
 import {
   index,
   integer,
@@ -11,6 +11,7 @@ import {
   varchar,
   vector,
   boolean,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { customType } from "drizzle-orm/pg-core";
 
@@ -69,6 +70,11 @@ export const organizationMembers = pgTable("organization_members", {
 export const organizationInvites = pgTable("organization_invites", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id").references(() => organizations.id, {
+    onDelete: "cascade",
+  }),
+  roleId: uuid("role_id").references(() => roles.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  invitedBy: uuid("invited_by").references(() => users.id, {
     onDelete: "cascade",
   }),
   token: text("token").notNull(),
@@ -289,6 +295,114 @@ export const toolCalls = pgTable("tool_calls", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+/** ---- Permissions ---- */
+export const roles = pgTable("roles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Organization, Project, Document, Message, User...
+export const resources = pgTable("resources", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Create, Read, Update, Delete
+export const actions = pgTable("actions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 50 }).notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// A permission is a combination of a role (org or project), resource, and action
+export const permissions = pgTable(
+  "permissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgMemberRoleId: uuid("org_member_role_id").references(
+      () => organizationMemberRoles.id,
+      { onDelete: "cascade" }
+    ),
+    projectMemberRoleId: uuid("project_member_role_id").references(
+      () => projectMemberRoles.id,
+      { onDelete: "cascade" }
+    ),
+    resourceId: uuid("resource_id")
+      .notNull()
+      .references(() => resources.id, { onDelete: "cascade" }),
+    actionId: uuid("action_id")
+      .notNull()
+      .references(() => actions.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("unique_permission").on(
+      table.orgMemberRoleId,
+      table.projectMemberRoleId,
+      table.resourceId,
+      table.actionId
+    ),
+  ]
+);
+
+// Organization member roles
+export const organizationMemberRoles = pgTable(
+  "organization_member_roles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    organizationMemberId: uuid("organization_member_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("unique_org_member_role").on(
+      table.organizationMemberId,
+      table.roleId
+    ),
+  ]
+);
+
+// Project member roles
+export const projectMemberRoles = pgTable(
+  "project_member_roles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull(),
+    projectId: uuid("project_id").notNull(),
+    organizationId: uuid("organization_id").notNull(),
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("unique_project_member_role").on(
+      table.userId,
+      table.projectId,
+      table.roleId
+    ),
+  ]
+);
+/** ---- End Permissions ---- */
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   threads: many(threads),
@@ -389,6 +503,14 @@ export const organizationInvitesRelations = relations(
       fields: [organizationInvites.organizationId],
       references: [organizations.id],
     }),
+    role: one(roles, {
+      fields: [organizationInvites.roleId],
+      references: [roles.id],
+    }),
+    invitedBy: one(users, {
+      fields: [organizationInvites.invitedBy],
+      references: [users.id],
+    }),
   })
 );
 
@@ -409,6 +531,63 @@ export const projectsRelations = relations(projects, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// Permissions relations
+export const rolesRelations = relations(roles, ({ many }) => ({
+  permissions: many(permissions),
+  organizationMemberRoles: many(organizationMemberRoles),
+  projectMemberRoles: many(projectMemberRoles),
+}));
+export const permissionsRelations = relations(permissions, ({ one }) => ({
+  orgMemberRole: one(organizationMemberRoles, {
+    fields: [permissions.orgMemberRoleId],
+    references: [organizationMemberRoles.id],
+  }),
+  projectMemberRole: one(projectMemberRoles, {
+    fields: [permissions.projectMemberRoleId],
+    references: [projectMemberRoles.id],
+  }),
+  resource: one(resources, {
+    fields: [permissions.resourceId],
+    references: [resources.id],
+  }),
+  action: one(actions, {
+    fields: [permissions.actionId],
+    references: [actions.id],
+  }),
+}));
+
+export const organizationMemberRolesRelations = relations(
+  organizationMemberRoles,
+  ({ one }) => ({
+    role: one(roles, {
+      fields: [organizationMemberRoles.roleId],
+      references: [roles.id],
+    }),
+    user: one(users, {
+      fields: [organizationMemberRoles.organizationMemberId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const projectMemberRolesRelations = relations(
+  projectMemberRoles,
+  ({ one }) => ({
+    role: one(roles, {
+      fields: [projectMemberRoles.roleId],
+      references: [roles.id],
+    }),
+    project: one(projects, {
+      fields: [projectMemberRoles.projectId],
+      references: [projects.id],
+    }),
+    organization: one(organizations, {
+      fields: [projectMemberRoles.organizationId],
+      references: [organizations.id],
+    }),
+  })
+);
 
 export type MessageAttachment = {
   id: string;

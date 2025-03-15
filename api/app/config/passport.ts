@@ -99,6 +99,7 @@ export function configurePassport() {
           const user = await findOrCreateUser(profile, "google", "googleId", {
             profilePicture: profilePictureUrl,
           });
+
           done(null, user);
         } catch (error) {
           done(error as Error);

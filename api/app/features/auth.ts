@@ -5,12 +5,14 @@ import { and, eq } from "drizzle-orm";
 import myPassport, { authenticateSaml } from "../config/passport";
 import {
   organizationInvites,
+  organizationMemberRoles,
   organizationMembers,
   organizations,
   users,
 } from "../config/schema";
 import s3 from "../config/s3";
 import { CONFIG } from "../config/constants";
+import { PermissionManager } from "./permissions/permissions.tools";
 
 const addLogoUrl = (org: any) => ({
   ...org,
@@ -41,18 +43,18 @@ const checkInvite = async (token: string) => {
   return invite;
 };
 
-const addOrgMember = async (orgId: string, userId: string) => {
-  const existing = await db.query.organizationMembers.findFirst({
+const addOrgMember = async (orgId: string, userId: string, roleId: string) => {
+  const existing = await db.query.organizationMemberRoles.findFirst({
     where: and(
-      eq(organizationMembers.organizationId, orgId),
-      eq(organizationMembers.userId, userId)
+      eq(organizationMemberRoles.organizationId, orgId),
+      eq(organizationMemberRoles.organizationMemberId, userId)
     ),
   });
   if (existing) return existing;
 
   const [member] = await db
-    .insert(organizationMembers)
-    .values({ organizationId: orgId, userId, role: "member" })
+    .insert(organizationMemberRoles)
+    .values({ organizationId: orgId, organizationMemberId: userId, roleId })
     .returning();
   return member;
 };
@@ -83,7 +85,17 @@ const handlers = {
       try {
         // Verify and process invite
         const invite = await checkInvite(state);
-        await addOrgMember(invite.organizationId as string, user.id);
+
+        if (!invite?.roleId) {
+          res.status(403).json({ message: "Invalid invite" });
+          return;
+        }
+
+        await addOrgMember(
+          invite.organizationId as string,
+          user.id,
+          invite.roleId
+        );
         res.redirect(
           `${process.env.FRONTEND_URL}?orgJoined=true&orgId=${invite.organizationId}`
         );
@@ -123,6 +135,14 @@ const handlers = {
       }
       const { userId } = await checkTokens(id, rid);
       const user = await getUserWithOrgs(userId);
+
+      if (!user) {
+        res.status(401).json({
+          message: "Authentication required",
+        });
+        return;
+      }
+
       res.status(200).json(user || null);
     } catch (error) {
       res.status(200).json(null);
@@ -142,7 +162,16 @@ const handlers = {
         return;
       }
 
-      await addOrgMember(invite.organizationId as string, req.dbUser.id);
+      if (!invite?.roleId) {
+        res.status(403).json({ message: "Invalid invite" });
+        return;
+      }
+
+      await addOrgMember(
+        invite.organizationId as string,
+        req.dbUser.id,
+        invite.roleId
+      );
       res.json({ success: true });
     } catch (error: any) {
       res.status(403).json({ message: error.message });

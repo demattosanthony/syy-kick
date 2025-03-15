@@ -24,7 +24,8 @@ import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
 import { getOrgIdOrUnedfined } from "../utils";
-import { Workspace } from "../middleware";
+import { permissions, Workspace } from "../middleware";
+import { Permissions } from "./permissions/permissions.types";
 
 const schemas = {
   createProject: z
@@ -894,14 +895,76 @@ const handlers = {
 };
 
 export default Router()
-  .post("/", handlers.createProject)
-  .get("/", handlers.listProjects)
+  .post(
+    "/",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.CREATE
+    ),
+    handlers.createProject
+  )
+  .get(
+    "/",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.READ
+    ),
+    handlers.listProjects
+  )
 
-  .post("/:projectId/documents", handlers.documentsUpload)
-  .get("/:projectId/documents", handlers.getDocuments)
-  .delete("/:projectId/documents", handlers.deleteContents)
-
-  .patch("/:projectId", handlers.updateProject)
-  .get("/:projectId", handlers.getProject)
-  .delete("/:projectId", handlers.deleteProject)
-  .get("/:projectId/document", handlers.getDocument);
+  .post(
+    "/:projectId/documents",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Actions.CREATE
+    ),
+    handlers.documentsUpload
+  )
+  .get(
+    "/:projectId/documents",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Actions.READ
+    ),
+    handlers.getDocuments
+  )
+  .delete(
+    "/:projectId/documents",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Actions.DELETE
+    ),
+    handlers.deleteContents
+  )
+  .patch(
+    "/:projectId",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.UPDATE
+    ),
+    handlers.updateProject
+  )
+  .get(
+    "/:projectId",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.READ
+    ),
+    handlers.getProject
+  )
+  .delete(
+    "/:projectId",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.DELETE
+    ),
+    handlers.deleteProject
+  )
+  .get(
+    "/:projectId/document",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Actions.READ
+    ),
+    handlers.getDocument
+  );

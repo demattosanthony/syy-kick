@@ -1,3 +1,14 @@
+import deleteOrgInvitations from "@/features/permissions/api/organizations/delete-org-invitations";
+import {
+  OrganizationMemberRoleResponse,
+  OrgInvitationsRequest,
+  OrgInvitationsResponse,
+  OrgMemberResponse,
+  RolesResponse,
+  TransferableProjectsResponse,
+  TransferableRolesPermissions,
+  UpdateOrgMemberRoleRequest,
+} from "@/features/permissions/types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
@@ -34,6 +45,13 @@ class ApiRequest {
 
     const response = await fetch(url, config);
 
+    if (
+      response.status === 403 &&
+      !window.location.pathname.startsWith("/forbidden")
+    ) {
+      window.location.href = "/forbidden";
+    }
+
     if (!response.ok) {
       let errorData;
       try {
@@ -43,7 +61,9 @@ class ApiRequest {
       }
       throw new ApiError(
         response.status,
-        errorData?.message || `Request failed with status ${response.status}`
+        errorData?.message ||
+          errorData?.error ||
+          `Request failed with status ${response.status}`
       );
     }
 
@@ -228,28 +248,14 @@ class OrganizationApi extends ApiRequest {
     );
   }
 
-  async listOrganizationMembers(organizationId: string): Promise<
-    Array<{
-      user: {
-        id: string;
-        email: string;
-        name: string;
-        profilePicture: string;
-      };
-      role: "owner" | "member";
-    }>
-  > {
-    return await this.request<
-      Array<{
-        user: {
-          id: string;
-          email: string;
-          name: string;
-          profilePicture: string;
-        };
-        role: "owner" | "member";
-      }>
-    >(`/organizations/${organizationId}/members`);
+  async getOrgMembers(orgId: string): Promise<OrgMemberResponse> {
+    try {
+      return await this.request<OrgMemberResponse>(
+        `/organizations/${orgId}/members`
+      );
+    } catch (error) {
+      throw error;
+    }
   }
 
   async removeOrganizationMember(
@@ -314,6 +320,43 @@ class OrganizationApi extends ApiRequest {
       "PUT",
       { role }
     );
+  }
+
+  async getTransferablePermissions(
+    organizationId: string
+  ): Promise<TransferableRolesPermissions> {
+    try {
+      return await this.request<TransferableRolesPermissions>(
+        `/organizations/${organizationId}/transferable-permissions`
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getUserRole(
+    organizationId: string
+  ): Promise<OrganizationMemberRoleResponse> {
+    try {
+      return await this.request<OrganizationMemberRoleResponse>(
+        `/organizations/${organizationId}/user-role`
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getOrgMember(
+    organizationId: string,
+    memberId: string
+  ): Promise<OrganizationMemberRoleResponse> {
+    try {
+      return await this.request<OrganizationMemberRoleResponse>(
+        `/organizations/${organizationId}/members/${memberId}`
+      );
+    } catch (error) {
+      throw error;
+    }
   }
 }
 
@@ -823,6 +866,101 @@ class ProjectsApi extends ApiRequest {
   }
 }
 
+class PermissionsApi extends ApiRequest {
+  async getRoles(): Promise<RolesResponse> {
+    return await this.request<RolesResponse>(`/permissions/roles`);
+  }
+
+  async createOrgInvitations(
+    orgId: string,
+    invitations: OrgInvitationsRequest
+  ): Promise<void> {
+    try {
+      return await this.request<void>(
+        `/permissions/organizations/${orgId}/invitations`,
+        "POST",
+        {
+          invitations,
+        }
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getOrgInvitations(orgId: string): Promise<OrgInvitationsResponse> {
+    try {
+      return await this.request<OrgInvitationsResponse>(
+        `/permissions/organizations/${orgId}/invitations`
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteOrgInvitations(
+    orgId: string,
+    invitationsIds: string[]
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/permissions/organizations/${orgId}/invitations`,
+        "DELETE",
+        {
+          invitationsIds,
+        }
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getTransferableOrgProjects(
+    organizationId: string
+  ): Promise<TransferableProjectsResponse> {
+    try {
+      return await this.request<TransferableProjectsResponse>(
+        `/permissions/organizations/${organizationId}/transferable-projects`
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateOrgMemberRole(
+    organizationId: string,
+    memberId: string,
+    data: UpdateOrgMemberRoleRequest
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/permissions/organizations/${organizationId}/members/${memberId}`,
+        "PUT",
+        data
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteOrgMembers(
+    organizationId: string,
+    membersIds: string[]
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/permissions/organizations/${organizationId}/members`,
+        "DELETE",
+        {
+          membersIds,
+        }
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+}
+
 /**
  * Workflows API Module
  */
@@ -849,6 +987,7 @@ class ApiClient {
   threads: ThreadApi;
   projects: ProjectsApi;
   workflows: WorkflowsApi;
+  permissions: PermissionsApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -860,6 +999,7 @@ class ApiClient {
     this.threads = new ThreadApi(baseUrl);
     this.projects = new ProjectsApi(baseUrl);
     this.workflows = new WorkflowsApi(baseUrl);
+    this.permissions = new PermissionsApi(baseUrl);
   }
 }
 

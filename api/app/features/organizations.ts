@@ -3,16 +3,22 @@ import { asc, eq, sql } from "drizzle-orm";
 import z from "zod";
 import db from "../config/db";
 import {
-  organizationInvites,
+  organizationMemberRoles,
   organizationMembers,
   organizations,
+  roles,
   samlConfigs,
+  users,
 } from "../config/schema";
 import s3 from "../config/s3";
 import { DbUser } from "../createAuthToken";
-import { randomBytes } from "crypto";
 import stripe from "../config/stripe";
-import { isOrgOwner } from "../middleware";
+import { isOrgOwner, permissions } from "../middleware";
+import { Permissions } from "./permissions/permissions.types";
+import PermissionsFactory from "./permissions/permissions.factory";
+import { PermissionManager } from "./permissions/permissions.tools";
+import { permissionsOps } from "./permissions/permissions.ops";
+import Constants from "./permissions/permissions.constants";
 
 // Core Types
 type Role = "owner" | "member";
@@ -222,49 +228,55 @@ const ops = {
     });
   },
 
-  async listMembers(orgId: string) {
-    return db.query.organizationMembers.findMany({
-      where: eq(organizationMembers.organizationId, orgId),
-      with: {
-        user: {
-          columns: {
-            id: true,
-            email: true,
-            name: true,
-            profilePicture: true,
-          },
-        },
-      },
-    });
+  async listMembers(orgId: string, user: DbUser) {
+    if (!orgId) {
+      throw new Error("Please select an organization");
+    }
+
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    const userRole = await permissionsOps.getUserOrganizationRole(
+      user.id,
+      orgId
+    );
+
+    if (!userRole) {
+      throw new Error("User not found in organization");
+    }
+
+    const members = await db
+      .select({
+        id: organizationMemberRoles.organizationMemberId,
+        email: users.email,
+        profilePicture: users.profilePicture,
+        name: users.name,
+        role: roles,
+        createdAt: organizationMemberRoles.createdAt,
+      })
+      .from(organizationMemberRoles)
+      .innerJoin(
+        users,
+        eq(users.id, organizationMemberRoles.organizationMemberId)
+      )
+      .innerJoin(roles, eq(roles.id, organizationMemberRoles.roleId))
+      .where(eq(organizationMemberRoles.organizationId, orgId));
+
+    return members.map((member) => ({
+      ...member,
+      canUpdate: PermissionManager.canUpdateRole(
+        userRole?.role.name as Permissions.Roles,
+        member.role.name as Permissions.Roles
+      ),
+    }));
   },
 
   async removeMember(orgId: string, userId: string) {
-    return db
+    await db
       .delete(organizationMembers)
       .where(sql`organization_id = ${orgId} AND user_id = ${userId}`);
-  },
-
-  async getInviteLink(orgId: string) {
-    const invite = await db.query.organizationInvites.findFirst({
-      where: eq(organizationInvites.organizationId, orgId),
-    });
-
-    return invite ? invite.token : await ops.generateInviteLink(orgId);
-  },
-
-  async generateInviteLink(orgId: string) {
-    // Delete any existing invite
-    await db
-      .delete(organizationInvites)
-      .where(eq(organizationInvites.organizationId, orgId));
-
-    const token = randomBytes(16).toString("hex");
-    await db.insert(organizationInvites).values({
-      organizationId: orgId,
-      token,
-    });
-
-    return token;
+    await permissionsOps.removeOrgPermissions(orgId, userId);
   },
 
   async updateMemberRole(orgId: string, userId: string, newRole: Role) {
@@ -323,7 +335,17 @@ const handle = {
 
   async create(req: Request, res: Response) {
     const data = schemas.org.parse(req.body);
-    res.json(await ops.create(data, req.dbUser!));
+    const org = await ops.create(data, req.dbUser!);
+
+    PermissionsFactory.createAccess(
+      Permissions.Roles.ORGANIZATION_ADMIN,
+      org.id,
+      req.dbUser!.id,
+      undefined,
+      Constants.Access.ORGANIZATION_ADMIN
+    );
+
+    res.json(org);
   },
 
   async update(req: Request, res: Response) {
@@ -337,23 +359,18 @@ const handle = {
   },
 
   async listMembers(req: Request, res: Response) {
-    const members = await ops.listMembers(req.params.id);
+    const user = req.dbUser;
+    if (!user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const members = await ops.listMembers(req.params.id, user);
     res.json(members);
-  },
-
-  async getInvite(req: Request, res: Response) {
-    const token = await ops.getInviteLink(req.params.id);
-    res.json({ token });
   },
 
   async removeMember(req: Request, res: Response) {
     await ops.removeMember(req.params.id, req.params.userId);
     res.json({ success: true });
-  },
-
-  async resetInvite(req: Request, res: Response) {
-    const token = await ops.generateInviteLink(req.params.id);
-    res.json({ token });
   },
 
   async validateSeatUpdate(req: Request, res: Response) {
@@ -443,19 +460,142 @@ const handle = {
       res.status(400).json({ error: error.message });
     }
   },
+
+  async getTransferablePermissions(req: Request, res: Response) {
+    const user = req.dbUser;
+    const orgId = req.params.id;
+
+    if (!user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const permissions = await PermissionManager.getUserTransferableRoles(
+      user.id,
+      Permissions.Level.ORGANIZATION,
+      orgId
+    );
+    res.json(permissions);
+  },
+
+  async getUserRole(req: Request, res: Response) {
+    const user = req.dbUser;
+
+    if (!user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const orgId = req.params.id;
+    const role = await permissionsOps.getUserOrganizationRole(user.id, orgId);
+
+    if (!role) {
+      res.status(404).json({ error: "User not found in organization" });
+      return;
+    }
+
+    res.json(PermissionManager.formatUserRole(role));
+  },
+
+  async getMemberRole(req: Request, res: Response) {
+    const userId = req.params.userId;
+    const orgId = req.params.id;
+
+    const role = await permissionsOps.getUserOrganizationRole(userId, orgId);
+
+    if (!role) {
+      res.status(404).json({ error: "User not found in organization" });
+      return;
+    }
+
+    res.json(PermissionManager.formatUserRole(role));
+  },
 };
 
 // Router
 export default Router()
   .get("", isOrgOwner, handle.list)
   .post("", handle.create)
-  .get("/:id", isOrgOwner, handle.get)
-  .put("/:id", isOrgOwner, handle.update)
-  .delete("/:id", isOrgOwner, handle.delete)
-  .get("/:id/members", isOrgOwner, handle.listMembers)
-  .delete("/:id/members/:userId", isOrgOwner, handle.removeMember)
-  .put("/:id/members/:userId/role", isOrgOwner, handle.updateMemberRole)
-  .get("/:id/invite", isOrgOwner, handle.getInvite)
-  .post("/:id/invite/reset", isOrgOwner, handle.resetInvite)
-  .post("/:id/seats/validate", isOrgOwner, handle.validateSeatUpdate)
-  .put("/:id/seats", isOrgOwner, handle.updateSeats);
+  .get(
+    "/:id",
+    permissions(Permissions.Resources.ORGANIZATION, Permissions.Actions.READ),
+    handle.get
+  )
+  .put(
+    "/:id",
+    permissions(Permissions.Resources.ORGANIZATION, Permissions.Actions.UPDATE),
+    handle.update
+  )
+  .delete(
+    "/:id",
+    permissions(Permissions.Resources.ORGANIZATION, Permissions.Actions.DELETE),
+    handle.delete
+  )
+  .get(
+    "/:id/permissions",
+    permissions(
+      Permissions.Resources.ORGANIZATION_MEMBERS,
+      Permissions.Actions.READ
+    )
+  )
+  .get(
+    "/:id/members",
+    permissions(
+      Permissions.Resources.ORGANIZATION_MEMBERS,
+      Permissions.Actions.READ
+    ),
+    handle.listMembers
+  )
+  .get(
+    "/:id/members/:userId",
+    permissions(
+      Permissions.Resources.ORGANIZATION_MEMBERS,
+      Permissions.Actions.READ
+    ),
+    handle.getMemberRole
+  )
+  .delete(
+    "/:id/members/:userId",
+    permissions(
+      Permissions.Resources.ORGANIZATION_MEMBERS,
+      Permissions.Actions.DELETE
+    ),
+    handle.removeMember
+  )
+  .put(
+    "/:id/members/:userId/role",
+    permissions(
+      Permissions.Resources.ORGANIZATION_MEMBERS,
+      Permissions.Actions.UPDATE
+    ),
+    handle.updateMemberRole
+  )
+  .post(
+    "/:id/seats/validate",
+    permissions(
+      Permissions.Resources.ORGANIZATION_SEATS,
+      Permissions.Actions.READ
+    ),
+    handle.validateSeatUpdate
+  )
+  .put(
+    "/:id/seats",
+    permissions(
+      Permissions.Resources.ORGANIZATION_SEATS,
+      Permissions.Actions.UPDATE
+    ),
+    handle.updateSeats
+  )
+  .get(
+    "/:id/transferable-permissions",
+    permissions(
+      Permissions.Resources.ORGANIZATION_INVITATIONS,
+      Permissions.Actions.CREATE
+    ),
+    handle.getTransferablePermissions
+  )
+  .get(
+    "/:id/user-role",
+    permissions(Permissions.Resources.ORGANIZATION, Permissions.Actions.READ),
+    handle.getUserRole
+  );

@@ -14,25 +14,14 @@ import { useUpdateOrganizationSeatsMutation } from "../api";
 
 const OrgManageSeats = ({
   org,
-  members,
+  occupiedSeats,
 }: {
   org: Organization;
-  members:
-    | {
-        user: {
-          id: string;
-          email: string;
-          name: string;
-          profilePicture: string;
-        };
-        role: "owner" | "member";
-      }[]
-    | undefined;
+  occupiedSeats: number;
 }) => {
   const [seats, setSeats] = useState(org.seats);
   const [isLoading, setIsLoading] = useState(false);
   const hasChanges = seats !== org.seats;
-  const memberCount = members?.length || 0;
   const updateSeats = useUpdateOrganizationSeatsMutation();
   const pathName = usePathname();
   const searchParams = useSearchParams();
@@ -128,7 +117,7 @@ const OrgManageSeats = ({
           <div>
             <h3 className="text-sm font-medium">Seat Management</h3>
             <p className="text-sm text-muted-foreground">
-              {memberCount} of {org.seats} seats used ($
+              {occupiedSeats} of {org.seats} seats used ($
               {org.seats * PRICING_PLANS.TEAMS.cost}/month)
             </p>
           </div>
@@ -138,7 +127,7 @@ const OrgManageSeats = ({
               <div
                 className="h-full bg-primary rounded-full"
                 style={{
-                  width: `${(memberCount / org.seats) * 100}%`,
+                  width: `${(occupiedSeats / org.seats) * 100}%`,
                 }}
               />
             </div>
@@ -151,9 +140,9 @@ const OrgManageSeats = ({
                   size="sm"
                   className="h-7 w-7"
                   onClick={() =>
-                    setSeats((prev) => Math.max(memberCount, prev - 1))
+                    setSeats((prev) => Math.max(occupiedSeats, prev - 1))
                   }
-                  disabled={isLoading || seats <= memberCount}
+                  disabled={isLoading || seats <= occupiedSeats}
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
@@ -162,8 +151,8 @@ const OrgManageSeats = ({
                   value={seats}
                   onChange={(e) => {
                     const value = Math.max(
-                      memberCount,
-                      parseInt(e.target.value) || memberCount
+                      occupiedSeats,
+                      parseInt(e.target.value) || occupiedSeats
                     );
                     setSeats(value);
                   }}
