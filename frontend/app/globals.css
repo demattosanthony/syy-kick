@@ -212,3 +212,12 @@
 .gm-style-iw-chr {
   margin-top: -17px;
 }
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
