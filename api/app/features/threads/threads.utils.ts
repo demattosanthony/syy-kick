@@ -333,65 +333,63 @@ Tips:
 - Avoid overly broad or vague searches`,
     parameters: z.object({
       query: z.string(),
-      category: z
-        .enum([
-          "company",
-          "research paper",
-          "news",
-          "pdf",
-          "github",
-          "tweet",
-          "personal site",
-          "linkedin profile",
-          "financial report",
-        ])
-        .optional(),
+      //   category: z
+      //     .enum([
+      //       "company",
+      //       "research paper",
+      //       "news",
+      //       "pdf",
+      //       "github",
+      //       "tweet",
+      //       "personal site",
+      //       "linkedin profile",
+      //       "financial report",
+      //     ])
+      //     .optional(),
       startCrawlDate: z
         .string()
-        .optional()
         .describe(
-          `Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled after this date. Must be specified in ISO 8601 format.
-
-Example:
-"2023-01-01T00:00:00.000Z"`
+          "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled after this date. Must be specified in ISO 8601 format. Example: 2023-01-01T00:00:00.000Z"
         ),
-      endCrawlDate: z.string().optional()
-        .describe(`Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled before this date. Must be specified in ISO 8601 format.
+      //       endCrawlDate: z.string().optional()
+      //         .describe(`Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled before this date. Must be specified in ISO 8601 format.
 
-Example:
-"2023-12-31T00:00:00.000Z"`),
-      type: z.enum(["keyword", "neural", "auto"]).optional().default("auto")
-        .describe(`The type of search. Neural uses an embeddings-based model, keyword is google-like SERP. Default is auto, which automatically decides between keyword and neural.
+      // Example:
+      // "2023-12-31T00:00:00.000Z"`),
+      //       type: z.enum(["keyword", "neural", "auto"]).optional().default("auto")
+      //         .describe(`The type of search. Neural uses an embeddings-based model, keyword is google-like SERP. Default is auto, which automatically decides between keyword and neural.
 
-Available options: keyword, neural, auto 
-Example:
-"auto"`),
+      // Available options: keyword, neural, auto
+      // Example:
+      // "auto"`),
     }),
     execute: async ({
       query,
-      category,
+      //   category,
       startCrawlDate,
-      endCrawlDate,
-      type,
+      //   endCrawlDate,
+      //   type,
     }) => {
       console.log("Searching web for: ", query);
-      console.log("Category: ", category);
+      //   console.log("Category: ", category);
       console.log("Start date: ", startCrawlDate);
-      console.log("End date: ", endCrawlDate);
-      console.log("Type: ", type);
+      //   console.log("End date: ", endCrawlDate);
+      //   console.log("Type: ", type);
 
       const results = await exa.searchAndContents(query, {
         text: true,
-        numResults: 12,
+        numResults: 6,
         summary: true,
         useAutoprompt: true,
-        category: category || undefined,
-        startCrawlDate,
-        endCrawlDate,
-        type,
+        highlights: true,
+        // category: category || undefined,
+        // startCrawlDate,
+        // endCrawlDate,
+        // type,
       });
 
       console.log("Results: ", results.results.length);
+      console.log(JSON.stringify(results.results, null, 2));
 
       return results.results;
     },
