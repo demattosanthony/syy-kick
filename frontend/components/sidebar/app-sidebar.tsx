@@ -37,6 +37,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { CreateProjectDialog } from "@/features/projects/components";
 import { NewThreadButton } from "./new-thread-button";
+import { scrollbarStyle } from "@/lib/utils";
+import { usePermissions } from "@/features/permissions/context";
 
 export function AppSidebar({
   user,
@@ -73,6 +75,8 @@ export function AppSidebar({
   const togglePin = React.useCallback(() => {
     setIsPinned((prev) => !prev);
   }, []);
+
+  const { canCreateOrgProjects } = usePermissions();
 
   return (
     <Sidebar
@@ -118,7 +122,8 @@ export function AppSidebar({
               <SidebarMenuItem>
                 {!(
                   activeWorkspace?.type === "personal" &&
-                  user.subscriptionStatus !== "active"
+                  user.subscriptionStatus !== "active" &&
+                  canCreateOrgProjects
                 ) && (
                   <SidebarButton
                     href="/projects"

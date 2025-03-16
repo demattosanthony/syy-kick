@@ -557,6 +557,8 @@ export class PermissionManager {
         ),
       });
 
+      console.log(projectsList, '<--- project list');
+
       return projectsList.map((project) => project.projectId);
     }
 

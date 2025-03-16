@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { InvitationSection } from "./invitation-section";
 import { MembersTable } from "./members-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import usePermissions from "@/features/permissions/hooks/usePermissions";
 import {
   OrganizationMemberRoleResponse,
   OrgInvitationsResponse,
   OrgMemberResponse,
   TransferableRolesPermissions,
 } from "@/features/permissions/types";
+import { usePermissions } from "@/features/permissions/context/permissions-context";
 
 export function MembersManagement({
   orgId,
@@ -38,7 +38,7 @@ export function MembersManagement({
     canCreateOrgInvitations,
     canUpdateOrgInvitations,
     canDeleteOrgInvitations,
-  } = usePermissions(userRole);
+  } = usePermissions();
 
   useEffect(() => {
     if (!canReadOrgMembers) {

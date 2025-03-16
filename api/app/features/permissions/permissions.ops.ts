@@ -11,10 +11,7 @@ import {
   roles,
   users,
 } from "../../config/schema";
-import {
-  Permissions,
-  RawUserRole,
-} from "./permissions.types";
+import { Permissions, RawUserRole } from "./permissions.types";
 import { Request, Response } from "express";
 import { getOrgIdOrUnedfined } from "../../utils";
 import { Resend } from "resend";
@@ -145,7 +142,7 @@ export const permissionsOps = {
         }
       );
 
-      if (projectMemberRolesList) {
+      if (projectMemberRolesList.length > 0) {
         const permissions = await db.query.permissions.findMany({
           where: eq(
             permissionsTable.projectMemberRoleId,

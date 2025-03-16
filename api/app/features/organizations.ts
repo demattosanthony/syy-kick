@@ -13,7 +13,7 @@ import {
 import s3 from "../config/s3";
 import { DbUser } from "../createAuthToken";
 import stripe from "../config/stripe";
-import { isOrgOwner, permissions } from "../middleware";
+import { auth, isOrgOwner, permissions } from "../middleware";
 import { Permissions } from "./permissions/permissions.types";
 import PermissionsFactory from "./permissions/permissions.factory";
 import { PermissionManager } from "./permissions/permissions.tools";
@@ -518,7 +518,7 @@ const handle = {
         name: p.project.name,
       }));
     }
-    
+
     res.json(formattedRole);
   },
 };
@@ -605,8 +605,4 @@ export default Router()
     ),
     handle.getTransferablePermissions
   )
-  .get(
-    "/:id/user-role",
-    permissions(Permissions.Resources.ORGANIZATION, Permissions.Actions.READ),
-    handle.getUserRole
-  );
+  .get("/:id/user-role", auth, handle.getUserRole);
