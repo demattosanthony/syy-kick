@@ -75,6 +75,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
     "image/png",
     "image/webp",
     "image/gif",
+    "application/pdf",
   ];
 
   return {
