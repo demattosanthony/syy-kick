@@ -120,12 +120,6 @@ const ops = {
 
       const [org] = await tx.insert(organizations).values(values).returning();
 
-      await tx.insert(organizationMembers).values({
-        organizationId: org.id,
-        userId: user.id,
-        role: "owner" as Role,
-      });
-
       if (data.saml) {
         await ops.updateSaml(org.id, data.saml);
       }
@@ -337,12 +331,10 @@ const handle = {
     const data = schemas.org.parse(req.body);
     const org = await ops.create(data, req.dbUser!);
 
-    PermissionsFactory.createAccess(
+    await PermissionsFactory.createAccess(
       Permissions.Roles.ORGANIZATION_ADMIN,
       org.id,
-      req.dbUser!.id,
-      undefined,
-      Constants.Access.ORGANIZATION_ADMIN
+      req.dbUser!.id
     );
 
     res.json(org);
@@ -508,13 +500,32 @@ const handle = {
       return;
     }
 
-    res.json(PermissionManager.formatUserRole(role));
+    const formattedRole = PermissionManager.formatUserRole(role);
+
+    if (
+      [
+        Permissions.Roles.PROJECT_MANAGER,
+        Permissions.Roles.PROJECT_MEMBER,
+      ].includes(role.role.name as Permissions.Roles)
+    ) {
+      const userProjects = await db.query.projectMemberRoles.findMany({
+        where: eq(organizationMemberRoles.organizationId, orgId),
+        with: { project: true },
+      });
+
+      formattedRole.projects = userProjects.map((p) => ({
+        id: p.project.id,
+        name: p.project.name,
+      }));
+    }
+    
+    res.json(formattedRole);
   },
 };
 
 // Router
 export default Router()
-  .get("", isOrgOwner, handle.list)
+  .get("", handle.list)
   .post("", handle.create)
   .get(
     "/:id",

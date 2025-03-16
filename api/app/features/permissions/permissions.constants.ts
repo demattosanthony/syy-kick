@@ -51,7 +51,7 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [], // No access
       [ORGANIZATION_MEMBERS]: [], // No access
       [ORGANIZATION_SEATS]: [], // No access
-      [ORGANIZATION_PROJECTS]: [], // Config
+      [ORGANIZATION_PROJECTS]: [READ], // Config
       [ORGANIZATION_PROJECT_DOCS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
@@ -61,8 +61,8 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [], // No access
       [ORGANIZATION_MEMBERS]: [], // No access
       [ORGANIZATION_SEATS]: [], // No access
-      [ORGANIZATION_PROJECTS]: [], // Config
-      [ORGANIZATION_PROJECT_DOCS]: [], // Config
+      [ORGANIZATION_PROJECTS]: [READ], // Config
+      [ORGANIZATION_PROJECT_DOCS]: [READ], // Config
       [ORGANIZATION_PROJECT_INVITATIONS]: [], // Config
       [ORGANIZATION_PROJECT_MEMBERS]: [], // Config
     },
@@ -284,5 +284,4 @@ export default class Constants {
     PROJECT_MANAGER,
     PROJECT_MEMBER,
   ];
-  
 }

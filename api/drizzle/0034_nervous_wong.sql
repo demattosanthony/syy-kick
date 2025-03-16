@@ -65,7 +65,7 @@ ALTER TABLE "permissions" ADD CONSTRAINT "permissions_project_member_role_id_pro
 ALTER TABLE "permissions" ADD CONSTRAINT "permissions_resource_id_resources_id_fk" FOREIGN KEY ("resource_id") REFERENCES "public"."resources"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "permissions" ADD CONSTRAINT "permissions_action_id_actions_id_fk" FOREIGN KEY ("action_id") REFERENCES "public"."actions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "project_member_roles" ADD CONSTRAINT "project_member_roles_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE UNIQUE INDEX "unique_org_member_role" ON "organization_member_roles" USING btree ("organization_member_id","role_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "unique_org_member_role" ON "organization_member_roles" USING btree ("organization_member_id","role_id","organization_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_permission" ON "permissions" USING btree ("org_member_role_id","project_member_role_id","resource_id","action_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "unique_project_member_role" ON "project_member_roles" USING btree ("user_id","project_id","role_id");--> statement-breakpoint
 ALTER TABLE "organization_invites" ADD CONSTRAINT "organization_invites_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

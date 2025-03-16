@@ -98,9 +98,6 @@ export function EditRoleDialog({
     data: updateData,
   } = useUpdateOrgMemberRoleMutation();
 
-  console.log(JSON.stringify(updateErrorData), "<---- updateErrorData");
-  console.log(JSON.stringify(updateData), "<---- updateData");
-
   useEffect(() => {
     if (updateSuccess && updateData) {
       toast.success(updateData.message);
@@ -121,7 +118,6 @@ export function EditRoleDialog({
       initializePermissionsFromResponse(memberRole);
     } else if (member && open && !isLoading) {
       const initialRoleId = memberRole.role.id;
-
       setSelectedRoleId(initialRoleId);
       initializePermissions(initialRoleId);
     }
@@ -140,6 +136,11 @@ export function EditRoleDialog({
         newPermissions[resource.id][action.id] = true;
       });
     });
+
+    // User has a project role, set selected projects
+    if (response?.projects) {
+      setSelectedProjects(response.projects);
+    }
 
     setPermissions(newPermissions);
   };

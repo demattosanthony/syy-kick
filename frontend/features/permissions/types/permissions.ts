@@ -64,7 +64,7 @@ export interface Permission {
 export type TransferableProject = {
   id: string;
   name: string;
-}
+};
 
 export type TransferableProjectsResponse = TransferableProject[];
 
@@ -96,6 +96,7 @@ export interface OrganizationMemberRoleResponse {
   organizationId: string;
   role: Role;
   resources: ResourcePermissions[];
+  projects?: { id: string; name: string }[];
 }
 
 export type RolesResponse = Role[];
@@ -122,7 +123,7 @@ export type OrgMemberResponse = OrgMember[];
 export type OrgInvitationResponseItem = OrgMember & {
   link: string;
   name: undefined;
-}
+};
 
 export type OrgInvitationsResponse = OrgInvitationResponseItem[];
 

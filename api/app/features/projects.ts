@@ -6,6 +6,7 @@ import {
   cosineDistance,
   eq,
   ilike,
+  inArray,
   isNull,
   like,
   or,
@@ -14,6 +15,7 @@ import {
 import {
   documentEmbeddings,
   documents,
+  organizationMemberRoles,
   organizations,
   projects,
   users,
@@ -26,6 +28,9 @@ import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
 import { getOrgIdOrUnedfined } from "../utils";
 import { permissions, Workspace } from "../middleware";
 import { Permissions } from "./permissions/permissions.types";
+import { PermissionManager } from "./permissions/permissions.tools";
+import { permissionsOps } from "./permissions/permissions.ops";
+import Constants from "./permissions/permissions.constants";
 
 const schemas = {
   createProject: z
@@ -107,7 +112,10 @@ async function getProjectOrThrow(projectId: string) {
 }
 
 // Ops methods
-async function createProject(data: z.infer<typeof schemas.createProject>) {
+async function createProject(
+  data: z.infer<typeof schemas.createProject>,
+  userId: string
+) {
   // Check organization exists if organizationId is provided
   if (data.organizationId) {
     const org = await db.query.organizations.findFirst({
@@ -118,43 +126,69 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
     }
   }
 
-  // Check user exists if userId is provided
-  if (data.userId) {
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, data.userId),
-    });
-    if (!user) {
-      throw new Error("User not found");
+  return await db.transaction(async (tx) => {
+    const newProject = await db
+      .insert(projects)
+      .values({
+        name: data.name,
+        description: data.description,
+        projectNumber: data.project_number,
+        estimatedStartDate: data.estimated_start_date
+          ? new Date(data.estimated_start_date)
+          : null,
+        estimatedEndDate: data.estimated_end_date
+          ? new Date(data.estimated_end_date)
+          : null,
+        organizationId: data.organizationId,
+        userId: data.userId,
+        visibility: "private",
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        country: data.country,
+        postalCode: data.postalCode,
+        latitude: data.latitude,
+        longitude: data.longitude,
+      })
+      .returning()
+      .then((res) => res[0]);
+
+    if (data?.organizationId) {
+      const userOrgRole = await db.query.organizationMemberRoles.findFirst({
+        where: and(
+          eq(organizationMemberRoles.organizationId, data.organizationId),
+          eq(organizationMemberRoles.organizationMemberId, userId)
+        ),
+        with: {
+          role: true,
+        },
+      });
+
+      if (!userOrgRole) {
+        throw new Error("User not found in organization");
+      }
+
+      // Create project access for the user if it's a PROJECT_MANAGER or PROJECT_MEMBER
+      if (
+        [
+          Permissions.Roles.PROJECT_MANAGER,
+          Permissions.Roles.PROJECT_MEMBER,
+        ].includes(userOrgRole?.role.name as Permissions.Roles)
+      ) {
+        await permissionsOps.createMemberProjectAccess(
+          userId,
+          newProject.id,
+          data.organizationId,
+          userOrgRole.role.id,
+          await PermissionManager.permissionsNamesToIds(
+            Constants.Access[userOrgRole.role.name]
+          )
+        );
+      }
     }
-  }
 
-  const newProject = await db
-    .insert(projects)
-    .values({
-      name: data.name,
-      description: data.description,
-      projectNumber: data.project_number,
-      estimatedStartDate: data.estimated_start_date
-        ? new Date(data.estimated_start_date)
-        : null,
-      estimatedEndDate: data.estimated_end_date
-        ? new Date(data.estimated_end_date)
-        : null,
-      organizationId: data.organizationId,
-      userId: data.userId,
-      visibility: "private",
-      address: data.address,
-      city: data.city,
-      state: data.state,
-      country: data.country,
-      postalCode: data.postalCode,
-      latitude: data.latitude,
-      longitude: data.longitude,
-    })
-    .returning()
-    .then((res) => res[0]);
-
-  return newProject;
+    return newProject;
+  });
 }
 
 async function deleteProject(projectId: string) {
@@ -188,8 +222,12 @@ async function listProjects(params: {
 
   let conditions = [];
 
-  if (params.organizationId) {
-    conditions.push(eq(projects.organizationId, params.organizationId));
+  if (params.organizationId && params.userId) {
+    const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
+      params.userId,
+      params.organizationId
+    );
+    conditions.push(inArray(projects.id, orgProjectsIds));
   } else if (params.userId) {
     conditions.push(eq(projects.userId, params.userId));
   }
@@ -786,8 +824,15 @@ const handlers = {
       organizationId: orgId,
     };
 
+    if (!req.dbUser?.id) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
     const validatedData = schemas.createProject.parse(data);
-    const project = await createProject(validatedData);
+    const project = await createProject(validatedData, req.dbUser?.id);
+
+    console.log(project, '<---- PROJECT')
     res.json(project);
   },
 
@@ -903,15 +948,7 @@ export default Router()
     ),
     handlers.createProject
   )
-  .get(
-    "/",
-    permissions(
-      Permissions.Resources.ORGANIZATION_PROJECTS,
-      Permissions.Actions.READ
-    ),
-    handlers.listProjects
-  )
-
+  .get("/", handlers.listProjects)
   .post(
     "/:projectId/documents",
     permissions(

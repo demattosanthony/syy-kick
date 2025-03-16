@@ -12,10 +12,8 @@ import {
   users,
 } from "../../config/schema";
 import {
-  OrganizationMemberRole,
-  Permission,
   Permissions,
-  ProjectMemberRole,
+  RawUserRole,
 } from "./permissions.types";
 import { Request, Response } from "express";
 import { getOrgIdOrUnedfined } from "../../utils";
@@ -37,42 +35,49 @@ export const permissionsOps = {
     roleId: string,
     permissions: Record<string, string[]> // ressourceId: actionId[]
   ): Promise<void> => {
-    await db.insert(organizationMemberRoles).values({
-      organizationId: orgId,
-      organizationMemberId: userId,
-      roleId,
-    });
+    const [orgMemberRole] = await db
+      .insert(organizationMemberRoles)
+      .values({
+        organizationId: orgId,
+        organizationMemberId: userId,
+        roleId,
+      })
+      .returning({ id: organizationMemberRoles.id });
 
-    const permissionValues = Object.entries(permissions).flatMap(
-      ([resourceId, actionIds]) =>
-        actionIds.map((actionId) => ({
-          roleId,
-          resourceId,
-          actionId,
-        }))
-    );
-
-    await db.insert(permissionsTable).values(permissionValues);
+    await permissionsOps.insertPermissions(permissions, orgMemberRole.id);
   },
-  /** ---- Create Project permissions */
-  createProjectPermissions: async (
+  /** ---- Create Project permissions for a member */
+  createMemberProjectAccess: async (
     userId: string,
     projectId: string,
     organizationId: string,
     roleId: string,
     permissions: Record<string, string[]> // ressourceId: actionId[]
   ): Promise<void> => {
-    await db.insert(projectMemberRoles).values({
-      userId,
-      projectId,
-      organizationId,
-      roleId,
-    });
+    const [projectMemberRole] = await db
+      .insert(projectMemberRoles)
+      .values({
+        userId,
+        projectId,
+        organizationId,
+        roleId,
+      })
+      .returning({ id: projectMemberRoles.id });
 
+    await permissionsOps.insertPermissions(permissions, projectMemberRole.id);
+  },
+
+  /** ---- Insert permissions */
+  insertPermissions: async (
+    permissions: Record<string, string[]>,
+    orgRoleId?: string,
+    projectRoleId?: string
+  ): Promise<void> => {
     const permissionValues = Object.entries(permissions).flatMap(
       ([resourceId, actionIds]) =>
         actionIds.map((actionId) => ({
-          roleId,
+          orgMemberRoleId: orgRoleId,
+          projectMemberRoleId: projectRoleId,
           resourceId,
           actionId,
         }))
@@ -91,13 +96,22 @@ export const permissionsOps = {
           eq(organizationMemberRoles.organizationMemberId, userId)
         )
       );
+
+    await db
+      .delete(projectMemberRoles)
+      .where(
+        and(
+          eq(projectMemberRoles.userId, userId),
+          eq(projectMemberRoles.organizationId, orgId)
+        )
+      );
   },
 
   /** ---- Get user organization role ---- */
   getUserOrganizationRole: async (
     userId: string,
     orgId: string
-  ): Promise<OrganizationMemberRole | undefined> => {
+  ): Promise<RawUserRole | undefined> => {
     const userRole = await db.query.organizationMemberRoles.findFirst({
       where: and(
         eq(organizationMemberRoles.organizationMemberId, userId),
@@ -112,41 +126,46 @@ export const permissionsOps = {
       return undefined;
     }
 
-    const permissions = await db.query.permissions.findMany({
-      where: eq(permissionsTable.orgMemberRoleId, userRole.id),
-      with: {
-        action: true,
-        resource: true,
-      },
-    });
+    if (
+      [
+        Permissions.Roles.PROJECT_MANAGER,
+        Permissions.Roles.PROJECT_MEMBER,
+      ].includes(userRole.role.name as Permissions.Roles)
+    ) {
+      const projectMemberRolesList = await db.query.projectMemberRoles.findMany(
+        {
+          where: and(
+            eq(projectMemberRoles.userId, userId),
+            eq(projectMemberRoles.organizationId, orgId)
+          ),
+          with: {
+            role: true,
+            project: true,
+          },
+        }
+      );
 
-    return {
-      ...userRole,
-      permissions,
-    };
-  },
+      if (projectMemberRolesList) {
+        const permissions = await db.query.permissions.findMany({
+          where: eq(
+            permissionsTable.projectMemberRoleId,
+            projectMemberRolesList[0].id // TODO: manage access on project level
+          ),
+          with: {
+            action: true,
+            resource: true,
+          },
+        });
 
-  /** ---- Get User Project Role */
-  getUserProjectRole: async (
-    userId: string,
-    projectId: string
-  ): Promise<ProjectMemberRole | undefined> => {
-    const userRole = await db.query.projectMemberRoles.findFirst({
-      where: and(
-        eq(projectMemberRoles.userId, userId),
-        eq(projectMemberRoles.projectId, projectId)
-      ),
-      with: {
-        role: true,
-      },
-    });
-
-    if (!userRole) {
-      return undefined;
+        return {
+          ...userRole,
+          permissions,
+        };
+      }
     }
 
     const permissions = await db.query.permissions.findMany({
-      where: eq(permissionsTable.projectMemberRoleId, userRole.id),
+      where: eq(permissionsTable.orgMemberRoleId, userRole.id),
       with: {
         action: true,
         resource: true,
@@ -548,6 +567,15 @@ export const permissionsOps = {
         and(
           eq(organizationMemberRoles.organizationId, orgId),
           inArray(organizationMemberRoles.organizationMemberId, membersIds)
+        )
+      );
+
+    await db
+      .delete(projectMemberRoles)
+      .where(
+        and(
+          eq(projectMemberRoles.organizationId, orgId),
+          inArray(projectMemberRoles.userId, membersIds)
         )
       );
 

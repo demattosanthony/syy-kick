@@ -374,7 +374,8 @@ export const organizationMemberRoles = pgTable(
   (table) => [
     uniqueIndex("unique_org_member_role").on(
       table.organizationMemberId,
-      table.roleId
+      table.roleId,
+      table.organizationId
     ),
   ]
 );
@@ -567,6 +568,10 @@ export const organizationMemberRolesRelations = relations(
     user: one(users, {
       fields: [organizationMemberRoles.organizationMemberId],
       references: [users.id],
+    }),
+    organization: one(organizations, {
+      fields: [organizationMemberRoles.organizationId],
+      references: [organizations.id],
     }),
   })
 );

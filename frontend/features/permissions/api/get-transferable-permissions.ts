@@ -16,7 +16,7 @@ export function useGetTransferableOrgProjectsQuery({
   organizationId: string;
 }) {
   return useQuery({
-    queryKey: ["organization-transferable-projects", organizationId],
+    queryKey: [],
     queryFn: () => api.permissions.getTransferableOrgProjects(organizationId),
   });
 }

@@ -20,6 +20,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import { OrganizationSettings } from "@/features/organizations/components";
 import { useMeQuery } from "@/features/user/api";
+import { Permissions } from "@/types/permissions";
 
 export default function UserSettings() {
   const { data: user } = useMeQuery();
@@ -32,9 +33,10 @@ export default function UserSettings() {
   const isSuperAdmin = user?.systemRole === "super_admin";
   const isOrgOwner = useMemo(() => {
     if (activeWorkspace?.type !== "organization") return false;
-    return user?.organizationMembers?.some(
-      (member) =>
-        member.role === "owner" && member.organization.id === activeWorkspace.id
+    return user?.organizations?.some(
+      (org) =>
+        org.role.name === Permissions.Roles.ORGANIZATION_ADMIN &&
+        org.id === activeWorkspace.id
     );
   }, [user, activeWorkspace]);
 

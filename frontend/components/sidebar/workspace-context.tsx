@@ -70,13 +70,13 @@ export const WorkspaceProvider = ({
       };
 
       const organizationWorkspaces: Workspace[] = (
-        user?.organizationMembers || []
-      ).map((member) => ({
-        id: member.organization.id,
-        name: member.organization.name,
+        user?.organizations || []
+      ).map((organization) => ({
+        id: organization.id,
+        name: organization.name,
         type: "organization" as const,
-        logo: member.organization.logo,
-        subscriptionStatus: member.organization.subscriptionStatus,
+        logo: organization.logo,
+        subscriptionStatus: organization.subscriptionStatus,
       }));
 
       const allWorkspaces = [personalWorkspace, ...organizationWorkspaces];

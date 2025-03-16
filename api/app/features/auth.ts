@@ -8,6 +8,7 @@ import {
   organizationMemberRoles,
   organizationMembers,
   organizations,
+  roles,
   users,
 } from "../config/schema";
 import s3 from "../config/s3";
@@ -22,17 +23,19 @@ const addLogoUrl = (org: any) => ({
 });
 
 const getUserWithOrgs = async (userId: string) => {
-  const user = await db.query.users.findFirst({
+  const user = (await db.query.users.findFirst({
     where: eq(users.id, userId),
-    with: { organizationMembers: { with: { organization: true } } },
+  })) as DbUser & { organizations?: any[] };
+
+  const organizations = await db.query.organizationMemberRoles.findMany({
+    where: eq(organizationMemberRoles.organizationMemberId, userId),
+    with: { organization: true, role: true },
   });
 
-  if (user?.organizationMembers) {
-    user.organizationMembers = user.organizationMembers.map((member) => ({
-      ...member,
-      organization: member.organization && addLogoUrl(member.organization),
-    }));
-  }
+  user.organizations = organizations.map((o) =>
+    addLogoUrl({ ...o.organization, role: o.role })
+  );
+
   return user;
 };
 
@@ -52,27 +55,17 @@ const addOrgMember = async (orgId: string, userId: string, roleId: string) => {
       eq(organizationMemberRoles.organizationMemberId, userId)
     ),
   });
+
   if (existing) return;
 
-  const [orgMemberRole] = await db
-    .insert(organizationMemberRoles)
-    .values({ organizationId: orgId, organizationMemberId: userId, roleId })
-    .returning({ id: organizationMemberRoles.id });
+  const role = await db.query.roles.findFirst({
+    where: eq(roles.id, roleId),
+  });
 
-  if (!orgMemberRole) return null;
+  if (!role) throw new Error("Role not found");
 
-  const orgMemberRoleWithRole =
-    await db.query.organizationMemberRoles.findFirst({
-      where: eq(organizationMemberRoles.id, orgMemberRole.id),
-      with: {
-        role: true,
-      },
-    });
-
-  if (!orgMemberRoleWithRole) return;
-
-  PermissionsFactory.createAccess(
-    orgMemberRoleWithRole.role.name as Permissions.Roles,
+  await PermissionsFactory.createAccess(
+    role.name as Permissions.Roles,
     orgId,
     userId
   );

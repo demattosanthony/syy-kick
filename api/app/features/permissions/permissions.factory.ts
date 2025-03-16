@@ -3,16 +3,74 @@ import { permissionsOps } from "./permissions.ops";
 import { PermissionManager } from "./permissions.tools";
 import { Permissions } from "./permissions.types";
 
+abstract class BasePermissionsFactory {
+  abstract role: Permissions.Roles;
+
+  async createAccess(
+    userId: string,
+    organizationId: string,
+    permissions: Record<string, string[]>
+  ) {
+    const roleId = await PermissionManager.getRoleId(this.role);
+    if (!roleId) {
+      throw new Error("Role not found");
+    }
+
+    await permissionsOps.createOrgPermissions(
+      userId,
+      organizationId,
+      roleId,
+      permissions
+    );
+  }
+
+  static async addProjectAccess(
+    userId: string,
+    projectId: string,
+    organizationId: string,
+    roleId: string,
+    permissions: Record<string, string[]>
+  ) {
+    await permissionsOps.createMemberProjectAccess(
+      userId,
+      projectId,
+      organizationId,
+      roleId,
+      permissions
+    );
+  }
+}
+
+class OrganizationAdmin extends BasePermissionsFactory {
+  role = Permissions.Roles.ORGANIZATION_ADMIN;
+}
+
+class OrganizationManager extends BasePermissionsFactory {
+  role = Permissions.Roles.ORGANIZATION_MANAGER;
+}
+
+class ProjectManager extends BasePermissionsFactory {
+  role = Permissions.Roles.PROJECT_MANAGER;
+}
+
+class ProjectMember extends BasePermissionsFactory {
+  role = Permissions.Roles.PROJECT_MEMBER;
+}
+
+class SuperAdmin extends BasePermissionsFactory {
+  role = Permissions.Roles.SUPER_ADMIN;
+}
+
 export default class PermissionsFactory {
   /**
    * Create a user with the specified role and permissions
    * @param {Permissions.Roles} role - The role of the user
-   * @param {string} entityId - The organization or project ID
+   * @param {string} organizationId - The organization ID
    * @param {string} userId - The user ID
    * @param {Record<Permissions.Resources, Permissions.Actions[]>} customPermissions - Custom permissions for the user
    * @returns {Promise<void>}
    * @example
-   * UserFactory.create(
+   * PermissionsFactory.createAccess(
    *  Permissions.Roles.ORGANIZATION_ADMIN,
    *  "org-id",
    *  "user-id",
@@ -27,161 +85,30 @@ export default class PermissionsFactory {
     role: Permissions.Roles,
     organizationId: string,
     userId: string,
-    projectId?: string,
     customPermissions?: Record<Permissions.Resources, Permissions.Actions[]>
   ): Promise<void> {
-    switch (role) {
-      case Permissions.Roles.ORGANIZATION_ADMIN:
-        await new OrganizationAdmin().create(
-          userId,
-          organizationId,
-          Constants.Access[role]
-        );
-        break;
-      case Permissions.Roles.ORGANIZATION_MANAGER:
-        await new OrganizationManager().create(
-          userId,
-          organizationId,
-          Constants.Access[role]
-        );
-        break;
-      case Permissions.Roles.PROJECT_MANAGER:
-        if (!projectId) {
-          throw new Error("Project ID is required for project member");
-        }
-        await new ProjectManager().create(
-          userId,
-          organizationId,
-          {
-            ...Constants.Access[role],
-            ...customPermissions,
-          },
-          projectId
-        );
-        break;
-      case Permissions.Roles.PROJECT_MEMBER:
-        if (!projectId) {
-          throw new Error("Project ID is required for project member");
-        }
-        await new ProjectMember().create(
-          userId,
-          organizationId,
-          {
-            ...Constants.Access[role],
-            ...customPermissions,
-          },
-          projectId
-        );
-        break;
-      default:
-        throw new Error("Invalid role");
-    }
-  }
-}
+    const permissions = {
+      ...Constants.Access[role],
+      ...(customPermissions || {}),
+    };
 
-class User {
-  async create(
-    userId: string,
-    organizationId: string,
-    permissions: Record<Permissions.Resources, Permissions.Actions[]>,
-    projectId?: string
-  ) {
-    throw new Error("Method not implemented.");
-  }
-}
+    const RoleClass = {
+      [Permissions.Roles.SUPER_ADMIN]: SuperAdmin,
+      [Permissions.Roles.ORGANIZATION_ADMIN]: OrganizationAdmin,
+      [Permissions.Roles.ORGANIZATION_MANAGER]: OrganizationManager,
+      [Permissions.Roles.PROJECT_MANAGER]: ProjectManager,
+      [Permissions.Roles.PROJECT_MEMBER]: ProjectMember,
+    }[role];
 
-class OrganizationAdmin extends User {
-  async create(
-    userId: string,
-    organizationId: string,
-    permissions: Record<Permissions.Resources, Permissions.Actions[]>
-  ) {
-    const roleId = await PermissionManager.getRoleId(
-      Permissions.Roles.ORGANIZATION_ADMIN
-    );
-
-    if (!roleId) {
-      throw new Error("Role not found");
+    if (!RoleClass) {
+      throw new Error("Invalid role");
     }
 
-    await permissionsOps.createOrgPermissions(
+    const userInstance = new RoleClass();
+    await userInstance.createAccess(
       userId,
       organizationId,
-      roleId,
-      permissions
-    );
-  }
-}
-
-class OrganizationManager extends User {
-  async create(
-    userId: string,
-    organizationId: string,
-    permissions: Record<Permissions.Resources, Permissions.Actions[]>
-  ) {
-    const roleId = await PermissionManager.getRoleId(
-      Permissions.Roles.ORGANIZATION_MANAGER
-    );
-
-    if (!roleId) {
-      throw new Error("Role not found");
-    }
-
-    await permissionsOps.createOrgPermissions(
-      userId,
-      organizationId,
-      roleId,
-      permissions
-    );
-  }
-}
-
-class ProjectManager extends User {
-  async create(
-    userId: string,
-    organizationId: string,
-    permissions: Record<Permissions.Resources, Permissions.Actions[]>,
-    projectId: string
-  ) {
-    const roleId = await PermissionManager.getRoleId(
-      Permissions.Roles.PROJECT_MANAGER
-    );
-
-    if (!roleId) {
-      throw new Error("Role not found");
-    }
-
-    await permissionsOps.createProjectPermissions(
-      userId,
-      projectId,
-      organizationId,
-      roleId,
-      permissions
-    );
-  }
-}
-
-class ProjectMember extends User {
-  async create(
-    userId: string,
-    organizationId: string,
-    permissions: Record<Permissions.Resources, Permissions.Actions[]>,
-    projectId: string
-  ) {
-    const roleId = await PermissionManager.getRoleId(
-      Permissions.Roles.PROJECT_MEMBER
-    );
-
-    if (!roleId) {
-      throw new Error("Role not found");
-    }
-
-    await permissionsOps.createProjectPermissions(
-      userId,
-      projectId,
-      organizationId,
-      roleId,
-      permissions
+      await PermissionManager.permissionsNamesToIds(permissions)
     );
   }
 }

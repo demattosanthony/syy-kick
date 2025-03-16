@@ -56,28 +56,6 @@ export interface Permission {
   updatedAt: Date;
 }
 
-export interface OrganizationMemberRole {
-  id: string;
-  organizationId: string;
-  organizationMemberId: string;
-  roleId: string;
-  createdAt: Date;
-  updatedAt: Date;
-  role: Role;
-  permissions: UserPermissions;
-}
-
-export interface ProjectMemberRole {
-  id: string;
-  userId: string;
-  projectId: string;
-  roleId: string;
-  createdAt: Date;
-  updatedAt: Date;
-  role: Role;
-  permissions: UserPermissions;
-}
-
 export type UserPermissions = {
   id: string;
   createdAt: Date;
@@ -102,6 +80,19 @@ export type UserPermissions = {
   };
 }[];
 
+
+export interface RawUserRole {
+  id: string;
+  organizationId?: string;
+  projectId?: string;
+  roleId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  role: Role;
+  permissions: UserPermissions;
+  projects?: { id: string; name: string }[];
+}
+
 export type UserRole = {
   id: string;
   role: Role;
@@ -113,13 +104,7 @@ export type UserRole = {
       name: string;
     }[];
   }[];
-};
-export type UserOrganizationRole = UserRole & {
-  organizationId: string;
-};
-
-export type UserProjectRole = UserRole & {
-  projectId: string;
+  projects?: { id: string; name: string }[];
 };
 
 export type TransferableRolesResource = {

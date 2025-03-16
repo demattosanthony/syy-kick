@@ -1,5 +1,5 @@
 {
-  "id": "e1ffd161-6b2f-4837-958e-fd462000c974",
+  "id": "57812c23-bfa2-4339-8b2b-e682c7a07928",
   "prevId": "2f347cbe-1044-4690-821b-f219654c8534",
   "version": "7",
   "dialect": "postgresql",
@@ -765,6 +765,12 @@
             },
             {
               "expression": "role_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "organization_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

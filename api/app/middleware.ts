@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { CONFIG } from "./config/constants";
 import db from "./config/db";
 import { organizationMembers, organizations } from "./config/schema";
@@ -144,18 +144,39 @@ export const permissions = (
     const orgId = getOrgIdOrUnedfined(req.workspace);
     const { id: userId } = req.dbUser;
 
+    // Check if user is trying to create a personal project, if so, skip permission check
+    if (
+      resource === Permissions.Resources.ORGANIZATION_PROJECTS &&
+      action === Permissions.Actions.CREATE &&
+      !orgId
+    ) {
+      next();
+      return;
+    }
+
+    const { projectId } = req.params;
+
+    // Check if the user is the project owner, if so, skip permission check
+    if (
+      projectId &&
+      (await PermissionManager.isUserProject(userId, projectId))
+    ) {
+      next();
+      return;
+    }
+
     // Check if user is a member of an organization
     if (!orgId) {
       res.status(403).json({ error: "Please select an organization." });
       return;
     }
 
-    let orgRoleId = await PermissionManager.getUserOrganisationRole(
+    // TODO: get role instead of role id
+    let orgRole = await PermissionManager.getUserOrganisationRole(
       userId,
       orgId
     );
 
-    const { projectId } = req.params;
     const resourceId = await PermissionManager.getResourseId(resource);
 
     if (!resourceId) {
@@ -163,41 +184,23 @@ export const permissions = (
       return;
     }
 
-    if (orgRoleId) {
+    if (!orgRole) {
+      res
+        .status(403)
+        .json({ error: "You don't have access to this resource." });
+      return;
+    }
+
+    if (
+      [
+        Permissions.Roles.ORGANIZATION_ADMIN,
+        Permissions.Roles.ORGANIZATION_MANAGER,
+      ].includes(orgRole.role.name as Permissions.Roles)
+    ) {
       let userHasAccessToRessource =
         await permissionManager.userHasAccessToRessource(
           Permissions.Level.ORGANIZATION,
-          orgRoleId,
-          resourceId,
-          action
-        );
-
-      if (!userHasAccessToRessource) {
-        res
-          .status(403)
-          .json({ error: "You don't have access to this resource." });
-
-        return;
-      }
-      // IF user is not an organization member, check if user is a project member
-    } else if (projectId) {
-      const projectRoleId = await permissionManager.getUserProjectRole(
-        userId,
-        projectId
-      );
-
-      if (!projectRoleId) {
-        res
-          .status(403)
-          .json({ error: "You don't have access to this resource." });
-
-        return;
-      }
-
-      let userHasAccessToRessource =
-        await permissionManager.userHasAccessToRessource(
-          Permissions.Level.PROJECT,
-          projectRoleId,
+          orgRole,
           resourceId,
           action
         );
@@ -210,11 +213,47 @@ export const permissions = (
         return;
       }
     } else {
-      res
-        .status(403)
-        .json({ error: "You don't have access to this resource." });
+      console.log(projectId, "<---- Project Id");
+      if (!projectId) {
+        res
+          .status(403)
+          .json({ error: "You don't have access to this resource." });
 
-      return;
+        return;
+      }
+
+      const projectRole = await permissionManager.getUserProjectRole(
+        userId,
+        projectId
+      );
+
+      console.log(projectRole, "<---- Project Role");
+
+      if (!projectRole) {
+        res
+          .status(403)
+          .json({ error: "You don't have access to this resource." });
+
+        return;
+      }
+
+      console.log(userId, "<---- User Id");
+
+      let userHasAccessToRessource =
+        await permissionManager.userHasAccessToRessource(
+          Permissions.Level.PROJECT,
+          projectRole,
+          resourceId,
+          action
+        );
+
+      if (!userHasAccessToRessource) {
+        res
+          .status(403)
+          .json({ error: "You don't have access to this resource." });
+
+        return;
+      }
     }
 
     next();
