@@ -102,6 +102,7 @@ import {
   AssistantSkeletonMessage,
   UserSkeletonMessage,
 } from "./message-skeletons";
+import { Loader } from "@/components/ui/loader";
 
 const LoadingMessage = React.memo(() => {
   return (
@@ -112,24 +113,7 @@ const LoadingMessage = React.memo(() => {
         </div>
 
         <div className="flex items-center rounded-lg bg-background">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            {[0, 1, 2].map((index) => (
-              <motion.span
-                key={index}
-                className="inline-block w-2 h-2 rounded-full bg-current"
-                initial={{ opacity: 0.3, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  duration: 0.6,
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                  delay: index * 0.2,
-                }}
-              >
-                &nbsp;
-              </motion.span>
-            ))}
-          </div>
+          <Loader variant="wave" size="sm" />
         </div>
       </div>
     </div>
@@ -179,8 +163,7 @@ const ChatMessagesList = React.memo(
                 const nextMessage = messages[index + 1];
                 const showEye =
                   message.role !== MessageRole.user &&
-                  (!nextMessage || nextMessage.role === MessageRole.user) &&
-                  !isLoading;
+                  (!nextMessage || nextMessage.role === MessageRole.user);
 
                 return message.role === MessageRole.user ? (
                   <UserMessage key={index} message={message} />

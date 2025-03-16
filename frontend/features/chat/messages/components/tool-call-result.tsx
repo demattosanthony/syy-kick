@@ -54,23 +54,34 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
         >
           {hasResults ? (
             <div className="flex items-center gap-2">
-              {/* Show first 3 file icons */}
-              <div className="flex -space-x-1">
-                {tool.result.dataForFrontend
-                  .slice(0, 3)
-                  .map((result: { source: string }, idx: number) => (
-                    <div
-                      key={`file-icon-${idx}`}
-                      className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"
-                    >
-                      <File className="w-3 h-3 text-muted-foreground" />
-                    </div>
-                  ))}
-              </div>
+              {resultCount > 0 ? (
+                <>
+                  {/* Show first 3 file icons */}
+                  <div className="flex -space-x-1">
+                    {tool.result.dataForFrontend
+                      .slice(0, 3)
+                      .map((result: { source: string }, idx: number) => (
+                        <div
+                          key={`file-icon-${idx}`}
+                          className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"
+                        >
+                          <File className="w-3 h-3 text-muted-foreground" />
+                        </div>
+                      ))}
+                  </div>
 
-              <span className="font-normal text-sm">
-                {resultCount} {resultCount === 1 ? "source" : "sources"}
-              </span>
+                  <span className="font-normal text-sm">
+                    {resultCount} {resultCount === 1 ? "source" : "sources"}
+                  </span>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Search className="w-3 h-3 text-muted-foreground" />
+                  <span className="font-normal text-sm text-muted-foreground">
+                    No results found
+                  </span>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-xs">
@@ -96,12 +107,13 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
                 projectId: string;
                 page?: number;
                 source: string;
+                snippet: string;
               },
               idx: number
             ) => (
               <div
                 key={`result-${idx}`}
-                className="flex items-center gap-3 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
+                className="flex flex-col gap-3 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
                 onClick={() => {
                   window.open(
                     `/projects/${result.projectId}/blob/${result.path}${
@@ -111,23 +123,30 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
                   );
                 }}
               >
-                <div className="w-8 h-8 flex-shrink-0">
-                  <Avatar className="w-full h-full">
-                    <AvatarFallback>
-                      <File className="w-4 h-4 text-muted-foreground" />
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">
-                    {result.source}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 flex-shrink-0">
+                    <Avatar className="w-full h-full">
+                      <AvatarFallback>
+                        <File className="w-4 h-4 text-muted-foreground" />
+                      </AvatarFallback>
+                    </Avatar>
                   </div>
-                  {result.page && (
-                    <span className="text-xs text-muted-foreground">
-                      Page {result.page}
-                    </span>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {result.source}
+                    </div>
+                    {result.page && (
+                      <span className="text-xs text-muted-foreground">
+                        Page {result.page}
+                      </span>
+                    )}
+                  </div>
                 </div>
+                {result.snippet && (
+                  <div className="text-xs text-muted-foreground line-clamp-5">
+                    {result.snippet}
+                  </div>
+                )}
               </div>
             )
           )}
