@@ -126,9 +126,7 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 flex-shrink-0">
                     <Avatar className="w-full h-full">
-                      <AvatarFallback>
-                        <File className="w-4 h-4 text-muted-foreground" />
-                      </AvatarFallback>
+                      <AvatarFallback>📑</AvatarFallback>
                     </Avatar>
                   </div>
                   <div className="flex-1 min-w-0">
