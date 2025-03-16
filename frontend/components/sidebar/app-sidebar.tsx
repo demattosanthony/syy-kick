@@ -76,8 +76,6 @@ export function AppSidebar({
     setIsPinned((prev) => !prev);
   }, []);
 
-  const { canCreateOrgProjects } = usePermissions();
-
   return (
     <Sidebar
       collapsible={"icon"}

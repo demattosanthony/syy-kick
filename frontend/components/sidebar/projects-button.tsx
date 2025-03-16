@@ -7,6 +7,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { CreateProjectDialog } from "@/features/projects/components";
+import { usePermissions } from "@/features/permissions/context";
 
 export function ProjectsButton() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export function ProjectsButton() {
   const isMobile = useIsMobile();
   const pathname = usePathname();
   const isProjectsPage = pathname === "/projects";
+  const { canCreateOrgProjects } = usePermissions();
 
   return (
     <div className="relative group/projects">
@@ -44,7 +46,7 @@ export function ProjectsButton() {
         )}
       </Button>
 
-      {state === "expanded" && !isMobile && (
+      {state === "expanded" && !isMobile && canCreateOrgProjects && (
         <CreateProjectDialog
           trigger={
             <Button
