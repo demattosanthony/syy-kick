@@ -265,7 +265,7 @@ Ensure all equipment is properly identified and mapped to their respective servi
       {
         id: "mechanical-drawings",
         type: "file",
-        title: "Upload Mechanical Drawings",
+        title: "Mechanical Drawings PDF",
         description: "Containing mechanical schedules and floorplans",
         acceptedFileTypes: "application/pdf",
         required: true,
@@ -273,7 +273,7 @@ Ensure all equipment is properly identified and mapped to their respective servi
       {
         id: "mechanical-schedule",
         type: "file",
-        title: "Upload Mechanical Schedule",
+        title: "Mechanical Schedule PDF",
         description: "Primary source for areas served",
         acceptedFileTypes: "application/pdf",
         required: false,
@@ -281,7 +281,7 @@ Ensure all equipment is properly identified and mapped to their respective servi
       {
         id: "mechanical-floorplans",
         type: "file",
-        title: "Upload Mechanical Floorplans",
+        title: "Mechanical Floorplans PDF",
         description: "Secondary source if schedules do not list service areas",
         acceptedFileTypes: "application/pdf",
         required: false,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, File, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, File, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWorkflowQuery } from "../api";
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { MarkdownViewer } from "@/features/chat/messages/components";
 import { CsvViewer } from "@/features/chat/messages/components/viewers/artifact-viewer";
 import { useCsvActions } from "@/hooks/use-csv-actions";
+import { Loader } from "@/components/ui/loader";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -41,7 +42,7 @@ function StepHeader({
             : "bg-muted text-muted-foreground"
         )}
       >
-        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : number}
+        {isLoading ? <Loader className="h-4 w-4" variant="circular" /> : number}
       </div>
       <div>
         <h2 className="text-xl font-semibold">{title}</h2>
@@ -133,6 +134,7 @@ export default function WorkflowPageContent({
           ...prev,
           [inputId]: e.target.files?.[0] || null,
         }));
+        setInput(e.target.files[0].name);
       }
     };
 
@@ -206,6 +208,7 @@ export default function WorkflowPageContent({
   };
 
   const currentStep = getCurrentStep();
+  console.log("Current step:", currentStep);
 
   if (isLoading) {
     return (
@@ -246,10 +249,12 @@ export default function WorkflowPageContent({
   };
   return (
     <div className="h-screen w-full flex flex-col items-center overflow-y-auto">
-      <div className="container mx-auto px-4 py-12 max-w-4xl ">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold mb-4">{workflow.title}</h1>
-          <p className="text-lg text-muted-foreground">
+      <div className="container mx-auto px-4 py-16 max-w-3xl ">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-4 gap-2">
+            📋&nbsp;{workflow.title}
+          </h1>
+          <p className="text-base text-muted-foreground">
             {workflow.description}
           </p>
         </div>
@@ -268,21 +273,14 @@ export default function WorkflowPageContent({
         <div className="flex flex-col gap-8">
           {/* Step 1: Upload documents - now supports multiple inputs */}
           <div>
-            <StepHeader
-              number={1}
-              title="Upload Documents"
-              description="Upload the required files for this workflow"
-              isActive={currentStep === 1}
-            />
-
             {workflowInputs.map((input, index) => (
               <div key={input.id} className="mb-6">
-                <h3 className="text-lg font-medium mb-2">{input.title}</h3>
-                {input.description && (
+                <h3 className="text-lg font-bold mb-2">{input.title}</h3>
+                {/* {input.description && (
                   <p className="text-sm text-muted-foreground mb-4">
                     {input.description}
                   </p>
-                )}
+                )} */}
 
                 <div
                   className={cn(
@@ -357,7 +355,11 @@ export default function WorkflowPageContent({
                 </div>
 
                 {input.required && (
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <p
+                    className={`text-xs mt-2 ${
+                      files[input.id] ? "text-muted-foreground" : "text-red-500"
+                    }`}
+                  >
                     {files[input.id]
                       ? "✓ Required file uploaded"
                       : "* Required"}
@@ -373,9 +375,8 @@ export default function WorkflowPageContent({
                 disabled={!areRequiredFilesUploaded()}
                 onClick={onSubmit}
               >
-                {areRequiredFilesUploaded()
-                  ? workflow.buttonText || "Run Workflow"
-                  : "Upload required files to continue"}
+                <Play className="h-6 w-6" />
+                {"Submit and run flow"}
               </Button>
             )}
           </div>
