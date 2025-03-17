@@ -34,7 +34,7 @@ export const membersTableTranslations = Object.freeze({
   },
 });
 
-export const editRoleTranslations = Object.freeze({
+export const editRoleTranslations: Record<string, string> = Object.freeze({
   [Permissions.Resources.ORGANIZATION]: "Organization",
   [Permissions.Resources.ORGANIZATION_INVITATIONS]: "Organization Invitations",
   [Permissions.Resources.ORGANIZATION_MEMBERS]: "Organization Members",
@@ -46,4 +46,11 @@ export const editRoleTranslations = Object.freeze({
     "Organization Project Invitations",
   [Permissions.Resources.ORGANIZATION_PROJECT_MEMBERS]:
     "Organization Project Members",
+});
+
+export const editRoleActions: Record<string, string> = Object.freeze({
+  [Permissions.Actions.CREATE]: "Create",
+  [Permissions.Actions.READ]: "Read",
+  [Permissions.Actions.UPDATE]: "Update",
+  [Permissions.Actions.DELETE]: "Delete",
 });

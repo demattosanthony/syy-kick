@@ -45,7 +45,7 @@ import {
 import { membersTableTranslations } from "@/features/permissions/utils";
 import useDeleteOrgInvitationsMutation from "@/features/permissions/api/organizations/delete-org-invitations";
 import { toast } from "sonner";
-import { EditRoleDialog } from "./edit-role-dialog";
+import EditRoleDialog from "./edit-role-dialog";
 import useDeleteOrgMembersMutation from "@/features/permissions/api/organizations/delete-org-members";
 
 type MembersTableProps = {

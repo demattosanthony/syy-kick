@@ -202,7 +202,7 @@ export default class Constants {
       },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: false, configurable: true },
-        [READ]: { default: false, configurable: true },
+        [READ]: { default: true, configurable: false },
         [UPDATE]: { default: false, configurable: true },
         [DELETE]: { default: false, configurable: true },
       },
@@ -252,7 +252,7 @@ export default class Constants {
       },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: false, configurable: false },
-        [READ]: { default: false, configurable: true },
+        [READ]: { default: true, configurable: false },
         [UPDATE]: { default: false, configurable: true },
         [DELETE]: { default: false, configurable: false },
       },

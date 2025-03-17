@@ -479,6 +479,15 @@ const handle = {
     }
 
     const orgId = req.params.id;
+
+    // Personnal workspace, give all permissions
+    if (user.id === orgId) {
+      const formattedRole =
+        await PermissionManager.getPersonnalWorkspacePermissions();
+      res.json(formattedRole);
+      return;
+    }
+
     const role = await permissionsOps.getUserOrganizationRole(user.id, orgId);
 
     if (!role) {

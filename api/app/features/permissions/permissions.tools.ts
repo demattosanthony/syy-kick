@@ -513,6 +513,17 @@ export class PermissionManager {
     return !!project;
   }
 
+  /**
+   * Get the user's organization projects IDs
+   * @param {string} userId - The user ID
+   * @param {string} orgId - The organization ID
+   * @returns {Promise<string[]>} - The user's organization projects IDs
+   * @memberof PermissionManager
+   * @example
+   * const projectsIds = await PermissionManager.getUserOrgProjectsIds("user-id", "org-id");
+   * console.log(projectsIds);
+   * // ["project-id-1", "project-id-2"]
+   **/
   static async getUserOrgProjectsIds(
     userId: string,
     orgId: string
@@ -557,11 +568,39 @@ export class PermissionManager {
         ),
       });
 
-      console.log(projectsList, '<--- project list');
-
       return projectsList.map((project) => project.projectId);
     }
 
     return [];
+  }
+
+  /**
+   * Get personnal workspace permissions (full access)
+   * @returns {Promise<UserRole>} - The user's personnal workspace permissions
+   * @memberof PermissionManager
+   * @example
+   * const personnalWorkspacePermissions = await PermissionManager.getPersonnalWorkspacePermissions();
+   **/
+  static async getPersonnalWorkspacePermissions(): Promise<UserRole> {
+    const role = await db.query.roles.findFirst({
+      where: eq(roles.name, Permissions.Roles.ORGANIZATION_ADMIN),
+    });
+
+    const resources = await db.query.resources.findMany();
+    const actions = await db.query.actions.findMany();
+
+    return {
+      id: "personal-workspace",
+      role: role as Role,
+      resources: resources.map((resource) => ({
+        id: resource.id,
+        name: resource.name,
+        actions: actions.map((action) => ({
+          id: action.id,
+          name: action.name,
+        })),
+      })),
+      projects: [],
+    };
   }
 }

@@ -9,13 +9,16 @@ import { cn } from "@/lib/utils";
 import { CreateProjectDialog } from "@/features/projects/components";
 import { usePermissions } from "@/features/permissions/context";
 
-export function ProjectsButton() {
+export function ProjectsButton({
+  canAdd = false
+}: {
+  canAdd: boolean;
+}) {
   const router = useRouter();
   const { state, toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
   const pathname = usePathname();
   const isProjectsPage = pathname === "/projects";
-  const { canCreateOrgProjects } = usePermissions();
 
   return (
     <div className="relative group/projects">
@@ -46,7 +49,7 @@ export function ProjectsButton() {
         )}
       </Button>
 
-      {state === "expanded" && !isMobile && canCreateOrgProjects && (
+      {state === "expanded" && !isMobile && canAdd && (
         <CreateProjectDialog
           trigger={
             <Button

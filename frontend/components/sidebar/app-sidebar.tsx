@@ -50,6 +50,7 @@ export function AppSidebar({
   const [isPinned, setIsPinned] = React.useState(true);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
+  const { canCreateOrgProjects } = usePermissions();
 
   // Keep pin state in sync with sidebar state
   React.useEffect(() => {

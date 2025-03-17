@@ -1,24 +1,8 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "../../../components/ui/avatar";
-import { Input } from "../../../components/ui/input";
-import { Camera, Check, Copy, Ellipsis } from "lucide-react";
 import { Button } from "../../../components/ui/button";
-import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import { useState } from "react";
 import { toast } from "sonner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../../../components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,27 +14,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "../../../components/ui/alert-dialog";
-import OrgManageSeats from "./org-manage-seats";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/select";
 import {
   useOrgQuery,
   useOrganizationMembersQuery,
   useDeleteOrganizationMutation,
 } from "../api";
 import { useMeQuery } from "@/features/user/api";
-import { MembersManagement } from "./members-management";
 import {
   useGetOrganizationRole,
   useGetOrganizationTransferablePermission,
   useGetOrgInvitationsQuery,
 } from "@/features/permissions/api";
 import OrganizationInfo from "./organization-info";
+import OrgManageSeats from "./org-manage-seats";
+import MembersManagement from "./members-management";
 
 const OrganizationSettings = ({ orgId }: { orgId: string }) => {
   const { data: user } = useMeQuery();

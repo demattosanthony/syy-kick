@@ -54,6 +54,10 @@ import { useGetTransferableOrgProjectsQuery } from "@/features/permissions/api";
 import { Badge } from "@/components/ui/badge";
 import useUpdateOrgMemberRoleMutation from "@/features/permissions/api/organizations/update-org-member-role";
 import { toast } from "sonner";
+import {
+  editRoleActions,
+  editRoleTranslations,
+} from "@/features/permissions/utils";
 
 type EditRoleDialogProps = {
   open: boolean;
@@ -63,7 +67,7 @@ type EditRoleDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-export function EditRoleDialog({
+export default function EditRoleDialog({
   open,
   onOpenChange,
   member,
@@ -84,10 +88,9 @@ export function EditRoleDialog({
     memberId: member.id,
   });
 
-  const { data: projects, error: errorProjects } =
-    useGetTransferableOrgProjectsQuery({
-      organizationId,
-    });
+  const { data: projects } = useGetTransferableOrgProjectsQuery({
+    organizationId,
+  });
 
   const {
     mutate: updateOrgMemberRole,
@@ -221,19 +224,6 @@ export function EditRoleDialog({
     return transferablePermissions.find((r) => r.id === selectedRoleId) || null;
   }, [selectedRoleId, transferablePermissions]);
 
-  // Format resource name for display
-  const formatResourceName = (name: string) => {
-    return name
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
-
-  // Format action name for display
-  const formatActionName = (name: string) => {
-    return name.charAt(0).toUpperCase() + name.slice(1);
-  };
-
   // Check if an action is configurable
   const isActionConfigurable = (resourceId: string, actionId: string) => {
     if (!transferablePermissions) return false;
@@ -270,6 +260,28 @@ export function EditRoleDialog({
 
   const removeProject = (projectId: string) => {
     setSelectedProjects((current) => current.filter((p) => p.id !== projectId));
+  };
+
+  const getConfigBadge = (resourceName: Permissions.Resources) => {
+    if (!selectedRole) return null;
+
+    if (
+      Permissions.Roles.PROJECT_MEMBER === selectedRole.name &&
+      [
+        Permissions.Resources.ORGANIZATION_PROJECTS,
+        Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      ].includes(resourceName)
+    ) {
+      return <Badge>config</Badge>;
+    }
+
+    if (
+      Permissions.Roles.PROJECT_MANAGER === selectedRole.name &&
+      Permissions.Resources.ORGANIZATION_PROJECTS === resourceName
+    ) {
+      return <Badge>config</Badge>;
+    }
+    return null;
   };
 
   if (!transferablePermissions) return null;
@@ -425,7 +437,12 @@ export function EditRoleDialog({
               {selectedRole.resources.map((resource) => (
                 <AccordionItem key={resource.id} value={resource.id}>
                   <AccordionTrigger className="text-sm font-medium">
-                    {formatResourceName(resource.name)}
+                    {
+                      editRoleTranslations[
+                        resource.name as Permissions.Resources
+                      ]
+                    }
+                    {getConfigBadge(resource.name as Permissions.Resources)}
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-3 pl-2">
@@ -446,7 +463,6 @@ export function EditRoleDialog({
                                 permissions[resource.id]?.[action.id] || false
                               }
                               onCheckedChange={(checked: boolean) => {
-                                console.log(checked, "<---- checked");
                                 handlePermissionChange(
                                   resource.id,
                                   action.id,
@@ -461,7 +477,11 @@ export function EditRoleDialog({
                                 !isConfigurable ? "text-muted-foreground" : ""
                               }
                             >
-                              {formatActionName(action.name)}
+                              {
+                                editRoleActions[
+                                  action.name as Permissions.Actions
+                                ]
+                              }
                               {!isConfigurable && (
                                 <span className="ml-2 text-xs text-muted-foreground">
                                   (Not configurable)

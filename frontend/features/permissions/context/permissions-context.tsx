@@ -24,9 +24,11 @@ const PermissionsContext = createContext<PermissionsContextType | undefined>(
 
 export const PermissionsProvider = ({
   orgId,
+  userId,
   children,
 }: {
   orgId: string;
+  userId?: string;
   children: React.ReactNode;
 }) => {
   const { data: userRole, isLoading } = useGetOrganizationRole(orgId);
@@ -48,8 +50,24 @@ export const PermissionsProvider = ({
     canUpdateOrgProjects,
     canDeleteOrgProjects,
   ] = useMemo(() => {
+    if (userId === orgId) {
+      return [true, true, true, true, true, true, true, true, true, true, true];
+    }
+
     if (!userPermissions) {
-      return [false, false, false, false, false, false, false, false, false, false, false];
+      return [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ];
     }
     return [
       userPermissions.hasAccess(
@@ -97,7 +115,7 @@ export const PermissionsProvider = ({
         Permissions.Actions.DELETE
       ),
     ];
-  }, [userPermissions]);
+  }, [userPermissions, userId, orgId]);
 
   return (
     <PermissionsContext.Provider

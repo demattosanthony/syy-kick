@@ -12,7 +12,7 @@ import {
 } from "@/features/permissions/types";
 import { usePermissions } from "@/features/permissions/context/permissions-context";
 
-export function MembersManagement({
+export default function MembersManagement({
   orgId,
   invitationsList,
   userRole,

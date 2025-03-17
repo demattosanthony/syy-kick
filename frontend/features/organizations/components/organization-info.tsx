@@ -1,3 +1,5 @@
+"use client";
+
 import { Card } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { useUpdateOrganizationMutation } from "../api";

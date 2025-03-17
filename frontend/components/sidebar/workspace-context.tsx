@@ -109,7 +109,7 @@ export const WorkspaceProvider = ({
   return (
     <WorkspaceContext.Provider value={contextValue}>
       {activeWorkspace ? (
-        <PermissionsProvider orgId={activeWorkspace.id}>
+        <PermissionsProvider orgId={activeWorkspace.id} userId={user?.id}>
           {children}
         </PermissionsProvider>
       ) : (
