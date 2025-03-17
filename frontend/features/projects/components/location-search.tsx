@@ -238,9 +238,10 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
         </PopoverTrigger>
         <PopoverContent className="p-0 w-[400px]" align="start">
           {!showManualEntry ? (
-            <Command>
+            <Command className="pointer-events-auto">
               <CommandInput
                 placeholder="Search for address..."
+                className="pointer-events-auto"
                 value={input}
                 onValueChange={handleInputChange}
                 disabled={!isLoaded}
