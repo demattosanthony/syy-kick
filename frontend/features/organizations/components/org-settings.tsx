@@ -28,6 +28,7 @@ import {
 import OrganizationInfo from "./organization-info";
 import OrgManageSeats from "./org-manage-seats";
 import MembersManagement from "./members-management";
+import { usePermissions } from "@/features/permissions/context";
 
 const OrganizationSettings = ({ orgId }: { orgId: string }) => {
   const { data: user } = useMeQuery();
@@ -40,6 +41,8 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
 
   const deleteOrgMutation = useDeleteOrganizationMutation();
 
+  const { canReadOrgSeats } = usePermissions();
+
   const [copied, setCopied] = useState(false);
 
   if (!org) return null;
@@ -50,7 +53,10 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
       <OrganizationInfo org={org} />
 
       {/* Manage Seats Section */}
-      <OrgManageSeats org={org} occupiedSeats={members?.length ?? 0} />
+
+      {canReadOrgSeats && (
+        <OrgManageSeats org={org} occupiedSeats={members?.length ?? 0} />
+      )}
 
       {/* Members Management Section */}
       <MembersManagement

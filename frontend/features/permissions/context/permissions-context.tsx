@@ -4,6 +4,9 @@ import { UserPermissionsFactory } from "../utils";
 import { useGetOrganizationRole } from "../api";
 
 type PermissionsContextType = {
+  canReadOrg: boolean;
+  canUpdateOrg: boolean;
+  canDeleteOrg: boolean;
   canReadOrgMembers: boolean;
   canCreateOrgMembers: boolean;
   canUpdateOrgMembers: boolean;
@@ -15,6 +18,8 @@ type PermissionsContextType = {
   canCreateOrgProjects: boolean;
   canUpdateOrgProjects: boolean;
   canDeleteOrgProjects: boolean;
+  canReadOrgSeats: boolean;
+  canUpdateOrgSeats: boolean;
   isLoading: boolean;
 };
 
@@ -38,6 +43,9 @@ export const PermissionsProvider = ({
   }, [userRole]);
 
   const [
+    canReadOrg,
+    canUpdateOrg,
+    canDeleteOrg,
     canReadOrgMembers,
     canCreateOrgMembers,
     canUpdateOrgMembers,
@@ -49,9 +57,28 @@ export const PermissionsProvider = ({
     canCreateOrgProjects,
     canUpdateOrgProjects,
     canDeleteOrgProjects,
+    canReadOrgSeats,
+    canUpdateOrgSeats,
   ] = useMemo(() => {
     if (userId === orgId) {
-      return [true, true, true, true, true, true, true, true, true, true, true];
+      return [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+      ];
     }
 
     if (!userPermissions) {
@@ -67,10 +94,27 @@ export const PermissionsProvider = ({
         false,
         false,
         false,
+        false,
+        false,
+        false,
+        false,
+        false,
       ];
     }
     return [
       userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION,
+        Permissions.Actions.READ
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION,
+        Permissions.Actions.UPDATE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION,
+        Permissions.Actions.DELETE
+      ),
+      userPermissions.hasAccess(
         Permissions.Resources.ORGANIZATION_MEMBERS,
         Permissions.Actions.READ
       ),
@@ -113,6 +157,14 @@ export const PermissionsProvider = ({
       userPermissions.hasAccess(
         Permissions.Resources.ORGANIZATION_PROJECTS,
         Permissions.Actions.DELETE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_SEATS,
+        Permissions.Actions.READ
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_SEATS,
+        Permissions.Actions.UPDATE
       ),
     ];
   }, [userPermissions, userId, orgId]);
@@ -120,6 +172,9 @@ export const PermissionsProvider = ({
   return (
     <PermissionsContext.Provider
       value={{
+        canReadOrg,
+        canUpdateOrg,
+        canDeleteOrg,
         canReadOrgMembers,
         canCreateOrgMembers,
         canUpdateOrgMembers,
@@ -131,6 +186,8 @@ export const PermissionsProvider = ({
         canCreateOrgProjects,
         canUpdateOrgProjects,
         canDeleteOrgProjects,
+        canReadOrgSeats,
+        canUpdateOrgSeats,
         isLoading,
       }}
     >

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { PRICING_PLANS } from "@/lib/pricing";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useUpdateOrganizationSeatsMutation } from "../api";
+import { usePermissions } from "@/features/permissions/context";
 
 const OrgManageSeats = ({
   org,
@@ -25,6 +26,8 @@ const OrgManageSeats = ({
   const updateSeats = useUpdateOrganizationSeatsMutation();
   const pathName = usePathname();
   const searchParams = useSearchParams();
+
+  const { canUpdateOrgSeats } = usePermissions();
 
   const handleSave = async () => {
     try {
@@ -78,35 +81,39 @@ const OrgManageSeats = ({
                 : "Complete your organization setup by adding billing information."}
             </p>
           </div>
-          <Button
-            onClick={async () => {
-              try {
-                if (org.subscriptionStatus === "active") {
-                  const url = await api.payments.createPortalSession(
-                    org.id,
-                    pathName + "?" + searchParams.toString()
-                  );
-                  window.location.href = url;
-                } else {
-                  const url = await api.payments.createCheckoutSession(
-                    PRICING_PLANS.TEAMS.lookup_key,
-                    org.seats,
-                    org.id
-                  );
-                  window.location.href = url;
+          {canUpdateOrgSeats && (
+            <Button
+              onClick={async () => {
+                try {
+                  if (org.subscriptionStatus === "active") {
+                    const url = await api.payments.createPortalSession(
+                      org.id,
+                      pathName + "?" + searchParams.toString()
+                    );
+                    window.location.href = url;
+                  } else {
+                    const url = await api.payments.createCheckoutSession(
+                      PRICING_PLANS.TEAMS.lookup_key,
+                      org.seats,
+                      org.id
+                    );
+                    window.location.href = url;
+                  }
+                } catch (error) {
+                  console.error("Error with billing action:", error);
                 }
-              } catch (error) {
-                console.error("Error with billing action:", error);
+              }}
+              className={
+                org.subscriptionStatus === "active"
+                  ? ""
+                  : "bg-blue-600 hover:bg-blue-700 animate-pulse"
               }
-            }}
-            className={
-              org.subscriptionStatus === "active"
-                ? ""
-                : "bg-blue-600 hover:bg-blue-700 animate-pulse"
-            }
-          >
-            {org.subscriptionStatus === "active" ? "Manage Billing" : "Upgrade"}
-          </Button>
+            >
+              {org.subscriptionStatus === "active"
+                ? "Manage Billing"
+                : "Upgrade"}
+            </Button>
+          )}
         </div>
 
         {/* Divider */}
@@ -142,7 +149,9 @@ const OrgManageSeats = ({
                   onClick={() =>
                     setSeats((prev) => Math.max(occupiedSeats, prev - 1))
                   }
-                  disabled={isLoading || seats <= occupiedSeats}
+                  disabled={
+                    isLoading || seats <= occupiedSeats || !canUpdateOrgSeats
+                  }
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
@@ -157,7 +166,7 @@ const OrgManageSeats = ({
                     setSeats(value);
                   }}
                   className="w-8 h-7 text-center p-0"
-                  disabled={isLoading}
+                  disabled={isLoading || !canUpdateOrgSeats}
                 />
 
                 <Button
@@ -166,7 +175,7 @@ const OrgManageSeats = ({
                   size="sm"
                   className="h-7 w-7"
                   onClick={() => setSeats((prev) => prev + 1)}
-                  disabled={isLoading}
+                  disabled={isLoading || !canUpdateOrgSeats}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -185,6 +194,6 @@ const OrgManageSeats = ({
       </Card>
     </section>
   );
-}
+};
 
 export default OrgManageSeats;

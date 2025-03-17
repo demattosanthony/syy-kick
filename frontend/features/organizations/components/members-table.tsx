@@ -249,7 +249,7 @@ export function MembersTable({
                   open={dialogDeleteMultipleOpen}
                   onOpenChange={setDialogDeleteMultipleOpen}
                 >
-                  {selectedRows.length > 0 && (
+                  {selectedRows.length > 0 && permissions.canDelete && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm">
@@ -360,9 +360,9 @@ export function MembersTable({
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      {permissions.canDelete &&
-                        member.id !== userId &&
-                        member.canUpdate && (
+                      {member.id !== userId && // The current user is the member row
+                        member.canUpdate && // The current user can update the member row
+                        (permissions.canUpdate || permissions.canDelete) && ( // The user permissions allow to update or delete the member row
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
@@ -371,7 +371,7 @@ export function MembersTable({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {type === "members" && (
+                              {type === "members" && permissions.canUpdate && (
                                 <DropdownMenuItem
                                   className="hover:cursor-pointer"
                                   onClick={() => handleEditRole(member)}
@@ -379,14 +379,16 @@ export function MembersTable({
                                   {membersTableTranslations[type].editRow}
                                 </DropdownMenuItem>
                               )}
-                              <DialogTrigger>
-                                <DropdownMenuItem
-                                  className="text-destructive hover:cursor-pointer"
-                                  onClick={() => setSelectedRows([member.id])}
-                                >
-                                  {membersTableTranslations[type].deleteRow}
-                                </DropdownMenuItem>
-                              </DialogTrigger>
+                              {permissions.canDelete && (
+                                <DialogTrigger>
+                                  <DropdownMenuItem
+                                    className="text-destructive hover:cursor-pointer"
+                                    onClick={() => setSelectedRows([member.id])}
+                                  >
+                                    {membersTableTranslations[type].deleteRow}
+                                  </DropdownMenuItem>
+                                </DialogTrigger>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}

@@ -21,6 +21,7 @@ import { useWorkspace } from "@/components/sidebar/workspace-context";
 import { OrganizationSettings } from "@/features/organizations/components";
 import { useMeQuery } from "@/features/user/api";
 import { Permissions } from "@/types/permissions";
+import { usePermissions } from "@/features/permissions/context";
 
 export default function UserSettings() {
   const { data: user } = useMeQuery();
@@ -31,6 +32,9 @@ export default function UserSettings() {
   const { activeWorkspace } = useWorkspace();
 
   const isSuperAdmin = user?.systemRole === "super_admin";
+
+  const { canReadOrg } = usePermissions();
+
   const isOrgOwner = useMemo(() => {
     if (activeWorkspace?.type !== "organization") return false;
     return user?.organizations?.some(
@@ -84,7 +88,7 @@ export default function UserSettings() {
               </TabsTrigger>
             )} */}
 
-            {isOrgOwner && (
+            {canReadOrg && (
               <TabsTrigger
                 value="organization"
                 className="bg-transparent px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-9"
