@@ -216,7 +216,7 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
       {/* Hidden div for PlacesService */}
       <div ref={mapRef} style={{ display: "none" }}></div>
 
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={setOpen} modal={true}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
