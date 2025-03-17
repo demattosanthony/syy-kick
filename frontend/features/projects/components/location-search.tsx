@@ -236,7 +236,10 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
             </div>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-[400px]" align="start">
+        <PopoverContent
+          className="p-0 overflow-visible w-[400px] pointer-events-auto"
+          align="start"
+        >
           {!showManualEntry ? (
             <Command className="pointer-events-auto">
               <CommandInput
