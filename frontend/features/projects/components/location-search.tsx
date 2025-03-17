@@ -216,7 +216,7 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
       {/* Hidden div for PlacesService */}
       <div ref={mapRef} style={{ display: "none" }}></div>
 
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={setOpen} modal={true}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
@@ -236,11 +236,15 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
             </div>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-[400px]" align="start">
+        <PopoverContent
+          className="p-0 overflow-visible w-[400px] pointer-events-auto"
+          align="start"
+        >
           {!showManualEntry ? (
-            <Command>
+            <Command className="pointer-events-auto">
               <CommandInput
                 placeholder="Search for address..."
+                className="pointer-events-auto"
                 value={input}
                 onValueChange={handleInputChange}
                 disabled={!isLoaded}
