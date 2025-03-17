@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 
 // Icons
-import { ArrowRight, Paperclip, StopCircle, X } from "lucide-react";
+import { ArrowRight, Paperclip, Square, StopCircle, X } from "lucide-react";
 
 // Local components
 import ModelSelector from "./model-selector";
@@ -356,7 +356,7 @@ function ChatInputForm(
                 }
               }}
             >
-              {isGenerating ? <StopCircle /> : <ArrowRight />}
+              {isGenerating ? <Square /> : <ArrowRight />}
             </Button>
           </div>
         </div>

@@ -141,7 +141,7 @@ const AssistantMessage: React.FC<{
 }> = ({ message, showEye, messages }) => (
   <div className="flex flex-col justify-start">
     <div className="flex">
-      <div className="mr-[1px] mt-1 w-[32px] h-[32px]">
+      <div className="mr-[1px] mt-1 w-[32px] h-[32px] min-h-[32px] min-w-[32px]">
         {showEye && <Syyclops3dEye size={22} animate={false} />}
       </div>
 

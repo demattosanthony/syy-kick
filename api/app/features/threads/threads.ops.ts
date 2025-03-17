@@ -1,5 +1,5 @@
 // External dependencies
-import { streamText } from "ai";
+import { generateText, streamText } from "ai";
 import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { Request, Response } from "express";
 import { z } from "zod";
@@ -14,7 +14,7 @@ import {
 } from "../../config/schema";
 
 // Internal features
-import { embeddingModel } from "../models";
+import { embeddingModel, MODELS } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
