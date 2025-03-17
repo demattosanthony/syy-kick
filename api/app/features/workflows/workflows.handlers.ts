@@ -69,35 +69,37 @@ const workflowHandlers = {
     res.flushHeaders();
 
     const modelConfig = MODELS[workflow.modelName];
-
     const attachments = message.experimental_attachments;
-    const attachment = attachments[0];
 
     try {
-      const attachmentData = await generateAttachmentData(
-        attachment.file_key,
-        "application/pdf",
-        true
+      const attachmentsData = await Promise.all(
+        attachments.map(async (attachment: any) => {
+          return generateAttachmentData(
+            attachment.file_key,
+            "application/pdf",
+            true
+          );
+        })
       );
 
       const response = streamText({
         model: modelConfig.model,
         maxSteps: 10,
         messages: [
-          {
-            role: "system",
-            content: workflow.systemMessage,
-          },
+          //   {
+          //     role: "system",
+          //     content: workflow.systemMessage,
+          //   },
           {
             role: "user",
             content: [
-              {
-                type: "file",
+              ...attachmentsData.map((attachmentData) => ({
+                type: "file" as const,
                 mimeType: "application/pdf",
                 data: attachmentData,
-              },
+              })),
               {
-                type: "text",
+                type: "text" as const,
                 text: workflow.prompt,
               },
             ],
@@ -115,12 +117,12 @@ const workflowHandlers = {
           toolResults,
           reasoning,
         }) => {
-          // console.log("Tool calls:", toolCalls);
-          // console.log("Tool results:", toolResults.length);
-          // console.log("Finish reason:", finishReason);
-          // console.log("Text:", text);
-          // console.log("Reasoning:", reasoning);
-          // console.log("\n\n\n");
+          console.log("Tool calls:", toolCalls);
+          console.log("Tool results:", toolResults.length);
+          console.log("Finish reason:", finishReason);
+          console.log("Text:", text);
+          console.log("Reasoning:", reasoning);
+          console.log("\n\n\n");
         },
       });
 

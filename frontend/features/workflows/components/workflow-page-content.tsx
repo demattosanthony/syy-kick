@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, File, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWorkflowQuery } from "../api";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { Attachment } from "ai";
 import api from "@/lib/api";
@@ -57,8 +57,9 @@ export default function WorkflowPageContent({
   workflowId: string;
 }) {
   const router = useRouter();
-  const [file, setFile] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  // Replace single file state with a map of input IDs to files
+  const [files, setFiles] = useState<Record<string, File | null>>({});
+  const [isDragging, setIsDragging] = useState<Record<string, boolean>>({});
   const [showReasoning, setShowReasoning] = useState(true);
   const hasAutoHiddenReasoning = useRef(false);
 
@@ -77,76 +78,124 @@ export default function WorkflowPageContent({
   const isProcessing = status === "submitted" || messages.length > 0;
   const response = messages[1];
 
+  // Initialize files and dragging state when workflow data loads
+  useEffect(() => {
+    if (workflow?.inputs) {
+      const initialFiles: Record<string, File | null> = {};
+      const initialDragging: Record<string, boolean> = {};
+
+      workflow.inputs.forEach((input) => {
+        initialFiles[input.id] = null;
+        initialDragging[input.id] = false;
+      });
+
+      setFiles(initialFiles);
+      setIsDragging(initialDragging);
+    }
+  }, [workflow]);
+
   const resetWorkflow = () => {
-    setFile(null);
+    // Reset all files
+    if (workflow?.inputs) {
+      const resetFiles: Record<string, File | null> = {};
+      workflow.inputs.forEach((input) => {
+        resetFiles[input.id] = null;
+      });
+      setFiles(resetFiles);
+    }
     setInput("");
     hasAutoHiddenReasoning.current = false;
     setShowReasoning(true);
     setMessages([]);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (inputId: string) => (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
+    setIsDragging((prev) => ({ ...prev, [inputId]: true }));
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = (inputId: string) => (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    setIsDragging((prev) => ({ ...prev, [inputId]: false }));
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (inputId: string) => (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(false);
+    setIsDragging((prev) => ({ ...prev, [inputId]: false }));
     const droppedFile = e.dataTransfer.files[0];
-    setFile(droppedFile);
-    setInput(droppedFile.name);
+    setFiles((prev) => ({ ...prev, [inputId]: droppedFile }));
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setFile(e.target.files[0]);
-      setInput(e.target.files[0].name);
-    }
+  const handleFileSelect =
+    (inputId: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.[0]) {
+        setFiles((prev) => ({
+          ...prev,
+          [inputId]: e.target.files?.[0] || null,
+        }));
+      }
+    };
+
+  const areRequiredFilesUploaded = () => {
+    if (!workflow?.inputs) return false;
+
+    return workflow.inputs
+      .filter((input) => input.required)
+      .every((input) => files[input.id]);
   };
 
   async function onSubmit() {
-    if (!file) return;
+    if (!areRequiredFilesUploaded()) return;
 
-    const { url, file_metadata, viewUrl } = await api.uploads.getPresignedUrl(
-      file.name,
-      file.type,
-      file.size,
-      `uploads/${Date.now()}-${file.name}`
-    );
+    // Create an array to store all attachments
+    const attachments: ExtendedAttachment[] = [];
 
-    await fetch(url, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": file.type },
-    });
+    // Process each file
+    for (const inputId in files) {
+      const file = files[inputId];
+      if (!file) continue;
 
-    const attachment: ExtendedAttachment = {
-      name: file.name,
-      contentType: file.type,
-      url: viewUrl,
-      file_key: file_metadata.file_key,
-    };
+      const { url, file_metadata, viewUrl } = await api.uploads.getPresignedUrl(
+        file.name,
+        file.type,
+        file.size,
+        `uploads/${Date.now()}-${inputId}-${file.name}`
+      );
+
+      await fetch(url, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+
+      attachments.push({
+        name: file.name,
+        contentType: file.type,
+        url: viewUrl,
+        file_key: file_metadata.file_key,
+      });
+    }
+
+    // Set input to a description of the files
+    const fileNames = Object.values(files)
+      .filter(Boolean)
+      .map((file) => file?.name)
+      .join(", ");
+    setInput(fileNames);
 
     handleSubmit({ preventDefault: () => {} } as React.FormEvent, {
-      experimental_attachments: [attachment],
+      experimental_attachments: attachments,
     });
   }
 
   // Update getCurrentStep to auto-hide reasoning when moving to step 3
   const getCurrentStep = () => {
-    if (!file) return 1;
+    if (!areRequiredFilesUploaded()) return 1;
     if (isProcessing && (!response?.content || response?.content === "")) {
       return 2;
     }
     if (response) {
       // Auto-hide reasoning only when initially moving to step 3
-      // Use a ref or state to track if we've already done this
       if (showReasoning && !hasAutoHiddenReasoning.current) {
         setShowReasoning(false);
         hasAutoHiddenReasoning.current = true;
@@ -177,6 +226,24 @@ export default function WorkflowPageContent({
     );
   }
 
+  // Default to a single file input if no inputs are defined
+  const workflowInputs = workflow.inputs || [
+    {
+      id: "default-input",
+      type: "file",
+      title: "Upload Document",
+      description: "Upload the file you want to process",
+      acceptedFileTypes: "application/pdf",
+      required: true,
+    },
+  ];
+
+  // Get output configuration
+  const outputConfig = workflow.output || {
+    type: "csv",
+    title: "Output",
+    description: "View the final results",
+  };
   return (
     <div className="h-screen w-full flex flex-col items-center overflow-y-auto">
       <div className="container mx-auto px-4 py-12 max-w-4xl ">
@@ -199,84 +266,116 @@ export default function WorkflowPageContent({
         )}
 
         <div className="flex flex-col gap-8">
-          {/* Step 1: Upload RFP document */}
+          {/* Step 1: Upload documents - now supports multiple inputs */}
           <div>
             <StepHeader
               number={1}
-              title="Upload RFP document"
-              description="Upload the document you want to analyze"
+              title="Upload Documents"
+              description="Upload the required files for this workflow"
               isActive={currentStep === 1}
             />
 
-            <div
-              className={cn(
-                "border-2 border-dashed rounded-xl p-12 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center",
-                isDragging
-                  ? "border-primary bg-primary/5"
-                  : "border-muted hover:border-primary/50 hover:bg-muted/10",
-                !isProcessing ? "block" : "hidden"
-              )}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => document.getElementById("file-input")?.click()}
-            >
-              <input
-                type="file"
-                id="file-input"
-                className="hidden"
-                accept="application/pdf"
-                onChange={handleFileSelect}
-              />
-              <div className="text-center space-y-6">
+            {workflowInputs.map((input, index) => (
+              <div key={input.id} className="mb-6">
+                <h3 className="text-lg font-medium mb-2">{input.title}</h3>
+                {input.description && (
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {input.description}
+                  </p>
+                )}
+
                 <div
                   className={cn(
-                    "w-20 h-20 mx-auto rounded-full flex items-center justify-center",
-                    file ? "bg-primary/10" : "bg-muted/30"
+                    "border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center",
+                    isDragging[input.id]
+                      ? "border-primary bg-primary/5"
+                      : "border-muted hover:border-primary/50 hover:bg-muted/10",
+                    !isProcessing ? "block" : "hidden"
                   )}
+                  onDragOver={handleDragOver(input.id)}
+                  onDragLeave={handleDragLeave(input.id)}
+                  onDrop={handleDrop(input.id)}
+                  onClick={() =>
+                    document.getElementById(`file-input-${input.id}`)?.click()
+                  }
                 >
-                  <File
-                    className={cn(
-                      "h-10 w-10",
-                      file ? "text-primary" : "text-muted-foreground"
-                    )}
+                  <input
+                    type="file"
+                    id={`file-input-${input.id}`}
+                    className="hidden"
+                    accept={input.acceptedFileTypes}
+                    onChange={handleFileSelect(input.id)}
                   />
-                </div>
-                <div>
-                  <p className="text-xl font-medium mb-2">
-                    {file ? file.name : "Drop your file here"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {file
-                      ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · PDF${
-                          file.type.includes("pdf") ? "" : " (recommended)"
-                        }`
-                      : "or click to browse"}
-                  </p>
-                  {file && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFile(null);
-                        setInput("");
-                      }}
-                      className="mt-4 text-sm text-primary hover:text-primary/80 font-medium flex items-center justify-center mx-auto"
+                  <div className="text-center space-y-4">
+                    <div
+                      className={cn(
+                        "w-16 h-16 mx-auto rounded-full flex items-center justify-center",
+                        files[input.id] ? "bg-primary/10" : "bg-muted/30"
+                      )}
                     >
-                      <span className="mr-1">×</span> Remove file
-                    </button>
-                  )}
+                      <File
+                        className={cn(
+                          "h-8 w-8",
+                          files[input.id]
+                            ? "text-primary"
+                            : "text-muted-foreground"
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-lg font-medium mb-1">
+                        {files[input.id]
+                          ? files[input.id]?.name
+                          : "Drop your file here"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {files[input.id]
+                          ? `${(files[input.id]!.size / (1024 * 1024)).toFixed(
+                              2
+                            )} MB · ${
+                              files[input.id]!.type.includes("pdf")
+                                ? "PDF"
+                                : files[input.id]!.type.split(
+                                    "/"
+                                  )[1].toUpperCase()
+                            }`
+                          : "or click to browse"}
+                      </p>
+                      {files[input.id] && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFiles((prev) => ({ ...prev, [input.id]: null }));
+                          }}
+                          className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center justify-center mx-auto"
+                        >
+                          <span className="mr-1">×</span> Remove file
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
+
+                {input.required && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {files[input.id]
+                      ? "✓ Required file uploaded"
+                      : "* Required"}
+                  </p>
+                )}
               </div>
-            </div>
+            ))}
 
             {!isProcessing && (
               <Button
                 className="w-full mt-6 py-6 text-lg"
                 size="lg"
-                disabled={!file}
+                disabled={!areRequiredFilesUploaded()}
                 onClick={onSubmit}
               >
-                {file ? "Run Workflow" : "Select a file to continue"}
+                {areRequiredFilesUploaded()
+                  ? workflow.buttonText || "Run Workflow"
+                  : "Upload required files to continue"}
               </Button>
             )}
           </div>
@@ -336,40 +435,63 @@ export default function WorkflowPageContent({
                     );
                     if (!artifact?.content) return null;
 
-                    return (
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-medium">Results</h3>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const csvContent = artifact.content;
-                                downloadCsv(csvContent);
-                              }}
-                            >
-                              Download CSV
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const csvContent = artifact.content;
-                                previewCsv(csvContent, "CSV Results");
-                              }}
-                            >
-                              View Full Screen
-                            </Button>
+                    // Render based on output type
+                    if (
+                      outputConfig.type === "csv" ||
+                      outputConfig.type === "table"
+                    ) {
+                      return (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-medium">
+                              {outputConfig.title || "Results"}
+                            </h3>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const csvContent = artifact.content;
+                                  downloadCsv(csvContent);
+                                }}
+                              >
+                                Download CSV
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const csvContent = artifact.content;
+                                  previewCsv(
+                                    csvContent,
+                                    outputConfig.title || "CSV Results"
+                                  );
+                                }}
+                              >
+                                View Full Screen
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="overflow-x-auto max-h-[400px] overflow-y-auto border rounded">
+                            <div className="min-w-max">
+                              <CsvViewer content={artifact.content} />
+                            </div>
                           </div>
                         </div>
-                        <div className="overflow-x-auto max-h-[400px] overflow-y-auto border rounded">
-                          <div className="min-w-max">
-                            <CsvViewer content={artifact.content} />
+                      );
+                    } else {
+                      // Default rendering for other output types
+                      return (
+                        <div className="space-y-4">
+                          <h3 className="font-medium">
+                            {outputConfig.title || "Results"}
+                          </h3>
+                          <div className="prose prose-sm max-w-none">
+                            <MarkdownViewer content={artifact.content} />
                           </div>
                         </div>
-                      </div>
-                    );
+                      );
+                    }
                   })()}
               </div>
             )}
