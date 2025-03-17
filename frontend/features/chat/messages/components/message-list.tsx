@@ -93,8 +93,6 @@ const UserMessage = ({ message }: { message: Message }) => {
 
 import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
-import Syyclops3dEye from "./syy-eye";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Message } from "ai";
 import AssistantMessage from "./assistant-message";
@@ -102,34 +100,18 @@ import {
   AssistantSkeletonMessage,
   UserSkeletonMessage,
 } from "./message-skeletons";
+import { Loader } from "@/components/ui/loader";
 
 const LoadingMessage = React.memo(() => {
   return (
-    <div className="mb-4 flex flex-col justify-start">
+    <div className="mb-4 mt flex flex-col justify-start">
       <div className="flex items-center gap-1">
         <div className="w-[32px] h-full">
-          <Syyclops3dEye size={22} animate={false} />
+          {/* <Syyclops3dEye size={22} animate={false} /> */}
         </div>
 
         <div className="flex items-center rounded-lg bg-background">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            {[0, 1, 2].map((index) => (
-              <motion.span
-                key={index}
-                className="inline-block w-2 h-2 rounded-full bg-current"
-                initial={{ opacity: 0.3, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  duration: 0.6,
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                  delay: index * 0.2,
-                }}
-              >
-                &nbsp;
-              </motion.span>
-            ))}
-          </div>
+          <Loader variant="wave" size="md" />
         </div>
       </div>
     </div>
@@ -142,11 +124,11 @@ LoadingMessage.displayName = "LoadingMessage";
 const ChatMessagesList = React.memo(
   ({
     messages,
-    isLoading,
+    status,
     showSkeletons = false,
   }: {
     messages: Message[];
-    isLoading: boolean;
+    status: "error" | "submitted" | "streaming" | "ready";
     showSkeletons?: boolean;
   }) => {
     useEffect(() => {
@@ -179,8 +161,7 @@ const ChatMessagesList = React.memo(
                 const nextMessage = messages[index + 1];
                 const showEye =
                   message.role !== MessageRole.user &&
-                  (!nextMessage || nextMessage.role === MessageRole.user) &&
-                  !isLoading;
+                  (!nextMessage || nextMessage.role === MessageRole.user);
 
                 return message.role === MessageRole.user ? (
                   <UserMessage key={index} message={message} />
@@ -194,7 +175,9 @@ const ChatMessagesList = React.memo(
                 );
               })
             )}
-            {isLoading && !showSkeletons && <LoadingMessage />}
+            {(status === "submitted" || status === "streaming") && (
+              <LoadingMessage />
+            )}
           </div>
         </div>
       </div>

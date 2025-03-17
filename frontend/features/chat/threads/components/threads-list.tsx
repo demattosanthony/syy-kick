@@ -123,7 +123,7 @@ function ThreadItem({
               className={cn(
                 "text-sm text-muted-foreground line-clamp-2",
                 compact ? "max-w-[230px]" : "max-w-[calc(100vw-8rem)]",
-                compact ? "md:max-w-[230px]" : "md:max-w-[calc(100vw-8rem)]"
+                compact ? "md:max-w-[230px]" : "md:max-w-[calc(100vw-12rem)]"
               )}
             >
               {lastMessage.text}

@@ -227,7 +227,7 @@ export default function ThreadPage({
         <div className="flex-1">
           <ChatMessagesList
             messages={messages}
-            isLoading={status === "submitted"}
+            status={status}
             showSkeletons={messagesAreBeingFetched}
           />
         </div>
