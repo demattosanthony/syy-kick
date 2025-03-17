@@ -19,37 +19,6 @@ type ExtendedAttachment = Attachment & {
   file_key: string;
 };
 
-function StepHeader({
-  number,
-  title,
-  description,
-  isActive,
-  isLoading,
-}: {
-  number: number;
-  title: string;
-  description?: string;
-  isActive?: boolean;
-  isLoading?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-4 mb-4">
-      <div
-        className={cn(
-          "flex items-center justify-center w-8 h-8 rounded-full font-medium",
-          "bg-muted text-muted-foreground"
-        )}
-      >
-        {isLoading ? <Loader className="h-4 w-4" variant="circular" /> : number}
-      </div>
-      <div>
-        <h2 className="text-xl font-semibold">{title}</h2>
-        {description && <p className="text-muted-foreground">{description}</p>}
-      </div>
-    </div>
-  );
-}
-
 export default function WorkflowPageContent({
   workflowId,
 }: {
@@ -95,17 +64,17 @@ export default function WorkflowPageContent({
     }
   }, [workflow]);
 
-  // Add this useEffect for auto-scrolling
   useEffect(() => {
-    if (
-      status === "submitted" &&
-      reasoningContainerRef.current &&
-      showReasoning
-    ) {
-      reasoningContainerRef.current.scrollTop =
-        reasoningContainerRef.current.scrollHeight;
+    if (reasoningContainerRef.current && showReasoning && response?.reasoning) {
+      // Use setTimeout to ensure the content is rendered before scrolling
+      setTimeout(() => {
+        if (reasoningContainerRef.current) {
+          reasoningContainerRef.current.scrollTop =
+            reasoningContainerRef.current.scrollHeight;
+        }
+      }, 100);
     }
-  }, [response?.reasoning, status, showReasoning]);
+  }, [response?.reasoning, showReasoning]);
 
   const resetWorkflow = () => {
     // Reset all files
@@ -411,6 +380,38 @@ export default function WorkflowPageContent({
             <div className="w-full mt-6 bg-muted rounded-full h-2.5">
               <div className="bg-primary h-2.5 rounded-full animate-pulse w-full"></div>
             </div>
+
+            {/* Add reasoning stream display */}
+            {response?.reasoning && (
+              <div className="mt-8 w-full">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-medium text-sm">Processing details</h4>
+                  <button
+                    onClick={() => setShowReasoning(!showReasoning)}
+                    className="text-xs flex items-center text-muted-foreground hover:text-foreground"
+                  >
+                    {showReasoning ? (
+                      <>
+                        Hide <ChevronUp className="ml-1 h-3 w-3" />
+                      </>
+                    ) : (
+                      <>
+                        Show <ChevronDown className="ml-1 h-3 w-3" />
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {showReasoning && (
+                  <div
+                    ref={reasoningContainerRef}
+                    className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground overflow-y-auto max-h-[300px] font-mono whitespace-pre-wrap"
+                  >
+                    {response.reasoning}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

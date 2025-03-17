@@ -6,7 +6,6 @@ const workflows = [
       "This workflow evaluates a Request for Proposal (RFP) pdf file based on the setty criteria.",
     maxSteps: 5,
     modelName: "claude-3.7-sonnet",
-    prompt: "Evaluate this RFP.",
     authorizedOrganizationIds: [
       "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
       "a5b8c99d-9e1d-42a9-8473-b52471932d51",
@@ -22,12 +21,12 @@ const workflows = [
       },
     ],
     output: {
-      type: "csv",
+      type: "table",
       title: "Evaluation Results",
       description: "View the final evaluation results",
     },
     buttonText: "Run RFP Evaluation",
-    systemMessage: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
+    prompt: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
 
 # Setty & Associates Overview
 Setty & Associates, established in 1984, is a family-owned, multidisciplinary design engineering firm specializing in mechanical, electrical, plumbing, and fire protection (MEP/FP) engineering services. Their expertise encompasses commissioning, energy services, and sustainable design, aiming to deliver high-performing, energy-efficient buildings. ​
