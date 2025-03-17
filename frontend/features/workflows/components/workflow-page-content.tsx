@@ -32,6 +32,7 @@ function StepHeader({
   isActive?: boolean;
   isLoading?: boolean;
 }) {
+  console.log(number, title, description, isActive, isLoading);
   return (
     <div className="flex items-center gap-4 mb-4">
       <div
@@ -125,6 +126,7 @@ export default function WorkflowPageContent({
     setIsDragging((prev) => ({ ...prev, [inputId]: false }));
     const droppedFile = e.dataTransfer.files[0];
     setFiles((prev) => ({ ...prev, [inputId]: droppedFile }));
+    setInput(droppedFile.name);
   };
 
   const handleFileSelect =
