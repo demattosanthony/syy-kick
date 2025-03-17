@@ -26,7 +26,15 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader, MoreHorizontal, Search, Trash } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Link,
+  Loader,
+  MoreHorizontal,
+  Search,
+  Trash,
+} from "lucide-react";
 import { useGetRoles } from "@/features/permissions/api/get-roles";
 import {
   OrganizationMemberRoleResponse,
@@ -79,6 +87,7 @@ export function MembersTable({
     useState(false);
   const [editRoleDialogOpen, setEditRoleDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<OrgMember | null>(null);
+  const [copiedId, setCopiedId] = useState<string>("");
 
   const { data: roles } = useGetRoles();
   const {
@@ -359,6 +368,30 @@ export function MembersTable({
                         {member.role.name}
                       </span>
                     </TableCell>
+                    {/** Copy invitation link */}
+                    {"link" in member && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            navigator.clipboard
+                              .writeText(member.link as string)
+                              .then(() => {
+                                setCopiedId(member.id);
+                                setTimeout(() => setCopiedId(""), 2000);
+                              });
+                            toast.success("Link copied to clipboard");
+                          }}
+                        >
+                          {copiedId === member.id ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <Link className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       {member.id !== userId && // The current user is the member row
                         member.canUpdate && // The current user can update the member row
