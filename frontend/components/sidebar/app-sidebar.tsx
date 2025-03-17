@@ -37,7 +37,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { CreateProjectDialog } from "@/features/projects/components";
 import { NewThreadButton } from "./new-thread-button";
-import { scrollbarStyle } from "@/lib/utils";
 
 export function AppSidebar({
   user,
@@ -104,7 +103,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className={scrollbarStyle}>
+      <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent className="px-1.5 md:px-0">
             <SidebarMenu>
