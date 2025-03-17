@@ -76,6 +76,7 @@ export default function WorkflowPageContent({
     });
 
   const isProcessing = status === "submitted" || messages.length > 0;
+  const isComplete = messages.length > 0 && status !== "submitted";
   const response = messages[1];
 
   // Initialize files and dragging state when workflow data loads
@@ -287,25 +288,19 @@ export default function WorkflowPageContent({
           </div>
         )}
 
-        <div className="flex flex-col gap-8">
-          {/* Step 1: Upload documents - now supports multiple inputs */}
-          <div>
+        {/* Step 1: Input Form */}
+        {currentStep === 1 && (
+          <div className="flex flex-col gap-8">
             {workflowInputs.map((input, index) => (
-              <div key={input.id} className="mb-6">
+              <div key={input.id} className="">
                 <h3 className="text-lg font-bold mb-2">{input.title}</h3>
-                {/* {input.description && (
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {input.description}
-                  </p>
-                )} */}
 
                 <div
                   className={cn(
                     "border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center",
                     isDragging[input.id]
                       ? "border-primary bg-primary/5"
-                      : "border-muted hover:border-primary/50 hover:bg-muted/10",
-                    !isProcessing ? "block" : "hidden"
+                      : "border-muted hover:border-primary/50 hover:bg-muted/10"
                   )}
                   onDragOver={handleDragOver(input.id)}
                   onDragLeave={handleDragLeave(input.id)}
@@ -390,148 +385,132 @@ export default function WorkflowPageContent({
               </div>
             ))}
 
-            {!isProcessing && (
-              <Button
-                className="w-full mt-6 py-6 text-lg"
-                size="lg"
-                disabled={!areRequiredFilesUploaded()}
-                onClick={onSubmit}
-              >
-                <Play className="h-6 w-6" />
-                {"Submit and run flow"}
-              </Button>
-            )}
+            <Button
+              className="w-full mt-6 py-6 text-lg"
+              size="lg"
+              disabled={!areRequiredFilesUploaded()}
+              onClick={onSubmit}
+            >
+              <Play className="h-6 w-6 mr-2" />
+              {"Submit and run flow"}
+            </Button>
           </div>
+        )}
 
-          {/* Step 2: Reasoning */}
-          <div>
-            <div className="flex justify-between items-center">
-              <StepHeader
-                number={2}
-                title="Reasoning"
-                description="View the analysis process"
-                isActive={currentStep === 2}
-                isLoading={currentStep === 2}
-              />
-              {response?.reasoning && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowReasoning(!showReasoning)}
-                  className="flex items-center gap-1"
-                >
-                  {showReasoning ? (
-                    <>
-                      Hide <ChevronUp className="h-4 w-4" />
-                    </>
-                  ) : (
-                    <>
-                      Show <ChevronDown className="h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              )}
+        {/* Step 2: Processing Indicator */}
+        {currentStep === 2 && (
+          <div className="bg-card rounded-xl p-8 shadow-lg border flex flex-col items-center justify-center">
+            <Loader className="h-12 w-12 mb-4" variant="circular" />
+            <h3 className="text-xl font-semibold mb-2">
+              Processing your files
+            </h3>
+            <p className="text-muted-foreground text-center">
+              Please wait while we analyze your documents. This may take a few
+              moments.
+            </p>
+            <div className="w-full mt-6 bg-muted rounded-full h-2.5">
+              <div className="bg-primary h-2.5 rounded-full animate-pulse w-full"></div>
             </div>
-
-            {response?.reasoning && showReasoning ? (
-              <div
-                ref={reasoningContainerRef}
-                className="bg-muted/30 p-4 rounded-lg max-h-[400px] overflow-y-auto"
-              >
-                <MarkdownViewer content={response.reasoning || ""} />
-              </div>
-            ) : null}
           </div>
+        )}
 
-          {/* Step 3: Output */}
-          <div>
-            <StepHeader
-              number={3}
-              title="Output"
-              description="View the final results"
-              isActive={currentStep === 3}
-            />
+        {/* Step 3: Output */}
+        {currentStep === 3 && (
+          <div className="flex flex-col gap-8">
+            <div className="bg-card rounded-xl p-6 shadow-lg border">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-600">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20 6L9 17l-5-5"></path>
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold">
+                  Run completed successfully
+                </h3>
+              </div>
 
-            {response && response?.content && (
-              <div className="bg-card rounded-xl p-6 shadow-lg border">
-                {typeof response?.content === "string" &&
-                  (() => {
-                    const { artifact } = extractSpecialContent(
-                      response?.content
-                    );
-                    if (!artifact?.content) return null;
+              {typeof response?.content === "string" &&
+                (() => {
+                  const { artifact } = extractSpecialContent(response?.content);
+                  if (!artifact?.content) return null;
 
-                    // Render based on output type
-                    if (
-                      outputConfig.type === "csv" ||
-                      outputConfig.type === "table"
-                    ) {
-                      return (
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-medium">
-                              {outputConfig.title || "Results"}
-                            </h3>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const csvContent = artifact.content;
-                                  downloadCsv(csvContent);
-                                }}
-                              >
-                                Download CSV
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const csvContent = artifact.content;
-                                  previewCsv(
-                                    csvContent,
-                                    outputConfig.title || "CSV Results"
-                                  );
-                                }}
-                              >
-                                View Full Screen
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="overflow-x-auto max-h-[400px] overflow-y-auto border rounded">
-                            <div className="min-w-max">
-                              <CsvViewer content={artifact.content} />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    } else {
-                      // Default rendering for other output types
-                      return (
-                        <div className="space-y-4">
+                  // Render based on output type
+                  if (
+                    outputConfig.type === "csv" ||
+                    outputConfig.type === "table"
+                  ) {
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center mb-2">
                           <h3 className="font-medium">
                             {outputConfig.title || "Results"}
                           </h3>
-                          <div className="prose prose-sm max-w-none">
-                            <MarkdownViewer content={artifact.content} />
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const csvContent = artifact.content;
+                                downloadCsv(csvContent);
+                              }}
+                            >
+                              Download CSV
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const csvContent = artifact.content;
+                                previewCsv(
+                                  csvContent,
+                                  outputConfig.title || "CSV Results"
+                                );
+                              }}
+                            >
+                              View Full Screen
+                            </Button>
                           </div>
                         </div>
-                      );
-                    }
-                  })()}
-              </div>
-            )}
+                        <div className="overflow-x-auto max-h-[400px] overflow-y-auto border rounded">
+                          <div className="min-w-max">
+                            <CsvViewer content={artifact.content} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    // Default rendering for other output types
+                    return (
+                      <div className="space-y-4">
+                        <h3 className="font-medium">
+                          {outputConfig.title || "Results"}
+                        </h3>
+                        <div className="prose prose-sm max-w-none">
+                          <MarkdownViewer content={artifact.content} />
+                        </div>
+                      </div>
+                    );
+                  }
+                })()}
+            </div>
 
-            {/* Add Run Again button outside the CSV card and only when streaming is complete */}
-            {response && response?.content && status !== "submitted" && (
-              <div className="mt-8 flex justify-center">
-                <Button size="lg" onClick={resetWorkflow} className="px-8">
-                  Reset
-                </Button>
-              </div>
-            )}
+            <div className="flex justify-center">
+              <Button size="lg" onClick={resetWorkflow} className="px-8">
+                Run Again
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
