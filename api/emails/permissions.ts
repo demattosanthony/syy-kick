@@ -34,33 +34,6 @@ export const orgInvitation = (
       <tbody>
         <tr style="width:100%">
           <td>
-            ${
-              organization.logo
-                ? `
-              <table
-              align="center"
-              width="100%"
-              border="0"
-              cellpadding="0"
-              cellspacing="0"
-              role="presentation"
-              style="margin-top:32px">
-              <tbody>
-                <tr>
-                  <td>
-                    <img
-                      alt="Vercel"
-                      height="37"
-                      src="${organization.logo}"
-                      style="margin-top:0px;margin-bottom:0px;margin-left:auto;margin-right:auto;display:block;outline:none;border:none;text-decoration:none"
-                      width="40" />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            `
-                : ""
-            }
             <h1
               style="color:rgb(0,0,0);font-size:24px;font-weight:400;text-align:center;padding:0px;margin-top:30px;margin-bottom:30px;margin-left:0px;margin-right:0px">
               Join <strong>${organization.name ?? 'the organization'}</strong> on <strong>Yo.</strong>
