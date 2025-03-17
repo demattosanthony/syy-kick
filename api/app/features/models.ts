@@ -171,18 +171,18 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
-    // "gemini-2.0-pro-exp": {
-    //   model: google("gemini-2.0-pro-exp-02-05"),
-    //   supportsToolUse: true,
-    //   supportsStreaming: true,
-    //   provider: "google",
-    //   supportsSystemMessages: true,
-    //   supportedMimeTypes,
-    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-    //   maxFileSize: 50 * 1024 * 1024, // 50MB
-    //   description:
-    //     "Improved quality, especially for world knowledge, code, and long context",
-    // },
+    "gemini-2.0-pro-exp": {
+      model: google("gemini-2.0-pro-exp-02-05"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "google",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+      maxFileSize: 50 * 1024 * 1024, // 50MB
+      description:
+        "Improved quality, especially for world knowledge, code, and long context",
+    },
     "gemini-2.0-flash": {
       model: google("gemini-2.0-flash"),
       supportsToolUse: true,
@@ -195,18 +195,30 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
     },
-    "gemini-1.5-pro": {
-      model: google("gemini-1.5-pro-latest"),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      description:
-        "Gemini 1.5 Pro is the latest model of the Gemini family. It's a mid-size multimodal model that supports up to 1 million tokens and excels at long-context tasks.",
-    },
+    // "gemini-2.0-flash-thinking": {
+    //   model: google("gemini-2.0-flash-thinking-exp-01-21"),
+    //   supportsToolUse: false,
+    //   supportsStreaming: true,
+    //   provider: "google",
+    //   supportsSystemMessages: true,
+    //   supportedMimeTypes,
+    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+    //   maxFileSize: 50 * 1024 * 1024, // 50MB
+    //   description:
+    //     "Gemini 2.0 Flash Thinking is an experimental model trained to expose its reasoning process in responses. By making its thinking process explicit, this model demonstrates enhanced reasoning capabilities compared to other Gemini 2.0 Flash models.",
+    // },
+    // "gemini-1.5-pro": {
+    //   model: google("gemini-1.5-pro-latest"),
+    //   supportsToolUse: true,
+    //   supportsStreaming: true,
+    //   provider: "google",
+    //   supportsSystemMessages: true,
+    //   supportedMimeTypes,
+    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+    //   maxFileSize: 50 * 1024 * 1024, // 50MB
+    //   description:
+    //     "Gemini 1.5 Pro is the latest model of the Gemini family. It's a mid-size multimodal model that supports up to 1 million tokens and excels at long-context tasks.",
+    // },
     // "gemini-2.0-flash-online": {
     //   model: google("gemini-2.0-flash", {
     //     useSearchGrounding: true,
@@ -220,18 +232,6 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
     //   maxFileSize: 50 * 1024 * 1024, // 50MB
     //   description:
     //     "Gemini 2.0 Flash Online enhances the speed of Gemini 2.0 Flash with the ability to access real-time information through search grounding. It's perfect for tasks that require up-to-date data and fast responses, while also supporting tool use, streaming, image and PDF inputs.",
-    // },
-    // "gemini-2.0-flash-thinking": {
-    //   model: google("gemini-2.0-flash-thinking-exp-01-21"),
-    //   supportsToolUse: false,
-    //   supportsStreaming: true,
-    //   provider: "google",
-    //   supportsSystemMessages: true,
-    //   supportedMimeTypes,
-    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-    //   maxFileSize: 50 * 1024 * 1024, // 50MB
-    //   description:
-    //     "Gemini 2.0 Flash Thinking is an experimental model trained to expose its reasoning process in responses. By making its thinking process explicit, this model demonstrates enhanced reasoning capabilities compared to other Gemini 2.0 Flash models.",
     // },
   };
 };

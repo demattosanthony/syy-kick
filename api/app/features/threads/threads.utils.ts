@@ -321,75 +321,142 @@ const createProjectExplorerTool = (
   projectId: string
 ) =>
   tool({
-    description: `Navigate and explore project documents in a structured way.
+    description: `Navigate and explore project documents in a structured way. You can think of this like exploring files through a terminal or file explorer. If you don't know the files path you should start with just the plain "list" command to see all the files in the root directory.
 
 Usage:
-    1. Use "list" command to browse documents in a specific directory:
+    1. Use "list" command to list all documents in a specific directory:
        - Required parameter: command="list"
        - Optional parameter: path="" (defaults to root directory)
+       - Example: { command: "list", path: "" }
        - Example: { command: "list", path: "specifications" }
        
     2. Use "view" command to see the content of a specific document:
        - Required parameters: command="view", path="path/to/document.ext"
        - Example: { command: "view", path: "specifications/HVAC.pdf" }
        
-    3. Best for exploring project structure, finding available documents, or viewing document content directly.
-    4. Prefer search_project_information tool when looking for specific information across all documents.
-
 Returns:
     - For "list": Directory contents with document names, paths, types, and sizes
     - For "view": Document content with associated metadata`,
     parameters: z.object({
       command: z.enum(["list", "view"]),
-      query: z.string().optional(),
       path: z.string().optional(),
     }),
-    execute: async ({ query, command, path = "" }) => {
-      if (command === "list") {
-        const docs = await getProjectDocs(projectId, path);
+    execute: async ({ command, path = "" }) => {
+      try {
+        console.log("Executing project explorer tool with command:", command);
+        console.log("Project ID:", projectId);
+        console.log("Path:", path);
 
-        console.log("Found project documents:", docs.length);
+        if (command === "list") {
+          try {
+            const docs = await getProjectDocs(projectId, path);
+            console.log("Found project documents:", docs.length);
 
-        const formattedDocs = docs.map((doc) => ({
-          name: doc.name,
-          path: doc.path,
-          type: doc.mimeType,
-          size: doc.size,
-        }));
+            const formattedDocs = docs.map((doc) => ({
+              name: doc.name,
+              path: doc.path,
+              type: doc.mimeType,
+              size: doc.size,
+            }));
 
-        return {
-          dataForFrontend: formattedDocs,
-        };
-      }
-
-      if (command === "view") {
-        const document = await db.query.documents.findFirst({
-          where: and(
-            eq(documents.projectId, projectId),
-            eq(documents.path, path)
-          ),
-        });
-        console.log("Found document:", document);
-        if (!document) {
-          console.error("Document not found");
-          throw new Error("Document not found");
+            return {
+              dataForFrontend: formattedDocs,
+            };
+          } catch (error: unknown) {
+            console.error("Error listing project documents:", error);
+            return {
+              dataForFrontend: [],
+              error: `Failed to list documents: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`,
+            };
+          }
         }
 
-        const docChunks = await db.query.documentEmbeddings.findMany({
-          where: eq(documentEmbeddings.documentId, document.id),
-          columns: {
-            text: true,
-            embedding: false,
-            metadata: true,
-          },
-        });
-        console.log("Found document chunks:", docChunks.length);
+        if (command === "view") {
+          try {
+            const document = await db.query.documents.findFirst({
+              where: and(
+                eq(documents.projectId, projectId),
+                eq(documents.path, path)
+              ),
+            });
+            console.log("Found document:", document);
+            if (!document) {
+              console.error("Document not found");
+              return {
+                xmlContent: "<error>Document not found</error>",
+                error: "Document not found",
+              };
+            }
 
+            const docChunks = await db.query.documentEmbeddings.findMany({
+              where: eq(documentEmbeddings.documentId, document.id),
+              columns: {
+                text: true,
+                embedding: false,
+                metadata: true,
+              },
+            });
+            console.log("Found document chunks:", docChunks.length);
+
+            function escapeXml(unsafe: string): string {
+              return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&apos;");
+            }
+
+            // Format document chunks as XML
+            const xmlContent = `<document>
+  <metadata>
+    <name>${document.name}</name>
+    <path>${document.path}</path>
+    <type>${document.mimeType || "unknown"}</type>
+    <size>${document.size || 0}</size>
+  </metadata>
+  <chunks>
+    ${docChunks
+      .map(
+        (chunk) => `<chunk>
+      <text>${escapeXml(chunk.text || "")}</text>
+    </chunk>`
+      )
+      .join("\n    ")}
+  </chunks>
+</document>`;
+
+            console.log("XML content:", xmlContent);
+
+            return {
+              xmlContent,
+            };
+          } catch (error: unknown) {
+            console.error("Error viewing document:", error);
+            return {
+              xmlContent: `<error>${
+                error instanceof Error ? error.message : "Unknown error"
+              }</error>`,
+              error: `Failed to view document: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`,
+            };
+          }
+        }
+
+        // Handle invalid command
+        console.error(`Invalid command: ${command}`);
         return {
-          dataForFrontend: docChunks.map((chunk) => ({
-            text: chunk.text,
-            metadata: chunk.metadata,
-          })),
+          error: `Invalid command: ${command}. Valid commands are "list" and "view".`,
+        };
+      } catch (error: unknown) {
+        console.error("Project explorer tool error:", error);
+        return {
+          error: `Project explorer failed: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
         };
       }
     },
@@ -526,6 +593,8 @@ When yo encounters obscure or highly specialized information, it clearly notes t
 Yo consistently ensures that its advice, suggestions, or solutions are safe, effective, compliant with relevant codes and standards, and beneficial to both individuals and organizations involved in building engineering projects.
 
 Yo is up to date on the latest building codes and standards, including ASHRAE, NFPA, and IBC.
+
+Yo does not provide any general overviews or make general assumptions about any system or equipment. It always considers the specific context of the project or document in question. If it doesn't have enough information to provide a clear answer, it will state that the information is not available.
 
 Yo structures answers for optimal readability:
 - Beginning with a brief introductory sentence or paragraph

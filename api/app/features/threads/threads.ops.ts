@@ -325,7 +325,7 @@ const threadsOps = {
 
       // 7) Create tools for the assistant if project ID exists
       let tools = {
-        web_search: createWebSearchTool(),
+        // web_search: createWebSearchTool(),
         // search_projects_information: createProjectSearchTool(
         //   modelConfig,
         //   req.workspace!,
@@ -366,6 +366,7 @@ const threadsOps = {
             : {}),
         },
         onChunk: async ({ chunk }) => {
+          //   console.log("Chunk:", chunk);
           if (chunk.type === "text-delta") {
             aiResponse += chunk.textDelta;
           }
@@ -380,13 +381,13 @@ const threadsOps = {
           finishReason,
           reasoning,
         }) => {
-          console.log("Finish reason:", finishReason);
-          console.log("Tool calls:", toolCalls);
-          // console.log("Tool results:", toolResults.length);
-          console.log("Text:", text);
-          console.log("Reasoning:", reasoning);
+          //   console.log("Finish reason:", finishReason);
+          //   console.log("Tool calls:", toolCalls);
+          //   // console.log("Tool results:", toolResults.length);
+          //   console.log("Text:", text);
+          //   console.log("Reasoning:", reasoning);
 
-          console.log("\n\n\n");
+          //   console.log("\n\n\n");
 
           if (finishReason === "tool-calls") {
             // First create a message for the assistant's tool call
