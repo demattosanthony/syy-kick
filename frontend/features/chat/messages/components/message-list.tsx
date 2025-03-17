@@ -93,8 +93,6 @@ const UserMessage = ({ message }: { message: Message }) => {
 
 import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
-import Syyclops3dEye from "./syy-eye";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Message } from "ai";
 import AssistantMessage from "./assistant-message";
@@ -106,14 +104,14 @@ import { Loader } from "@/components/ui/loader";
 
 const LoadingMessage = React.memo(() => {
   return (
-    <div className="mb-4 flex flex-col justify-start">
+    <div className="mb-4 mt flex flex-col justify-start">
       <div className="flex items-center gap-1">
         <div className="w-[32px] h-full">
-          <Syyclops3dEye size={22} animate={false} />
+          {/* <Syyclops3dEye size={22} animate={false} /> */}
         </div>
 
         <div className="flex items-center rounded-lg bg-background">
-          <Loader variant="wave" size="sm" />
+          <Loader variant="wave" size="md" />
         </div>
       </div>
     </div>
@@ -126,11 +124,11 @@ LoadingMessage.displayName = "LoadingMessage";
 const ChatMessagesList = React.memo(
   ({
     messages,
-    isLoading,
+    status,
     showSkeletons = false,
   }: {
     messages: Message[];
-    isLoading: boolean;
+    status: "error" | "submitted" | "streaming" | "ready";
     showSkeletons?: boolean;
   }) => {
     useEffect(() => {
@@ -177,7 +175,9 @@ const ChatMessagesList = React.memo(
                 );
               })
             )}
-            {isLoading && !showSkeletons && <LoadingMessage />}
+            {(status === "submitted" || status === "streaming") && (
+              <LoadingMessage />
+            )}
           </div>
         </div>
       </div>
