@@ -35,6 +35,7 @@ import {
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
   if (model !== "Auto") return MODELS[model];
+
   return MODELS["claude-3.7-sonnet"];
 }
 
@@ -320,78 +321,50 @@ When to use:
 - Researching companies, products, or technologies
 - Fact-checking or verifying information
 Input:
-- query: A clear, specific search phrase (e.g. "latest TypeScript features 2024" or "SpaceX Starship specifications")
+- query: A clear, specific search phrase (e.g. "manuals lib aaon rn series installation operation and maintenance pdf")
 Output:
 - List of relevant search results containing:
   - Title and URL of each result
   - Content snippets showing relevant text
-  - Source information and metadata
-  - Relevance ranking
 Tips:
 - Use specific, focused queries for better results
 - Include key terms and any relevant date ranges
 - Avoid overly broad or vague searches`,
     parameters: z.object({
       query: z.string(),
-      //   category: z
-      //     .enum([
-      //       "company",
-      //       "research paper",
-      //       "news",
-      //       "pdf",
-      //       "github",
-      //       "tweet",
-      //       "personal site",
-      //       "linkedin profile",
-      //       "financial report",
-      //     ])
-      //     .optional(),
-      startCrawlDate: z
-        .string()
-        .describe(
-          "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled after this date. Must be specified in ISO 8601 format. Example: 2023-01-01T00:00:00.000Z"
-        ),
-      //       endCrawlDate: z.string().optional()
-      //         .describe(`Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled before this date. Must be specified in ISO 8601 format.
-
-      // Example:
-      // "2023-12-31T00:00:00.000Z"`),
-      //       type: z.enum(["keyword", "neural", "auto"]).optional().default("auto")
-      //         .describe(`The type of search. Neural uses an embeddings-based model, keyword is google-like SERP. Default is auto, which automatically decides between keyword and neural.
-
-      // Available options: keyword, neural, auto
-      // Example:
-      // "auto"`),
     }),
-    execute: async ({
-      query,
-      //   category,
-      startCrawlDate,
-      //   endCrawlDate,
-      //   type,
-    }) => {
+    execute: async ({ query }) => {
       console.log("Searching web for: ", query);
-      //   console.log("Category: ", category);
-      console.log("Start date: ", startCrawlDate);
-      //   console.log("End date: ", endCrawlDate);
-      //   console.log("Type: ", type);
 
-      const results = await exa.searchAndContents(query, {
-        text: true,
-        numResults: 6,
-        summary: true,
-        useAutoprompt: true,
-        highlights: true,
-        // category: category || undefined,
-        // startCrawlDate,
-        // endCrawlDate,
-        // type,
+      interface WebSearchResult {
+        data: {
+          text: string;
+          title: string;
+          description: string;
+          url: string;
+          usage?: { tokens: number };
+        }[];
+      }
+
+      const response = await fetch(`https://s.jina.ai/?q=${query}&num=6`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${process.env.JINA_API_KEY}`,
+          "X-Engine": "direct",
+          "X-Retain-Images": "none",
+          "X-Return-Format": "text",
+        },
       });
 
-      console.log("Results: ", results.results.length);
-      console.log(JSON.stringify(results.results, null, 2));
+      let results = (await response.json()) as WebSearchResult;
 
-      return results.results;
+      // Remove usage property from results
+      results.data = results.data.map((result) => {
+        const { usage, ...rest } = result;
+        return rest;
+      });
+
+      return results.data;
     },
   });
 

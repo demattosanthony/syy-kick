@@ -159,6 +159,13 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
   const hasResults = tool.state === "result" && tool.result;
   const resultCount = hasResults ? tool.result.length : 0;
 
+  const toolResponse: {
+    text: string;
+    title: string;
+    url: string;
+    description: string;
+  }[] = hasResults ? tool.result : undefined;
+
   // Show loading state
   if (tool.state === "partial-call" || tool.state === "call") {
     return (
@@ -178,6 +185,16 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
     }
   };
 
+  // Get favicon URL using Firefox's favicon service
+  const getFaviconUrl = (url: string) => {
+    try {
+      const urlObj = new URL(url);
+      return `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${urlObj.origin}&size=32`;
+    } catch (e) {
+      return null;
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -190,20 +207,22 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
             <div className="flex items-center gap-2">
               {/* Show first 3 favicons */}
               <div className="flex -space-x-1">
-                {tool.result
-                  .slice(0, 3)
-                  .map((result: { favicon?: string }, idx: number) => (
-                    <div
-                      key={`favicon-${idx}`}
-                      className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"
-                    >
-                      {result.favicon ? (
-                        <img src={result.favicon} alt="" className="w-3 h-3" />
-                      ) : (
-                        <Search className="w-3 h-3 text-muted-foreground" />
-                      )}
-                    </div>
-                  ))}
+                {toolResponse.slice(0, 3).map((result, idx: number) => (
+                  <div
+                    key={`favicon-${idx}`}
+                    className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"
+                  >
+                    {result.url ? (
+                      <img
+                        src={getFaviconUrl(result.url) || ""}
+                        alt=""
+                        className="w-3 h-3"
+                      />
+                    ) : (
+                      <Search className="w-3 h-3 text-muted-foreground" />
+                    )}
+                  </div>
+                ))}
               </div>
 
               <span className="font-normal text-sm">
@@ -227,43 +246,31 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
           <SheetDescription>Results for "{tool.args?.query}"</SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto mt-4">
-          {tool.result.map(
-            (
-              result: {
-                url: string;
-                title: string;
-                text: string;
-                summary: string;
-                favicon?: string;
-                image?: string;
-              },
-              idx: number
-            ) => (
-              <div
-                key={`result-${idx}`}
-                className="flex flex-col gap-2 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
-                onClick={() => window.open(result.url, "_blank")}
-              >
-                <small className="text-sm font-semibold leading-none">
-                  {result.title}
-                </small>
-                <p className="text-sm line-clamp-3">{result.summary}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="w-5 h-5 flex-shrink-0">
-                    <Avatar className="w-full h-full">
-                      <AvatarImage src={result.favicon} alt="" />
-                      <AvatarFallback>
-                        <Search className="w-3 h-3 text-muted-foreground" />
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {formatUrl(result.url)}
-                  </span>
+          {toolResponse?.map((result, idx: number) => (
+            <div
+              key={`result-${idx}`}
+              className="flex flex-col gap-2 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
+              onClick={() => window.open(result.url, "_blank")}
+            >
+              <small className="text-sm font-semibold leading-none">
+                {result.title}
+              </small>
+              <p className="text-sm line-clamp-3">{result.text}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="w-5 h-5 flex-shrink-0">
+                  <Avatar className="w-full h-full">
+                    <AvatarImage src={getFaviconUrl(result.url) || ""} alt="" />
+                    <AvatarFallback>
+                      <Search className="w-3 h-3 text-muted-foreground" />
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
+                <span className="text-xs text-muted-foreground truncate">
+                  {formatUrl(result.url)}
+                </span>
               </div>
-            )
-          )}
+            </div>
+          ))}
         </div>
       </SheetContent>
     </Sheet>
