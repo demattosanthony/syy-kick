@@ -24,6 +24,7 @@ const JoinOrgHandler = ({ token }: { token: string }) => {
 
     try {
       const result = await handleJoinOrg(token);
+      
       if (result.requiresAuth) {
         // Redirect to Google login with invite token as state parameter
         window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/${provider}?state=${token}`;
