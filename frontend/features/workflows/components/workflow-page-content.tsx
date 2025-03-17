@@ -32,15 +32,12 @@ function StepHeader({
   isActive?: boolean;
   isLoading?: boolean;
 }) {
-  console.log(number, title, description, isActive, isLoading);
   return (
     <div className="flex items-center gap-4 mb-4">
       <div
         className={cn(
           "flex items-center justify-center w-8 h-8 rounded-full font-medium",
-          isActive
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-muted-foreground"
+          "bg-muted text-muted-foreground"
         )}
       >
         {isLoading ? <Loader className="h-4 w-4" variant="circular" /> : number}
@@ -64,6 +61,7 @@ export default function WorkflowPageContent({
   const [isDragging, setIsDragging] = useState<Record<string, boolean>>({});
   const [showReasoning, setShowReasoning] = useState(true);
   const hasAutoHiddenReasoning = useRef(false);
+  const reasoningContainerRef = useRef<HTMLDivElement>(null);
 
   const { downloadCsv, previewCsv } = useCsvActions();
 
@@ -96,12 +94,29 @@ export default function WorkflowPageContent({
     }
   }, [workflow]);
 
+  // Add this useEffect for auto-scrolling
+  useEffect(() => {
+    if (
+      status === "submitted" &&
+      reasoningContainerRef.current &&
+      showReasoning
+    ) {
+      reasoningContainerRef.current.scrollTop =
+        reasoningContainerRef.current.scrollHeight;
+    }
+  }, [response?.reasoning, status, showReasoning]);
+
   const resetWorkflow = () => {
     // Reset all files
     if (workflow?.inputs) {
       const resetFiles: Record<string, File | null> = {};
       workflow.inputs.forEach((input) => {
         resetFiles[input.id] = null;
+        // Reset the actual file input element
+        const fileInput = document.getElementById(
+          `file-input-${input.id}`
+        ) as HTMLInputElement;
+        if (fileInput) fileInput.value = "";
       });
       setFiles(resetFiles);
     }
@@ -345,6 +360,11 @@ export default function WorkflowPageContent({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            // Reset the file input element when removing a file
+                            const fileInput = document.getElementById(
+                              `file-input-${input.id}`
+                            ) as HTMLInputElement;
+                            if (fileInput) fileInput.value = "";
                             setFiles((prev) => ({ ...prev, [input.id]: null }));
                           }}
                           className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center justify-center mx-auto"
@@ -414,7 +434,10 @@ export default function WorkflowPageContent({
             </div>
 
             {response?.reasoning && showReasoning ? (
-              <div className="bg-muted/30 p-4 rounded-lg max-h-[400px] overflow-y-auto">
+              <div
+                ref={reasoningContainerRef}
+                className="bg-muted/30 p-4 rounded-lg max-h-[400px] overflow-y-auto"
+              >
                 <MarkdownViewer content={response.reasoning || ""} />
               </div>
             ) : null}
