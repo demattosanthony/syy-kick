@@ -9,6 +9,8 @@ import db from "../../config/db";
 import reranker from "../../config/reranker";
 import s3 from "../../config/s3";
 import {
+  documentEmbeddings,
+  documents,
   documentThumbnails,
   MessageAttachment,
   messageAttachments,
@@ -25,7 +27,7 @@ import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
 
 // Feature imports
 import { ModelConfig, MODELS } from "../models";
-import { searchProjectDocuments } from "../projects";
+import { getProjectDocs, searchProjectDocuments } from "../projects";
 import {
   DocumentSearchToolResult,
   MyMessage,
@@ -309,6 +311,87 @@ Returns:
           text: result.context,
         },
       ];
+    },
+  });
+
+/** Tool to search all project information */
+const createProjectExplorerTool = (
+  modelConfig: ModelConfig,
+  workspace: Workspace,
+  projectId: string
+) =>
+  tool({
+    description: `Navigate and explore project documents in a structured way.
+
+Usage:
+    1. Use "list" command to browse documents in a specific directory:
+       - Required parameter: command="list"
+       - Optional parameter: path="" (defaults to root directory)
+       - Example: { command: "list", path: "specifications" }
+       
+    2. Use "view" command to see the content of a specific document:
+       - Required parameters: command="view", path="path/to/document.ext"
+       - Example: { command: "view", path: "specifications/HVAC.pdf" }
+       
+    3. Best for exploring project structure, finding available documents, or viewing document content directly.
+    4. Prefer search_project_information tool when looking for specific information across all documents.
+
+Returns:
+    - For "list": Directory contents with document names, paths, types, and sizes
+    - For "view": Document content with associated metadata`,
+    parameters: z.object({
+      command: z.enum(["list", "view"]),
+      query: z.string().optional(),
+      path: z.string().optional(),
+    }),
+    execute: async ({ query, command, path = "" }) => {
+      if (command === "list") {
+        const docs = await getProjectDocs(projectId, path);
+
+        console.log("Found project documents:", docs.length);
+
+        const formattedDocs = docs.map((doc) => ({
+          name: doc.name,
+          path: doc.path,
+          type: doc.mimeType,
+          size: doc.size,
+        }));
+
+        return {
+          dataForFrontend: formattedDocs,
+        };
+      }
+
+      if (command === "view") {
+        const document = await db.query.documents.findFirst({
+          where: and(
+            eq(documents.projectId, projectId),
+            eq(documents.path, path)
+          ),
+        });
+        console.log("Found document:", document);
+        if (!document) {
+          console.error("Document not found");
+          throw new Error("Document not found");
+        }
+
+        const docChunks = await db.query.documentEmbeddings.findMany({
+          where: eq(documentEmbeddings.documentId, document.id),
+          columns: {
+            text: true,
+            embedding: false,
+            metadata: true,
+          },
+        });
+        console.log("Found document chunks:", docChunks.length);
+
+        return {
+          dataForFrontend: docChunks.map((chunk) => ({
+            text: chunk.text,
+            metadata: chunk.metadata,
+          })),
+        };
+      }
     },
   });
 
@@ -1112,6 +1195,7 @@ export {
   processThreadMessages,
   createProjectSearchTool,
   createWebSearchTool,
+  createProjectExplorerTool,
   processDocumentImages,
   dbMessagesToInferenceMessages,
   maybeGenerateTitle,

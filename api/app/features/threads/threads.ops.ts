@@ -18,6 +18,7 @@ import { embeddingModel, MODELS } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
+  createProjectExplorerTool,
   createProjectSearchTool,
   createWebSearchTool,
   dbMessagesToInferenceMessages,
@@ -325,10 +326,15 @@ const threadsOps = {
       // 7) Create tools for the assistant if project ID exists
       let tools = {
         web_search: createWebSearchTool(),
-        search_projects_information: createProjectSearchTool(
+        // search_projects_information: createProjectSearchTool(
+        //   modelConfig,
+        //   req.workspace!,
+        //   thread.projectId || undefined
+        // ),
+        project_explorer: createProjectExplorerTool(
           modelConfig,
           req.workspace!,
-          thread.projectId || undefined
+          thread.projectId!
         ),
       };
 
@@ -374,13 +380,13 @@ const threadsOps = {
           finishReason,
           reasoning,
         }) => {
-          //   console.log("Finish reason:", finishReason);
-          //   console.log("Tool calls:", toolCalls);
-          //   // console.log("Tool results:", toolResults.length);
-          //   console.log("Text:", text);
-          //   console.log("Reasoning:", reasoning);
+          console.log("Finish reason:", finishReason);
+          console.log("Tool calls:", toolCalls);
+          // console.log("Tool results:", toolResults.length);
+          console.log("Text:", text);
+          console.log("Reasoning:", reasoning);
 
-          //   console.log("\n\n\n");
+          console.log("\n\n\n");
 
           if (finishReason === "tool-calls") {
             // First create a message for the assistant's tool call
