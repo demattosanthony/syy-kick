@@ -212,3 +212,42 @@
 .gm-style-iw-chr {
   margin-top: -17px;
 }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+/* Hide scrollbars by default but show on hover */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 20px;
+}
+
+/* Show scrollbar on hover */
+*:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(var(--primary-rgb, 0, 0, 0), 0.2);
+}
+
+*:hover::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(var(--primary-rgb, 0, 0, 0), 0.4);
+}
+
+/* For Firefox */
+*:hover {
+  scrollbar-color: rgba(var(--primary-rgb, 0, 0, 0), 0.2) transparent;
+}
