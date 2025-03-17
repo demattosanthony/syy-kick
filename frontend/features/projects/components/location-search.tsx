@@ -385,6 +385,6 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
       </Popover>
     </div>
   );
-}
+};
 
 export default LocationSearch;
