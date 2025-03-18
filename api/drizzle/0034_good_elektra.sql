@@ -1,3 +1,5 @@
+DELETE FROM organization_invites;
+
 CREATE TABLE "actions" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(50) NOT NULL,
