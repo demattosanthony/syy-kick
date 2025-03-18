@@ -115,6 +115,7 @@ export interface OrgMember {
   role: Role;
   profilePicture?: string;
   canUpdate: boolean;
+  canDelete: boolean;
   createdAt: Date;
 }
 

@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader, Plus } from "lucide-react";
+import { Loader, Minus, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   OrgInvitationRequestItem,
@@ -28,11 +28,15 @@ type InvitationRow = OrgInvitationRequestItem & { id: string };
 type InvitationSectionProps = {
   organizationId: string;
   transferablePermissions?: TransferableRolesPermissions;
+  availableSeats: number;
+  pendingInvitations: number;
 };
 
 export function InvitationSection({
   organizationId,
   transferablePermissions,
+  availableSeats,
+  pendingInvitations,
 }: InvitationSectionProps) {
   const [invitations, setInvitations] = useState<InvitationRow[]>([
     { id: "1", email: "", roleId: "" },
@@ -46,14 +50,22 @@ export function InvitationSection({
     }));
   }, [transferablePermissions]);
 
-  const invitationsSchema = z.object({
-    invitations: z.array(
-      z.object({
-        roleId: z.string().min(1, "Required"),
-        email: z.string().min(1, "Required").email("Wrong format"),
-      })
-    ),
-  });
+  const invitationsSchema = z
+    .object({
+      invitations: z.array(
+        z.object({
+          roleId: z.string().min(1, "Required"),
+          email: z.string().min(1, "Required").email("Wrong format"),
+        })
+      ),
+    })
+    .refine(
+      (data) => data.invitations.length + pendingInvitations <= availableSeats,
+      {
+        message: "You don't have enough seats available to invite new users.",
+        path: ["invitations"],
+      }
+    );
 
   const {
     register,
@@ -62,12 +74,18 @@ export function InvitationSection({
     control,
     setValue,
     getValues,
+    reset,
   } = useForm({
     resolver: zodResolver(invitationsSchema),
     defaultValues: {
       invitations: invitations,
     },
   });
+
+  console.log(
+    JSON.stringify(errors.invitations?.root?.message),
+    "<---- errors message"
+  );
 
   const {
     mutate: inviteUsers,
@@ -79,8 +97,8 @@ export function InvitationSection({
 
   useEffect(() => {
     if (isSuccess) {
-      console.log('---- on if success ----')
       setInvitations([{ id: "1", email: "", roleId: "" }]);
+      reset();
       toast.success("Invitations sent successfully");
     }
 
@@ -93,17 +111,11 @@ export function InvitationSection({
     return null;
   }
 
-  const inviteLink = "https://org.example.com/join/abc123def456";
-
   const handleAddMore = () => {
     setInvitations((prev) => [
       ...prev,
       { id: Date.now().toString(), email: "", roleId: "" },
     ]);
-  };
-
-  const copyInviteLink = () => {
-    navigator.clipboard.writeText(inviteLink);
   };
 
   return (
@@ -167,8 +179,29 @@ export function InvitationSection({
                   </p>
                 )}
               </div>
+              <div className="w-12">
+                {index > 0 && (
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setInvitations((prev) =>
+                        prev.filter((_, i) => i !== index)
+                      )
+                    }
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              {/* Add con button to remove an invitation if it's not the first element of array */}
             </div>
           ))}
+
+          {errors.invitations?.root?.message && (
+            <p className="text-red-500 text-sm">
+              {errors.invitations?.root?.message}
+            </p>
+          )}
 
           <Button
             variant="outline"

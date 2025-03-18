@@ -153,6 +153,9 @@ class AuthApi extends ApiRequest {
           if (error.message === "inactive_subscription") {
             return { inactiveSubscription: true };
           }
+          if(error.message === "wrong_email") {
+            return { error: "This e-mail address is not linked to this invitation link" };
+          }
         }
       }
       const errorMessage =
@@ -258,16 +261,6 @@ class OrganizationApi extends ApiRequest {
     }
   }
 
-  async removeOrganizationMember(
-    organizationId: string,
-    userId: string
-  ): Promise<{ success: boolean }> {
-    return await this.request<{ success: boolean }>(
-      `/organizations/${organizationId}/members/${userId}`,
-      "DELETE"
-    );
-  }
-
   async getOrganizationInviteToken(
     organizationId: string
   ): Promise<{ token: string }> {
@@ -304,21 +297,6 @@ class OrganizationApi extends ApiRequest {
       `/organizations/${organizationId}/seats`,
       "PUT",
       { seats }
-    );
-  }
-
-  /**
-   * Change the role of a member within an organization
-   */
-  async updateMemberRole(
-    organizationId: string,
-    userId: string,
-    role: "owner" | "member"
-  ): Promise<{ success: boolean; error?: string }> {
-    return await this.request<{ success: boolean; error?: string }>(
-      `/organizations/${organizationId}/members/${userId}/role`,
-      "PUT",
-      { role }
     );
   }
 

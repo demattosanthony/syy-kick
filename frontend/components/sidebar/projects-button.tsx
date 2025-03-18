@@ -7,7 +7,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { CreateProjectDialog } from "@/features/projects/components";
-import { usePermissions } from "@/features/permissions/context";
 
 export function ProjectsButton({
   canAdd = false

@@ -197,8 +197,6 @@ export class PermissionManager {
         ),
       });
 
-      console.log("projectPermission", projectPermission);
-
       return !!projectPermission;
     }
 
@@ -499,8 +497,6 @@ export class PermissionManager {
       const organizationProjects = await db.query.projects.findMany({
         where: eq(projects.organizationId, orgId),
       });
-
-      console.log(userRole, '<--- userRole')
 
       return organizationProjects.map((project) => project.id);
     }

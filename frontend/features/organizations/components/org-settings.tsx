@@ -41,7 +41,7 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
 
   const deleteOrgMutation = useDeleteOrganizationMutation();
 
-  const { canReadOrgSeats } = usePermissions();
+  const { canReadOrgSeats, canDeleteOrg } = usePermissions();
 
   const [copied, setCopied] = useState(false);
 
@@ -66,6 +66,7 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
         transferablePermissions={transferablePermissions}
         members={members}
         userId={user?.id}
+        availableSeats={org.seats - (members?.length ?? 1)}
       />
       {/* Danger Zone Section */}
       <section className="flex items-center justify-between">
@@ -77,7 +78,9 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
         </div>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive">Delete Organization</Button>
+            <Button disabled={!canDeleteOrg} variant="destructive">
+              Delete Organization
+            </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>

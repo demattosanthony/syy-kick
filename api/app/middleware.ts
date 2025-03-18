@@ -78,7 +78,6 @@ export const checkSub = async (
     });
 
     if (!org) {
-      console.log("Organization not found");
       res.status(404).json({ error: "Organization not found" });
       return;
     }
@@ -140,8 +139,6 @@ export const permissions = (
       return;
     }
 
-    console.log("----- permissions middleware -----");
-
     const orgId = getOrgIdOrUnedfined(req.workspace);
     const { id: userId } = req.dbUser;
 
@@ -156,8 +153,6 @@ export const permissions = (
     }
 
     const { projectId } = req.params;
-
-    console.log("projectId", projectId);
 
     const isUserProject = await PermissionManager.isUserProject(
       userId,
@@ -243,8 +238,6 @@ export const permissions = (
         projectId
       );
 
-      console.log("hasAccess ----- ", hasAccess);
-
       if (!hasAccess) {
         res
           .status(403)
@@ -253,7 +246,6 @@ export const permissions = (
       }
     }
 
-    console.log("---- end permissions middleware ----");
     next();
   };
 };

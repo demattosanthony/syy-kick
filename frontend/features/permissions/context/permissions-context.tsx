@@ -20,6 +20,10 @@ type PermissionsContextType = {
   canDeleteOrgProjects: boolean;
   canReadOrgSeats: boolean;
   canUpdateOrgSeats: boolean;
+  canReadOrgProjectDocs: boolean;
+  canCreateOrgProjectDocs: boolean;
+  canUpdateOrgProjectDocs: boolean;
+  canDeleteOrgProjectDocs: boolean;
   isLoading: boolean;
 };
 
@@ -59,9 +63,17 @@ export const PermissionsProvider = ({
     canDeleteOrgProjects,
     canReadOrgSeats,
     canUpdateOrgSeats,
+    canReadOrgProjectDocs,
+    canCreateOrgProjectDocs,
+    canUpdateOrgProjectDocs,
+    canDeleteOrgProjectDocs,
   ] = useMemo(() => {
     if (userId === orgId) {
       return [
+        true,
+        true,
+        true,
+        true,
         true,
         true,
         true,
@@ -83,6 +95,10 @@ export const PermissionsProvider = ({
 
     if (!userPermissions) {
       return [
+        false,
+        false,
+        false,
+        false,
         false,
         false,
         false,
@@ -166,6 +182,22 @@ export const PermissionsProvider = ({
         Permissions.Resources.ORGANIZATION_SEATS,
         Permissions.Actions.UPDATE
       ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+        Permissions.Actions.READ
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+        Permissions.Actions.CREATE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+        Permissions.Actions.UPDATE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+        Permissions.Actions.DELETE
+      ),
     ];
   }, [userPermissions, userId, orgId]);
 
@@ -188,6 +220,10 @@ export const PermissionsProvider = ({
         canDeleteOrgProjects,
         canReadOrgSeats,
         canUpdateOrgSeats,
+        canReadOrgProjectDocs,
+        canCreateOrgProjectDocs,
+        canUpdateOrgProjectDocs,
+        canDeleteOrgProjectDocs,
         isLoading,
       }}
     >
@@ -199,7 +235,29 @@ export const PermissionsProvider = ({
 export const usePermissions = () => {
   const context = useContext(PermissionsContext);
   if (!context) {
-    throw new Error("usePermissions must be used within a PermissionsProvider");
+    return {
+      canReadOrg: false,
+      canUpdateOrg: false,
+      canDeleteOrg: false,
+      canReadOrgMembers: false,
+      canCreateOrgMembers: false,
+      canUpdateOrgMembers: false,
+      canDeleteOrgMembers: false,
+      canReadOrgInvitations: false,
+      canCreateOrgInvitations: false,
+      canUpdateOrgInvitations: false,
+      canDeleteOrgInvitations: false,
+      canCreateOrgProjects: false,
+      canUpdateOrgProjects: false,
+      canDeleteOrgProjects: false,
+      canReadOrgSeats: false,
+      canUpdateOrgSeats: false,
+      canReadOrgProjectDocs: false,
+      canCreateOrgProjectDocs: false,
+      canUpdateOrgProjectDocs: false,
+      canDeleteOrgProjectDocs: false,
+      isLoading: true,
+    };
   }
   return context;
 };

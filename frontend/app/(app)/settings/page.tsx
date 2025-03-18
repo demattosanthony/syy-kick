@@ -33,7 +33,7 @@ export default function UserSettings() {
 
   const isSuperAdmin = user?.systemRole === "super_admin";
 
-  const { canReadOrg } = usePermissions();
+  const { canReadOrg, canUpdateOrg } = usePermissions();
 
   const isOrgOwner = useMemo(() => {
     if (activeWorkspace?.type !== "organization") return false;
@@ -88,7 +88,7 @@ export default function UserSettings() {
               </TabsTrigger>
             )} */}
 
-            {canReadOrg && (
+            {canUpdateOrg && (
               <TabsTrigger
                 value="organization"
                 className="bg-transparent px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-9"

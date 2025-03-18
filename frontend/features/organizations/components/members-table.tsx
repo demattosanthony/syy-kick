@@ -26,15 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Check,
-  Copy,
-  Link,
-  Loader,
-  MoreHorizontal,
-  Search,
-  Trash,
-} from "lucide-react";
+import { Check, Link, Loader, MoreHorizontal, Search } from "lucide-react";
 import { useGetRoles } from "@/features/permissions/api/get-roles";
 import {
   OrganizationMemberRoleResponse,
@@ -163,6 +155,15 @@ export function MembersTable({
     [filteredData, selectedRows]
   );
 
+  const higherMemberRoleSelected = useMemo(() => {
+    const higherRole = selectedRows.some((rowId) => {
+      const member = filteredData.find((member) => member.id === rowId);
+      return member?.canDelete === false;
+    });
+
+    return higherRole;
+  }, [selectedRows, filteredData]);
+
   useEffect(() => {
     if (success) {
       toast.success(success.message ?? "Success");
@@ -261,13 +262,20 @@ export function MembersTable({
                   {selectedRows.length > 0 && permissions.canDelete && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={higherMemberRoleSelected}
+                        >
                           Actions
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DialogTrigger>
-                          <DropdownMenuItem className="text-destructive hover:cursor-pointer">
+                          <DropdownMenuItem
+                            disabled={higherMemberRoleSelected}
+                            className="text-destructive hover:cursor-pointer"
+                          >
                             {membersTableTranslations[type].deleteRows}
                           </DropdownMenuItem>
                         </DialogTrigger>
@@ -336,11 +344,14 @@ export function MembersTable({
                 {filteredData.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell>
-                      <Checkbox
-                        checked={selectedRows.includes(member.id)}
-                        onCheckedChange={() => toggleSelectRow(member.id)}
-                        aria-label={`Select ${member.name}`}
-                      />
+                      {member.canUpdate && (
+                        <Checkbox
+                          checked={selectedRows.includes(member.id)}
+                          onCheckedChange={() => toggleSelectRow(member.id)}
+                          aria-label={`Select ${member.name}`}
+                          disabled={member.id === userId}
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -412,16 +423,21 @@ export function MembersTable({
                                   {membersTableTranslations[type].editRow}
                                 </DropdownMenuItem>
                               )}
-                              {permissions.canDelete && (
-                                <DialogTrigger>
-                                  <DropdownMenuItem
-                                    className="text-destructive hover:cursor-pointer"
-                                    onClick={() => setSelectedRows([member.id])}
-                                  >
-                                    {membersTableTranslations[type].deleteRow}
-                                  </DropdownMenuItem>
-                                </DialogTrigger>
-                              )}
+                              {permissions.canDelete &&
+                                !higherMemberRoleSelected && (
+                                  <DialogTrigger>
+                                    <DropdownMenuItem
+                                      // disable if selected rows include a user id that has canDelete set to false
+
+                                      className="text-destructive hover:cursor-pointer"
+                                      onClick={() =>
+                                        setSelectedRows([member.id])
+                                      }
+                                    >
+                                      {membersTableTranslations[type].deleteRow}
+                                    </DropdownMenuItem>
+                                  </DialogTrigger>
+                                )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
@@ -443,6 +459,7 @@ export function MembersTable({
                       }
                     </DialogDescription>
                     <Button
+                      disabled={isDeleting || higherMemberRoleSelected}
                       variant="destructive"
                       className="max-w-32 hover:cursor-pointer"
                       onClick={() => {

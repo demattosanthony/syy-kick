@@ -790,7 +790,6 @@ const handlers = {
     const validatedData = schemas.createProject.parse(data);
     const project = await createProject(validatedData, req.dbUser?.id);
 
-    console.log(project, "<---- PROJECT");
     res.json(project);
   },
 

@@ -14,6 +14,7 @@ import { usePermissions } from "@/features/permissions/context/permissions-conte
 
 export default function MembersManagement({
   orgId,
+  availableSeats,
   invitationsList,
   userRole,
   transferablePermissions,
@@ -21,6 +22,7 @@ export default function MembersManagement({
   userId,
 }: {
   orgId: string;
+  availableSeats: number;
   invitationsList?: OrgInvitationsResponse;
   userRole?: OrganizationMemberRoleResponse;
   transferablePermissions?: TransferableRolesPermissions;
@@ -64,6 +66,8 @@ export default function MembersManagement({
         <InvitationSection
           organizationId={orgId}
           transferablePermissions={transferablePermissions}
+          availableSeats={availableSeats}
+          pendingInvitations={invitationsList?.length ?? 0}
         />
       )}
 
