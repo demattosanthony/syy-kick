@@ -504,7 +504,15 @@ export default function EditRoleDialog({
         </ScrollArea>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false);
+              setTimeout(() => {
+                document.body.style.pointerEvents = "";
+              }, 100);
+            }}
+          >
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={isLoading}>
