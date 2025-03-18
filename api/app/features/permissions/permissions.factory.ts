@@ -24,16 +24,16 @@ abstract class BasePermissionsFactory {
     );
   }
 
-  static async addProjectAccess(
+  static async addProjectsAccess(
     userId: string,
-    projectId: string,
+    projectsIds: string[],
     organizationId: string,
     roleId: string,
     permissions: Record<string, string[]>
   ) {
-    await permissionsOps.createMemberProjectAccess(
+    await permissionsOps.createProjectsAccess(
       userId,
-      projectId,
+      projectsIds,
       organizationId,
       roleId,
       permissions
@@ -81,7 +81,7 @@ export default class PermissionsFactory {
    *  }
    * );
    */
-  static async createAccess(
+  static async createOrgAccess(
     role: Permissions.Roles,
     organizationId: string,
     userId: string,
@@ -109,6 +109,22 @@ export default class PermissionsFactory {
       userId,
       organizationId,
       await PermissionManager.permissionsNamesToIds(permissions)
+    );
+  }
+
+  static async addProjectsAccess(
+    userId: string,
+    projectsIds: string[],
+    organizationId: string,
+    roleId: string,
+    permissions: Record<string, string[]>
+  ) {
+    await permissionsOps.createProjectsAccess(
+      userId,
+      projectsIds,
+      organizationId,
+      roleId,
+      permissions
     );
   }
 }

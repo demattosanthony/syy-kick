@@ -7,6 +7,7 @@ import { checkTokens, DbUser, sendAuthCookies } from "./createAuthToken";
 import { Permissions } from "./features/permissions/permissions.types";
 import { PermissionManager } from "./features/permissions/permissions.tools";
 import { getOrgIdOrUnedfined } from "./utils";
+import Constants from "./features/permissions/permissions.constants";
 
 export type Workspace = {
   id: string; // User ID or organization ID
@@ -129,8 +130,6 @@ export const isOrgOwner = async (
   next();
 };
 
-const permissionManager = new PermissionManager();
-
 export const permissions = (
   resource: Permissions.Resources,
   action: Permissions.Actions
@@ -140,6 +139,8 @@ export const permissions = (
       res.status(403).json({ error: "Please login to your account." });
       return;
     }
+
+    console.log("----- permissions middleware -----");
 
     const orgId = getOrgIdOrUnedfined(req.workspace);
     const { id: userId } = req.dbUser;
@@ -156,11 +157,15 @@ export const permissions = (
 
     const { projectId } = req.params;
 
+    console.log("projectId", projectId);
+
+    const isUserProject = await PermissionManager.isUserProject(
+      userId,
+      projectId
+    );
+
     // Check if the user is the project owner, if so, skip permission check
-    if (
-      projectId &&
-      (await PermissionManager.isUserProject(userId, projectId))
-    ) {
+    if (projectId && isUserProject) {
       next();
       return;
     }
@@ -171,7 +176,6 @@ export const permissions = (
       return;
     }
 
-    // TODO: get role instead of role id
     let orgRole = await PermissionManager.getUserOrganisationRole(
       userId,
       orgId
@@ -191,71 +195,65 @@ export const permissions = (
       return;
     }
 
-    if (
-      [
-        Permissions.Roles.ORGANIZATION_ADMIN,
-        Permissions.Roles.ORGANIZATION_MANAGER,
-      ].includes(orgRole.role.name as Permissions.Roles)
-    ) {
-      let userHasAccessToRessource =
-        await permissionManager.userHasAccessToRessource(
-          Permissions.Level.ORGANIZATION,
-          orgRole,
-          resourceId,
-          action
-        );
-
-      if (!userHasAccessToRessource) {
-        res
-          .status(403)
-          .json({ error: "You don't have access to this resource." });
-
-        return;
-      }
-    } else {
-      console.log(projectId, "<---- Project Id");
-      if (!projectId) {
-        res
-          .status(403)
-          .json({ error: "You don't have access to this resource." });
-
-        return;
-      }
-
-      const projectRole = await permissionManager.getUserProjectRole(
-        userId,
-        projectId
+    // User try to access an organization resource
+    if (Constants.OrganizationResources.includes(resource)) {
+      const hasAccess = await PermissionManager.userHasAccessToRessource(
+        orgRole,
+        orgId,
+        resourceId,
+        action
       );
 
-      console.log(projectRole, "<---- Project Role");
-
-      if (!projectRole) {
+      if (!hasAccess) {
         res
           .status(403)
           .json({ error: "You don't have access to this resource." });
-
-        return;
-      }
-
-      console.log(userId, "<---- User Id");
-
-      let userHasAccessToRessource =
-        await permissionManager.userHasAccessToRessource(
-          Permissions.Level.PROJECT,
-          projectRole,
-          resourceId,
-          action
-        );
-
-      if (!userHasAccessToRessource) {
-        res
-          .status(403)
-          .json({ error: "You don't have access to this resource." });
-
         return;
       }
     }
 
+    // User try to access an organization project resource
+    if (Constants.OrganizationProjectResources.includes(resource)) {
+      // An organization role has access to all project resources
+      if (
+        [
+          Permissions.Roles.ORGANIZATION_ADMIN,
+          Permissions.Roles.ORGANIZATION_MANAGER,
+        ].includes(orgRole.role.name as Permissions.Roles)
+      ) {
+        next();
+        return;
+      }
+
+      // projectId not provided, required for a project resource if the action is not create
+      if (
+        !projectId &&
+        resource === Permissions.Resources.ORGANIZATION_PROJECTS &&
+        action !== Permissions.Actions.CREATE
+      ) {
+        res.status(403).json({ error: "Project not found." });
+        return;
+      }
+
+      const hasAccess = await PermissionManager.userHasAccessToRessource(
+        orgRole,
+        orgId,
+        resourceId,
+        action,
+        projectId
+      );
+
+      console.log("hasAccess ----- ", hasAccess);
+
+      if (!hasAccess) {
+        res
+          .status(403)
+          .json({ error: "You don't have access to this resource." });
+        return;
+      }
+    }
+
+    console.log("---- end permissions middleware ----");
     next();
   };
 };

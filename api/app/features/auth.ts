@@ -1,12 +1,11 @@
 import { Router, Request, Response } from "express";
 import { checkTokens, DbUser, sendAuthCookies } from "../createAuthToken";
 import db from "../config/db";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import myPassport, { authenticateSaml } from "../config/passport";
 import {
+  memberRoles,
   organizationInvites,
-  organizationMemberRoles,
-  organizationMembers,
   organizations,
   roles,
   users,
@@ -27,8 +26,8 @@ const getUserWithOrgs = async (userId: string) => {
     where: eq(users.id, userId),
   })) as DbUser & { organizations?: any[] };
 
-  const organizations = await db.query.organizationMemberRoles.findMany({
-    where: eq(organizationMemberRoles.organizationMemberId, userId),
+  const organizations = await db.query.memberRoles.findMany({
+    where: and(eq(memberRoles.userId, userId), isNull(memberRoles.projectId)),
     with: { organization: true, role: true },
   });
 
@@ -49,10 +48,10 @@ const checkInvite = async (token: string) => {
 };
 
 const addOrgMember = async (orgId: string, userId: string, roleId: string) => {
-  const existing = await db.query.organizationMemberRoles.findFirst({
+  const existing = await db.query.memberRoles.findFirst({
     where: and(
-      eq(organizationMemberRoles.organizationId, orgId),
-      eq(organizationMemberRoles.organizationMemberId, userId)
+      eq(memberRoles.organizationId, orgId),
+      eq(memberRoles.userId, userId)
     ),
   });
 
@@ -64,7 +63,7 @@ const addOrgMember = async (orgId: string, userId: string, roleId: string) => {
 
   if (!role) throw new Error("Role not found");
 
-  await PermissionsFactory.createAccess(
+  await PermissionsFactory.createOrgAccess(
     role.name as Permissions.Roles,
     orgId,
     userId
@@ -187,6 +186,10 @@ const handlers = {
       if (!invite?.roleId || !invite.organizationId) {
         res.status(403).json({ message: "Invalid invite" });
         return;
+      }
+
+      if (invite.email !== req.dbUser.email) {
+        throw new Error("wrong_email");
       }
 
       await addOrgMember(

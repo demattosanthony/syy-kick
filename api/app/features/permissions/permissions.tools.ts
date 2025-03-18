@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import db from "../../config/db";
 import {
   Permissions,
@@ -10,9 +10,8 @@ import {
 } from "./permissions.types";
 import {
   actions,
-  organizationMemberRoles,
+  memberRoles,
   permissions,
-  projectMemberRoles,
   projects,
   resources,
   roles,
@@ -42,66 +41,26 @@ export class PermissionManager {
     updatedAt: Date;
     organizationId: string;
     roleId: string;
-    organizationMemberId: string;
-    role: Role;
-  } | null> => {
-    const organizationMemberRole =
-      await db.query.organizationMemberRoles.findFirst({
-        where: and(
-          eq(organizationMemberRoles.organizationId, organizationId),
-          eq(organizationMemberRoles.organizationMemberId, userId)
-        ),
-        with: {
-          role: true,
-        },
-      });
-
-    if (!organizationMemberRole) {
-      return null;
-    }
-
-    return organizationMemberRole;
-  };
-
-  /**
-   * Gets the user's project role in a project
-   * @param {string} userId - The user ID
-   * @param {string} projectId - The project ID
-   * @returns {Promise<string | null>} - The role ID or null if the user is not a member
-   * @memberof PermissionManager
-   * @example
-   * const permissionManager = new PermissionManager();
-   * const role = await permissionManager
-   *  .getUserProjectRole("user-id", "project-id")
-   * ;
-   **/
-  getUserProjectRole = async (
-    userId: string,
-    projectId: string
-  ): Promise<{
-    id: string;
-    createdAt: Date;
-    updatedAt: Date;
-    organizationId: string;
-    roleId: string;
     userId: string;
+    projectId: string | null;
     role: Role;
   } | null> => {
-    const projectMemberRole = await db.query.projectMemberRoles.findFirst({
+    const organizationMemberRole = await db.query.memberRoles.findFirst({
       where: and(
-        eq(projectMemberRoles.projectId, projectId),
-        eq(projectMemberRoles.userId, userId)
+        eq(memberRoles.organizationId, organizationId),
+        eq(memberRoles.userId, userId),
+        isNull(memberRoles.projectId)
       ),
       with: {
         role: true,
       },
     });
 
-    if (!projectMemberRole) {
+    if (!organizationMemberRole) {
       return null;
     }
 
-    return projectMemberRole;
+    return organizationMemberRole;
   };
 
   /**
@@ -115,7 +74,7 @@ export class PermissionManager {
    *  .getActionId("action-name")
    * ;
    **/
-  getActionId = async (actionName: string): Promise<string | null> => {
+  static getActionId = async (actionName: string): Promise<string | null> => {
     const action = await db.query.actions.findFirst({
       where: eq(actions.name, actionName),
     });
@@ -179,10 +138,11 @@ export class PermissionManager {
 
   /***
    * Verifies if a user has access to a resource
-   * @param {Permissions.Level} level - The permission level (organization or project)
-   * @param {object} orgRole - The user organization role
+   * @param {object} orgMemberRole - The user organization role
+   * @param {string} orgId - The organization ID
    * @param {Permissions.Resources} resourceId - The resource to check access
    * @param {Permissions.Actions} actionName - The action name (e.g. Create, Read, Update, Delete)
+   * @param {string | null} projectId - The project ID
    * @returns {Promise<boolean>} - True if the user has access, false otherwise
    * @memberof PermissionManager
    * @example
@@ -195,83 +155,63 @@ export class PermissionManager {
    *      Permissions.Actions.READ
    *  );
    */
-  async userHasAccessToRessource(
-    level: Permissions.Level,
-    // @TODO better type and member id management
-    orgOrProjectRole: {
+  static async userHasAccessToRessource(
+    orgMemberRole: {
       id: string;
       createdAt: Date;
       updatedAt: Date;
       organizationId: string;
       roleId: string;
-      organizationMemberId?: string;
-      userId?: string;
+      userId: string;
       role: Role;
     },
+    orgId: string,
     resourceId: string,
-    actionName: string
+    actionName: string,
+    projectId?: string
   ): Promise<boolean> {
-    const actionId = await this.getActionId(actionName);
+    const actionId = await PermissionManager.getActionId(actionName);
 
     if (!actionId) {
       return false;
     }
 
-    let entityCondition;
+    if (projectId) {
+      const projectMemberRole = await db.query.memberRoles.findFirst({
+        where: and(
+          eq(memberRoles.projectId, projectId),
+          eq(memberRoles.userId, orgMemberRole.userId),
+          eq(memberRoles.organizationId, orgId)
+        ),
+      });
 
-    if (
-      level === Permissions.Level.ORGANIZATION &&
-      [
-        Permissions.Roles.ORGANIZATION_ADMIN,
-        Permissions.Roles.ORGANIZATION_MANAGER,
-      ].includes(orgOrProjectRole.role.name as Permissions.Roles)
-    ) {
-      entityCondition = eq(permissions.orgMemberRoleId, orgOrProjectRole.id);
-    } else {
-      entityCondition = eq(
-        permissions.projectMemberRoleId,
-        orgOrProjectRole.id
-      );
+      if (!projectMemberRole) {
+        return false;
+      }
+
+      const projectPermission = await db.query.permissions.findFirst({
+        where: and(
+          eq(permissions.memberRoleId, projectMemberRole.id),
+          eq(permissions.resourceId, resourceId),
+          eq(permissions.actionId, actionId)
+        ),
+      });
+
+      console.log("projectPermission", projectPermission);
+
+      return !!projectPermission;
     }
 
-    const permission = await db.query.permissions.findFirst({
+    const orgPermission = await db.query.permissions.findFirst({
       where: and(
-        entityCondition,
+        eq(permissions.memberRoleId, orgMemberRole.id),
         eq(permissions.resourceId, resourceId),
         eq(permissions.actionId, actionId)
       ),
     });
 
-    return !!permission;
+    return !!orgPermission;
   }
-
-  /**
-   * Verifies if a user can configure a resource action
-   * @param {Permissions.Roles} role - The user role
-   * @param {Permissions.Resources} resource - The resource to check access
-   * @param {Permissions.Actions} action - The action name (e.g. Create, Read, Update, Delete)
-   * @param {Permissions.Actions[]} userResourcePermissions - The user's permissions for the resource
-   * @returns {boolean} - True if the user has access, false otherwise
-   * @memberof PermissionManager
-   * @example
-   * const userCanConfigResourceAction = PermissionManager.userCanConfigResourceAction(
-   *  Permissions.Roles.ORGANIZATION_ADMIN,
-   *  Permissions.Resources.ORGANIZATION,
-   *  Permissions.Actions.UPDATE,
-   *  ["create", "read", "update", "delete"]
-   * );
-   */
-  static userCanConfigResourceAction = (
-    role: Permissions.Roles,
-    resource: Permissions.Resources,
-    action: Permissions.Actions,
-    userResourcePermissions: Permissions.Actions[]
-  ): boolean => {
-    return (
-      Constants.ConfigurableRolesResources[role][resource][action]
-        .configurable && userResourcePermissions.includes(action)
-    );
-  };
 
   /**
    * Gets the transferable roles for a user
@@ -295,7 +235,7 @@ export class PermissionManager {
       return [];
     }
 
-    // Récupération du rôle utilisateur avec toutes ses permissions en une seule requête
+    // Get the user role in the organization, with resources permissions
     const userRole = await permissionsOps.getUserOrganizationRole(
       userId,
       entityId
@@ -395,6 +335,14 @@ export class PermissionManager {
     return transferablePermissions;
   }
 
+  /**
+   * Formats a raw user role to a user role
+   * @param {RawUserRole} role - The raw user role
+   * @returns {UserRole} - The formatted user role
+   * @memberof PermissionManager
+   * @example
+   * const permissionManager = PermissionManager.formatUserRole(rawUserRole);
+   **/
   static formatUserRole = (role: RawUserRole): UserRole => {
     const resources: any = [];
 
@@ -427,19 +375,19 @@ export class PermissionManager {
   };
 
   /**
-   * Checks if a user can update a role
+   * Checks if a user has superior role
    * @param {Permissions.Roles} userRole - The user role
-   * @param {Permissions.Roles} role - The role to update
-   * @returns {boolean} - True if the user can update the role, false otherwise
+   * @param {Permissions.Roles} role - The role to check
+   * @returns {boolean} - True if the user has superior role, false otherwise
    * @memberof PermissionManager
    * @example
-   * const canUpdateRole = PermissionManager.canUpdateRole(
+   * const hasSuperiorRole = PermissionManager.hasSuperiorRole(
    *  Permissions.Roles.ORGANIZATION_ADMIN,
    *  Permissions.Roles.ORGANIZATION_MANAGER
    * );
-   * console.log(canUpdateRole); // true
+   * console.log(hasSuperiorRole); // true
    **/
-  static canUpdateRole = (
+  static hasSuperiorRole = (
     userRole: Permissions.Roles,
     role: Permissions.Roles
   ): boolean => {
@@ -528,10 +476,10 @@ export class PermissionManager {
     userId: string,
     orgId: string
   ): Promise<string[]> {
-    const userRole = await db.query.organizationMemberRoles.findFirst({
+    const userRole = await db.query.memberRoles.findFirst({
       where: and(
-        eq(organizationMemberRoles.organizationId, orgId),
-        eq(organizationMemberRoles.organizationMemberId, userId)
+        eq(memberRoles.organizationId, orgId),
+        eq(memberRoles.userId, userId)
       ),
       with: {
         role: true,
@@ -552,6 +500,8 @@ export class PermissionManager {
         where: eq(projects.organizationId, orgId),
       });
 
+      console.log(userRole, '<--- userRole')
+
       return organizationProjects.map((project) => project.id);
     }
 
@@ -561,14 +511,17 @@ export class PermissionManager {
         Permissions.Roles.PROJECT_MEMBER,
       ].includes(userRole.role.name as Permissions.Roles)
     ) {
-      const projectsList = await db.query.projectMemberRoles.findMany({
+      const projectsList = await db.query.memberRoles.findMany({
         where: and(
-          eq(projectMemberRoles.userId, userId),
-          eq(projectMemberRoles.organizationId, orgId)
+          eq(memberRoles.userId, userId),
+          eq(memberRoles.organizationId, orgId),
+          isNotNull(memberRoles.projectId)
         ),
       });
 
-      return projectsList.map((project) => project.projectId);
+      return projectsList
+        .map((project) => project.projectId)
+        .filter((projectId): projectId is string => projectId !== null);
     }
 
     return [];
@@ -601,6 +554,47 @@ export class PermissionManager {
         })),
       })),
       projects: [],
+    };
+  }
+
+  /**
+   * Get the user's organization role resources permissions
+   * @param {string} userId - The user ID
+   * @param {string} orgId - The organization ID
+   * @returns {Promise<Record<string, string[]>} - The user's organization role resources permissions
+   * @memberof PermissionManager
+   * @example
+   * const orgRoleResourcesPermissions = await PermissionManager.getOrgRoleResourcesPermissions("user-id", "org-id");
+   **/
+  static async getOrgRoleResourcesPermissions(
+    userId: string,
+    orgId: string
+  ): Promise<{
+    role: Role;
+    resources: Record<string, string[]>;
+  }> {
+    const userOrgRole = await permissionsOps.getUserOrganizationRole(
+      userId,
+      orgId
+    );
+
+    if (!userOrgRole) {
+      throw new Error("User not found in organization");
+    }
+
+    const resourcesPermissions: Record<string, string[]> = {};
+
+    userOrgRole.permissions.forEach((permission) => {
+      if (!resourcesPermissions[permission.resourceId]) {
+        resourcesPermissions[permission.resourceId] = [permission.actionId];
+      } else {
+        resourcesPermissions[permission.resourceId].push(permission.actionId);
+      }
+    });
+
+    return {
+      role: userOrgRole.role,
+      resources: resourcesPermissions,
     };
   }
 }

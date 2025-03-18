@@ -60,8 +60,7 @@ export type UserPermissions = {
   id: string;
   createdAt: Date;
   updatedAt: Date;
-  orgMemberRoleId: string | null;
-  projectMemberRoleId: string | null;
+  memberRoleId: string;
   resourceId: string;
   actionId: string;
   resource: {
@@ -83,8 +82,9 @@ export type UserPermissions = {
 
 export interface RawUserRole {
   id: string;
-  organizationId?: string;
-  projectId?: string;
+  organizationId: string;
+  projectId: string | null;
+  userId: string;
   roleId: string;
   createdAt: Date;
   updatedAt: Date;

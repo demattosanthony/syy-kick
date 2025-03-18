@@ -258,24 +258,38 @@ export default class Constants {
       },
       [ORGANIZATION_PROJECT_DOCS]: {
         [CREATE]: { default: false, configurable: true },
-        [READ]: { default: false, configurable: true },
+        [READ]: { default: true, configurable: false },
         [UPDATE]: { default: false, configurable: true },
         [DELETE]: { default: false, configurable: true },
       },
       [ORGANIZATION_PROJECT_INVITATIONS]: {
-        [CREATE]: { default: false, configurable: true },
-        [READ]: { default: false, configurable: true },
-        [UPDATE]: { default: false, configurable: true },
-        [DELETE]: { default: false, configurable: true },
+        [CREATE]: { default: false, configurable: false },
+        [READ]: { default: false, configurable: false },
+        [UPDATE]: { default: false, configurable: false },
+        [DELETE]: { default: false, configurable: false },
       },
       [ORGANIZATION_PROJECT_MEMBERS]: {
-        [CREATE]: { default: false, configurable: true },
-        [READ]: { default: false, configurable: true },
-        [UPDATE]: { default: false, configurable: true },
-        [DELETE]: { default: false, configurable: true },
+        [CREATE]: { default: false, configurable: false },
+        [READ]: { default: false, configurable: false },
+        [UPDATE]: { default: false, configurable: false },
+        [DELETE]: { default: false, configurable: false },
       },
     },
   };
+
+  static OrganizationResources: Permissions.Resources[] = [
+    ORGANIZATION,
+    ORGANIZATION_INVITATIONS,
+    ORGANIZATION_MEMBERS,
+    ORGANIZATION_SEATS,
+  ];
+
+  static OrganizationProjectResources: Permissions.Resources[] = [
+    ORGANIZATION_PROJECTS,
+    ORGANIZATION_PROJECT_DOCS,
+    ORGANIZATION_PROJECT_INVITATIONS,
+    ORGANIZATION_PROJECT_MEMBERS,
+  ];
 
   static RoleHierarchy: Permissions.Roles[] = [
     SUPER_ADMIN,

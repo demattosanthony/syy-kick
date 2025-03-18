@@ -1,9 +1,9 @@
 import { Request, Response, Router } from "express";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import z from "zod";
 import db from "../config/db";
 import {
-  organizationMemberRoles,
+  memberRoles,
   organizationMembers,
   organizations,
   roles,
@@ -242,28 +242,34 @@ const ops = {
 
     const members = await db
       .select({
-        id: organizationMemberRoles.organizationMemberId,
+        id: memberRoles.userId,
         email: users.email,
         profilePicture: users.profilePicture,
         name: users.name,
         role: roles,
-        createdAt: organizationMemberRoles.createdAt,
+        createdAt: memberRoles.createdAt,
       })
-      .from(organizationMemberRoles)
-      .innerJoin(
-        users,
-        eq(users.id, organizationMemberRoles.organizationMemberId)
-      )
-      .innerJoin(roles, eq(roles.id, organizationMemberRoles.roleId))
-      .where(eq(organizationMemberRoles.organizationId, orgId));
+      .from(memberRoles)
+      .innerJoin(users, eq(users.id, memberRoles.userId))
+      .innerJoin(roles, eq(roles.id, memberRoles.roleId))
+      .where(
+        and(
+          eq(memberRoles.organizationId, orgId),
+          isNull(memberRoles.projectId)
+        )
+      );
 
-    return members.map((member) => ({
-      ...member,
-      canUpdate: PermissionManager.canUpdateRole(
+    return members.map((member) => {
+      const hasSuperiorRole = PermissionManager.hasSuperiorRole(
         userRole?.role.name as Permissions.Roles,
         member.role.name as Permissions.Roles
-      ),
-    }));
+      );
+      return {
+        ...member,
+        canUpdate: hasSuperiorRole,
+        canDelete: hasSuperiorRole,
+      };
+    });
   },
 
   async removeMember(orgId: string, userId: string) {
@@ -331,7 +337,7 @@ const handle = {
     const data = schemas.org.parse(req.body);
     const org = await ops.create(data, req.dbUser!);
 
-    await PermissionsFactory.createAccess(
+    await PermissionsFactory.createOrgAccess(
       Permissions.Roles.ORGANIZATION_ADMIN,
       org.id,
       req.dbUser!.id
@@ -517,14 +523,17 @@ const handle = {
         Permissions.Roles.PROJECT_MEMBER,
       ].includes(role.role.name as Permissions.Roles)
     ) {
-      const userProjects = await db.query.projectMemberRoles.findMany({
-        where: eq(organizationMemberRoles.organizationId, orgId),
+      const userProjects = await db.query.memberRoles.findMany({
+        where: and(
+          eq(memberRoles.organizationId, orgId),
+          isNotNull(memberRoles.projectId)
+        ),
         with: { project: true },
       });
 
       formattedRole.projects = userProjects.map((p) => ({
-        id: p.project.id,
-        name: p.project.name,
+        id: p.project!.id,
+        name: p.project!.name,
       }));
     }
 
@@ -573,22 +582,6 @@ export default Router()
       Permissions.Actions.READ
     ),
     handle.getMemberRole
-  )
-  .delete(
-    "/:id/members/:userId",
-    permissions(
-      Permissions.Resources.ORGANIZATION_MEMBERS,
-      Permissions.Actions.DELETE
-    ),
-    handle.removeMember
-  )
-  .put(
-    "/:id/members/:userId/role",
-    permissions(
-      Permissions.Resources.ORGANIZATION_MEMBERS,
-      Permissions.Actions.UPDATE
-    ),
-    handle.updateMemberRole
   )
   .post(
     "/:id/seats/validate",

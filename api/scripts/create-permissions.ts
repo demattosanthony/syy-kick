@@ -3,8 +3,8 @@ import db from "../app/config/db";
 import {
   actions,
   organizationInvites,
-  organizationMemberRoles,
   organizationMembers,
+  memberRoles,
   permissions,
   resources,
   roles,
@@ -140,8 +140,8 @@ const orgOwners = await db.query.organizationMembers.findMany({
 });
 
 for (const owner of orgOwners) {
-  await db.insert(organizationMemberRoles).values({
-    organizationMemberId: owner.userId,
+  await db.insert(memberRoles).values({
+    userId: owner.userId,
     roleId: orgAdminRoleId,
     organizationId: owner.organizationId,
   });
@@ -153,16 +153,16 @@ const orgMembers = await db.query.organizationMembers.findMany({
 });
 
 for (const member of orgMembers) {
-  await db.insert(organizationMemberRoles).values({
-    organizationMemberId: member.userId,
+  await db.insert(memberRoles).values({
+    userId: member.userId,
     roleId: orgManagerRoleId,
     organizationId: member.organizationId,
   });
 }
 
 // Permissions ORGANIZATION_ADMIN
-const orgMemberRoles = await db.query.organizationMemberRoles.findMany({
-  where: eq(organizationMemberRoles.roleId, orgAdminRoleId),
+const orgMemberRoles = await db.query.memberRoles.findMany({
+  where: eq(memberRoles.roleId, orgAdminRoleId),
 });
 
 for (const orgRole of orgMemberRoles) {
@@ -170,7 +170,7 @@ for (const orgRole of orgMemberRoles) {
   for (const resource of resourcesList) {
     for (const action of actionsList) {
       values.push({
-        orgMemberRoleId: orgRole.id,
+        memberRoleId: orgRole.id,
         resourceId: resource.id,
         actionId: action.id,
       });
@@ -183,8 +183,8 @@ for (const orgRole of orgMemberRoles) {
 }
 
 // Permissions ORGANIZATION_MANAGER
-const orgManagerRoles = await db.query.organizationMemberRoles.findMany({
-  where: eq(organizationMemberRoles.roleId, orgManagerRoleId),
+const orgManagerRoles = await db.query.memberRoles.findMany({
+  where: eq(memberRoles.roleId, orgManagerRoleId),
 });
 
 for (const orgRole of orgManagerRoles) {
@@ -212,7 +212,7 @@ for (const orgRole of orgManagerRoles) {
       }
 
       values.push({
-        orgMemberRoleId: orgRole.id,
+        memberRoleId: orgRole.id,
         resourceId: resource.id,
         actionId: action.id,
       });

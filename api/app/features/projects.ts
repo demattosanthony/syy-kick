@@ -15,7 +15,7 @@ import {
 import {
   documentEmbeddings,
   documents,
-  organizationMemberRoles,
+  memberRoles,
   organizations,
   projects,
   users,
@@ -31,6 +31,7 @@ import { Permissions } from "./permissions/permissions.types";
 import { PermissionManager } from "./permissions/permissions.tools";
 import { permissionsOps } from "./permissions/permissions.ops";
 import Constants from "./permissions/permissions.constants";
+import PermissionsFactory from "./permissions/permissions.factory";
 
 const schemas = {
   createProject: z
@@ -154,37 +155,19 @@ async function createProject(
       .then((res) => res[0]);
 
     if (data?.organizationId) {
-      const userOrgRole = await db.query.organizationMemberRoles.findFirst({
-        where: and(
-          eq(organizationMemberRoles.organizationId, data.organizationId),
-          eq(organizationMemberRoles.organizationMemberId, userId)
-        ),
-        with: {
-          role: true,
-        },
-      });
-
-      if (!userOrgRole) {
-        throw new Error("User not found in organization");
-      }
-
-      // Create project access for the user if it's a PROJECT_MANAGER or PROJECT_MEMBER
-      if (
-        [
-          Permissions.Roles.PROJECT_MANAGER,
-          Permissions.Roles.PROJECT_MEMBER,
-        ].includes(userOrgRole?.role.name as Permissions.Roles)
-      ) {
-        await permissionsOps.createMemberProjectAccess(
+      const orgRoleAndResources =
+        await PermissionManager.getOrgRoleResourcesPermissions(
           userId,
-          newProject.id,
-          data.organizationId,
-          userOrgRole.role.id,
-          await PermissionManager.permissionsNamesToIds(
-            Constants.Access[userOrgRole.role.name]
-          )
+          data.organizationId
         );
-      }
+
+      await PermissionsFactory.addProjectsAccess(
+        userId,
+        [newProject.id],
+        data.organizationId,
+        orgRoleAndResources.role.id,
+        orgRoleAndResources.resources
+      );
     }
 
     return newProject;
@@ -789,31 +772,6 @@ export async function searchProjectDocuments(
   }
 }
 
-/**
- * Checks if a user has permission to modify a project
- * @throws Error if user doesn't have permission
- */
-async function checkProjectUpdatePermission(projectId: string, userId: string) {
-  const project = await getProject(projectId);
-
-  // Check if user owns the project directly
-  if (project.userId === userId) {
-    return true;
-  }
-
-  // Check if user is an owner in the organization that owns the project
-  if (project.organization) {
-    const isOrgOwner = project.organization.members?.some(
-      (member) => member.userId === userId && member.role === "owner"
-    );
-    if (isOrgOwner) {
-      return true;
-    }
-  }
-
-  throw new Error("You don't have permission to modify this project");
-}
-
 // Route handlers
 const handlers = {
   createProject: async (req: Request, res: Response) => {
@@ -832,7 +790,7 @@ const handlers = {
     const validatedData = schemas.createProject.parse(data);
     const project = await createProject(validatedData, req.dbUser?.id);
 
-    console.log(project, '<---- PROJECT')
+    console.log(project, "<---- PROJECT");
     res.json(project);
   },
 
@@ -890,19 +848,11 @@ const handlers = {
         return;
       }
 
-      await checkProjectUpdatePermission(projectId, userId);
-
       const validatedData = schemas.updateProject.parse(req.body);
       const project = await updateProject(projectId, validatedData);
       res.json(project);
     } catch (error: any) {
-      if (
-        error.message === "You don't have permission to modify this project"
-      ) {
-        res.status(403).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: "Failed to update project" });
-      }
+      res.status(500).json({ error: "Failed to update project" });
     }
   },
 

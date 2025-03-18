@@ -327,14 +327,9 @@ export const permissions = pgTable(
   "permissions",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    orgMemberRoleId: uuid("org_member_role_id").references(
-      () => organizationMemberRoles.id,
-      { onDelete: "cascade" }
-    ),
-    projectMemberRoleId: uuid("project_member_role_id").references(
-      () => projectMemberRoles.id,
-      { onDelete: "cascade" }
-    ),
+    memberRoleId: uuid("member_role_id")
+      .notNull()
+      .references(() => memberRoles.id, { onDelete: "cascade" }),
     resourceId: uuid("resource_id")
       .notNull()
       .references(() => resources.id, { onDelete: "cascade" }),
@@ -346,62 +341,33 @@ export const permissions = pgTable(
   },
   (table) => [
     uniqueIndex("unique_permission").on(
-      table.orgMemberRoleId,
-      table.projectMemberRoleId,
+      table.memberRoleId,
       table.resourceId,
       table.actionId
     ),
   ]
 );
 
-// Organization member roles
-export const organizationMemberRoles = pgTable(
-  "organization_member_roles",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
-    organizationMemberId: uuid("organization_member_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    roleId: uuid("role_id")
-      .notNull()
-      .references(() => roles.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex("unique_org_member_role").on(
-      table.organizationMemberId,
-      table.roleId,
-      table.organizationId
-    ),
-  ]
-);
+export const memberRoles = pgTable("member_roles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id").references(() => projects.id, {
+    onDelete: "cascade",
+  }),
+  organizationId: uuid("organization_id")
+    .references(() => organizations.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  roleId: uuid("role_id")
+    .references(() => roles.id, { onDelete: "cascade" })
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
-// Project member roles
-export const projectMemberRoles = pgTable(
-  "project_member_roles",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id").notNull(),
-    projectId: uuid("project_id").notNull(),
-    organizationId: uuid("organization_id").notNull(),
-    roleId: uuid("role_id")
-      .notNull()
-      .references(() => roles.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex("unique_project_member_role").on(
-      table.userId,
-      table.projectId,
-      table.roleId
-    ),
-  ]
-);
 /** ---- End Permissions ---- */
 
 // Relations
@@ -536,17 +502,12 @@ export const projectsRelations = relations(projects, ({ one }) => ({
 // Permissions relations
 export const rolesRelations = relations(roles, ({ many }) => ({
   permissions: many(permissions),
-  organizationMemberRoles: many(organizationMemberRoles),
-  projectMemberRoles: many(projectMemberRoles),
+  memberRoles: many(memberRoles),
 }));
 export const permissionsRelations = relations(permissions, ({ one }) => ({
-  orgMemberRole: one(organizationMemberRoles, {
-    fields: [permissions.orgMemberRoleId],
-    references: [organizationMemberRoles.id],
-  }),
-  projectMemberRole: one(projectMemberRoles, {
-    fields: [permissions.projectMemberRoleId],
-    references: [projectMemberRoles.id],
+  memberRole: one(memberRoles, {
+    fields: [permissions.memberRoleId],
+    references: [memberRoles.id],
   }),
   resource: one(resources, {
     fields: [permissions.resourceId],
@@ -558,41 +519,25 @@ export const permissionsRelations = relations(permissions, ({ one }) => ({
   }),
 }));
 
-export const organizationMemberRolesRelations = relations(
-  organizationMemberRoles,
-  ({ one }) => ({
-    role: one(roles, {
-      fields: [organizationMemberRoles.roleId],
-      references: [roles.id],
-    }),
-    user: one(users, {
-      fields: [organizationMemberRoles.organizationMemberId],
-      references: [users.id],
-    }),
-    organization: one(organizations, {
-      fields: [organizationMemberRoles.organizationId],
-      references: [organizations.id],
-    }),
-  })
-);
-
-export const projectMemberRolesRelations = relations(
-  projectMemberRoles,
-  ({ one }) => ({
-    role: one(roles, {
-      fields: [projectMemberRoles.roleId],
-      references: [roles.id],
-    }),
-    project: one(projects, {
-      fields: [projectMemberRoles.projectId],
-      references: [projects.id],
-    }),
-    organization: one(organizations, {
-      fields: [projectMemberRoles.organizationId],
-      references: [organizations.id],
-    }),
-  })
-);
+export const memberRolesRelations = relations(memberRoles, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [memberRoles.projectId],
+    references: [projects.id],
+  }),
+  organization: one(organizations, {
+    fields: [memberRoles.organizationId],
+    references: [organizations.id],
+  }),
+  member: one(users, {
+    fields: [memberRoles.userId],
+    references: [users.id],
+  }),
+  role: one(roles, {
+    fields: [memberRoles.roleId],
+    references: [roles.id],
+  }),
+  permissions: many(permissions),
+}));
 
 export type MessageAttachment = {
   id: string;
