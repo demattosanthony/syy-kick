@@ -175,6 +175,7 @@ export default function EditRoleDialog({
   // Handle role change
   const handleRoleChange = (roleId: string) => {
     setSelectedRoleId(roleId);
+    initializePermissions(roleId);
   };
 
   // Handle permission toggle
@@ -212,10 +213,10 @@ export default function EditRoleDialog({
           roleId: selectedRoleId,
         },
       });
-      onOpenChange(false);
       setTimeout(() => {
         document.body.style.pointerEvents = "";
       }, 100);
+      onOpenChange(false);
     }
   };
 
@@ -225,23 +226,6 @@ export default function EditRoleDialog({
 
     return transferablePermissions.find((r) => r.id === selectedRoleId) || null;
   }, [selectedRoleId, transferablePermissions]);
-
-  useEffect(() => {
-    // update permissions based on selected role
-    if (!selectedRole) return;
-
-    const newPermissions: Record<string, Record<string, boolean>> = {};
-
-    selectedRole.resources.forEach((resource) => {
-      newPermissions[resource.id] = {};
-      resource.actions.forEach((action) => {
-        // If action has default property, use it, otherwise default to false
-        newPermissions[resource.id][action.id] = action.default || false;
-      });
-    });
-
-    setPermissions(newPermissions);
-  }, [selectedRole]);
 
   // Check if an action is configurable
   const isActionConfigurable = (resourceId: string, actionId: string) => {

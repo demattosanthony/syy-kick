@@ -11,7 +11,7 @@ import { useMeQuery } from "@/features/user/api";
 import { usePermissions } from "@/features/permissions/context";
 
 const ProjectHeader = ({ project }: { project: Project }) => {
-  const { canUpdateOrgProjects, canCreateOrgProjects } = usePermissions();
+  const { canUpdateOrgProjects, canCreateOrgProjectDocs } = usePermissions();
 
   // Use nullish coalescing for a simple fallback
   const logo = project?.organization?.logoUrl ?? project?.user?.profilePicture;
@@ -44,7 +44,7 @@ const ProjectHeader = ({ project }: { project: Project }) => {
             </div>
           </div>
           <div className="flex gap-2">
-            {canCreateOrgProjects && (
+            {canCreateOrgProjectDocs && (
               <ProjectAddFileButton projectId={project.id} />
             )}
             {canUpdateOrgProjects && (
