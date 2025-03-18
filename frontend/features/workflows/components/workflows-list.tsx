@@ -4,10 +4,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRef } from "react";
-import { Workflow } from "@/types/workflow-types";
 import { GitBranch, GitBranchPlus } from "lucide-react";
 import { useWorkflowsQuery } from "../api";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Workflow } from "../workflows.types";
 
 export default function WorkflowsList() {
   const searchParams = useSearchParams();
