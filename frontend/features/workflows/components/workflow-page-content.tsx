@@ -1,7 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, File, Loader2, Play } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  File,
+  Loader2,
+  Play,
+  RefreshCw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWorkflowQuery } from "../api";
 import { useEffect, useRef, useState } from "react";
@@ -14,6 +23,7 @@ import { MarkdownViewer } from "@/features/chat/messages/components";
 import { CsvViewer } from "@/features/chat/messages/components/viewers/artifact-viewer";
 import { useCsvActions } from "@/hooks/use-csv-actions";
 import { Loader } from "@/components/ui/loader";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -31,6 +41,10 @@ export default function WorkflowPageContent({
   const [showReasoning, setShowReasoning] = useState(true);
   const hasAutoHiddenReasoning = useRef(false);
   const reasoningContainerRef = useRef<HTMLDivElement>(null);
+  const [errorDetails, setErrorDetails] = useState<{
+    type: "upload" | "processing" | "general" | "network";
+    message: string;
+  } | null>(null);
 
   const { downloadCsv, previewCsv } = useCsvActions();
 
@@ -41,6 +55,35 @@ export default function WorkflowPageContent({
       credentials: "include",
       experimental_prepareRequestBody({ messages, id }) {
         return { message: messages[messages.length - 1], id };
+      },
+      onError: (error) => {
+        console.error("Workflow error:", error);
+        if (
+          error.message.includes("network") ||
+          error.message.includes("fetch")
+        ) {
+          setErrorDetails({
+            type: "network",
+            message:
+              "Network error. Please check your connection and try again.",
+          });
+        } else if (
+          error.message.includes("upload") ||
+          error.message.includes("file")
+        ) {
+          setErrorDetails({
+            type: "upload",
+            message:
+              "There was an issue with your file upload. Please try again with a different file.",
+          });
+        } else {
+          setErrorDetails({
+            type: "processing",
+            message:
+              error.message ||
+              "An error occurred while processing your request.",
+          });
+        }
       },
     });
 
@@ -94,6 +137,8 @@ export default function WorkflowPageContent({
     hasAutoHiddenReasoning.current = false;
     setShowReasoning(true);
     setMessages([]);
+    setErrorDetails(null);
+    window.location.reload();
   };
 
   const handleDragOver = (inputId: string) => (e: React.DragEvent) => {
@@ -136,49 +181,70 @@ export default function WorkflowPageContent({
   async function onSubmit() {
     if (!areRequiredFilesUploaded()) return;
 
-    // Create an array to store all attachments
-    const attachments: ExtendedAttachment[] = [];
+    try {
+      // Create an array to store all attachments
+      const attachments: ExtendedAttachment[] = [];
 
-    // Process each file
-    for (const inputId in files) {
-      const file = files[inputId];
-      if (!file) continue;
+      // Process each file
+      for (const inputId in files) {
+        const file = files[inputId];
+        if (!file) continue;
 
-      const { url, file_metadata, viewUrl } = await api.uploads.getPresignedUrl(
-        file.name,
-        file.type,
-        file.size,
-        `uploads/${Date.now()}-${inputId}-${file.name}`
-      );
+        try {
+          const { url, file_metadata, viewUrl } =
+            await api.uploads.getPresignedUrl(
+              file.name,
+              file.type,
+              file.size,
+              `uploads/${Date.now()}-${inputId}-${file.name}`
+            );
 
-      await fetch(url, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
+          await fetch(url, {
+            method: "PUT",
+            body: file,
+            headers: { "Content-Type": file.type },
+          });
+
+          attachments.push({
+            name: file.name,
+            contentType: file.type,
+            url: viewUrl,
+            file_key: file_metadata.file_key,
+          });
+        } catch (err) {
+          console.error("File upload error:", err);
+          setErrorDetails({
+            type: "upload",
+            message: `Failed to upload ${file.name}. Please try again.`,
+          });
+          return;
+        }
+      }
+
+      // Set input to a description of the files
+      const fileNames = Object.values(files)
+        .filter(Boolean)
+        .map((file) => file?.name)
+        .join(", ");
+      setInput(fileNames);
+
+      handleSubmit({ preventDefault: () => {} } as React.FormEvent, {
+        experimental_attachments: attachments,
       });
-
-      attachments.push({
-        name: file.name,
-        contentType: file.type,
-        url: viewUrl,
-        file_key: file_metadata.file_key,
+    } catch (err) {
+      console.error("Submission error:", err);
+      setErrorDetails({
+        type: "general",
+        message: "An unexpected error occurred. Please try again.",
       });
     }
-
-    // Set input to a description of the files
-    const fileNames = Object.values(files)
-      .filter(Boolean)
-      .map((file) => file?.name)
-      .join(", ");
-    setInput(fileNames);
-
-    handleSubmit({ preventDefault: () => {} } as React.FormEvent, {
-      experimental_attachments: attachments,
-    });
   }
 
   // Update getCurrentStep to auto-hide reasoning when moving to step 3
   const getCurrentStep = () => {
+    // If there's an error, don't show any step
+    if (error || errorDetails) return 0;
+
     if (!areRequiredFilesUploaded()) return 1;
     if (isProcessing && (!response?.content || response?.content === "")) {
       return 2;
@@ -234,6 +300,55 @@ export default function WorkflowPageContent({
     title: "Output",
     description: "View the final results",
   };
+
+  const ErrorDisplay = ({ error }: { error?: Error }) => {
+    if (!error && !errorDetails) return null;
+
+    const errorInfo = errorDetails || {
+      type: "general",
+      message:
+        error?.message ||
+        "An error occurred while running the workflow. Please try again.",
+    };
+
+    const errorIcons = {
+      upload: <AlertCircle className="h-5 w-5 text-destructive" />,
+      processing: <AlertCircle className="h-5 w-5 text-destructive" />,
+      network: <AlertCircle className="h-5 w-5 text-destructive" />,
+      general: <AlertCircle className="h-5 w-5 text-destructive" />,
+    };
+
+    const errorTitles = {
+      upload: "File Upload Error",
+      processing: "Processing Error",
+      network: "Network Error",
+      general: "Error",
+    };
+
+    return (
+      <Alert variant="destructive" className="mb-8">
+        <div className="flex items-start">
+          {errorIcons[errorInfo.type]}
+          <div className="ml-3">
+            <AlertTitle>{errorTitles[errorInfo.type]}</AlertTitle>
+            <AlertDescription className="mt-1">
+              {errorInfo.message}
+            </AlertDescription>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetWorkflow}
+              className="mt-3"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reset and try again
+            </Button>
+          </div>
+        </div>
+      </Alert>
+    );
+  };
+
   return (
     <div className="h-screen w-full flex flex-col items-center overflow-y-auto">
       <div className="container mx-auto px-4 py-16 max-w-3xl ">
@@ -247,270 +362,277 @@ export default function WorkflowPageContent({
         </div>
 
         {/* Display error message if there's an error */}
-        {error && (
-          <div className="mb-8 p-4 bg-destructive/10 border border-destructive text-destructive rounded-lg">
-            <h3 className="font-medium mb-1">Error</h3>
-            <p>
-              {error.message ||
-                "An error occurred while running the workflow. Please try again."}
-            </p>
-          </div>
-        )}
+        {(error || errorDetails) && <ErrorDisplay error={error} />}
 
-        {/* Step 1: Input Form */}
-        {currentStep === 1 && (
-          <div className="flex flex-col gap-8">
-            {workflowInputs.map((input, index) => (
-              <div key={input.id} className="">
-                <h3 className="text-lg font-bold mb-2">{input.title}</h3>
+        {/* Only display steps content if there's no error */}
+        {!error && !errorDetails && (
+          <>
+            {/* Step 1: Input Form */}
+            {currentStep === 1 && (
+              <div className="flex flex-col gap-8">
+                {workflowInputs.map((input, index) => (
+                  <div key={input.id} className="">
+                    <h3 className="text-lg font-bold mb-2">{input.title}</h3>
 
-                <div
-                  className={cn(
-                    "border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center",
-                    isDragging[input.id]
-                      ? "border-primary bg-primary/5"
-                      : "border-muted hover:border-primary/50 hover:bg-muted/10"
-                  )}
-                  onDragOver={handleDragOver(input.id)}
-                  onDragLeave={handleDragLeave(input.id)}
-                  onDrop={handleDrop(input.id)}
-                  onClick={() =>
-                    document.getElementById(`file-input-${input.id}`)?.click()
-                  }
-                >
-                  <input
-                    type="file"
-                    id={`file-input-${input.id}`}
-                    className="hidden"
-                    accept={input.acceptedFileTypes}
-                    onChange={handleFileSelect(input.id)}
-                  />
-                  <div className="text-center space-y-4">
                     <div
                       className={cn(
-                        "w-16 h-16 mx-auto rounded-full flex items-center justify-center",
-                        files[input.id] ? "bg-primary/10" : "bg-muted/30"
+                        "border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center",
+                        isDragging[input.id]
+                          ? "border-primary bg-primary/5"
+                          : "border-muted hover:border-primary/50 hover:bg-muted/10"
                       )}
+                      onDragOver={handleDragOver(input.id)}
+                      onDragLeave={handleDragLeave(input.id)}
+                      onDrop={handleDrop(input.id)}
+                      onClick={() =>
+                        document
+                          .getElementById(`file-input-${input.id}`)
+                          ?.click()
+                      }
                     >
-                      <File
-                        className={cn(
-                          "h-8 w-8",
-                          files[input.id]
-                            ? "text-primary"
-                            : "text-muted-foreground"
-                        )}
+                      <input
+                        type="file"
+                        id={`file-input-${input.id}`}
+                        className="hidden"
+                        accept={input.acceptedFileTypes}
+                        onChange={handleFileSelect(input.id)}
                       />
-                    </div>
-                    <div>
-                      <p className="text-lg font-medium mb-1">
-                        {files[input.id]
-                          ? files[input.id]?.name
-                          : "Drop your file here"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {files[input.id]
-                          ? `${(files[input.id]!.size / (1024 * 1024)).toFixed(
-                              2
-                            )} MB · ${
-                              files[input.id]!.type.includes("pdf")
-                                ? "PDF"
-                                : files[input.id]!.type.split(
-                                    "/"
-                                  )[1].toUpperCase()
-                            }`
-                          : "or click to browse"}
-                      </p>
-                      {files[input.id] && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Reset the file input element when removing a file
-                            const fileInput = document.getElementById(
-                              `file-input-${input.id}`
-                            ) as HTMLInputElement;
-                            if (fileInput) fileInput.value = "";
-                            setFiles((prev) => ({ ...prev, [input.id]: null }));
-                          }}
-                          className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center justify-center mx-auto"
+                      <div className="text-center space-y-4">
+                        <div
+                          className={cn(
+                            "w-16 h-16 mx-auto rounded-full flex items-center justify-center",
+                            files[input.id] ? "bg-primary/10" : "bg-muted/30"
+                          )}
                         >
-                          <span className="mr-1">×</span> Remove file
-                        </button>
-                      )}
+                          <File
+                            className={cn(
+                              "h-8 w-8",
+                              files[input.id]
+                                ? "text-primary"
+                                : "text-muted-foreground"
+                            )}
+                          />
+                        </div>
+                        <div>
+                          <p className="text-lg font-medium mb-1">
+                            {files[input.id]
+                              ? files[input.id]?.name
+                              : "Drop your file here"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {files[input.id]
+                              ? `${(
+                                  files[input.id]!.size /
+                                  (1024 * 1024)
+                                ).toFixed(2)} MB · ${
+                                  files[input.id]!.type.includes("pdf")
+                                    ? "PDF"
+                                    : files[input.id]!.type.split(
+                                        "/"
+                                      )[1].toUpperCase()
+                                }`
+                              : "or click to browse"}
+                          </p>
+                          {files[input.id] && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Reset the file input element when removing a file
+                                const fileInput = document.getElementById(
+                                  `file-input-${input.id}`
+                                ) as HTMLInputElement;
+                                if (fileInput) fileInput.value = "";
+                                setFiles((prev) => ({
+                                  ...prev,
+                                  [input.id]: null,
+                                }));
+                              }}
+                              className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center justify-center mx-auto"
+                            >
+                              <span className="mr-1">×</span> Remove file
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {input.required && (
-                  <p
-                    className={`text-xs mt-2 ${
-                      files[input.id] ? "text-muted-foreground" : "text-red-500"
-                    }`}
-                  >
-                    {files[input.id]
-                      ? "✓ Required file uploaded"
-                      : "* Required"}
-                  </p>
-                )}
-              </div>
-            ))}
-
-            <Button
-              className="w-full mt-6 py-6 text-lg"
-              size="lg"
-              disabled={!areRequiredFilesUploaded()}
-              onClick={onSubmit}
-            >
-              <Play className="h-6 w-6 mr-2" />
-              {"Submit and run flow"}
-            </Button>
-          </div>
-        )}
-
-        {/* Step 2: Processing Indicator */}
-        {currentStep === 2 && (
-          <div className="bg-card rounded-xl p-8 shadow-lg border flex flex-col items-center justify-center">
-            <Loader className="h-12 w-12 mb-4" variant="circular" />
-            <h3 className="text-xl font-semibold mb-2">
-              Processing your files
-            </h3>
-            <p className="text-muted-foreground text-center">
-              Please wait while we analyze your documents. This may take a few
-              moments.
-            </p>
-            <div className="w-full mt-6 bg-muted rounded-full h-2.5">
-              <div className="bg-primary h-2.5 rounded-full animate-pulse w-full"></div>
-            </div>
-
-            {/* Add reasoning stream display */}
-            {response?.reasoning && (
-              <div className="mt-8 w-full">
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-medium text-sm">Processing details</h4>
-                  <button
-                    onClick={() => setShowReasoning(!showReasoning)}
-                    className="text-xs flex items-center text-muted-foreground hover:text-foreground"
-                  >
-                    {showReasoning ? (
-                      <>
-                        Hide <ChevronUp className="ml-1 h-3 w-3" />
-                      </>
-                    ) : (
-                      <>
-                        Show <ChevronDown className="ml-1 h-3 w-3" />
-                      </>
+                    {input.required && (
+                      <p
+                        className={`text-xs mt-2 ${
+                          files[input.id]
+                            ? "text-muted-foreground"
+                            : "text-red-500"
+                        }`}
+                      >
+                        {files[input.id]
+                          ? "✓ Required file uploaded"
+                          : "* Required"}
+                      </p>
                     )}
-                  </button>
-                </div>
+                  </div>
+                ))}
 
-                {showReasoning && (
-                  <div
-                    ref={reasoningContainerRef}
-                    className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground overflow-y-auto max-h-[300px] font-mono whitespace-pre-wrap"
-                  >
-                    {response.reasoning}
+                <Button
+                  className="w-full mt-6 py-6 text-lg"
+                  size="lg"
+                  disabled={!areRequiredFilesUploaded()}
+                  onClick={onSubmit}
+                >
+                  <Play className="h-6 w-6 mr-2" />
+                  {"Submit and run flow"}
+                </Button>
+              </div>
+            )}
+
+            {/* Step 2: Processing Indicator */}
+            {currentStep === 2 && (
+              <div className="bg-card rounded-xl p-8 shadow-lg border flex flex-col items-center justify-center">
+                <Loader className="h-12 w-12 mb-4" variant="circular" />
+                <h3 className="text-xl font-semibold mb-2">
+                  Processing your files
+                </h3>
+                <p className="text-muted-foreground text-center">
+                  Please wait while the workflow is running. This may take a few
+                  moments.
+                </p>
+
+                {/* Add reasoning stream display */}
+                {response?.reasoning && (
+                  <div className="mt-8 w-full">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-sm">
+                        Processing details
+                      </h4>
+                      <button
+                        onClick={() => setShowReasoning(!showReasoning)}
+                        className="text-xs flex items-center text-muted-foreground hover:text-foreground"
+                      >
+                        {showReasoning ? (
+                          <>
+                            Hide <ChevronUp className="ml-1 h-3 w-3" />
+                          </>
+                        ) : (
+                          <>
+                            Show <ChevronDown className="ml-1 h-3 w-3" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {showReasoning && (
+                      <div
+                        ref={reasoningContainerRef}
+                        className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground overflow-y-auto max-h-[300px] font-mono whitespace-pre-wrap"
+                      >
+                        {response.reasoning}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Step 3: Output */}
-        {currentStep === 3 && (
-          <div className="flex flex-col gap-8">
-            <div className="bg-card rounded-xl p-6 shadow-lg border">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-600">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M20 6L9 17l-5-5"></path>
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold">
-                  Run completed successfully
-                </h3>
-              </div>
-
-              {typeof response?.content === "string" &&
-                (() => {
-                  const { artifact } = extractSpecialContent(response?.content);
-                  if (!artifact?.content) return null;
-
-                  // Render based on output type
-                  if (
-                    outputConfig.type === "csv" ||
-                    outputConfig.type === "table"
-                  ) {
-                    return (
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-medium">
-                            {outputConfig.title || "Results"}
-                          </h3>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const csvContent = artifact.content;
-                                downloadCsv(csvContent);
-                              }}
-                            >
-                              Download CSV
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const csvContent = artifact.content;
-                                previewCsv(
-                                  csvContent,
-                                  outputConfig.title || "CSV Results"
-                                );
-                              }}
-                            >
-                              View Full Screen
-                            </Button>
-                          </div>
+            {/* Step 3: Output */}
+            {currentStep === 3 && (
+              <div className="flex flex-col gap-8">
+                <div className="bg-card rounded-xl p-6 shadow-lg border">
+                  <div className="flex items-center gap-3 mb-6">
+                    {status === "streaming" ? (
+                      <>
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600">
+                          <Loader2 className="h-5 w-5 animate-spin" />
                         </div>
-                        <div className="overflow-x-auto max-h-[400px] overflow-y-auto border rounded">
-                          <div className="min-w-max">
-                            <CsvViewer content={artifact.content} />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  } else {
-                    // Default rendering for other output types
-                    return (
-                      <div className="space-y-4">
-                        <h3 className="font-medium">
-                          {outputConfig.title || "Results"}
+                        <h3 className="text-xl font-semibold">
+                          Generating output...
                         </h3>
-                        <div className="prose prose-sm max-w-none">
-                          <MarkdownViewer content={artifact.content} />
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-600">
+                          <Check />
                         </div>
-                      </div>
-                    );
-                  }
-                })()}
-            </div>
+                        <h3 className="text-xl font-semibold">
+                          Run completed successfully
+                        </h3>
+                      </>
+                    )}
+                  </div>
 
-            <div className="flex justify-center">
-              <Button size="lg" onClick={resetWorkflow} className="px-8">
-                Run Again
-              </Button>
-            </div>
-          </div>
+                  {typeof response?.content === "string" &&
+                    (() => {
+                      const { artifact } = extractSpecialContent(
+                        response?.content
+                      );
+                      if (!artifact?.content) return null;
+
+                      // Render based on output type
+                      if (
+                        outputConfig.type === "csv" ||
+                        outputConfig.type === "table"
+                      ) {
+                        return (
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <h3 className="font-medium">
+                                {outputConfig.title || "Results"}
+                              </h3>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const csvContent = artifact.content;
+                                    downloadCsv(csvContent);
+                                  }}
+                                >
+                                  Download CSV
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const csvContent = artifact.content;
+                                    previewCsv(
+                                      csvContent,
+                                      outputConfig.title || "CSV Results"
+                                    );
+                                  }}
+                                >
+                                  View Full Screen
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="overflow-x-auto max-h-[400px] overflow-y-auto border rounded">
+                              <div className="min-w-max">
+                                <CsvViewer content={artifact.content} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      } else {
+                        // Default rendering for other output types
+                        return (
+                          <div className="space-y-4">
+                            <h3 className="font-medium">
+                              {outputConfig.title || "Results"}
+                            </h3>
+                            <div className="prose prose-sm max-w-none">
+                              <MarkdownViewer content={artifact.content} />
+                            </div>
+                          </div>
+                        );
+                      }
+                    })()}
+                </div>
+
+                <div className="flex justify-center">
+                  <Button size="lg" onClick={resetWorkflow} className="px-8">
+                    Run Again
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
