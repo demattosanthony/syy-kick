@@ -146,7 +146,7 @@ function MarkdownViewerComponent({
   const blocks = useMemo(() => parseMarkdownIntoBlocks(content), [content]);
 
   return (
-    <div className={cn("markdown-viewer flex flex-col gap-3", className)}>
+    <div className={cn("markdown-viewer flex flex-col gap-2", className)}>
       {blocks.map((block, index) => (
         <MemoizedMarkdownBlock
           key={`${blockId}-block-${index}`}

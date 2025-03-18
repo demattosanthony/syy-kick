@@ -339,7 +339,7 @@ const threadsOps = {
       const result = streamText({
         model: modelConfig.model,
         messages: inferenceMsgs,
-        temperature: 0.4,
+        temperature: 0.3,
         tools: tools ? tools : undefined,
         maxSteps: tools ? 8 : undefined,
         toolChoice: "auto",
@@ -363,6 +363,12 @@ const threadsOps = {
           if (chunk.type === "text-delta") {
             aiResponse += chunk.textDelta;
           }
+        },
+        onError: (error) => {
+          console.error("Error running inference:", error);
+          res.status(500).json({
+            error: "An error occurred during inference",
+          });
         },
         onFinish: async () => {
           requestCompleted = true;

@@ -97,6 +97,19 @@ const TextContent: React.FC<{
 
 const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
   React.memo(({ message, messages }) => {
+    // Determine if we should auto-close the thinking dropdown
+    const shouldAutoCloseThinking = React.useMemo(() => {
+      if (!message.parts?.length) return false;
+
+      // Check if there are any non-reasoning parts
+      // If there are tool invocations or text content, we should auto-close thinking
+      return message.parts.some(
+        (part) =>
+          part.type === "tool-invocation" ||
+          (part.type === "text" && part.text?.trim().length > 0)
+      );
+    }, [message.parts]);
+
     if (message.parts?.length) {
       return (
         <React.Fragment>
@@ -106,7 +119,10 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
             )
             .map((part, index) =>
               part.type === "reasoning" ? (
-                <ThinkingDropdown key={`reasoning-${index}`}>
+                <ThinkingDropdown
+                  key={`reasoning-${index}`}
+                  autoClose={shouldAutoCloseThinking}
+                >
                   <MarkdownViewer content={part.reasoning} />
                 </ThinkingDropdown>
               ) : part.type === "tool-invocation" ? (
