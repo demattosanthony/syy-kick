@@ -176,17 +176,17 @@ export const permissions = (
       orgId
     );
 
-    const resourceId = await PermissionManager.getResourseId(resource);
-
-    if (!resourceId) {
-      res.status(403).json({ error: "Resource not found." });
-      return;
-    }
-
     if (!orgRole) {
       res
         .status(403)
         .json({ error: "You don't have access to this resource." });
+      return;
+    }
+
+    const resourceId = await PermissionManager.getResourseId(resource);
+
+    if (!resourceId) {
+      res.status(403).json({ error: "Resource not found." });
       return;
     }
 

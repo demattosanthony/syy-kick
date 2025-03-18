@@ -88,9 +88,6 @@ await db.insert(actions).values([
   },
 ]);
 
-// Remove existing organization invites
-await db.delete(organizationInvites);
-
 // Get all roles, resources, and actions
 const [rolesList, resourcesList, actionsList] = await Promise.all([
   db.select().from(roles),

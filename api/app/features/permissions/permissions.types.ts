@@ -79,7 +79,6 @@ export type UserPermissions = {
   };
 }[];
 
-
 export interface RawUserRole {
   id: string;
   organizationId: string;
