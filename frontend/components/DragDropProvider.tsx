@@ -160,8 +160,9 @@ export function DragAndDropProvider({
 
 export const useDragAndDrop = () => {
   const context = useContext(DragAndDropContext);
-  if (!context) {
-    throw new Error("useDragAndDrop must be used within a DragAndDropProvider");
+  if (context === undefined) {
+    // Instead of throwing an error, return a default value
+    return { isDragging: false, setIsDragging: () => {} };
   }
   return context;
 };

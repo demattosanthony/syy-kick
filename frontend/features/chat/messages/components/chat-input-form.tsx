@@ -35,6 +35,10 @@ import { toast } from "sonner";
 
 // Types
 import { DocumentContent } from "@/types/project";
+import {
+  DragAndDropProvider,
+  useDragAndDrop,
+} from "@/components/DragDropProvider";
 
 interface ChatInputFormProps {
   onSubmit: (e: React.FormEvent) => void;
@@ -76,7 +80,6 @@ function ChatInputForm(
   const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
     selectedProjectDocsAtom
   );
-
   const {
     uploads,
     handleFiles,
@@ -183,185 +186,187 @@ function ChatInputForm(
   };
 
   return (
-    <Card
-      className={cn(
-        "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-2xl bg-background border shadow-sm",
-        focused && !isMobile && "border-2"
-      )}
-    >
-      <form
-        className={`relative flex flex-col flex-1 w-full justify-center p-2`}
-        onSubmit={onSubmit}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+    <DragAndDropProvider>
+      <Card
+        className={cn(
+          "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-2xl bg-background border shadow-sm",
+          focused && !isMobile && "border-2"
+        )}
       >
-        <div className="flex flex-col flex-1">
-          {showContextSelector && (
-            <div className="flex items-center w-full h-5">
+        <form
+          className={`relative flex flex-col flex-1 w-full justify-center p-2`}
+          onSubmit={onSubmit}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <div className="flex flex-col flex-1">
+            {showContextSelector && (
+              <div className="flex items-center w-full h-5">
+                <Button
+                  variant="ghost"
+                  className="text-xs px-2 font-normal text-muted-foreground hover:bg-transparent hover:text-accent-foreground"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowFileExplorer(true);
+                  }}
+                >
+                  + Add context
+                </Button>
+
+                <Dialog
+                  open={showFileExplorer}
+                  onOpenChange={setShowFileExplorer}
+                >
+                  <DialogContent className="max-w-[500px] h-auto max-h-[600px] md:max-w-[650px] overflow-hidden">
+                    <DialogHeader>
+                      <DialogTitle>Select files for context</DialogTitle>
+                      <DialogDescription>
+                        Choose files to add as context for your question
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 h-[500px]">
+                      <ScrollArea className="h-full w-full">
+                        <ProjectFileExplorer
+                          projectId={projectId || ""}
+                          variant="compact"
+                          onFileSelect={handleFileSelect}
+                        />
+                      </ScrollArea>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/** Selected project files in context */}
+                {selectedProjectDocs.length > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {selectedProjectDocs.map((file) => (
+                      <div key={file.path} className="flex items-center gap-1">
+                        <span className="text-xs">{file.name}</span>
+                        <button
+                          className="rounded-full bg-accent/20 hover:bg-accent/30"
+                          onClick={() =>
+                            setSelectedProjectDocs((prev) =>
+                              prev.filter((f) => f.path !== file.path)
+                            )
+                          }
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* File Upload Preview */}
+            {uploads.length > 0 && (
+              <div className="flex gap-3 p-2 flex-wrap h-26 overflow-auto">
+                {uploads.map((upload, index) => (
+                  <div
+                    key={index}
+                    className="relative h-24 w-24 rounded-lg overflow-hidden border border-border shadow-sm group"
+                  >
+                    {upload.type === "image" ? (
+                      <img
+                        src={upload.preview}
+                        alt={`Upload ${index + 1}`}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      />
+                    ) : (
+                      <PdfThumbnail url={upload.preview} width={96} />
+                    )}
+
+                    <button
+                      className="absolute top-1 right-1 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        removeUpload(index);
+                      }}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col w-full">
+              <Textarea
+                placeholder={placeholder}
+                onChange={handleInputChange}
+                ref={textAreaRef}
+                onKeyDown={handleKeyDown}
+                value={input}
+                onBlur={() => setFocused(false)}
+                onFocus={() => setFocused(true)}
+                autoFocus
+                disabled={isGenerating}
+                style={{
+                  height: "50px",
+                  minHeight: "50px",
+                  maxHeight: "375px",
+                }}
+                className="resize-none !min-h-[50px] w-full text-base rounded-xl border-none focus:ring-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:font-normal scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
+              />
+            </div>
+          </div>
+          <div className="w-full flex justify-between items-center px-1 pb-1">
+            <div>
+              <ModelSelector />
+            </div>
+
+            <div className="flex items-center gap-1 h-full">
+              {isMounted &&
+                selectedModel.supportedMimeTypes &&
+                selectedModel.supportedMimeTypes.length > 0 && (
+                  <>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept={selectedModel.supportedMimeTypes?.join(",")}
+                      multiple
+                      onChange={handleFiles}
+                    />
+                    <Button
+                      className="h-7 w-7 p-0 rounded-full"
+                      variant="ghost"
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        fileInputRef?.current?.click();
+                      }}
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+
               <Button
-                variant="ghost"
-                className="text-xs px-2 font-normal text-muted-foreground hover:bg-transparent hover:text-accent-foreground"
+                ref={buttonRef}
+                className="h-8 w-8 rounded-full"
+                disabled={!input && !isGenerating}
+                variant={!input ? "secondary" : "default"}
                 onClick={(e) => {
                   e.preventDefault();
-                  e.stopPropagation();
-                  setShowFileExplorer(true);
+                  if (isGenerating && stop) {
+                    stop();
+                  } else {
+                    onSubmit(e);
+                  }
                 }}
               >
-                + Add context
+                {isGenerating ? <Square /> : <ArrowRight />}
               </Button>
-
-              <Dialog
-                open={showFileExplorer}
-                onOpenChange={setShowFileExplorer}
-              >
-                <DialogContent className="max-w-[500px] h-auto max-h-[600px] md:max-w-[650px] overflow-hidden">
-                  <DialogHeader>
-                    <DialogTitle>Select files for context</DialogTitle>
-                    <DialogDescription>
-                      Choose files to add as context for your question
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex-1 h-[500px]">
-                    <ScrollArea className="h-full w-full">
-                      <ProjectFileExplorer
-                        projectId={projectId || ""}
-                        variant="compact"
-                        onFileSelect={handleFileSelect}
-                      />
-                    </ScrollArea>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              {/** Selected project files in context */}
-              {selectedProjectDocs.length > 0 && (
-                <div className="flex gap-2 flex-wrap">
-                  {selectedProjectDocs.map((file) => (
-                    <div key={file.path} className="flex items-center gap-1">
-                      <span className="text-xs">{file.name}</span>
-                      <button
-                        className="rounded-full bg-accent/20 hover:bg-accent/30"
-                        onClick={() =>
-                          setSelectedProjectDocs((prev) =>
-                            prev.filter((f) => f.path !== file.path)
-                          )
-                        }
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-          )}
-
-          {/* File Upload Preview */}
-          {uploads.length > 0 && (
-            <div className="flex gap-3 p-2 flex-wrap h-26 overflow-auto">
-              {uploads.map((upload, index) => (
-                <div
-                  key={index}
-                  className="relative h-24 w-24 rounded-lg overflow-hidden border border-border shadow-sm group"
-                >
-                  {upload.type === "image" ? (
-                    <img
-                      src={upload.preview}
-                      alt={`Upload ${index + 1}`}
-                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                    />
-                  ) : (
-                    <PdfThumbnail url={upload.preview} width={96} />
-                  )}
-
-                  <button
-                    className="absolute top-1 right-1 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      removeUpload(index);
-                    }}
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex flex-col w-full">
-            <Textarea
-              placeholder={placeholder}
-              onChange={handleInputChange}
-              ref={textAreaRef}
-              onKeyDown={handleKeyDown}
-              value={input}
-              onBlur={() => setFocused(false)}
-              onFocus={() => setFocused(true)}
-              autoFocus
-              disabled={isGenerating}
-              style={{
-                height: "50px",
-                minHeight: "50px",
-                maxHeight: "375px",
-              }}
-              className="resize-none !min-h-[50px] w-full text-base rounded-xl border-none focus:ring-0 shadow-none focus-visible:ring-0 bg-transparent placeholder:font-normal scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
-            />
           </div>
-        </div>
-        <div className="w-full flex justify-between items-center px-1 pb-1">
-          <div>
-            <ModelSelector />
-          </div>
-
-          <div className="flex items-center gap-1 h-full">
-            {isMounted &&
-              selectedModel.supportedMimeTypes &&
-              selectedModel.supportedMimeTypes.length > 0 && (
-                <>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept={selectedModel.supportedMimeTypes?.join(",")}
-                    multiple
-                    onChange={handleFiles}
-                  />
-                  <Button
-                    className="h-7 w-7 p-0 rounded-full"
-                    variant="ghost"
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      fileInputRef?.current?.click();
-                    }}
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </Button>
-                </>
-              )}
-
-            <Button
-              ref={buttonRef}
-              className="h-8 w-8 rounded-full"
-              disabled={!input && !isGenerating}
-              variant={!input ? "secondary" : "default"}
-              onClick={(e) => {
-                e.preventDefault();
-                if (isGenerating && stop) {
-                  stop();
-                } else {
-                  onSubmit(e);
-                }
-              }}
-            >
-              {isGenerating ? <Square /> : <ArrowRight />}
-            </Button>
-          </div>
-        </div>
-      </form>
-    </Card>
+        </form>
+      </Card>
+    </DragAndDropProvider>
   );
 }
 
