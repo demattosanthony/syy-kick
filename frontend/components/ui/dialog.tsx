@@ -26,7 +26,6 @@ const DialogOverlay = React.forwardRef<
     )}
     {...props}
     onPointerDown={() => {
-      console.log("onPointerDown");
       setTimeout(() => {
         document.body.style.pointerEvents = "";
       }, 100);
