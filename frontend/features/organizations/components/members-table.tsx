@@ -63,6 +63,8 @@ type MembersTableProps = {
   transferablePermissions?: TransferableRolesPermissions;
 };
 
+type DialogMode = "deleteOne" | "deleteMultiple" | "none";
+
 export function MembersTable({
   type,
   orgId,
@@ -74,66 +76,39 @@ export function MembersTable({
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [dialogDeleteOneOpen, setDialogDeleteOneOpen] = useState(false);
-  const [dialogDeleteMultipleOpen, setDialogDeleteMultipleOpen] =
-    useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<DialogMode>("none");
   const [editRoleDialogOpen, setEditRoleDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState<OrgMember | null>(null);
   const [copiedId, setCopiedId] = useState<string>("");
 
   const { data: roles } = useGetRoles();
-  const {
-    error: deleteInvitationsError,
-    mutate: deleteInvitations,
-    isError: isDeleteInvitationsError,
-    isPending: isDeletingInvitations,
-    isSuccess: isDeleteInvitationsSuccess,
-    data: deleteInvitationsData,
-  } = useDeleteOrgInvitationsMutation();
+  const { mutate: deleteInvitations, isPending: isDeletingInvitations } =
+    useDeleteOrgInvitationsMutation();
 
-  const {
-    mutate: deleteOrgMembers,
-    isError: isDeleteErrorMembers,
-    isSuccess: isDeleteSuccessMembers,
-    isPending: isDeletingMembers,
-    error: deleteErrorMembers,
-    data: deleteDataMembers,
-  } = useDeleteOrgMembersMutation();
+  const { mutate: deleteOrgMembers, isPending: isDeletingMembers } =
+    useDeleteOrgMembersMutation();
 
   const isDeleting = useMemo(
     () => isDeletingInvitations || isDeletingMembers,
     [isDeletingInvitations, isDeletingMembers]
   );
 
-  const errors = useMemo(() => {
-    if (isDeleteInvitationsError && deleteInvitationsError) {
-      return deleteInvitationsError;
-    }
-
-    if (isDeleteErrorMembers && deleteErrorMembers) {
-      return deleteErrorMembers;
-    }
-  }, [
-    isDeleteInvitationsError,
-    deleteInvitationsError,
-    isDeleteErrorMembers,
-    deleteErrorMembers,
-  ]);
-
-  const success = useMemo(() => {
-    if (isDeleteInvitationsSuccess && deleteInvitationsData) {
-      return deleteInvitationsData;
-    }
-
-    if (isDeleteSuccessMembers && deleteDataMembers) {
-      return deleteDataMembers;
-    }
-  }, [
-    isDeleteInvitationsSuccess,
-    isDeleteSuccessMembers,
-    deleteDataMembers,
-    deleteInvitationsData,
-  ]);
+  const mutationResult = {
+    onSuccess: (data: { message: string }) => {
+      toast.success(data.message ?? "Success");
+    },
+    onError: (error: any) => {
+      toast.error(
+        error.message ?? "Internal server error, please try again later"
+      );
+    },
+    onSettled: () => {
+      setSelectedRows([]);
+      setDialogOpen(false);
+      setDialogMode("none");
+    },
+  };
 
   const filteredData = useMemo(() => {
     if (!data) return [];
@@ -163,21 +138,6 @@ export function MembersTable({
 
     return higherRole;
   }, [selectedRows, filteredData]);
-
-  useEffect(() => {
-    if (success) {
-      toast.success(success.message ?? "Success");
-      setSelectedRows([]);
-      setDialogDeleteMultipleOpen(false);
-      setDialogDeleteOneOpen(false);
-    }
-
-    if (errors) {
-      toast.error(
-        errors.message ?? "Internal server error, please try again later"
-      );
-    }
-  }, [errors, success]);
 
   if (!roles) return null;
 
@@ -210,6 +170,86 @@ export function MembersTable({
   const handleEditRole = (member: OrgMember) => {
     setSelectedMember(member);
     setEditRoleDialogOpen(true);
+  };
+
+  const handleDeleteAction = () => {
+    if (type === "pending") {
+      deleteInvitations(
+        {
+          organizationId: orgId,
+          invitationsIds: selectedRows,
+        },
+        mutationResult
+      );
+    }
+
+    if (type === "members") {
+      deleteOrgMembers(
+        {
+          organizationId: orgId,
+          membersIds: selectedRows,
+        },
+        mutationResult
+      );
+    }
+  };
+
+  const openDialog = (mode: DialogMode) => {
+    setDialogMode(mode);
+    setDialogOpen(true);
+  };
+
+  const getDialogContent = () => {
+    switch (dialogMode) {
+      case "deleteOne":
+        return (
+          <DialogHeader>
+            <DialogTitle style={{ marginBottom: 10 }}>
+              {membersTableTranslations[type].deleteRowConfirmation.title}
+            </DialogTitle>
+            <DialogDescription style={{ marginBottom: 20 }}>
+              {membersTableTranslations[type].deleteRowConfirmation.body}
+            </DialogDescription>
+            <Button
+              disabled={isDeleting || higherMemberRoleSelected}
+              variant="destructive"
+              className="max-w-32 hover:cursor-pointer"
+              onClick={handleDeleteAction}
+            >
+              {isDeleting ? (
+                <Loader className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                membersTableTranslations[type].deleteRowConfirmation.confirm
+              )}
+            </Button>
+          </DialogHeader>
+        );
+      case "deleteMultiple":
+        return (
+          <DialogHeader>
+            <DialogTitle style={{ marginBottom: 10 }}>
+              {membersTableTranslations[type].deleteRowsConfirmation.title}
+            </DialogTitle>
+            <DialogDescription style={{ marginBottom: 20 }}>
+              {membersTableTranslations[type].deleteRowsConfirmation.body}
+            </DialogDescription>
+            <Button
+              variant="destructive"
+              className="max-w-32 hover:cursor-pointer"
+              disabled={isDeleting}
+              onClick={handleDeleteAction}
+            >
+              {isDeleting ? (
+                <Loader className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                membersTableTranslations[type].deleteRowsConfirmation.confirm
+              )}
+            </Button>
+          </DialogHeader>
+        );
+      default:
+        return null;
+    }
   };
 
   if (!data) return null;
@@ -256,7 +296,7 @@ export function MembersTable({
               <TableHead>Role</TableHead>
               <TableHead className="text-right">
                 {selectedRows.length > 0 && permissions.canDelete && (
-                  <DropdownMenu>
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
@@ -270,7 +310,7 @@ export function MembersTable({
                       <DropdownMenuItem
                         disabled={higherMemberRoleSelected}
                         className="text-destructive hover:cursor-pointer"
-                        onClick={() => setDialogDeleteMultipleOpen(true)}
+                        onClick={() => openDialog("deleteMultiple")}
                       >
                         {membersTableTranslations[type].deleteRows}
                       </DropdownMenuItem>
@@ -337,7 +377,7 @@ export function MembersTable({
                             .writeText(member.link as string)
                             .then(() => {
                               setCopiedId(member.id);
-                              setTimeout(() => setCopiedId(""), 2000);
+                              // setTimeout(() => setCopiedId(""), 2000);
                             });
                           toast.success("Link copied to clipboard");
                         }}
@@ -354,7 +394,7 @@ export function MembersTable({
                     {member.id !== userId && // The current user is the member row
                       member.canUpdate && // The current user can update the member row
                       (permissions.canUpdate || permissions.canDelete) && ( // The user permissions allow to update or delete the member row
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
                               <MoreHorizontal className="h-4 w-4" />
@@ -376,7 +416,7 @@ export function MembersTable({
                                   className="text-destructive hover:cursor-pointer"
                                   onClick={() => {
                                     setSelectedRows([member.id]);
-                                    setDialogDeleteOneOpen(true);
+                                    openDialog("deleteOne");
                                   }}
                                 >
                                   {membersTableTranslations[type].deleteRow}
@@ -392,90 +432,23 @@ export function MembersTable({
           </TableBody>
         </Table>
       </div>
+
+      {/* Dialog unique avec contenu conditionnel */}
       <Dialog
-        open={dialogDeleteMultipleOpen}
-        onOpenChange={setDialogDeleteMultipleOpen}
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setDialogMode("none");
+        }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle style={{ marginBottom: 10 }}>
-              {membersTableTranslations[type].deleteRowsConfirmation.title}
-            </DialogTitle>
-            <DialogDescription style={{ marginBottom: 20 }}>
-              {membersTableTranslations[type].deleteRowsConfirmation.body}
-            </DialogDescription>
-            <Button
-              variant="destructive"
-              className="max-w-32 hover:cursor-pointer"
-              disabled={isDeleting}
-              onClick={() => {
-                if (type === "pending") {
-                  deleteInvitations({
-                    organizationId: orgId,
-                    invitationsIds: selectedRows,
-                  });
-                }
-
-                if (type === "members") {
-                  deleteOrgMembers({
-                    organizationId: orgId,
-                    membersIds: selectedRows,
-                  });
-                }
-              }}
-            >
-              {isDeleting ? (
-                <Loader className="h-5 w-5 mr-2 animate-spin" />
-              ) : (
-                membersTableTranslations[type].deleteRowsConfirmation.confirm
-              )}
-            </Button>
-          </DialogHeader>
-        </DialogContent>
+        <DialogContent>{getDialogContent()}</DialogContent>
       </Dialog>
-      <Dialog open={dialogDeleteOneOpen} onOpenChange={setDialogDeleteOneOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle style={{ marginBottom: 10 }}>
-              {membersTableTranslations[type].deleteRowConfirmation.title}
-            </DialogTitle>
-            <DialogDescription style={{ marginBottom: 20 }}>
-              {membersTableTranslations[type].deleteRowConfirmation.body}
-            </DialogDescription>
-            <Button
-              disabled={isDeleting || higherMemberRoleSelected}
-              variant="destructive"
-              className="max-w-32 hover:cursor-pointer"
-              onClick={() => {
-                if (type === "pending") {
-                  deleteInvitations({
-                    organizationId: orgId,
-                    invitationsIds: selectedRows,
-                  });
-                }
 
-                if (type === "members") {
-                  deleteOrgMembers({
-                    organizationId: orgId,
-                    membersIds: selectedRows,
-                  });
-                }
-              }}
-            >
-              {isDeleting ? (
-                <Loader className="h-5 w-5 mr-2 animate-spin" />
-              ) : (
-                membersTableTranslations[type].deleteRowConfirmation.confirm
-              )}
-            </Button>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
       {selectedMember && (
         <EditRoleDialog
           open={editRoleDialogOpen}
           onOpenChange={(openStatus) => {
-            if(!openStatus) {
+            if (!openStatus) {
               setSelectedMember(null);
             }
             setEditRoleDialogOpen(openStatus);

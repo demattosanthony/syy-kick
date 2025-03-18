@@ -208,9 +208,6 @@ export default function EditRoleDialog({
           },
           onSettled: () => {
             onOpenChange(false);
-            setTimeout(() => {
-              document.body.style.pointerEvents = "";
-            }, 100);
           },
         }
       );
@@ -508,9 +505,6 @@ export default function EditRoleDialog({
             variant="outline"
             onClick={() => {
               onOpenChange(false);
-              setTimeout(() => {
-                document.body.style.pointerEvents = "";
-              }, 100);
             }}
           >
             Cancel
