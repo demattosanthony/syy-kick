@@ -21,7 +21,7 @@ const ThinkingDropdown = ({
   }, [autoClose]);
 
   return (
-    <div className="w-fit rounded-lg mb-2">
+    <div className="w-fit rounded-lg">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between gap-1 rounded-lg text-sm hover:text-primary transition-colors duration-200"
