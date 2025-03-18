@@ -86,10 +86,6 @@ const workflowHandlers = {
         model: modelConfig.model,
         maxSteps: 10,
         messages: [
-          //   {
-          //     role: "system",
-          //     content: workflow.systemMessage,
-          //   },
           {
             role: "user",
             content: [
@@ -107,8 +103,15 @@ const workflowHandlers = {
         ],
         providerOptions: {
           anthropic: {
-            thinking: { type: "enabled", budgetTokens: 6_000 },
+            thinking: { type: "enabled", budgetTokens: 12_000 },
           },
+          openai: {
+            reasoningEffort: "medium",
+          },
+        },
+        onError: (error) => {
+          console.error("Error running workflow:", error);
+          res.status(500).json({ error: "Failed to process workflow" });
         },
         onStepFinish: async ({
           finishReason,

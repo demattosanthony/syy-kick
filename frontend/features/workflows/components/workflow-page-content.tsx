@@ -81,7 +81,7 @@ export default function WorkflowPageContent({
     setErrorDetails(null);
     setShowReasoning(true);
     hasAutoHiddenReasoning.current = false;
-    window.location.reload();
+    if (errorDetails) window.location.reload();
   };
 
   // Check if all required files are uploaded
@@ -212,7 +212,10 @@ export default function WorkflowPageContent({
                   {workflowInputs.map((input) => (
                     <FileUploadInput
                       key={input.id}
-                      input={input}
+                      input={{
+                        ...input,
+                        maxFileSize: 32 * 1024 * 1024 /* 32 MB */,
+                      }}
                       file={files[input.id]}
                       onFileChange={(file) =>
                         setFiles((prev) => ({ ...prev, [input.id]: file }))

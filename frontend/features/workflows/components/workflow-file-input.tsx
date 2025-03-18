@@ -9,6 +9,7 @@ interface FileUploadInputProps {
     description?: string;
     acceptedFileTypes?: string;
     required?: boolean;
+    maxFileSize?: number;
   };
   file: File | null;
   onFileChange: (file: File | null) => void;
@@ -22,6 +23,7 @@ function FileUploadInput({
   setInput,
 }: FileUploadInputProps & { setInput: (value: string) => void }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [sizeError, setSizeError] = useState<string | null>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -37,7 +39,19 @@ function FileUploadInput({
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
+
     if (droppedFile) {
+      // Check file size if maxFileSize is specified
+      if (input.maxFileSize && droppedFile.size > input.maxFileSize) {
+        setSizeError(
+          `File is too large. Maximum size is ${formatFileSize(
+            input.maxFileSize
+          )}`
+        );
+        return;
+      }
+
+      setSizeError(null);
       onFileChange(droppedFile);
       setInput(droppedFile.name);
     }
@@ -45,10 +59,32 @@ function FileUploadInput({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
+
     if (selectedFile) {
+      // Check file size if maxFileSize is specified
+      if (input.maxFileSize && selectedFile.size > input.maxFileSize) {
+        setSizeError(
+          `File is too large. Maximum size is ${formatFileSize(
+            input.maxFileSize
+          )}`
+        );
+        return;
+      }
+
+      setSizeError(null);
       onFileChange(selectedFile);
       setInput(selectedFile.name);
     }
+  };
+
+  // Helper function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes >= 1024 * 1024) {
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    } else if (bytes >= 1024) {
+      return `${(bytes / 1024).toFixed(2)} KB`;
+    }
+    return `${bytes} B`;
   };
 
   return (
@@ -120,6 +156,15 @@ function FileUploadInput({
           </div>
         </div>
       </div>
+
+      {sizeError && <p className="text-xs mt-2 text-red-500">{sizeError}</p>}
+
+      {input.maxFileSize && !sizeError && (
+        <p className="text-xs mt-2 text-muted-foreground">
+          Max size: {formatFileSize(input.maxFileSize)}
+        </p>
+      )}
+
       {input.required && (
         <p
           className={`text-xs mt-2 ${

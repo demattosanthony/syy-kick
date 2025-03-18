@@ -295,6 +295,7 @@ Ensure all equipment is properly identified and mapped to their respective servi
     authorizedOrganizationIds: [
       "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
       "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+      "282c0c89-85d7-4b94-bd31-6e87b0637cc1",
     ],
     systemMessage: "",
   },
