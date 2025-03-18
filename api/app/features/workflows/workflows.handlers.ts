@@ -89,15 +89,15 @@ const workflowHandlers = {
           {
             role: "user",
             content: [
+              {
+                type: "text" as const,
+                text: workflow.prompt,
+              },
               ...attachmentsData.map((attachmentData) => ({
                 type: "file" as const,
                 mimeType: "application/pdf",
                 data: attachmentData,
               })),
-              {
-                type: "text" as const,
-                text: workflow.prompt,
-              },
             ],
           },
         ],
