@@ -92,24 +92,7 @@ export default function EditRoleDialog({
     organizationId,
   });
 
-  const {
-    mutate: updateOrgMemberRole,
-    isPending: isUpdating,
-    isSuccess: updateSuccess,
-    isError: updateError,
-    error: updateErrorData,
-    data: updateData,
-  } = useUpdateOrgMemberRoleMutation();
-
-  useEffect(() => {
-    if (updateSuccess && updateData) {
-      toast.success(updateData.message);
-    }
-
-    if (updateError && updateErrorData) {
-      toast.error(updateErrorData.message);
-    }
-  }, [updateError, updateErrorData, updateSuccess, updateData]);
+  const { mutate: updateOrgMemberRole } = useUpdateOrgMemberRoleMutation();
 
   useEffect(() => {
     if (!memberRole) return;
@@ -204,19 +187,33 @@ export default function EditRoleDialog({
           .map(([actionId]) => actionId);
       });
 
-      updateOrgMemberRole({
-        organizationId,
-        memberId: member.id,
-        data: {
-          resources,
-          projectIds: selectedProjects.map((p) => p.id),
-          roleId: selectedRoleId,
+      updateOrgMemberRole(
+        {
+          organizationId,
+          memberId: member.id,
+          data: {
+            resources,
+            projectIds: selectedProjects.map((p) => p.id),
+            roleId: selectedRoleId,
+          },
         },
-      });
-      setTimeout(() => {
-        document.body.style.pointerEvents = "";
-      }, 100);
-      onOpenChange(false);
+        {
+          onSuccess: (data) => {
+            if (data) {
+              toast.success(data.message);
+            }
+          },
+          onError: (error) => {
+            toast.error(error.message);
+          },
+          onSettled: () => {
+            onOpenChange(false);
+            setTimeout(() => {
+              document.body.style.pointerEvents = "";
+            }, 100);
+          },
+        }
+      );
     }
   };
 
