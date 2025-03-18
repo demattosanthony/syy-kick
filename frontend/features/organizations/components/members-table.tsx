@@ -377,7 +377,6 @@ export function MembersTable({
                             .writeText(member.link as string)
                             .then(() => {
                               setCopiedId(member.id);
-                              // setTimeout(() => setCopiedId(""), 2000);
                             });
                           toast.success("Link copied to clipboard");
                         }}
@@ -433,7 +432,7 @@ export function MembersTable({
         </Table>
       </div>
 
-      {/* Dialog unique avec contenu conditionnel */}
+      {/* Dialog */}
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
