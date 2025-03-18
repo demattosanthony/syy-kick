@@ -121,8 +121,7 @@ export function AppSidebar({
               <SidebarMenuItem>
                 {!(
                   activeWorkspace?.type === "personal" &&
-                  user.subscriptionStatus !== "active" &&
-                  canCreateOrgProjects
+                  user.subscriptionStatus !== "active"
                 ) && (
                   <SidebarButton
                     href="/projects"
@@ -133,6 +132,7 @@ export function AppSidebar({
                       <CreateProjectDialog
                         trigger={
                           <Button
+                            disabled={!canCreateOrgProjects}
                             variant="ghost"
                             className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
                           >

@@ -82,11 +82,6 @@ export function InvitationSection({
     },
   });
 
-  console.log(
-    JSON.stringify(errors.invitations?.root?.message),
-    "<---- errors message"
-  );
-
   const {
     mutate: inviteUsers,
     isPending,
