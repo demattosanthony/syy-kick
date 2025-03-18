@@ -113,20 +113,20 @@ const workflowHandlers = {
           console.error("Error running workflow:", error);
           res.status(500).json({ error: "Failed to process workflow" });
         },
-        onStepFinish: async ({
-          finishReason,
-          text,
-          toolCalls,
-          toolResults,
-          reasoning,
-        }) => {
-          console.log("Tool calls:", toolCalls);
-          console.log("Tool results:", toolResults.length);
-          console.log("Finish reason:", finishReason);
-          console.log("Text:", text);
-          console.log("Reasoning:", reasoning);
-          console.log("\n\n\n");
-        },
+        // onStepFinish: async ({
+        //   finishReason,
+        //   text,
+        //   toolCalls,
+        //   toolResults,
+        //   reasoning,
+        // }) => {
+        //   console.log("Tool calls:", toolCalls);
+        //   console.log("Tool results:", toolResults.length);
+        //   console.log("Finish reason:", finishReason);
+        //   console.log("Text:", text);
+        //   console.log("Reasoning:", reasoning);
+        //   console.log("\n\n\n");
+        // },
       });
 
       // Pipe the data out as SSE
