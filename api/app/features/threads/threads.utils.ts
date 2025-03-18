@@ -27,7 +27,11 @@ import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
 
 // Feature imports
 import { ModelConfig, MODELS } from "../models";
-import { getProjectDocs, searchProjectDocuments } from "../projects";
+import {
+  getProjectDocs,
+  listProjects,
+  searchProjectDocuments,
+} from "../projects";
 import {
   DocumentSearchToolResult,
   MyMessage,
@@ -318,30 +322,68 @@ Returns:
 const createProjectExplorerTool = (
   modelConfig: ModelConfig,
   workspace: Workspace,
-  projectId: string
+  projectId?: string
 ) =>
   tool({
-    description: `Navigate and explore project documents in a structured way. You can think of this like exploring files through a terminal or file explorer. If you don't know the files path you should start with just the plain "list" command to see all the files in the root directory.
+    description: `The project explorer tool allows the assistant to navigate, explore, view, and search the projects folder. You can think of this like exploring files through a terminal or file explorer. 
+    
+${
+  !projectId
+    ? `You're currently at the base directory that holds all project folders. To explore a specific project:
+  1. First use { command: "list" } to see all available projects
+  2. Then select a project by specifying the projectId parameter in your next command (e.g., { command: "list", projectId: "proj_12345" })
+  
+  The projectId parameter is available when no specific project is already selected.`
+    : `You're currently in project ${projectId}. You can list all documents or view the content of specific documents within this project.`
+}
 
-Usage:
-    1. Use "list" command to list all documents in a specific directory:
-       - Required parameter: command="list"
-       - Optional parameter: path="" (defaults to root directory)
-       - Example: { command: "list", path: "" }
-       - Example: { command: "list", path: "specifications" }
-       
-    2. Use "view" command to see the content of a specific document:
-       - Required parameters: command="view", path="path/to/document.ext"
-       - Example: { command: "view", path: "specifications/HVAC.pdf" }
-       
-Returns:
-    - For "list": Directory contents with document names, paths, types, and sizes
-    - For "view": Document content with associated metadata`,
+Like most file explorers there is also a way to search for documents using a query. The search here is a vector similarity search that provides relevant chunks from documents based on the query.
+
+<examples>
+  ${
+    !projectId
+      ? `<example>
+      <description>Listing all available projects from the base directory</description>
+      <parameters>{ command: "list" }</parameters>
+    </example>
+    <example>
+      <description>Listing all documents in a specific project</description>
+      <parameters>{ command: "list", projectId: "proj_12345" }</parameters>
+    </example>`
+      : `<example>
+      <description>Listing all documents in the root directory of the current project</description>
+      <parameters>{ command: "list", path: "" }</parameters>
+    </example>`
+  }
+  <example>
+      <description>Listing all documents in a specific directory</description>
+      <parameters>{ command: "list", path: "specifications" }</parameters>
+  </example>
+  <example>
+      <description>Viewing the content of a specific document</description>
+      <parameters>{ command: "view", path: "specifications/HVAC.pdf" }</parameters>
+  </example>
+  <example>
+      <description>searching for information dimensions of a room</description>
+      <parameters>{ command: "semantic_search", query: "dimensions of the cafeteria 417" }</parameters>
+  </example>
+</examples>`,
     parameters: z.object({
-      command: z.enum(["list", "view"]),
+      command: z.enum(["list", "view", "semantic_search"]),
       path: z.string().optional(),
+      query: z.string().optional(),
+      ...(projectId
+        ? {}
+        : {
+            projectId: z.string().optional(),
+          }),
     }),
-    execute: async ({ command, path = "" }) => {
+    execute: async ({
+      query,
+      command,
+      projectId: localProjectId,
+      path = "",
+    }) => {
       try {
         console.log("Executing project explorer tool with command:", command);
         console.log("Project ID:", projectId);
@@ -349,19 +391,64 @@ Returns:
 
         if (command === "list") {
           try {
-            const docs = await getProjectDocs(projectId, path);
+            if (!projectId) {
+              if (localProjectId) {
+                const docs = await getProjectDocs(
+                  localProjectId as string,
+                  path
+                );
+                console.log("Found project documents:", docs.length);
+                const formattedDocs = docs.map((doc) => ({
+                  name: doc.name,
+                  path: `${projectId}/${doc.path}`.replace(/\/+/g, "/"), // Ensure path includes project ID as prefix
+                  type: doc.mimeType,
+                  size: doc.size,
+                }));
+
+                return formattedDocs;
+              }
+
+              // If no project ID is provided, list available projects
+              const projects = await listProjects({
+                limit: 999,
+                organizationId:
+                  workspace.type === "organization" ? workspace.id : undefined,
+                userId:
+                  workspace.type === "personal" ? workspace.id : undefined,
+              });
+
+              console.log("Found projects:", projects.data.length);
+
+              return {
+                dataForFrontend: projects.data.map((project) => ({
+                  name: project.name,
+                  path: project.id,
+                  type: "directory",
+                  projectId: project.id,
+                  projectNumber: project.projectNumber,
+                })),
+              };
+            }
+
+            // Check if path contains project ID as a prefix
+            // If it does, extract the actual path within the project
+            let actualPath = path;
+            if (path.startsWith(projectId + "/")) {
+              actualPath = path.substring(projectId.length + 1);
+            }
+
+            // Original code for listing documents in a project
+            const docs = await getProjectDocs(projectId, actualPath);
             console.log("Found project documents:", docs.length);
 
             const formattedDocs = docs.map((doc) => ({
               name: doc.name,
-              path: doc.path,
+              path: `${projectId}/${doc.path}`.replace(/\/+/g, "/"), // Ensure path includes project ID as prefix
               type: doc.mimeType,
               size: doc.size,
             }));
 
-            return {
-              dataForFrontend: formattedDocs,
-            };
+            return formattedDocs;
           } catch (error: unknown) {
             console.error("Error listing project documents:", error);
             return {
@@ -375,12 +462,34 @@ Returns:
 
         if (command === "view") {
           try {
+            // Parse the path to extract project ID and actual document path
+            let documentPath = path;
+            let documentProjectId = projectId;
+
+            // If path includes project ID as prefix (projectId/actual/path)
+            if (path.includes("/")) {
+              const pathParts = path.split("/");
+              // Check if the first part could be a project ID
+              if (!projectId || pathParts[0] !== projectId) {
+                documentProjectId = pathParts[0];
+                documentPath = pathParts.slice(1).join("/");
+              } else {
+                documentPath = pathParts.slice(1).join("/");
+              }
+            }
+
+            console.log("Looking for document with path:", documentPath);
+            console.log("In project:", documentProjectId);
+
             const document = await db.query.documents.findFirst({
               where: and(
-                eq(documents.projectId, projectId),
-                eq(documents.path, path)
+                documentProjectId
+                  ? eq(documents.projectId, documentProjectId)
+                  : undefined,
+                eq(documents.path, documentPath)
               ),
             });
+
             console.log("Found document:", document);
             if (!document) {
               console.error("Document not found");
@@ -444,6 +553,83 @@ Returns:
               }`,
             };
           }
+        }
+
+        if (command === "semantic_search" && query) {
+          const res = await searchProjectDocuments(
+            projectId || null,
+            query,
+            80,
+            workspace
+          );
+
+          console.log("Search results:", res.length);
+
+          // Rerank results
+          const rerankedResults = await reranker.rerank(
+            query,
+            res.map((r) => r.text || ""),
+            {
+              topN: 20,
+              returnDocuments: true,
+            }
+          );
+
+          // Create a map of text to original result for lookup
+          const textToResultMap = new Map(res.map((r) => [r.text, r]));
+
+          // Map reranked results to simplified schema
+          const simplifiedDocs: DocumentSearchToolResult[] =
+            rerankedResults.results?.map((reranked) => {
+              const originalDoc = textToResultMap.get(reranked.document.text)!;
+              return {
+                documentId: originalDoc.document.id,
+                projectId: originalDoc.document.projectId || projectId || "", // Fallback to parameter or empty string
+                path: originalDoc.document.path,
+                documentName: originalDoc.document.name,
+                text: originalDoc.text,
+                similarity: reranked.relevance_score,
+                pageNumber: (originalDoc.metadata as { page_number?: number })
+                  ?.page_number,
+                mimeType: originalDoc.document.mimeType,
+                fileKey: originalDoc.document.fileKey,
+              };
+            });
+          console.log("Simplified docs length:", simplifiedDocs.length);
+
+          // Use the typed helper functions with simplified schema
+          const uniqueDocs = getUniqueDocuments(simplifiedDocs);
+          const searchContext = convertResultsToXml(simplifiedDocs);
+
+          // Generate images if supported by model
+          let images: {
+            fileKey: string;
+            imageData: string;
+            mimeType: string;
+          }[] = [];
+          if (modelConfig.model.modelId.includes("claude-3-7-sonnet")) {
+            images = await processDocumentImages(uniqueDocs);
+          }
+
+          return {
+            context: searchContext,
+            docs: simplifiedDocs,
+            images,
+
+            // Format data thats easy for frontend to use
+            dataForFrontend: uniqueDocs.map((doc) => ({
+              document_id: doc.documentId,
+              path: doc.path,
+              projectId: doc.projectId,
+              source: doc.documentName,
+              snippet: doc.text,
+              score: doc.similarity,
+              page: doc.pageNumber,
+              url: doc.fileKey
+                ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+                : undefined,
+            })),
+          };
         }
 
         // Handle invalid command

@@ -334,7 +334,7 @@ const threadsOps = {
         project_explorer: createProjectExplorerTool(
           modelConfig,
           req.workspace!,
-          thread.projectId!
+          thread.projectId || undefined
         ),
       };
 

@@ -174,7 +174,7 @@ async function deleteProject(projectId: string) {
   await db.delete(projects).where(eq(projects.id, projectId));
 }
 
-async function listProjects(params: {
+export async function listProjects(params: {
   organizationId?: string;
   userId?: string;
   search?: string;
