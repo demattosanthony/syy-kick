@@ -346,7 +346,7 @@ Tips:
         }[];
       }
 
-      const response = await fetch(`https://s.jina.ai/?q=${query}&num=6`, {
+      const response = await fetch(`https://s.jina.ai/?q=${query}&num=4`, {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${process.env.JINA_API_KEY}`,
