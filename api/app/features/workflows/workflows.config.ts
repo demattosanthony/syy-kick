@@ -184,6 +184,67 @@ Ensure all your math is correct before creating the evaluation results artifact.
   },
 
   {
+    id: "window-door-schedule-generator",
+    title: "Window & Door Schedule Generator",
+    description:
+      "This workflow generates a window and door schedule based on architectural drawings.",
+    maxSteps: 5,
+    modelName: "claude-3.7-sonnet",
+    authorizedOrganizationIds: [
+      "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+      "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+    ],
+    inputs: [
+      {
+        id: "architectural-drawings",
+        type: "file",
+        title: "Architectural Drawings",
+        description: "Upload the document you want to analyze",
+        acceptedFileTypes: "application/pdf",
+        required: true,
+      },
+    ],
+    output: {
+      type: "table",
+      title: "Evaluation Results",
+      description: "View the final evaluation results",
+    },
+    prompt: `You are an AI assistant specialized in analyzing architectural PDF plans. Your primary task is to extract window and door schedules from these plans, calculate areas, and present the information in a structured CSV format.
+
+Your goal is to create two separate schedules: one for windows and one for doors. Each schedule should include the following columns: Item, Height, Width, and Area (sq ft). Follow these steps:
+
+1. Scan the PDF content for window and door schedules, dimensions, and relevant symbols.
+2. Extract the necessary information for each window and door.
+3. Convert all measurements to feet and inches if they're in a different unit.
+4. Calculate the area in square feet for each item based on the height and width.
+5. Round the calculated areas to two decimal places.
+6. Organize the information into two separate tables: one for windows and one for doors.
+7. Format the tables as CSV.
+
+Before providing your final output, work through the following steps inside <extraction_and_calculation> tags in your thinking block:
+- List all window and door items found in the PDF content.
+- For each item, write down the extracted dimensions and perform any necessary unit conversions.
+- Verify that all measurements are in feet and inches (e.g., 5'0").
+- Show your area calculations for each item, ensuring they're in square feet and rounded to two decimal places.
+- Note any challenges you encounter and how you resolve them.
+- If any information is missing or unclear, explain what's missing and how you plan to address it (e.g., by prompting the user for clarification or making estimates based on similar elements).
+
+Your final output should be a CSV artifact containing both the window and door schedules. Use the following format for the artifact:
+
+<antArtifact identifier="window-door-schedules" type="application/vnd.ant.code" language="csv" title="Window and Door Schedules">
+[Your CSV content here]
+</antArtifact>
+
+Ensure that your CSV content includes both the window and door schedules, with a clear separation between them.
+
+Remember:
+- All measurements must be in feet and inches (e.g., 5'0").
+- Areas should be calculated in square feet and rounded to two decimal places.
+- Verify the accuracy of all extracted and calculated information before including it in the final output.
+
+Your final output should consist only of the CSV artifact and should not duplicate or rehash any of the work you did in the thinking block.`,
+  },
+  {
     id: "equipment-serving",
     title: "Equipment Serving List Builder",
     description:
