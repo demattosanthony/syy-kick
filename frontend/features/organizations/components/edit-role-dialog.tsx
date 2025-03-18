@@ -213,6 +213,9 @@ export default function EditRoleDialog({
         },
       });
       onOpenChange(false);
+      setTimeout(() => {
+        document.body.style.pointerEvents = "";
+      }, 100);
     }
   };
 

@@ -255,77 +255,28 @@ export function MembersTable({
               <TableHead>User</TableHead>
               <TableHead>Role</TableHead>
               <TableHead className="text-right">
-                <Dialog
-                  open={dialogDeleteMultipleOpen}
-                  onOpenChange={setDialogDeleteMultipleOpen}
-                >
-                  {selectedRows.length > 0 && permissions.canDelete && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={higherMemberRoleSelected}
-                        >
-                          Actions
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DialogTrigger>
-                          <DropdownMenuItem
-                            disabled={higherMemberRoleSelected}
-                            className="text-destructive hover:cursor-pointer"
-                          >
-                            {membersTableTranslations[type].deleteRows}
-                          </DropdownMenuItem>
-                        </DialogTrigger>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle style={{ marginBottom: 10 }}>
-                        {
-                          membersTableTranslations[type].deleteRowsConfirmation
-                            .title
-                        }
-                      </DialogTitle>
-                      <DialogDescription style={{ marginBottom: 20 }}>
-                        {
-                          membersTableTranslations[type].deleteRowsConfirmation
-                            .body
-                        }
-                      </DialogDescription>
+                {selectedRows.length > 0 && permissions.canDelete && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button
-                        variant="destructive"
-                        className="max-w-32 hover:cursor-pointer"
-                        disabled={isDeleting}
-                        onClick={() => {
-                          if (type === "pending") {
-                            deleteInvitations({
-                              organizationId: orgId,
-                              invitationsIds: selectedRows,
-                            });
-                          }
-
-                          if (type === "members") {
-                            deleteOrgMembers({
-                              organizationId: orgId,
-                              membersIds: selectedRows,
-                            });
-                          }
-                        }}
+                        variant="outline"
+                        size="sm"
+                        disabled={higherMemberRoleSelected}
                       >
-                        {isDeleting ? (
-                          <Loader className="h-5 w-5 mr-2 animate-spin" />
-                        ) : (
-                          membersTableTranslations[type].deleteRowsConfirmation
-                            .confirm
-                        )}
+                        Actions
                       </Button>
-                    </DialogHeader>
-                  </DialogContent>
-                </Dialog>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        disabled={higherMemberRoleSelected}
+                        className="text-destructive hover:cursor-pointer"
+                        onClick={() => setDialogDeleteMultipleOpen(true)}
+                      >
+                        {membersTableTranslations[type].deleteRows}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -337,165 +288,198 @@ export function MembersTable({
                 </TableCell>
               </TableRow>
             ) : (
-              <Dialog
-                open={dialogDeleteOneOpen}
-                onOpenChange={setDialogDeleteOneOpen}
-              >
-                {filteredData.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      {member.canUpdate && (
-                        <Checkbox
-                          checked={selectedRows.includes(member.id)}
-                          onCheckedChange={() => toggleSelectRow(member.id)}
-                          aria-label={`Select ${member.name}`}
-                          disabled={member.id === userId}
+              filteredData.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell>
+                    {member.canUpdate && (
+                      <Checkbox
+                        checked={selectedRows.includes(member.id)}
+                        onCheckedChange={() => toggleSelectRow(member.id)}
+                        aria-label={`Select ${member.name}`}
+                        disabled={member.id === userId}
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage
+                          src={member.profilePicture}
+                          alt={member.name}
                         />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage
-                            src={member.profilePicture}
-                            alt={member.name}
-                          />
-                          <AvatarFallback>
-                            {getInitials(member.email, member.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">
-                            {member.name} {userId === member.id && "(You)"}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {member.email}
-                          </div>
+                        <AvatarFallback>
+                          {getInitials(member.email, member.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">
+                          {member.name} {userId === member.id && "(You)"}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {member.email}
                         </div>
                       </div>
-                    </TableCell>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                      {member.role.name}
+                    </span>
+                  </TableCell>
+                  {/** Copy invitation link */}
+                  {"link" in member && (
                     <TableCell>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                        {member.role.name}
-                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          navigator.clipboard
+                            .writeText(member.link as string)
+                            .then(() => {
+                              setCopiedId(member.id);
+                              setTimeout(() => setCopiedId(""), 2000);
+                            });
+                          toast.success("Link copied to clipboard");
+                        }}
+                      >
+                        {copiedId === member.id ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <Link className="h-4 w-4" />
+                        )}
+                      </Button>
                     </TableCell>
-                    {/** Copy invitation link */}
-                    {"link" in member && (
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            navigator.clipboard
-                              .writeText(member.link as string)
-                              .then(() => {
-                                setCopiedId(member.id);
-                                setTimeout(() => setCopiedId(""), 2000);
-                              });
-                            toast.success("Link copied to clipboard");
-                          }}
-                        >
-                          {copiedId === member.id ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <Link className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TableCell>
-                    )}
-                    <TableCell className="text-right">
-                      {member.id !== userId && // The current user is the member row
-                        member.canUpdate && // The current user can update the member row
-                        (permissions.canUpdate || permissions.canDelete) && ( // The user permissions allow to update or delete the member row
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Open menu</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {type === "members" && permissions.canUpdate && (
+                  )}
+                  <TableCell className="text-right">
+                    {member.id !== userId && // The current user is the member row
+                      member.canUpdate && // The current user can update the member row
+                      (permissions.canUpdate || permissions.canDelete) && ( // The user permissions allow to update or delete the member row
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {type === "members" && permissions.canUpdate && (
+                              <DropdownMenuItem
+                                className="hover:cursor-pointer"
+                                onClick={() => handleEditRole(member)}
+                              >
+                                {membersTableTranslations[type].editRow}
+                              </DropdownMenuItem>
+                            )}
+                            {permissions.canDelete &&
+                              !higherMemberRoleSelected && (
                                 <DropdownMenuItem
-                                  className="hover:cursor-pointer"
-                                  onClick={() => handleEditRole(member)}
+                                  className="text-destructive hover:cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedRows([member.id]);
+                                    setDialogDeleteOneOpen(true);
+                                  }}
                                 >
-                                  {membersTableTranslations[type].editRow}
+                                  {membersTableTranslations[type].deleteRow}
                                 </DropdownMenuItem>
                               )}
-                              {permissions.canDelete &&
-                                !higherMemberRoleSelected && (
-                                  <DialogTrigger>
-                                    <DropdownMenuItem
-                                      // disable if selected rows include a user id that has canDelete set to false
-
-                                      className="text-destructive hover:cursor-pointer"
-                                      onClick={() =>
-                                        setSelectedRows([member.id])
-                                      }
-                                    >
-                                      {membersTableTranslations[type].deleteRow}
-                                    </DropdownMenuItem>
-                                  </DialogTrigger>
-                                )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle style={{ marginBottom: 10 }}>
-                      {
-                        membersTableTranslations[type].deleteRowConfirmation
-                          .title
-                      }
-                    </DialogTitle>
-                    <DialogDescription style={{ marginBottom: 20 }}>
-                      {
-                        membersTableTranslations[type].deleteRowConfirmation
-                          .body
-                      }
-                    </DialogDescription>
-                    <Button
-                      disabled={isDeleting || higherMemberRoleSelected}
-                      variant="destructive"
-                      className="max-w-32 hover:cursor-pointer"
-                      onClick={() => {
-                        if (type === "pending") {
-                          deleteInvitations({
-                            organizationId: orgId,
-                            invitationsIds: selectedRows,
-                          });
-                        }
-
-                        if (type === "members") {
-                          deleteOrgMembers({
-                            organizationId: orgId,
-                            membersIds: selectedRows,
-                          });
-                        }
-                      }}
-                    >
-                      {isDeleting ? (
-                        <Loader className="h-5 w-5 mr-2 animate-spin" />
-                      ) : (
-                        membersTableTranslations[type].deleteRowConfirmation
-                          .confirm
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
-                    </Button>
-                  </DialogHeader>
-                </DialogContent>
-              </Dialog>
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
       </div>
+      <Dialog
+        open={dialogDeleteMultipleOpen}
+        onOpenChange={setDialogDeleteMultipleOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle style={{ marginBottom: 10 }}>
+              {membersTableTranslations[type].deleteRowsConfirmation.title}
+            </DialogTitle>
+            <DialogDescription style={{ marginBottom: 20 }}>
+              {membersTableTranslations[type].deleteRowsConfirmation.body}
+            </DialogDescription>
+            <Button
+              variant="destructive"
+              className="max-w-32 hover:cursor-pointer"
+              disabled={isDeleting}
+              onClick={() => {
+                if (type === "pending") {
+                  deleteInvitations({
+                    organizationId: orgId,
+                    invitationsIds: selectedRows,
+                  });
+                }
+
+                if (type === "members") {
+                  deleteOrgMembers({
+                    organizationId: orgId,
+                    membersIds: selectedRows,
+                  });
+                }
+              }}
+            >
+              {isDeleting ? (
+                <Loader className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                membersTableTranslations[type].deleteRowsConfirmation.confirm
+              )}
+            </Button>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={dialogDeleteOneOpen} onOpenChange={setDialogDeleteOneOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle style={{ marginBottom: 10 }}>
+              {membersTableTranslations[type].deleteRowConfirmation.title}
+            </DialogTitle>
+            <DialogDescription style={{ marginBottom: 20 }}>
+              {membersTableTranslations[type].deleteRowConfirmation.body}
+            </DialogDescription>
+            <Button
+              disabled={isDeleting || higherMemberRoleSelected}
+              variant="destructive"
+              className="max-w-32 hover:cursor-pointer"
+              onClick={() => {
+                if (type === "pending") {
+                  deleteInvitations({
+                    organizationId: orgId,
+                    invitationsIds: selectedRows,
+                  });
+                }
+
+                if (type === "members") {
+                  deleteOrgMembers({
+                    organizationId: orgId,
+                    membersIds: selectedRows,
+                  });
+                }
+              }}
+            >
+              {isDeleting ? (
+                <Loader className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                membersTableTranslations[type].deleteRowConfirmation.confirm
+              )}
+            </Button>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
       {selectedMember && (
         <EditRoleDialog
           open={editRoleDialogOpen}
-          onOpenChange={setEditRoleDialogOpen}
+          onOpenChange={(openStatus) => {
+            if(!openStatus) {
+              setSelectedMember(null);
+            }
+            setEditRoleDialogOpen(openStatus);
+          }}
           member={selectedMember}
           transferablePermissions={transferablePermissions}
           organizationId={orgId}
