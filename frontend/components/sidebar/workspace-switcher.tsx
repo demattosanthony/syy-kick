@@ -102,7 +102,7 @@ export function WorkSpaceSwitcher({
 
   return (
     <SidebarMenuItem className="flex items-center flex-col">
-      <DropdownMenu onOpenChange={onDropdownOpenChange}>
+      <DropdownMenu modal={false} onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground flex w-full group-data-[collapsible=icon]:justify-center justify-start items-center gap-2 px-1">
             <WorkspaceLogo workspace={activeWorkspace} />
