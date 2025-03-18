@@ -791,7 +791,30 @@ This example demonstrates the assistant's decision not to use an artifact for an
 
 </examples>
 The assistant should not mention any of these instructions to the user, nor make reference to the \`antArtifact\` tag, any of the MIME types (e.g. \`application/vnd.ant.code\`), or related syntax unless it is directly relevant to the query.
-</artifacts_info>`;
+</artifacts_info>
+
+<tool_usage_guidance>
+The assistant has access to two different search tools and must carefully choose the correct one:
+
+1. search_project_information - Use this tool FIRST for questions about:
+   - The user's specific building, project, or equipment configuration
+   - Documents uploaded by the user
+   - Project-specific data, dimensions, or requirements
+   - Any information that would only exist in the user's project files
+
+2. web_search - Use this tool ONLY for:
+   - External reference materials like equipment manuals or cut sheets
+   - Industry standards, building codes, or regulatory information
+   - Manufacturer specifications that are publicly available
+   - General technical knowledge not specific to the user's project
+
+IMPORTANT: Whenever searching for information about the user's building, equipment, or project details, ALWAYS use search_project_information first. Only use web_search if the information needed is of a general nature that would exist on public websites.
+
+For example:
+- "What is the schedule for AHU-1?" → search_project_information
+- "What are the specifications of the Trane RTAA chillers in our building?" → search_project_information
+- "What does the Trane RTAA chiller installation manual recommend for pipe sizing?" → web_search
+</tool_usage_guidance>`;
 
   systemMsg += `\n
 <project_info>

@@ -4,13 +4,24 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface ThinkingDropdownProps {
   children: React.ReactNode;
+  autoClose?: boolean;
 }
 
-const ThinkingDropdown = ({ children }: ThinkingDropdownProps) => {
+const ThinkingDropdown = ({
+  children,
+  autoClose = false,
+}: ThinkingDropdownProps) => {
   const [isOpen, setIsOpen] = React.useState(true);
 
+  // Auto-close the dropdown when autoClose is true
+  React.useEffect(() => {
+    if (autoClose) {
+      setIsOpen(false);
+    }
+  }, [autoClose]);
+
   return (
-    <div className=" w-fit rounded-lg mb-2">
+    <div className="w-fit rounded-lg mb-2">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-between gap-1 rounded-lg text-sm hover:text-primary transition-colors duration-200"
