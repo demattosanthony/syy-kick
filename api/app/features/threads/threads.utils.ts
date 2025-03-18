@@ -314,22 +314,22 @@ Returns:
 
 const createWebSearchTool = () =>
   tool({
-    description: `A web search tool that retrieves relevant information from across the internet.
+    description: `Search the web for public information.
+
 When to use:
-- Looking up current events, news, or general knowledge
-- Finding technical documentation or reference materials
-- Researching companies, products, or technologies
-- Fact-checking or verifying information
-Input:
-- query: A clear, specific search phrase (e.g. "manuals lib aaon rn series installation operation and maintenance pdf")
-Output:
-- List of relevant search results containing:
-  - Title and URL of each result
-  - Content snippets showing relevant text
+- Product manuals and technical specifications
+- Industry standards and building codes
+- Manufacturer documentation
+- General knowledge questions
+
+When NOT to use:
+- Project-specific information (use search_project_information instead)
+- Information about your specific building or equipment
+- Content in your uploaded documents
+
 Tips:
-- Use specific, focused queries for better results
-- Include key terms and any relevant date ranges
-- Avoid overly broad or vague searches`,
+- Use specific search terms including manufacturer names and model numbers
+- Add "pdf" when looking for technical documents`,
     parameters: z.object({
       query: z.string(),
     }),
