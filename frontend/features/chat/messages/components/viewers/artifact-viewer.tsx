@@ -32,10 +32,12 @@ import MarkdownViewer from "./markdown-viewer";
 import { marked } from "marked";
 import mermaid from "mermaid";
 
-// New reusable components
 export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
-  // Helper function to parse CSV line respecting quotes
+  // Helper function to parse CSV line respecting quotes and handling special cases
   const parseCSVLine = (line: string): string[] => {
+    // Special case for architectural dimensions - replace the trailing inch mark temporarily
+    line = line.replace(/(\d+)'(\d+)"/g, "$1'$2INCH");
+
     const result: string[] = [];
     let current = "";
     let inQuotes = false;
@@ -52,17 +54,20 @@ export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
           inQuotes = !inQuotes;
         }
       } else if (char === "," && !inQuotes) {
-        result.push(current);
+        // Restore inch symbol before adding to result
+        result.push(current.replace(/INCH/g, '"'));
         current = "";
       } else {
         current += char;
       }
     }
-    result.push(current);
+
+    // Restore inch symbol before adding the last item
+    result.push(current.replace(/INCH/g, '"'));
     return result;
   };
 
-  const rows = content.split("\n") || [];
+  const rows = content.split("\n").filter((row) => row.trim() !== "") || [];
   const headerRow = rows[0];
   const bodyRows = rows.slice(1);
 
@@ -80,7 +85,6 @@ export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
   while (headerCells.length < maxColumns) {
     headerCells.push("");
   }
-
   return (
     <div className="h-full w-full overflow-auto whitespace-nowrap">
       <table className="min-w-full table-fixed border-collapse">
