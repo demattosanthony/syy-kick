@@ -1,4 +1,3 @@
-import deleteOrgInvitations from "@/features/permissions/api/organizations/delete-org-invitations";
 import {
   OrganizationMemberRoleResponse,
   OrgInvitationsRequest,
@@ -153,8 +152,11 @@ class AuthApi extends ApiRequest {
           if (error.message === "inactive_subscription") {
             return { inactiveSubscription: true };
           }
-          if(error.message === "wrong_email") {
-            return { error: "This e-mail address is not linked to this invitation link" };
+          if (error.message === "wrong_email") {
+            return {
+              error:
+                "This e-mail address is not linked to this invitation link",
+            };
           }
         }
       }

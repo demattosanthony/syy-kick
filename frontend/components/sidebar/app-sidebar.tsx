@@ -37,7 +37,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { CreateProjectDialog } from "@/features/projects/components";
 import { NewThreadButton } from "./new-thread-button";
-import { scrollbarStyle } from "@/lib/utils";
 import { usePermissions } from "@/features/permissions/context";
 
 export function AppSidebar({

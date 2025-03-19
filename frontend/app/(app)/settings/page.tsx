@@ -13,14 +13,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { useAtom } from "jotai";
 import { instructionsAtom } from "@/atoms/chat";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import AdminSettings from "@/features/settings/components/admin-settings";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import { OrganizationSettings } from "@/features/organizations/components";
 import { useMeQuery } from "@/features/user/api";
-import { Permissions } from "@/types/permissions";
 import { usePermissions } from "@/features/permissions/context";
 
 export default function UserSettings() {
@@ -33,16 +32,7 @@ export default function UserSettings() {
 
   const isSuperAdmin = user?.systemRole === "super_admin";
 
-  const { canReadOrg, canUpdateOrg } = usePermissions();
-
-  const isOrgOwner = useMemo(() => {
-    if (activeWorkspace?.type !== "organization") return false;
-    return user?.organizations?.some(
-      (org) =>
-        org.role.name === Permissions.Roles.ORGANIZATION_ADMIN &&
-        org.id === activeWorkspace.id
-    );
-  }, [user, activeWorkspace]);
+  const { canUpdateOrg } = usePermissions();
 
   const [instructions, setInstructions] = useAtom(instructionsAtom);
 
