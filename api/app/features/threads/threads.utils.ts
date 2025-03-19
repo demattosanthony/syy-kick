@@ -80,6 +80,8 @@ function convertResultsToXml(docs: DocumentSearchToolResult[]): string {
       (doc) => `
 <document>
   <document_id>${doc.documentId}</document_id>
+  <project_id>${doc.projectId}</project_id>
+  <path>${doc.path}</path>
   <source>${doc.documentName}</source>
   <snippet>${doc.text}</snippet>
   <score>${doc.similarity}</score>
@@ -331,9 +333,8 @@ ${
   !projectId
     ? `You're currently at the base directory that holds all project folders. To explore a specific project:
   1. First use { command: "list" } to see all available projects
-  2. Then select a project by specifying the projectId parameter in your next command (e.g., { command: "list", projectId: "proj_12345" })
-  
-  The projectId parameter is available when no specific project is already selected.`
+  2. Then select a project by adding projectId to the path parameter in your next command (e.g., { command: "list", path: "2342890-231231-221312" })
+     - Make sure to use the projectId and not the project name for the path`
     : `You're currently in project ${projectId}. You can list all documents or view the content of specific documents within this project.`
 }
 
@@ -348,7 +349,7 @@ Like most file explorers there is also a way to search for documents using a que
     </example>
     <example>
       <description>Listing all documents in a specific project</description>
-      <parameters>{ command: "list", projectId: "proj_12345" }</parameters>
+      <parameters>{ command: "list", path: "34230989423-342-3222" }</parameters>
     </example>`
       : `<example>
       <description>Listing all documents in the root directory of the current project</description>
@@ -372,18 +373,8 @@ Like most file explorers there is also a way to search for documents using a que
       command: z.enum(["list", "view", "semantic_search"]),
       path: z.string().optional(),
       query: z.string().optional(),
-      ...(projectId
-        ? {}
-        : {
-            projectId: z.string().optional(),
-          }),
     }),
-    execute: async ({
-      query,
-      command,
-      projectId: localProjectId,
-      path = "",
-    }) => {
+    execute: async ({ query, command, path = "" }) => {
       try {
         console.log("Executing project explorer tool with command:", command);
         console.log("Project ID:", projectId);
@@ -392,23 +383,22 @@ Like most file explorers there is also a way to search for documents using a que
         if (command === "list") {
           try {
             if (!projectId) {
-              if (localProjectId) {
-                const docs = await getProjectDocs(
-                  localProjectId as string,
-                  path
-                );
-                console.log("Found project documents:", docs.length);
+              // If path is provided and no project id, then get the project id from the path and list the documents
+              if (path) {
+                const projectId = path.split("/")[0];
+                const actualPath = path.substring(projectId.length + 1);
+                const docs = await getProjectDocs(projectId, actualPath);
                 const formattedDocs = docs.map((doc) => ({
                   name: doc.name,
                   path: `${projectId}/${doc.path}`.replace(/\/+/g, "/"), // Ensure path includes project ID as prefix
                   type: doc.mimeType,
                   size: doc.size,
                 }));
-
+                console.log("Formatted docs:", formattedDocs);
                 return formattedDocs;
               }
 
-              // If no project ID is provided, list available projects
+              // If no project ID is provided and no path is provided, list all projects
               const projects = await listProjects({
                 limit: 999,
                 organizationId:
@@ -417,36 +407,31 @@ Like most file explorers there is also a way to search for documents using a que
                   workspace.type === "personal" ? workspace.id : undefined,
               });
 
-              console.log("Found projects:", projects.data.length);
+              const formattedProjects = projects.data.map((project) => ({
+                name: project.name,
+                path: project.id,
+                type: "folder",
+                projectNumber: project.projectNumber,
+                address: `${project.address}, ${project.city}, ${project.state}, ${project.country}, ${project.postalCode}`,
+              }));
 
-              return {
-                dataForFrontend: projects.data.map((project) => ({
-                  name: project.name,
-                  path: project.id,
-                  type: "directory",
-                  projectId: project.id,
-                  projectNumber: project.projectNumber,
-                })),
-              };
-            }
+              console.log("Found projects:", formattedProjects);
 
-            // Check if path contains project ID as a prefix
-            // If it does, extract the actual path within the project
-            let actualPath = path;
-            if (path.startsWith(projectId + "/")) {
-              actualPath = path.substring(projectId.length + 1);
+              return formattedProjects;
             }
 
             // Original code for listing documents in a project
-            const docs = await getProjectDocs(projectId, actualPath);
-            console.log("Found project documents:", docs.length);
+            const docs = await getProjectDocs(projectId, path);
 
             const formattedDocs = docs.map((doc) => ({
               name: doc.name,
-              path: `${projectId}/${doc.path}`.replace(/\/+/g, "/"), // Ensure path includes project ID as prefix
-              type: doc.mimeType,
+              path: doc.path,
+              type: doc.type,
+              mimeType: doc.mimeType,
               size: doc.size,
             }));
+
+            console.log("Found project documents:", formattedDocs);
 
             return formattedDocs;
           } catch (error: unknown) {
@@ -462,24 +447,17 @@ Like most file explorers there is also a way to search for documents using a que
 
         if (command === "view") {
           try {
-            // Parse the path to extract project ID and actual document path
-            let documentPath = path;
+            // If no project id included, then project id is at the start of the path
             let documentProjectId = projectId;
-
-            // If path includes project ID as prefix (projectId/actual/path)
-            if (path.includes("/")) {
+            let documentPath = path;
+            if (!projectId) {
               const pathParts = path.split("/");
-              // Check if the first part could be a project ID
-              if (!projectId || pathParts[0] !== projectId) {
-                documentProjectId = pathParts[0];
-                documentPath = pathParts.slice(1).join("/");
-              } else {
-                documentPath = pathParts.slice(1).join("/");
-              }
+              documentProjectId = pathParts[0];
+              documentPath = pathParts.slice(1).join("/");
             }
 
-            console.log("Looking for document with path:", documentPath);
-            console.log("In project:", documentProjectId);
+            console.log("Looking for document with path:", path);
+            console.log("In project:", projectId);
 
             const document = await db.query.documents.findFirst({
               where: and(
@@ -556,8 +534,14 @@ Like most file explorers there is also a way to search for documents using a que
         }
 
         if (command === "semantic_search" && query) {
+          let searchProjectId = projectId;
+          if (!projectId) {
+            const pathParts = path.split("/");
+            searchProjectId = pathParts[0];
+          }
+
           const res = await searchProjectDocuments(
-            projectId || null,
+            searchProjectId || null,
             query,
             80,
             workspace
@@ -611,24 +595,26 @@ Like most file explorers there is also a way to search for documents using a que
             images = await processDocumentImages(uniqueDocs);
           }
 
+          console.log(searchContext);
+
           return {
             context: searchContext,
-            docs: simplifiedDocs,
-            images,
+            // docs: simplifiedDocs,
+            // images,
 
             // Format data thats easy for frontend to use
-            dataForFrontend: uniqueDocs.map((doc) => ({
-              document_id: doc.documentId,
-              path: doc.path,
-              projectId: doc.projectId,
-              source: doc.documentName,
-              snippet: doc.text,
-              score: doc.similarity,
-              page: doc.pageNumber,
-              url: doc.fileKey
-                ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
-                : undefined,
-            })),
+            // dataForFrontend: uniqueDocs.map((doc) => ({
+            //   document_id: doc.documentId,
+            //   path: doc.path,
+            //   projectId: doc.projectId,
+            //   source: doc.documentName,
+            //   snippet: doc.text,
+            //   score: doc.similarity,
+            //   page: doc.pageNumber,
+            //   url: doc.fileKey
+            //     ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+            //     : undefined,
+            // })),
           };
         }
 
