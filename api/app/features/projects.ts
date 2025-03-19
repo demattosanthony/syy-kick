@@ -642,27 +642,29 @@ async function createFolderStructure(
   return { success: true };
 }
 
-export async function searchProjectDocuments(
-  projectId: string | null,
-  query: string,
-  limit: number = 20,
-  workspace: Workspace
-) {
+export async function searchProjectDocuments(params: {
+  query: string;
+  workspace: Workspace;
+  projectIds?: string[];
+  limit?: number;
+}) {
+  const { projectIds, query, limit = 20, workspace } = params;
   try {
-    // If projectId is provided, verify it exists
-    if (projectId) {
+    // If projectIds are provided, verify they exist
+    if (projectIds && projectIds.length > 0) {
       try {
-        await getProjectOrThrow(projectId);
+        // Verify at least one project exists (could enhance to check all)
+        await getProjectOrThrow(projectIds[0]);
       } catch (error) {
         console.error(
-          `Project verification failed for ID ${projectId}:`,
+          `Project verification failed for ID ${projectIds[0]}:`,
           error
         );
-        throw new Error(`Invalid project ID: ${projectId}`);
+        throw new Error(`Invalid project ID: ${projectIds[0]}`);
       }
     } else if (!workspace.id) {
       throw new Error(
-        "Either projectId, userId, or organizationId must be provided"
+        "Either projectIds, userId, or organizationId must be provided"
       );
     }
 
@@ -680,10 +682,10 @@ export async function searchProjectDocuments(
 
     // Build the where clause based on provided parameters
     let whereClause;
-    if (projectId) {
-      // Search within a specific project
+    if (projectIds && projectIds.length > 0) {
+      // Search within specific projects
       whereClause = and(
-        eq(documents.projectId, projectId),
+        inArray(documents.projectId, projectIds),
         sql`1 - (${cosineDistance(
           documentEmbeddings.embedding,
           queryEmbedding

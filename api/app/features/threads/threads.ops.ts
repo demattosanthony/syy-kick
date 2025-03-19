@@ -328,6 +328,7 @@ const threadsOps = {
         search_projects_information: createProjectSearchTool(
           modelConfig,
           req.workspace!,
+          req.dbUser!,
           thread.projectId || undefined
         ),
       };
@@ -367,6 +368,12 @@ const threadsOps = {
         onFinish: async () => {
           requestCompleted = true;
         },
+        onError: async (error) => {
+          console.error("Error during inference:", error);
+          res.status(500).json({
+            error: "An error occurred during inference",
+          });
+        },
         onStepFinish: async ({
           toolCalls,
           toolResults,
@@ -376,7 +383,7 @@ const threadsOps = {
         }) => {
           //   console.log("Finish reason:", finishReason);
           //   console.log("Tool calls:", toolCalls);
-          //   // console.log("Tool results:", toolResults.length);
+          //   console.log("Tool results:", toolResults);
           //   console.log("Text:", text);
           //   console.log("Reasoning:", reasoning);
 
