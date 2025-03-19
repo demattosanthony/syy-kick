@@ -53,6 +53,17 @@ export const anthropicModels = (
       description:
         "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
     },
+    "claude-3.5-sonnet": {
+      model: anthropic("claude-3-5-sonnet-latest"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "anthropic",
+      supportsSystemMessages: true,
+      supportedMimeTypes: [],
+      maxImageSize: 5 * 1024 * 1024, // 5MB
+      description:
+        "Claude 3.5 Haiku is the next generation of our fastest model. For a similar speed to Claude 3 Haiku, Claude 3.5 Haiku improves across every skill set and surpasses Claude 3 Opus, the largest model in our previous generation, on many intelligence benchmarks.",
+    },
     "claude-3.5-haiku": {
       model: anthropic("claude-3-5-haiku-latest"),
       supportsToolUse: true,
