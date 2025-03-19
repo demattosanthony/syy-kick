@@ -26,7 +26,7 @@ export default function ForbiddenPage() {
           <h1 className="text-3xl font-bold tracking-tight">Forbidden</h1>
         </div>
         <p className="text-muted-foreground">
-          You don't have access to this resource.
+          You don&apost have access to this resource.
         </p>
         <Button asChild className="mt-4">
           <Link href="/">Return to Home</Link>

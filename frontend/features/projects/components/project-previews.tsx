@@ -6,6 +6,7 @@ import { useInfiniteProjectsQuery } from "../api";
 import { Project } from "@/types/project";
 import { useRouter } from "next/navigation";
 import CreateProjectDialog from "./create-project-dialog";
+import { usePermissions } from "@/features/permissions/context";
 
 // Add this style tag for the pin point shape
 const PinStyles = () => (
@@ -57,6 +58,8 @@ const ProjectPreviews = () => {
     limit: 6,
   });
 
+  const { canCreateOrgProjects } = usePermissions();
+
   // Use a Set to deduplicate projects by ID and limit to 6 most recent
   const recentProjects = useMemo(() => {
     const projectsMap = new Map<string, Project>();
@@ -96,7 +99,7 @@ const ProjectPreviews = () => {
             <ProjectCardSkeleton key={i} />
           ))}
         </div>
-      ) : recentProjects.length === 0 ? (
+      ) : recentProjects.length === 0 && canCreateOrgProjects ? (
         <div className="flex justify-center items-center w-full">
           <div className="bg-card text-card-foreground rounded-xl shadow-sm border border-border p-6 w-full max-w-md flex flex-col items-center text-center">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
@@ -128,7 +131,9 @@ const ProjectPreviews = () => {
           ))}
 
           {/* Add "Create Project" card if there are fewer than 6 projects */}
-          {recentProjects.length < 6 && <AddProjectCard />}
+          {recentProjects.length < 6 && canCreateOrgProjects && (
+            <AddProjectCard />
+          )}
         </div>
       )}
     </div>
