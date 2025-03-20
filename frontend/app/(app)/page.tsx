@@ -18,11 +18,11 @@ import { toast } from "sonner";
 import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
 import {
   AnimatedGreeting,
-  ChatInputForm,
   ChatInputFormRef,
 } from "@/features/chat/messages/components";
 import { useMeQuery } from "@/features/user/api";
 import ProjectPreviews from "@/features/projects/components/project-previews";
+import ChatInputForm from "@/features/chat/messages/components/chat-input/chat-input";
 
 export default function Home() {
   const router = useRouter();
