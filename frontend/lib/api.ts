@@ -14,6 +14,7 @@ import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
 import { FileUploadMixin } from "./file-upload-mixin";
+import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
 
 /**
  * Base ApiRequest class to handle common request logic
@@ -764,18 +765,6 @@ class WorkflowsApi extends ApiRequest {
   async getWorkflow(id: string): Promise<Workflow> {
     return await this.request(`/workflows/${id}`);
   }
-}
-
-interface KnowledgeBase {
-  id: string;
-  name: string;
-  description?: string;
-  visibility: "private" | "public";
-  organizationId?: string;
-  userId?: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 /**
