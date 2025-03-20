@@ -692,14 +692,8 @@ export async function searchProjectDocuments(params: {
         )}) > 0.45`
       );
     } else if (workspace.type === "organization") {
-      // Search across all projects in an organization
-      whereClause = and(
-        eq(projects.organizationId, workspace.id),
-        sql`1 - (${cosineDistance(
-          documentEmbeddings.embedding,
-          queryEmbedding
-        )}) > 0.45`
-      );
+      // When workspace is an organization, projectIds should be provided
+      return [];
     } else if (workspace.type === "personal") {
       // Search across all projects owned by the user
       whereClause = and(
