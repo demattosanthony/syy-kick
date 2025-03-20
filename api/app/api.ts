@@ -16,6 +16,7 @@ import organizationRoutes from "./features/organizations";
 import projectRoutes from "./features/projects";
 import workflowRoutes from "./features/workflows/workflows.routes";
 import permissionsRoutes from "./features/permissions/permissions.routes";
+import analyticsRoutes from "./features/analytics";
 
 export default Router()
   .use("/auth", authRoutes)
@@ -104,4 +105,5 @@ export default Router()
       };
     })
   )
-  .use("/permissions", auth, permissionsRoutes);
+  .use("/permissions", auth, permissionsRoutes)
+  .use("/analytics", analyticsRoutes);
