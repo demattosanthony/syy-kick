@@ -111,7 +111,7 @@ const LoadingMessage = React.memo(() => {
         </div>
 
         <div className="flex items-center rounded-lg bg-background">
-          <Loader variant="wave" size="md" />
+          <Loader variant="wave" size="lg" />
         </div>
       </div>
     </div>
