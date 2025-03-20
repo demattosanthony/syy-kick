@@ -131,7 +131,7 @@ function ChatInputForm(
       <Card
         ref={cardRef}
         className={cn(
-          "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-2xl bg-background border shadow-sm transition-all duration-200 ",
+          "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-2xl bg-background border shadow-sm transition-all",
           focused && !isMobile && "border-2",
           isDragging && "border-border border-2 bg-background"
         )}
