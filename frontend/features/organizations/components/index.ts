@@ -5,3 +5,6 @@ export { default as OrganizationCard } from "./org-card";
 export { default as OrgManageSeats } from "./org-manage-seats";
 export { default as OrganizationSettings } from "./org-settings";
 export { default as OrganizationsList } from "./orgs-list";
+export { default as OrganizationInfo } from "./organization-info";
+export { default as MembersManagement } from "./members-management";
+export { default as EditRoleDialog } from "./edit-role-dialog";

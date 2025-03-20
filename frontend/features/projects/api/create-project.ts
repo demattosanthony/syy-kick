@@ -19,9 +19,7 @@ export function useCreateProjectMutation() {
       estimated_start_date?: string;
       estimated_end_date?: string;
     }) =>
-      api.projects.createProject({
-        ...data,
-      }),
+      api.projects.createProject(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },

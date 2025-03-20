@@ -74,6 +74,7 @@ const CreateProjectDialog = ({ trigger }: CreateProjectDialogProps) => {
         latitude: formData.location.latitude,
         longitude: formData.location.longitude,
       });
+
       setFormData({
         name: "",
         description: "",

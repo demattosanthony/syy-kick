@@ -59,6 +59,10 @@ const useAuth = () => {
         return { requiresAuth: true };
       }
 
+      if (result.error) {
+        return result;
+      }
+
       // Success case
       await queryClient.invalidateQueries({ queryKey: ["me"] });
       return { success: true };

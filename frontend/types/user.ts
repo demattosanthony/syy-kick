@@ -1,3 +1,5 @@
+import { Role } from "@/features/permissions/types";
+
 export interface User {
   id: string;
   name: string;
@@ -15,11 +17,7 @@ export interface User {
   subscriptionPlan?: "basic";
   stripeCustomerId?: string;
   systemRole?: "super_admin";
-  organizationMembers?: {
-    organization: Organization;
-    role: "owner" | "member";
-    id: string;
-  }[];
+  organizations?: Organization[];
 }
 
 export interface Organization {
@@ -46,4 +44,5 @@ export interface Organization {
     issuer: string;
     cert: string;
   };
+  role: Role
 }

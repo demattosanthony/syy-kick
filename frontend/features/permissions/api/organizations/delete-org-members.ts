@@ -1,24 +1,19 @@
 import api from "@/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-export function useRemoveOrganizationMemberMutation() {
+export default function useDeleteOrgMembersMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
       organizationId,
-      userId,
+      membersIds,
     }: {
       organizationId: string;
-      userId: string;
-    }) => api.organizations.removeOrganizationMember(organizationId, userId),
+      membersIds: string[];
+    }) => api.permissions.deleteOrgMembers(organizationId, membersIds),
     onSuccess: (_, { organizationId }) => {
-      // Invalidate org members list
       queryClient.invalidateQueries({
         queryKey: ["organization-members", organizationId],
-      });
-      // Invalidate org details
-      queryClient.invalidateQueries({
-        queryKey: ["organization", organizationId],
       });
     },
   });

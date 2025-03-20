@@ -1,7 +1,8 @@
 import api from "@/lib/api";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function useCreateOrganizationMutation() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: {
       name: string;
@@ -16,5 +17,8 @@ export function useCreateOrganizationMutation() {
         callbackUrl: string;
       };
     }) => api.organizations.createOrganization(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+    },
   });
 }

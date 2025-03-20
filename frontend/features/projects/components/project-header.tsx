@@ -8,18 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Project } from "@/types/project";
 import { ProjectAddFileButton } from "@/features/projects/components";
 import { useMeQuery } from "@/features/user/api";
+import { usePermissions } from "@/features/permissions/context";
 
 const ProjectHeader = ({ project }: { project: Project }) => {
-  const { data: me } = useMeQuery();
-
-  // Check if user is an owner of the project's organization or if it's their personal project
-  const isOrgOwner = project?.organizationId
-    ? me?.organizationMembers?.some(
-        (member) =>
-          member.organization.id === project.organizationId &&
-          member.role === "owner"
-      )
-    : project?.user?.id === me?.id;
+  const { canUpdateOrgProjects, canCreateOrgProjectDocs } = usePermissions();
 
   // Use nullish coalescing for a simple fallback
   const logo = project?.organization?.logoUrl ?? project?.user?.profilePicture;
@@ -52,8 +44,10 @@ const ProjectHeader = ({ project }: { project: Project }) => {
             </div>
           </div>
           <div className="flex gap-2">
-            <ProjectAddFileButton projectId={project.id} />
-            {isOrgOwner && (
+            {canCreateOrgProjectDocs && (
+              <ProjectAddFileButton projectId={project.id} />
+            )}
+            {canUpdateOrgProjects && (
               <Link href={`/projects/${project.id}/settings`} prefetch={false}>
                 <Button variant={"ghost"} size={"icon"}>
                   <Settings className="w-4 h-4" />

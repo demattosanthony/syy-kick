@@ -19,8 +19,8 @@
     "@types/jsonwebtoken": "^9.0.8",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
-    "@types/pg": "^8.11.11",
     "@types/passport-microsoft": "^1.0.3",
+    "@types/pg": "^8.11.11",
     "drizzle-kit": "^0.30.4"
   },
   "peerDependencies": {
@@ -48,6 +48,7 @@
     "passport-microsoft": "^2.1.0",
     "passport-saml": "^3.2.4",
     "pg": "^8.13.1",
+    "resend": "^4.1.2",
     "stripe": "^17.6.0",
     "tiktoken": "^1.0.20",
     "unstructured-client": "^0.20.0"

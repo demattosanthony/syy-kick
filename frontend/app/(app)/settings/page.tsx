@@ -13,13 +13,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { useAtom } from "jotai";
 import { instructionsAtom } from "@/atoms/chat";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import AdminSettings from "@/features/settings/components/admin-settings";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import { OrganizationSettings } from "@/features/organizations/components";
 import { useMeQuery } from "@/features/user/api";
+import { usePermissions } from "@/features/permissions/context";
 
 export default function UserSettings() {
   const { data: user } = useMeQuery();
@@ -30,13 +31,8 @@ export default function UserSettings() {
   const { activeWorkspace } = useWorkspace();
 
   const isSuperAdmin = user?.systemRole === "super_admin";
-  const isOrgOwner = useMemo(() => {
-    if (activeWorkspace?.type !== "organization") return false;
-    return user?.organizationMembers?.some(
-      (member) =>
-        member.role === "owner" && member.organization.id === activeWorkspace.id
-    );
-  }, [user, activeWorkspace]);
+
+  const { canUpdateOrg } = usePermissions();
 
   const [instructions, setInstructions] = useAtom(instructionsAtom);
 
@@ -82,7 +78,7 @@ export default function UserSettings() {
               </TabsTrigger>
             )} */}
 
-            {isOrgOwner && (
+            {canUpdateOrg && (
               <TabsTrigger
                 value="organization"
                 className="bg-transparent px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-9"

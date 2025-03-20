@@ -1,16 +1,20 @@
 import { Router, Request, Response } from "express";
 import { checkTokens, DbUser, sendAuthCookies } from "../createAuthToken";
 import db from "../config/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import myPassport, { authenticateSaml } from "../config/passport";
 import {
+  memberRoles,
   organizationInvites,
-  organizationMembers,
   organizations,
+  roles,
   users,
 } from "../config/schema";
 import s3 from "../config/s3";
 import { CONFIG } from "../config/constants";
+import { PermissionManager } from "./permissions/permissions.tools";
+import PermissionsFactory from "./permissions/permissions.factory";
+import { Permissions } from "./permissions/permissions.types";
 
 const addLogoUrl = (org: any) => ({
   ...org,
@@ -18,17 +22,19 @@ const addLogoUrl = (org: any) => ({
 });
 
 const getUserWithOrgs = async (userId: string) => {
-  const user = await db.query.users.findFirst({
+  const user = (await db.query.users.findFirst({
     where: eq(users.id, userId),
-    with: { organizationMembers: { with: { organization: true } } },
+  })) as DbUser & { organizations?: any[] };
+
+  const organizations = await db.query.memberRoles.findMany({
+    where: and(eq(memberRoles.userId, userId), isNull(memberRoles.projectId)),
+    with: { organization: true, role: true },
   });
 
-  if (user?.organizationMembers) {
-    user.organizationMembers = user.organizationMembers.map((member) => ({
-      ...member,
-      organization: member.organization && addLogoUrl(member.organization),
-    }));
-  }
+  user.organizations = organizations.map((o) =>
+    addLogoUrl({ ...o.organization, role: o.role })
+  );
+
   return user;
 };
 
@@ -41,20 +47,27 @@ const checkInvite = async (token: string) => {
   return invite;
 };
 
-const addOrgMember = async (orgId: string, userId: string) => {
-  const existing = await db.query.organizationMembers.findFirst({
+const addOrgMember = async (orgId: string, userId: string, roleId: string) => {
+  const existing = await db.query.memberRoles.findFirst({
     where: and(
-      eq(organizationMembers.organizationId, orgId),
-      eq(organizationMembers.userId, userId)
+      eq(memberRoles.organizationId, orgId),
+      eq(memberRoles.userId, userId)
     ),
   });
-  if (existing) return existing;
 
-  const [member] = await db
-    .insert(organizationMembers)
-    .values({ organizationId: orgId, userId, role: "member" })
-    .returning();
-  return member;
+  if (existing) return;
+
+  const role = await db.query.roles.findFirst({
+    where: eq(roles.id, roleId),
+  });
+
+  if (!role) throw new Error("Role not found");
+
+  await PermissionsFactory.createOrgAccess(
+    role.name as Permissions.Roles,
+    orgId,
+    userId
+  );
 };
 
 const checkOrgCapacity = async (orgId: string) => {
@@ -83,7 +96,27 @@ const handlers = {
       try {
         // Verify and process invite
         const invite = await checkInvite(state);
-        await addOrgMember(invite.organizationId as string, user.id);
+
+        if (!invite?.roleId || !invite.organizationId) {
+          res.status(403).json({ message: "Invalid invite" });
+          return;
+        }
+
+        await addOrgMember(
+          invite.organizationId as string,
+          user.id,
+          invite.roleId
+        );
+
+        await db
+          .delete(organizationInvites)
+          .where(
+            and(
+              eq(organizationInvites.organizationId, invite.organizationId),
+              eq(organizationInvites.token, invite.token)
+            )
+          );
+
         res.redirect(
           `${process.env.FRONTEND_URL}?orgJoined=true&orgId=${invite.organizationId}`
         );
@@ -123,6 +156,14 @@ const handlers = {
       }
       const { userId } = await checkTokens(id, rid);
       const user = await getUserWithOrgs(userId);
+
+      if (!user) {
+        res.status(401).json({
+          message: "Authentication required",
+        });
+        return;
+      }
+
       res.status(200).json(user || null);
     } catch (error) {
       res.status(200).json(null);
@@ -142,7 +183,29 @@ const handlers = {
         return;
       }
 
-      await addOrgMember(invite.organizationId as string, req.dbUser.id);
+      if (!invite?.roleId || !invite.organizationId) {
+        res.status(403).json({ message: "Invalid invite" });
+        return;
+      }
+
+      if (invite.email !== req.dbUser.email) {
+        throw new Error("wrong_email");
+      }
+
+      await addOrgMember(
+        invite.organizationId as string,
+        req.dbUser.id,
+        invite.roleId
+      );
+
+      await db
+        .delete(organizationInvites)
+        .where(
+          and(
+            eq(organizationInvites.organizationId, invite.organizationId),
+            eq(organizationInvites.token, invite.token)
+          )
+        );
       res.json({ success: true });
     } catch (error: any) {
       res.status(403).json({ message: error.message });
