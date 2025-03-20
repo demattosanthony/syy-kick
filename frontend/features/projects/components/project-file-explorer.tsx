@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  File,
   Folder,
   ChevronRight,
   ChevronDown,
   MoreHorizontal,
   Trash2,
   FolderOpen,
+  FileIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -25,8 +25,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useProjectDocsQuery, useDeleteProjectContentMutation } from "../api";
+import {
+  useProjectDocsQuery,
+  useDeleteProjectContentMutation,
+  useUploadDocsMutation,
+} from "../api";
 import { usePermissions } from "@/features/permissions/context";
+import { Progress } from "@/components/ui/progress";
 
 interface ProjectFileExplorerProps {
   projectId: string;
@@ -48,62 +53,336 @@ export default function ProjectFileExplorer({
     currentPath
   );
 
+  // -----------------------------
+  // DRAG & DROP STATE
+  // -----------------------------
+  const [isDragging, setIsDragging] = useState(false);
+  const explorerRef = useRef<HTMLDivElement>(null);
+
+  // -----------------------------
+  // UPLOAD DOCS
+  // -----------------------------
+  const {
+    mutateAsync: uploadFiles,
+    isPending,
+    progress,
+  } = useUploadDocsMutation();
+
+  // -----------------------------
+  // PROXIMITY DETECTION
+  // (when user drags near explorer)
+  // -----------------------------
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const proximityThreshold = 100;
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      if (!explorerRef.current) return;
+
+      const rect = explorerRef.current.getBoundingClientRect();
+      const { clientX, clientY } = e;
+
+      // If the mouse is near the explorer, set isDragging
+      const isClose =
+        clientX >= rect.left - proximityThreshold &&
+        clientX <= rect.right + proximityThreshold &&
+        clientY >= rect.top - proximityThreshold &&
+        clientY <= rect.bottom + proximityThreshold;
+
+      setIsDragging(isClose);
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      const rect = document.documentElement.getBoundingClientRect();
+      const { clientX, clientY } = e;
+
+      // If truly leaving the viewport
+      const isLeaving =
+        clientX <= rect.left ||
+        clientX >= rect.right ||
+        clientY <= rect.top ||
+        clientY >= rect.bottom;
+
+      if (isLeaving) {
+        setIsDragging(false);
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+    };
+
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("drop", handleDrop);
+
+    return () => {
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("drop", handleDrop);
+    };
+  }, []);
+
+  // DRAG & DROP HANDLER
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const items = e.dataTransfer.items;
+    if (!items) return;
+
+    const entries: FileSystemEntry[] = [];
+
+    // Immediately extract all FileSystemEntry synchronously
+    for (let i = 0; i < items.length; i++) {
+      const entry = items[i].webkitGetAsEntry();
+      if (entry) entries.push(entry);
+    }
+
+    // Recursive function to process entries reliably
+    async function processEntry(
+      entry: FileSystemEntry,
+      path = ""
+    ): Promise<File[]> {
+      if (entry.isFile) {
+        const fileEntry = entry as FileSystemFileEntry;
+        return new Promise<File[]>((resolve, reject) => {
+          fileEntry.file(
+            (file) => {
+              const fileWithPath = new File([file], path + file.name, {
+                type: file.type,
+                lastModified: file.lastModified,
+              });
+              Object.defineProperty(fileWithPath, "webkitRelativePath", {
+                value: path + file.name,
+              });
+              resolve([fileWithPath]);
+            },
+            (error) => reject(error)
+          );
+        });
+      } else if (entry.isDirectory) {
+        const dirEntry = entry as FileSystemDirectoryEntry;
+        const dirReader = dirEntry.createReader();
+
+        const readAllEntries = (): Promise<FileSystemEntry[]> => {
+          return new Promise((resolve, reject) => {
+            dirReader.readEntries((entries) => resolve(entries), reject);
+          });
+        };
+
+        const files: File[] = [];
+        let dirEntries: FileSystemEntry[] = [];
+
+        do {
+          dirEntries = await readAllEntries();
+          for (const childEntry of dirEntries) {
+            const childFiles = await processEntry(
+              childEntry,
+              `${path}${dirEntry.name}/`
+            );
+            files.push(...childFiles);
+          }
+        } while (dirEntries.length > 0);
+
+        return files;
+      }
+
+      return [];
+    }
+
+    const droppedFiles: File[] = [];
+
+    try {
+      for (const entry of entries) {
+        const filesFromEntry = await processEntry(entry);
+        droppedFiles.push(...filesFromEntry);
+      }
+
+      if (!droppedFiles.length) return;
+
+      await uploadFiles({ projectId, files: droppedFiles });
+      console.log("Files/folders uploaded successfully!");
+    } catch (error) {
+      console.error("Failed to upload files/folders:", error);
+    }
+  };
+
+  // Traditional React drag over/leave for the actual droppable DOM
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
   if (isLoading) {
     return (
       <div className="divide-y w-full max-w-full overflow-x-hidden">
-        {[1, 2, 3, 4, 5, 6].map((item) => (
-          <FileExplorerSkeleton key={item} variant={variant} />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <FileExplorerSkeleton key={i} variant={variant} />
         ))}
       </div>
     );
   }
 
+  // -----------------------------
+  // IF EMPTY
+  // -----------------------------
   if (
     !contents ||
     contents.length === 0 ||
-    contents.every((file) => file.name[0] === ".")
+    contents.every((f) => f.name.startsWith("."))
   ) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-4 text-center w-full max-w-full">
+      <div
+        ref={explorerRef}
+        className="relative flex flex-col items-center justify-center py-12 px-4 text-center w-full max-w-full"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragging && (
+          <div
+            className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50/80 z-10"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <span className="text-sm text-gray-500 flex items-center gap-2">
+              <svg
+                className="w-5 h-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Drop folders/files to upload
+            </span>
+          </div>
+        )}
         <Folder className="h-12 w-12 mb-4 fill-blue-400 text-blue-400" />
         <h3 className="text-lg font-semibold mb-2">No files yet</h3>
         <p className="text-muted-foreground text-sm mb-4">
-          Upload files or folders to get started with your project
+          Drag & drop to upload files/folders (or use the "Add file" button).
         </p>
+
+        {/* Add the upload progress indicator here for empty state */}
+        {isPending && (
+          <div className="fixed bottom-6 right-6 bg-background/95 border border-border shadow-lg rounded-md p-4 z-50 w-[280px] flex flex-col gap-2 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              Uploading to project files
+            </div>
+            <Progress value={progress} className="h-2" />
+            <p className="text-xs text-muted-foreground">
+              {Math.round(progress)}% complete
+            </p>
+          </div>
+        )}
       </div>
     );
   }
 
+  // -----------------------------
+  // RENDER FILE EXPLORER
+  // (Sort contents, map them)
+  // -----------------------------
   const sortedContents = [...contents]
-    .filter((file) => !file.name.startsWith("."))
+    .filter((f) => !f.name.startsWith("."))
     .sort((a, b) => {
+      // Example: push "README.md" down
       if (a.name.toLowerCase() === "readme.md") return 1;
       if (b.name.toLowerCase() === "readme.md") return -1;
       return 0;
     });
 
   return (
-    <div className="divide-y w-full max-w-full overflow-x-hidden">
-      {sortedContents.map((item) => (
-        <FileExplorerItem
-          key={item.path}
-          item={item}
-          projectId={projectId}
-          variant={variant}
-          initialPathChain={initialOpenPathChain}
-          onFileSelect={onFileSelect}
-        />
-      ))}
+    <div className="relative w-full max-w-full">
+      {/* If near drag area, show dashed zone */}
+      {isDragging && (
+        <div
+          className="mb-2 w-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-2 bg-gray-50 transition-all duration-200"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <span className="text-sm text-gray-500 flex items-center gap-2">
+            <svg
+              className="w-5 h-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Drop folders/files to upload
+          </span>
+        </div>
+      )}
+
+      <div
+        ref={explorerRef}
+        className={cn(
+          "divide-y w-full max-w-full overflow-x-hidden transition-all duration-200",
+          isDragging && "border-2 border-gray-400 bg-gray-50 rounded-lg"
+        )}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {sortedContents.map((item) => (
+          <FileExplorerItem
+            key={item.path}
+            item={item}
+            projectId={projectId}
+            variant={variant}
+            initialOpenPathChain={initialOpenPathChain}
+            onFileSelect={onFileSelect}
+          />
+        ))}
+      </div>
+
+      {/* Upload progress indicator - fixed position with better styling */}
+      {isPending && (
+        <div className="fixed bottom-6 right-6 bg-background/95 border border-border shadow-lg rounded-md p-4 z-50 w-[280px] flex flex-col gap-2 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            Uploading to project files
+          </div>
+          <Progress value={progress} className="h-2" />
+          <p className="text-xs text-muted-foreground">
+            {Math.round(progress)}% complete
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
+/* ======================================
+   FILE EXPLORER ITEM
+   ====================================== */
 interface FileExplorerItemProps {
   item: DocumentContent;
   depth?: number;
   projectId: string;
   variant: "compact" | "detailed";
-  initialPathChain?: string[];
+  initialOpenPathChain?: string[];
   onFileSelect?: (item: DocumentContent) => void;
 }
 
@@ -112,29 +391,34 @@ function FileExplorerItem({
   depth = 0,
   projectId,
   variant,
-  initialPathChain = [],
+  initialOpenPathChain = [],
   onFileSelect,
 }: FileExplorerItemProps) {
   const router = useRouter();
-  const pathname = window.location.pathname;
+
+  // Figure out if selected in "compact" mode
+  const pathname =
+    typeof window !== "undefined" ? window.location.pathname : "";
   const isSelected =
     variant === "compact" && pathname.endsWith(`/${item.path}`);
 
+  // If this folder is in the chain, auto-open it
   const shouldAutoOpen =
     item.type === "folder" &&
-    initialPathChain.length > 0 &&
-    initialPathChain[0] === item.name;
+    initialOpenPathChain.length > 0 &&
+    initialOpenPathChain[0] === item.name;
   const [isOpen, setIsOpen] = useState(shouldAutoOpen);
 
+  // Only query child contents if folder is open (in compact mode)
   const { data: childContents } = useProjectDocsQuery(
     projectId,
     variant === "compact" && item.type === "folder" && isOpen ? item.path : ""
   );
 
   const { canDeleteOrgProjectDocs } = usePermissions();
-
   const deleteProjectContentMutation = useDeleteProjectContentMutation();
 
+  // Show an emoji for known file extensions
   const getFileIcon = (filename: string) => {
     const ext = filename.split(".").pop()?.toLowerCase();
     switch (ext) {
@@ -176,30 +460,35 @@ function FileExplorerItem({
     }
   };
 
-  const handleRowClick = async () => {
+  // Handle clicking the row
+  const handleRowClick = () => {
+    // "compact" mode might not want to navigate, so we allow onFileSelect
     if (variant === "compact" && onFileSelect) {
       if (item.type === "folder") {
         setIsOpen(!isOpen);
-      } else onFileSelect(item);
+      } else {
+        onFileSelect(item);
+      }
       return;
     }
 
+    // If it's a folder, go to /tree
     if (item.type === "folder") {
       if (variant === "compact") {
         setIsOpen(!isOpen);
       }
       router.push(`/projects/${projectId}/tree/${item.path}`);
     } else {
-      // Properly encode the path to handle special characters like #
+      // If it's a file, go to /blob
       const encodedPath = item.path
         .split("/")
-        .map((segment) => encodeURIComponent(segment))
+        .map(encodeURIComponent)
         .join("/");
-
       router.push(`/projects/${projectId}/blob/${encodedPath}`);
     }
   };
 
+  // Toggle expansion arrow in compact mode
   const toggleExpansion = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsOpen(!isOpen);
@@ -215,6 +504,7 @@ function FileExplorerItem({
         style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
         onClick={handleRowClick}
       >
+        {/* Left side: folder/file icon + name */}
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {item.type === "folder" ? (
             <div className="flex items-center gap-1 flex-shrink-0">
@@ -234,13 +524,9 @@ function FileExplorerItem({
               )}
             </div>
           ) : (
-            <span
-              className={`${
-                variant === "compact" ? "ml-[2px]" : ""
-              } w-4 flex-shrink-0`}
-            >
+            <span className={cn(variant === "compact" && "ml-[2px]", "w-4")}>
               {getFileIcon(item.name) || (
-                <File className="h-4 w-4 text-muted-foreground" />
+                <FileIcon className="h-4 w-4 text-muted-foreground" />
               )}
             </span>
           )}
@@ -248,22 +534,20 @@ function FileExplorerItem({
             {item.name}
           </span>
 
+          {/* If there's a known processing job, show a small status dot */}
           {item.processingJob && variant === "detailed" && (
             <Tooltip>
               <TooltipTrigger>
                 <div
-                  className={cn(
-                    "h-2 w-2 rounded-full shadow-md flex-shrink-0 ml-2",
-                    {
-                      "bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20":
-                        item.processingJob.status === "failed",
-                      "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-yellow-500/20 animate-pulse":
-                        item.processingJob.status === "pending" ||
-                        item.processingJob.status === "processing",
-                      "bg-gradient-to-br from-green-600 to-green-800 shadow-green-700/20":
-                        item.processingJob.status === "completed",
-                    }
-                  )}
+                  className={cn("h-2 w-2 rounded-full shadow-md ml-2", {
+                    "bg-gradient-to-br from-red-400 to-red-600 shadow-red-500/20":
+                      item.processingJob.status === "failed",
+                    "bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-yellow-500/20 animate-pulse":
+                      item.processingJob.status === "pending" ||
+                      item.processingJob.status === "processing",
+                    "bg-gradient-to-br from-green-600 to-green-800 shadow-green-700/20":
+                      item.processingJob.status === "completed",
+                  })}
                 />
               </TooltipTrigger>
               <TooltipContent>
@@ -278,9 +562,10 @@ function FileExplorerItem({
           )}
         </div>
 
+        {/* Right side: updated time + menu (only in detailed mode) */}
         {variant === "detailed" && (
           <div className="flex items-center gap-2 flex-shrink-0 ml-2 whitespace-nowrap">
-            <small className="text-sm font-medium leading-none text-muted-foreground">
+            <small className="text-sm font-medium text-muted-foreground">
               {getRelativeTimeString(item.updatedAt)}
             </small>
             <Popover>
@@ -297,7 +582,7 @@ function FileExplorerItem({
               <PopoverContent className="w-40 p-0">
                 <Button
                   variant="ghost"
-                  className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                  className="w-full justify-start text-destructive hover:bg-destructive/10"
                   disabled={!canDeleteOrgProjectDocs}
                   onClick={(e) => {
                     e.preventDefault();
@@ -317,6 +602,7 @@ function FileExplorerItem({
         )}
       </div>
 
+      {/* If it's a folder in "compact" mode and open, recursively show its children */}
       {variant === "compact" &&
         item.type === "folder" &&
         isOpen &&
@@ -330,9 +616,9 @@ function FileExplorerItem({
                 projectId={projectId}
                 variant={variant}
                 onFileSelect={onFileSelect}
-                initialPathChain={
-                  shouldAutoOpen && initialPathChain.length > 0
-                    ? initialPathChain.slice(1)
+                initialOpenPathChain={
+                  shouldAutoOpen && initialOpenPathChain.length > 0
+                    ? initialOpenPathChain.slice(1)
                     : []
                 }
               />
@@ -343,6 +629,9 @@ function FileExplorerItem({
   );
 }
 
+/* ======================================
+   SKELETON
+   ====================================== */
 function FileExplorerSkeleton({
   depth = 0,
   variant = "detailed",
@@ -357,9 +646,8 @@ function FileExplorerSkeleton({
     >
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <Skeleton className="h-5 w-5 flex-shrink-0" />
-        <Skeleton className="h-4 w-[220px] " />
+        <Skeleton className="h-4 w-[220px]" />
       </div>
-
       {variant === "detailed" && (
         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
           <Skeleton className="h-4 w-4 rounded-full" />

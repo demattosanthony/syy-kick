@@ -75,7 +75,7 @@ export function SidebarProjectsList({ user }: ProjectsListProps) {
                   href={`/projects/${project.id}`}
                   currentId={currentProjectId as string}
                   onDelete={handleDeleteProject}
-                  canDeleteOrgProjects={canDeleteOrgProjects}
+                  canDeleteItem={canDeleteOrgProjects}
                   itemType="project"
                 />
               ))}
