@@ -275,8 +275,21 @@ export default function ProjectFileExplorer({
         <Folder className="h-12 w-12 mb-4 fill-blue-400 text-blue-400" />
         <h3 className="text-lg font-semibold mb-2">No files yet</h3>
         <p className="text-muted-foreground text-sm mb-4">
-          Drag & drop to upload files/folders (or use the “Add file” button).
+          Drag & drop to upload files/folders (or use the "Add file" button).
         </p>
+
+        {/* Add the upload progress indicator here for empty state */}
+        {isPending && (
+          <div className="fixed bottom-6 right-6 bg-background/95 border border-border shadow-lg rounded-md p-4 z-50 w-[280px] flex flex-col gap-2 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              Uploading to project files
+            </div>
+            <Progress value={progress} className="h-2" />
+            <p className="text-xs text-muted-foreground">
+              {Math.round(progress)}% complete
+            </p>
+          </div>
+        )}
       </div>
     );
   }

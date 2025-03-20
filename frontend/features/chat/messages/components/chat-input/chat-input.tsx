@@ -5,7 +5,7 @@ import { useFileUpload } from "@/hooks/use-file-upload";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { modelAtom } from "@/atoms/chat";
-import { FileUploadSection } from "./chat-input-file-upload";
+import { FileUploadSection } from "./file-upload-section";
 import { ContextSelector } from "./context-selector";
 import { TextInputArea } from "./chat-input-text-area";
 import { ActionButtons } from "./action-buttons";
