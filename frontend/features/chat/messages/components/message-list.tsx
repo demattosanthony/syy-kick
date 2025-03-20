@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import { Check, Copy } from "lucide-react";
 
 interface MessageBubbleProps {
@@ -91,7 +91,6 @@ const UserMessage = ({ message }: { message: Message }) => {
   );
 };
 
-import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
 import { cn } from "@/lib/utils";
 import { Message } from "ai";
@@ -101,6 +100,7 @@ import {
   UserSkeletonMessage,
 } from "./message-skeletons";
 import { Loader } from "@/components/ui/loader";
+import { ChatContainer } from "@/components/ui/chat-container";
 
 const LoadingMessage = React.memo(() => {
   return (
@@ -131,22 +131,19 @@ const ChatMessagesList = React.memo(
     status: "error" | "submitted" | "streaming" | "ready";
     showSkeletons?: boolean;
   }) => {
-    useEffect(() => {
-      const container = document.querySelector(".overflow-y-auto");
-      if (container) {
-        container.scrollTop = container.scrollHeight;
-      }
-    }, [messages.length]);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
 
     return (
       <div className="flex-1 w-full h-full relative">
-        <div
+        <ChatContainer
           className={cn(
-            "absolute inset-0 overflow-y-auto",
-            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
+            "absolute inset-0 overflow-y-auto p-4 flex flex-col",
+            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent pt-20"
           )}
+          autoScroll
+          ref={chatContainerRef}
         >
-          <div className="max-w-[840px] mx-auto pt-20 p-4 flex flex-col gap-2">
+          <div className="max-w-[840px] mx-auto w-full flex-1 flex flex-col gap-2">
             {showSkeletons ? (
               // Show skeleton messages when loading the thread
               <>
@@ -179,7 +176,7 @@ const ChatMessagesList = React.memo(
               <LoadingMessage />
             )}
           </div>
-        </div>
+        </ChatContainer>
       </div>
     );
   }

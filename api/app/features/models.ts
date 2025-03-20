@@ -9,6 +9,7 @@ import { google } from "@ai-sdk/google";
 import { xai } from "@ai-sdk/xai";
 import { togetherai } from "@ai-sdk/togetherai";
 import { createPerplexity } from "@ai-sdk/perplexity";
+import { mistral } from "@ai-sdk/mistral";
 import { wrapLanguageModel, extractReasoningMiddleware } from "ai";
 
 const perplexity = createPerplexity({
@@ -374,14 +375,44 @@ export const perplexityModels = (
   };
 };
 
+export const mistralModels = (apiKey?: string): Record<string, ModelConfig> => {
+  if (!apiKey) return {};
+
+  const supportedMimeTypes: string[] = [];
+
+  return {
+    "mistral-large": {
+      model: mistral("mistral-large-latest"),
+      supportsToolUse: false,
+      supportsStreaming: true,
+      provider: "mistral",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      description:
+        "Mistral Large is a large language model optimized for performance and accuracy. It is suitable for a wide range of tasks that require high-quality responses.",
+    },
+    "mistral-small": {
+      model: mistral("mistral-small-latest"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "mistral",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      description:
+        "Mistral Small is a smaller version of the Mistral language model that is optimized for speed and efficiency. It is suitable for tasks that require quick responses and low resource usage.",
+    },
+  };
+};
+
 export const MODELS: Record<string, ModelConfig> = {
   ...anthropicModels(process.env.ANTHROPIC_API_KEY),
   ...openaiModels(process.env.OPENAI_API_KEY),
   ...googleModels(process.env.GOOGLE_GENERATIVE_AI_API_KEY),
   ...xAiModels(process.env.XAI_API_KEY),
+  ...mistralModels(process.env.MISTRAL_API_KEY),
   //   ...togetherAiModels(process.env.TOGETHER_AI_API_KEY),
   //   ...groqModels(process.env.GROQ_API_KEY),
-  //   ...perplexityModels(process.env.PPLX_API_KEY),
+  ...perplexityModels(process.env.PPLX_API_KEY),
 };
 
 export const embeddingModel = openai.embedding("text-embedding-3-large", {
