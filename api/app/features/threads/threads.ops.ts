@@ -328,6 +328,7 @@ const threadsOps = {
         search_projects_information: createProjectSearchTool(
           modelConfig,
           req.workspace!,
+          req.dbUser!,
           thread.projectId || undefined
         ),
       };
@@ -382,7 +383,7 @@ const threadsOps = {
         }) => {
           //   console.log("Finish reason:", finishReason);
           //   console.log("Tool calls:", toolCalls);
-          //   // console.log("Tool results:", toolResults.length);
+          //   console.log("Tool results:", toolResults);
           //   console.log("Text:", text);
           //   console.log("Reasoning:", reasoning);
 

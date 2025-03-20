@@ -24,6 +24,7 @@ const JoinOrgHandler = ({ token }: { token: string }) => {
 
     try {
       const result = await handleJoinOrg(token);
+
       if (result.requiresAuth) {
         // Redirect to Google login with invite token as state parameter
         window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/${provider}?state=${token}`;
@@ -39,6 +40,11 @@ const JoinOrgHandler = ({ token }: { token: string }) => {
         setError(
           "This organization's subscription is not active. Please contact your organization administrator."
         );
+        return;
+      }
+
+      if (result.error) {
+        setError(result.error);
         return;
       }
 

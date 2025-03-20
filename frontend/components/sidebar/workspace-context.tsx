@@ -4,6 +4,7 @@ import * as React from "react";
 import { type Workspace } from "@/types/workspace";
 import { setActiveWorkspaceCookie } from "@/app/workspace-actions";
 import { useMeQuery } from "@/features/user/api";
+import { PermissionsProvider } from "@/features/permissions/context/permissions-context";
 
 type WorkspaceContextType = {
   activeWorkspace: Workspace | null;
@@ -70,13 +71,13 @@ export const WorkspaceProvider = ({
       };
 
       const organizationWorkspaces: Workspace[] = (
-        user?.organizationMembers || []
-      ).map((member) => ({
-        id: member.organization.id,
-        name: member.organization.name,
+        user?.organizations || []
+      ).map((organization) => ({
+        id: organization.id,
+        name: organization.name,
         type: "organization" as const,
-        logo: member.organization.logo,
-        subscriptionStatus: member.organization.subscriptionStatus,
+        logo: organization.logo,
+        subscriptionStatus: organization.subscriptionStatus,
       }));
 
       const allWorkspaces = [personalWorkspace, ...organizationWorkspaces];
@@ -107,7 +108,13 @@ export const WorkspaceProvider = ({
 
   return (
     <WorkspaceContext.Provider value={contextValue}>
-      {children}
+      {activeWorkspace ? (
+        <PermissionsProvider orgId={activeWorkspace.id} userId={user?.id}>
+          {children}
+        </PermissionsProvider>
+      ) : (
+        <>{children}</>
+      )}
     </WorkspaceContext.Provider>
   );
 };

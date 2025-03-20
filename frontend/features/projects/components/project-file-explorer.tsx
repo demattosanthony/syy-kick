@@ -26,6 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useProjectDocsQuery, useDeleteProjectContentMutation } from "../api";
+import { usePermissions } from "@/features/permissions/context";
 
 interface ProjectFileExplorerProps {
   projectId: string;
@@ -129,6 +130,8 @@ function FileExplorerItem({
     projectId,
     variant === "compact" && item.type === "folder" && isOpen ? item.path : ""
   );
+
+  const { canDeleteOrgProjectDocs } = usePermissions();
 
   const deleteProjectContentMutation = useDeleteProjectContentMutation();
 
@@ -295,6 +298,7 @@ function FileExplorerItem({
                 <Button
                   variant="ghost"
                   className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                  disabled={!canDeleteOrgProjectDocs}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();

@@ -22,9 +22,7 @@ export default function ShareThreadPage() {
 
   const isAllowedToCloneThread =
     !thread?.organizationId ||
-    !!me?.organizationMembers?.some(
-      (member) => member.organization.id === thread?.organizationId
-    );
+    !!me?.organizations?.some((org) => org.id === thread?.organizationId);
 
   if (isFetched && thread?.isPublic !== true) {
     return redirect("/");

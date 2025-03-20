@@ -219,7 +219,7 @@ Your goal is to create two separate schedules: one for windows and one for doors
 4. Calculate the area in square feet for each item based on the height and width.
 5. Round the calculated areas to two decimal places.
 6. Organize the information into two separate tables: one for windows and one for doors.
-7. Format the tables as CSV.
+7. Format the tables as CSV with proper formatting.
 
 Before providing your final output, work through the following steps inside <extraction_and_calculation> tags in your thinking block:
 - List all window and door items found in the PDF content.
@@ -232,15 +232,31 @@ Before providing your final output, work through the following steps inside <ext
 Your final output should be a CSV artifact containing both the window and door schedules. Use the following format for the artifact:
 
 <antArtifact identifier="window-door-schedules" type="application/vnd.ant.code" language="csv" title="Window and Door Schedules">
-[Your CSV content here]
+WINDOW SCHEDULE
+Item,Height,Width,Area (sq ft)
+Window/Storefront A,7'0",10'0",70.00
+Window/Storefront C,7'0",9'0",63.00
+Window/Storefront D,7'0",7'0",49.00
+Window/Storefront F,7'0",3'0",21.00
+Window/Storefront G,7'0",2'0",14.00
+Window/Storefront H,7'0",6'0",42.00
+Window/Storefront I,2'0",6'0",12.00
+Window/Storefront J,2'0",9'0",18.00
+Window/Storefront K,2'0",10'0",20.00
+
+DOOR SCHEDULE
+Item,Height,Width,Area (sq ft)
+Door Type A1,7'0",3'0",21.00
 </antArtifact>
 
 Ensure that your CSV content includes both the window and door schedules, with a clear separation between them.
 
 Remember:
-- All measurements must be in feet and inches (e.g., 5'0").
+- All measurements must be in feet and inches (e.g., 7'0").
 - Areas should be calculated in square feet and rounded to two decimal places.
+- Make sure to include the double quotes in the height and width measurements (e.g., 7'0").
 - Verify the accuracy of all extracted and calculated information before including it in the final output.
+- Format exactly as shown in the example above, with no extra quotes around the entire values.
 
 Your final output should consist only of the CSV artifact and should not duplicate or rehash any of the work you did in the thinking block.`,
   },
@@ -360,9 +376,74 @@ Ensure all equipment is properly identified and mapped to their respective servi
     ],
     systemMessage: "",
   },
+
+  {
+    id: "bod-generator",
+    title: "Basis of Design Generator",
+    description:
+      "This workflow generates a Basis of Design (BOD) document based engineering drawings.",
+    maxSteps: 5,
+    modelName: "claude-3.7-sonnet",
+    authorizedOrganizationIds: [
+      "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+      "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+    ],
+    inputs: [
+      {
+        id: "engineering-drawings",
+        type: "file",
+        title: "Drawings and Plans",
+        description: "Upload the engineering drawings",
+        acceptedFileTypes: "application/pdf",
+        required: true,
+      },
+    ],
+    prompt: `You are tasked with generating a Basis of Design (BOD) document based on a provided PDF file containing mechanical, electrical, plumbing, or other engineering specifications. Your goal is to extract key information from the PDF and organize it into a clear, structured BOD document.
+
+Carefully analyze the content of the PDF file. Pay attention to important details such as project scope, design criteria, system descriptions, and performance requirements.
+
+Create a Basis of Design document that includes the following sections:
+
+1. Project Overview
+2. Design Criteria and Standards
+3. System Descriptions
+4. Performance Requirements
+5. Sustainability and Energy Efficiency Considerations
+6. Key Assumptions and Limitations
+7. Interdisciplinary Coordination
+8. References
+
+For each section:
+- Extract relevant information from the PDF content
+- Summarize key points concisely
+- Use bullet points or numbered lists where appropriate
+- Include specific technical details, calculations, or references when necessary
+
+Ensure that your BOD document is:
+- Clear and well-organized
+- Technical yet accessible to various stakeholders
+- Consistent in formatting and terminology
+
+Format your output as a Markdown document. Use appropriate Markdown syntax for headings, lists, and emphasis.
+
+Your final output should be wrapped in artifact tags as follows:
+
+<antArtifact identifier="bod-document" type="text/markdown" title="Basis of Design Document">
+[Your Markdown-formatted BOD document goes here]
+</antArtifact>
+
+Remember, your final output should only include the Markdown-formatted BOD document within the specified artifact tags. Do not include any explanations, notes, or other content outside of these tags.`,
+    output: {
+      type: "text/markdown",
+      title: "Basis of Design Document",
+      description: "View the generated Basis of Design document",
+    },
+  },
 ];
 
-function getWorkflowById(id: "rfpEvaluation" | "equipmentServing") {
+function getWorkflowById(
+  id: "rfpEvaluation" | "equipmentServing" | "bodGenerator"
+) {
   return workflows.find((workflow) => workflow.id === id);
 }
 
