@@ -23,7 +23,7 @@ interface SidebarItemProps {
   onDelete?: (id: string) => void;
   itemType: "thread" | "project";
   showOptions?: boolean;
-  canDeleteOrgProjects?: boolean;
+  canDeleteItem?: boolean;
 }
 
 export const SidebarItem = ({
@@ -34,7 +34,7 @@ export const SidebarItem = ({
   onDelete,
   itemType,
   showOptions = true,
-  canDeleteOrgProjects = false,
+  canDeleteItem = false,
 }: SidebarItemProps) => {
   const { toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
@@ -60,8 +60,8 @@ export const SidebarItem = ({
             {title.length > 28 ? title.slice(0, 28) + "..." : title}
           </Link>
 
-          {showOptions && onDelete && canDeleteOrgProjects && (
-            <DropdownMenu>
+          {showOptions && onDelete && canDeleteItem && (
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
