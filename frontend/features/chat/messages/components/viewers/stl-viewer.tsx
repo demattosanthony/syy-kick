@@ -20,6 +20,7 @@ export default function STLViewer({
   const mountRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const { resolvedTheme } = useTheme();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     if (!mountRef.current || !file) return;
@@ -28,6 +29,7 @@ export default function STLViewer({
     let camera: THREE.PerspectiveCamera;
     let renderer: THREE.WebGLRenderer;
     let controls: OrbitControls;
+    let animationFrameId: number;
 
     const handleResize = () => {
       if (camera && renderer) {
@@ -44,6 +46,13 @@ export default function STLViewer({
       // Use a slightly wider field of view to better fill the canvas
       camera = new THREE.PerspectiveCamera(70, 1, 0.1, 1000);
       camera.position.z = 5;
+
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        preserveDrawingBuffer: true,
+        powerPreference: "high-performance",
+      });
 
       renderer = new THREE.WebGLRenderer({
         alpha: true,
@@ -79,6 +88,7 @@ export default function STLViewer({
       controls.autoRotateSpeed = 1.0;
 
       const loader = new STLLoader();
+      loader.setPath("/");
       const reader = new FileReader();
 
       reader.onload = (e) => {
@@ -92,8 +102,7 @@ export default function STLViewer({
           }
 
           const geometry = loader.parse(stlString);
-          const material = new THREE.MeshPhysicalMaterial({
-            // Convert hex color string to number if provided, otherwise use theme-based default
+          const material = new THREE.MeshStandardMaterial({
             color: color
               ? parseInt(color.replace("#", "0x"))
               : resolvedTheme === "dark"
@@ -101,9 +110,6 @@ export default function STLViewer({
               : 0x222222,
             metalness: 0.25,
             roughness: 0.5,
-            envMapIntensity: 1,
-            clearcoat: 0.1,
-            clearcoatRoughness: 0.1,
           });
           const mesh = new THREE.Mesh(geometry, material);
 
@@ -121,6 +127,7 @@ export default function STLViewer({
           mesh.position.set(0, 0, 0);
 
           scene.add(mesh);
+          setIsLoading(false);
 
           // Adjust camera position based on object size for better framing
           const objectCenter = new THREE.Vector3();
@@ -147,7 +154,7 @@ export default function STLViewer({
       reader.readAsArrayBuffer(file);
 
       const animateFrame = () => {
-        requestAnimationFrame(animateFrame);
+        animationFrameId = requestAnimationFrame(animateFrame);
         controls.update();
         renderer.render(scene, camera);
       };
@@ -167,12 +174,15 @@ export default function STLViewer({
       if (controls) {
         controls.dispose();
       }
+      // Cancel animation frame on cleanup
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
   }, [file, resolvedTheme, animate, size, color]);
 
   return (
     <div className="flex relative h-full w-full">
-      {error && <p className="text-red-500 mb-4">{error}</p>}
       <div ref={mountRef} className="w-full h-full" />
     </div>
   );

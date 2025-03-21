@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import CreateProjectDialog from "./create-project-dialog";
 import { usePermissions } from "@/features/permissions/context";
 import Image from "next/image";
+import Link from "next/link";
 
 // Add this style tag for the pin point shape
 const PinStyles = () => (
@@ -51,7 +52,6 @@ const PinStyles = () => (
     }
   `}</style>
 );
-
 const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
   const router = useRouter();
 
@@ -97,11 +97,14 @@ const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {projects.map((project) => (
-            <ProjectCard
+            <Link
               key={project.id}
-              project={project}
-              onClick={() => handleProjectClick(project.id)}
-            />
+              href={`/projects/${project.id}`}
+              prefetch={true}
+              className="block"
+            >
+              <ProjectCard project={project} />
+            </Link>
           ))}
 
           {/* Add "Create Project" card if there are fewer than 6 projects */}
@@ -114,10 +117,9 @@ const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
 
 interface ProjectCardProps {
   project: Project;
-  onClick: () => void;
 }
 
-function ProjectCard({ project, onClick }: ProjectCardProps) {
+function ProjectCard({ project }: ProjectCardProps) {
   const mapUrl = useMemo(() => {
     // Create Google Maps Static API URL for satellite view
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -140,7 +142,6 @@ function ProjectCard({ project, onClick }: ProjectCardProps) {
         boxShadow: "var(--shadow-md)",
       }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      onClick={onClick}
     >
       <div className="relative h-[120px] w-full bg-muted">
         {/* Map Image */}
