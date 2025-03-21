@@ -433,33 +433,23 @@ Tips:
         | undefined;
       const groundingMetadata = metadata?.groundingMetadata;
 
-      const data = {
-        text,
-        sources,
-        groudingsSupport: groundingMetadata?.groundingSupports,
-        queries: groundingMetadata?.webSearchQueries,
-      };
-      //   console.log("Web search data:", data);
+      // Format text with inline citations - only apply if groundingMetadata exists
+      let formattedText = text;
 
-      //   console.log(`${data.text}\n\nSources: ${data.sources.map((s) => s.url)}`);
-
-      return data;
-    },
-    experimental_toToolResultContent(result) {
-      // Format the response with inline citations and sources section
-      let formattedText = result.text;
-
-      if (result.groudingsSupport && result.groudingsSupport.length > 0) {
+      if (
+        groundingMetadata?.groundingSupports &&
+        groundingMetadata.groundingSupports.length > 0
+      ) {
         // Sort by startIndex descending to avoid position shifts when adding citations
-        const supports = [...result.groudingsSupport].sort((a, b) => {
-          // Add null checks to handle potential undefined values
-          const aIndex = a.segment?.startIndex ?? 0;
-          const bIndex = b.segment?.startIndex ?? 0;
-          return bIndex - aIndex;
-        });
+        const supports = [...groundingMetadata.groundingSupports].sort(
+          (a, b) => {
+            const aIndex = a.segment?.startIndex ?? 0;
+            const bIndex = b.segment?.startIndex ?? 0;
+            return bIndex - aIndex;
+          }
+        );
 
         for (const support of supports) {
-          // Make sure segment exists before accessing its properties
           if (
             support.segment &&
             support.groundingChunkIndices &&
@@ -467,12 +457,8 @@ Tips:
             support.segment.endIndex !== null &&
             support.segment.endIndex !== undefined
           ) {
-            // Get source index and create citation
             const sourceIndex = support.groundingChunkIndices[0];
-            if (sourceIndex < result.sources.length) {
-              const sourceTitle =
-                result.sources[sourceIndex].title ||
-                `Source ${sourceIndex + 1}`;
+            if (sourceIndex < sources.length) {
               // Insert citation at the end of the segment
               formattedText =
                 formattedText.substring(0, support.segment.endIndex) +
@@ -483,24 +469,45 @@ Tips:
         }
       }
 
-      // Add sources section at the end
-      if (result.sources && result.sources.length > 0) {
-        formattedText += "\n## Sources\n";
-        result.sources.forEach((source, index) => {
-          formattedText += `[${index + 1}] ${source.title || "Source"}: ${
-            source.url
-          }\n`;
-        });
-      }
+      // DO NOT add sources section in the text - the frontend will handle this
+      // Just return the text with citations and sources separately
 
-      //   console.log("Formatted text:", formattedText);
+      // Try to extract and resolve original URLs
+      const processedSources = await Promise.all(
+        sources.map(async (source) => {
+          if (
+            source.url &&
+            source.url.includes(
+              "vertexaisearch.cloud.google.com/grounding-api-redirect"
+            )
+          ) {
+            try {
+              // Extract the real URL by making a HEAD request and following redirects
+              // This requires node-fetch or similar HTTP client
+              const response = await fetch(source.url, {
+                method: "HEAD",
+                redirect: "manual",
+              });
+              console.log("Resolved redirect response:", response);
+              // Get the Location header from the redirect response
+              const location = response.headers.get("location");
+              console.log("Resolved redirect URL:", location);
+              if (location) {
+                return { ...source, url: location };
+              }
+            } catch (error) {
+              console.error("Error resolving redirect URL:", error);
+            }
+          }
+          return source;
+        })
+      );
 
-      return [
-        {
-          type: "text",
-          text: formattedText,
-        },
-      ];
+      return {
+        text: formattedText,
+        sources: processedSources,
+        queries: groundingMetadata?.webSearchQueries,
+      };
     },
   });
 

@@ -155,6 +155,7 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
     </Sheet>
   );
 };
+
 const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
   const [open, setOpen] = React.useState(false);
   const hasResults = tool.state === "result" && tool.result;
@@ -212,52 +213,39 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
     }
   };
 
-  const formatTextWithCitations = (text: string) => {
-    console.log("text", text);
-    console.log("toolResponse", toolResponse);
-    if (!text || !toolResponse?.groudingsSupport?.length) return text;
-
-    let formattedText = text;
-    // Track offsets caused by inserted citations
-    let offset = 0;
-
-    // Sort by startIndex in ascending order to process sequentially
-    const sortedSupports = [...toolResponse.groudingsSupport].sort(
-      (a, b) => a.segment.startIndex - b.segment.startIndex
-    );
-
-    sortedSupports.forEach((support: any) => {
-      if (
-        support.segment?.startIndex != null &&
-        support.segment?.endIndex != null &&
-        support.groundingChunkIndices?.length > 0
-      ) {
-        const start = support.segment.startIndex + offset;
-        const end = support.segment.endIndex + offset;
-
-        const citationLinks = support.groundingChunkIndices
-          .map((idx: number) => {
-            const source = sources[idx];
-            const url = getSourceUrl(source);
-            return `[${idx + 1}](${url})`;
-          })
-          .join(" ");
-
-        // Insert citations at the end of the segment
-        formattedText =
-          formattedText.slice(0, end) +
-          " " +
-          citationLinks +
-          formattedText.slice(end);
-
-        // Update offset based on the length of inserted text
-        offset += citationLinks.length + 1; // +1 for the space
-      }
-    });
-
-    return formattedText;
+  // Clean text content by removing the "Sources" section if it exists
+  const cleanTextContent = (text: string): string => {
+    // Regular expression to match the "Sources" section at the end of the text
+    const sourcesRegex = /\n+## Sources\n([\s\S]*?)$/;
+    return text.replace(sourcesRegex, "");
   };
 
+  // Process inline citations to make them clickable
+  const processCitations = (text: string): string => {
+    if (!text || !sources.length) return text;
+
+    // Regular expression to find citation patterns like [1], [2], etc.
+    // Using a regex with lookahead and lookbehind to avoid replacing citations inside markdown links
+    const citationRegex = /(?<!\]\()(\[\d+\])(?!\))/g;
+
+    return text.replace(citationRegex, (match) => {
+      // Extract the number from [n]
+      const numMatch = match.match(/\[(\d+)\]/);
+      if (!numMatch) return match;
+
+      const sourceIndex = parseInt(numMatch[1]) - 1;
+      if (sourceIndex < 0 || sourceIndex >= sources.length) return match;
+
+      const source = sources[sourceIndex];
+      const url = getSourceUrl(source);
+
+      // Only convert to link if we have a valid URL
+      if (!url) return match;
+
+      // Create a markdown link
+      return `[${match}](${url})`;
+    });
+  };
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -329,7 +317,9 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                 )}
                 <div className="text-sm prose prose-sm max-w-none">
                   <MarkdownViewer
-                    content={formatTextWithCitations(toolResponse.text)}
+                    content={processCitations(
+                      cleanTextContent(toolResponse.text)
+                    )}
                   />
                 </div>
                 {sources.length > 0 && (
