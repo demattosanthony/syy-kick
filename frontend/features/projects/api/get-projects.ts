@@ -5,9 +5,11 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 export function useInfiniteProjectsQuery({
   search,
   limit = 10,
+  initialData,
 }: {
   search?: string;
   limit?: number;
+  initialData?: any;
 } = {}) {
   const { activeWorkspace } = useWorkspace();
 
@@ -27,6 +29,7 @@ export function useInfiniteProjectsQuery({
         ? lastPage.pagination.page + 1
         : undefined;
     },
+    initialData: initialData,
   });
 }
 

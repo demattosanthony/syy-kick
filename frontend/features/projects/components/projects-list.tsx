@@ -10,15 +10,35 @@ import { getRelativeTimeString } from "@/lib/utils";
 import { FolderClosed, FolderOpen } from "lucide-react";
 import { useInfiniteProjectsQuery } from "../api";
 
-const ProjectsList = () => {
+const ProjectsList = ({
+  initialProjects,
+  searchQuery,
+}: {
+  initialProjects: {
+    data: Project[];
+    pagination: {
+      page: number;
+      limit: number;
+      totalCount: number;
+      totalPages: number;
+      hasMore: boolean;
+    };
+  };
+  searchQuery: string;
+}) => {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Use initial projects for first render
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteProjectsQuery({
       search: search,
       limit: 10,
+      initialData: {
+        pages: [initialProjects],
+        pageParams: [1],
+      },
     });
 
   useEffect(() => {

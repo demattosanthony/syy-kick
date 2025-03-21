@@ -12,6 +12,7 @@ interface SearchBarProps {
   className?: string;
   searchParamKey?: string;
   onClose?: () => void;
+  initialSearch?: string;
 }
 
 export default function SearchBar({
@@ -19,14 +20,13 @@ export default function SearchBar({
   debounceMs = 300,
   className = "mb-6",
   searchParamKey = "search",
+  initialSearch,
   onClose,
 }: SearchBarProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
-  const [searchTerm, setSearchTerm] = useState(
-    searchParams.get(searchParamKey)?.toString() || ""
-  );
+  const [searchTerm, setSearchTerm] = useState(initialSearch || "");
   const debouncedSearchTerm = useDebounce(searchTerm, debounceMs);
 
   const handleSearch = useCallback(
