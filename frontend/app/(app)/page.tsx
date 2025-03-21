@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import { getProjects, me } from "../actions";
 import HomeContent from "@/features/chat/home/home-content";
+import api from "@/lib/api";
 
 export default async function Home() {
-  const user = await me();
-  const { data } = await getProjects({
+  const user = await api.auth.me();
+  const { data } = await api.projects.listProjects({
     limit: 6,
   });
 

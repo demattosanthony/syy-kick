@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { me } from "./app/actions";
+import api from "./lib/api";
 
 export async function middleware(req: NextRequest) {
-  const user = await me();
+  const user = await api.auth.me();
 
   // Redirect unauthenticated users
   if (user === null) {

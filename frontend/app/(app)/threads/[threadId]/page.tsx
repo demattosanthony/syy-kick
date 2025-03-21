@@ -2,7 +2,7 @@
 
 import { ChatThread } from "@/features/chat/threads/components";
 import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
-import { getThread } from "@/app/actions";
+import api from "@/lib/api";
 
 export default async function ThreadsPage({
   params,
@@ -18,10 +18,14 @@ export default async function ThreadsPage({
   const threadId = resolvedParams.threadId;
 
   // Only fetch the thread if it's not a new thread
-  const thread = isNew ? null : await getThread(threadId);
+  const thread = isNew ? null : await api.threads.getThread(threadId);
 
   const initialMessages =
     isNew || !thread ? [] : mapThreadMessagesToMessages(thread);
+
+  if (!thread) {
+    return null;
+  }
 
   return (
     <ChatThread

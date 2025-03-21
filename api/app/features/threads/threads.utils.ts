@@ -429,72 +429,50 @@ Tips:
       });
 
       const metadata = providerMetadata?.google as
-        | GoogleGenerativeAIProviderMetadata
+        | Record<string, any>
         | undefined;
       const groundingMetadata = metadata?.groundingMetadata;
-
-      // Format text with inline citations - only apply if groundingMetadata exists
       let formattedText = text;
 
-      if (
-        groundingMetadata?.groundingSupports &&
-        groundingMetadata.groundingSupports.length > 0
-      ) {
-        // Sort by startIndex descending to avoid position shifts when adding citations
+      // Add citations to text if groundingMetadata exists
+      if (groundingMetadata?.groundingSupports?.length) {
+        // Sort supports by startIndex descending to avoid position shifts
         const supports = [...groundingMetadata.groundingSupports].sort(
-          (a, b) => {
-            const aIndex = a.segment?.startIndex ?? 0;
-            const bIndex = b.segment?.startIndex ?? 0;
-            return bIndex - aIndex;
-          }
+          (a, b) => (b.segment?.startIndex ?? 0) - (a.segment?.startIndex ?? 0)
         );
 
         for (const support of supports) {
+          const { segment, groundingChunkIndices } = support;
           if (
-            support.segment &&
-            support.groundingChunkIndices &&
-            support.groundingChunkIndices.length > 0 &&
-            support.segment.endIndex !== null &&
-            support.segment.endIndex !== undefined
+            segment?.endIndex != null &&
+            groundingChunkIndices?.length &&
+            groundingChunkIndices[0] < sources.length
           ) {
-            const sourceIndex = support.groundingChunkIndices[0];
-            if (sourceIndex < sources.length) {
-              // Insert citation at the end of the segment
-              formattedText =
-                formattedText.substring(0, support.segment.endIndex) +
-                ` [${sourceIndex + 1}]` +
-                formattedText.substring(support.segment.endIndex);
-            }
+            // Insert citation at the end of the segment
+            const sourceIndex = groundingChunkIndices[0];
+            formattedText =
+              formattedText.substring(0, segment.endIndex) +
+              ` [${sourceIndex + 1}]` +
+              formattedText.substring(segment.endIndex);
           }
         }
       }
 
-      // DO NOT add sources section in the text - the frontend will handle this
-      // Just return the text with citations and sources separately
-
-      // Try to extract and resolve original URLs
+      // Process sources to resolve redirect URLs
       const processedSources = await Promise.all(
         sources.map(async (source) => {
           if (
-            source.url &&
-            source.url.includes(
+            source.url?.includes(
               "vertexaisearch.cloud.google.com/grounding-api-redirect"
             )
           ) {
             try {
-              // Extract the real URL by making a HEAD request and following redirects
-              // This requires node-fetch or similar HTTP client
               const response = await fetch(source.url, {
                 method: "HEAD",
                 redirect: "manual",
               });
-              console.log("Resolved redirect response:", response);
-              // Get the Location header from the redirect response
               const location = response.headers.get("location");
-              console.log("Resolved redirect URL:", location);
-              if (location) {
-                return { ...source, url: location };
-              }
+              if (location) return { ...source, url: location };
             } catch (error) {
               console.error("Error resolving redirect URL:", error);
             }

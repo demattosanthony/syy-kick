@@ -14,6 +14,134 @@ import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+
+/**
+ * Custom ApiError class for better error handling
+ */
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = "ApiError"; // Explicitly set name for better error identification
+  }
+}
+
+// Common headers for all requests
+const getCommonHeaders = () => ({
+  "Content-Type": "application/json",
+});
+
+// Server-side fetch with cookies
+async function serverFetch<T>(
+  endpoint: string,
+  method: string = "GET",
+  body?: any,
+  options: RequestInit = {}
+): Promise<T> {
+  const { cookies } = await import("next/headers");
+  const cookieStore = cookies();
+
+  const cookieString = cookieStore.toString();
+
+  const config: RequestInit = {
+    method,
+    credentials: "include",
+    headers: {
+      ...getCommonHeaders(),
+      ...(options.headers || {}),
+      Cookie: cookieString,
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  };
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+
+  if (
+    response.status === 403 &&
+    typeof window !== "undefined" &&
+    !window.location.pathname.startsWith("/forbidden")
+  ) {
+    window.location.href = "/forbidden";
+  }
+
+  if (!response.ok) {
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = { message: `HTTP error! status: ${response.status}` };
+    }
+    throw new ApiError(
+      response.status,
+      errorData?.message ||
+        errorData?.error ||
+        `Request failed with status ${response.status}`
+    );
+  }
+
+  return response.json() as Promise<T>;
+}
+
+// Client-side fetch
+async function clientFetch<T>(
+  endpoint: string,
+  method: string = "GET",
+  body?: any,
+  options: RequestInit = {}
+): Promise<T> {
+  const config: RequestInit = {
+    method,
+    credentials: "include",
+    headers: {
+      ...getCommonHeaders(),
+      ...(options.headers || {}),
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  };
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+
+  if (
+    response.status === 403 &&
+    !window.location.pathname.startsWith("/forbidden")
+  ) {
+    window.location.href = "/forbidden";
+  }
+
+  if (!response.ok) {
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = { message: `HTTP error! status: ${response.status}` };
+    }
+    throw new ApiError(
+      response.status,
+      errorData?.message ||
+        errorData?.error ||
+        `Request failed with status ${response.status}`
+    );
+  }
+
+  return response.json() as Promise<T>;
+}
+
+// Main fetch function that detects environment
+const apiFetch = <T>(
+  endpoint: string,
+  method: string = "GET",
+  body?: any,
+  options: RequestInit = {}
+): Promise<T> => {
+  const isServer = typeof window === "undefined";
+  return isServer
+    ? serverFetch<T>(endpoint, method, body, options)
+    : clientFetch<T>(endpoint, method, body, options);
+};
+
 /**
  * Base ApiRequest class to handle common request logic
  */
@@ -28,78 +156,57 @@ class ApiRequest {
     endpoint: string,
     method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH" = "GET",
     body?: unknown,
-    headers?: HeadersInit
+    options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    const fetchHeaders: HeadersInit = {
-      "Content-Type": "application/json",
-      ...headers,
-    };
-    const config: RequestInit = {
-      method,
-      credentials: "include",
-      headers: fetchHeaders,
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    };
-
-    const response = await fetch(url, config);
-
-    if (
-      response.status === 403 &&
-      !window.location.pathname.startsWith("/forbidden")
-    ) {
-      window.location.href = "/forbidden";
-    }
-
-    if (!response.ok) {
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = { message: `HTTP error! status: ${response.status}` };
-      }
-      throw new ApiError(
-        response.status,
-        errorData?.message ||
-          errorData?.error ||
-          `Request failed with status ${response.status}`
-      );
-    }
-
-    return response.json() as Promise<T>; // Explicitly cast for better type safety
+    return apiFetch<T>(endpoint, method, body, options);
   }
 
   protected async uploadFormData<T>(
     endpoint: string,
     formData: FormData
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    const response = await fetch(url, {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    });
+    const isServer = typeof window === "undefined";
+    if (isServer) {
+      // For server-side uploads
+      const { cookies } = await import("next/headers");
+      const cookieStore = cookies();
 
-    if (!response.ok) {
-      throw new ApiError(
-        response.status,
-        `Upload failed with status ${response.status}`
-      );
+      const cookieHeader = cookieStore.toString();
+
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Cookie: cookieHeader,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new ApiError(
+          response.status,
+          `Upload failed with status ${response.status}`
+        );
+      }
+
+      return response.json();
+    } else {
+      // For client-side uploads
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new ApiError(
+          response.status,
+          `Upload failed with status ${response.status}`
+        );
+      }
+
+      return response.json();
     }
-
-    return response.json();
-  }
-}
-
-/**
- * Custom ApiError class for better error handling
- */
-export class ApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-    this.name = "ApiError"; // Explicitly set name for better error identification
   }
 }
 

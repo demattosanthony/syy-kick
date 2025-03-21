@@ -4,7 +4,7 @@ import { ProjectsList } from "@/features/projects/components";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/features/chat/threads/components";
 import { CreateProjectDialog } from "@/features/projects/components";
-import { getProjects } from "@/app/actions";
+import api from "@/lib/api";
 
 export default async function ProjectsPage({
   searchParams,
@@ -16,7 +16,7 @@ export default async function ProjectsPage({
   const search = resolvedSearchParams.search || "";
 
   // Fetch projects server-side
-  const projectsData = await getProjects({
+  const projectsData = await api.projects.listProjects({
     search,
     page: 1,
     limit: 10,

@@ -1,8 +1,8 @@
 "use server";
 
-import { getPublicThread, me } from "@/app/actions";
 import { ChatThread } from "@/features/chat/threads/components";
 import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
+import api from "@/lib/api";
 import { redirect } from "next/navigation";
 
 export default async function ShareThreadPage({
@@ -12,10 +12,10 @@ export default async function ShareThreadPage({
 }) {
   const threadId = params.threadId;
 
-  const thread = await getPublicThread(threadId);
-  const user = await me();
+  const thread = await api.threads.getPublicThread(threadId);
+  const user = await api.auth.me();
 
-  if (!thread && thread?.isPublic !== true) {
+  if (!thread || thread.isPublic !== true) {
     redirect("/");
   }
 
