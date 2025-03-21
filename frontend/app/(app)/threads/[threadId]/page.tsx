@@ -18,14 +18,10 @@ export default async function ThreadsPage({
   const threadId = resolvedParams.threadId;
 
   // Only fetch the thread if it's not a new thread
-  const thread = isNew ? null : await api.threads.getThread(threadId);
+  const thread = isNew ? undefined : await api.threads.getThread(threadId);
 
   const initialMessages =
     isNew || !thread ? [] : mapThreadMessagesToMessages(thread);
-
-  if (!thread) {
-    return null;
-  }
 
   return (
     <ChatThread

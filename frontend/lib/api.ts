@@ -38,58 +38,75 @@ const getCommonHeaders = () => ({
 async function serverFetch<T>(
   endpoint: string,
   method: string = "GET",
-  body?: any,
+  body?: unknown,
   options: RequestInit = {}
 ): Promise<T> {
   const { cookies } = await import("next/headers");
-  const cookieStore = cookies();
 
-  const cookieString = cookieStore.toString();
+  try {
+    const cookieStore = await cookies();
 
-  const config: RequestInit = {
-    method,
-    credentials: "include",
-    headers: {
-      ...getCommonHeaders(),
-      ...(options.headers || {}),
-      Cookie: cookieString,
-    },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-  };
+    const cookieString = cookieStore.toString();
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const config: RequestInit = {
+      method,
+      credentials: "include",
+      headers: {
+        ...getCommonHeaders(),
+        ...(options.headers || {}),
+        Cookie: cookieString,
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    };
 
-  if (
-    response.status === 403 &&
-    typeof window !== "undefined" &&
-    !window.location.pathname.startsWith("/forbidden")
-  ) {
-    window.location.href = "/forbidden";
-  }
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
-  if (!response.ok) {
-    let errorData;
-    try {
-      errorData = await response.json();
-    } catch {
-      errorData = { message: `HTTP error! status: ${response.status}` };
+    if (
+      response.status === 403 &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/forbidden")
+    ) {
+      window.location.href = "/forbidden";
     }
-    throw new ApiError(
-      response.status,
-      errorData?.message ||
-        errorData?.error ||
-        `Request failed with status ${response.status}`
-    );
-  }
 
-  return response.json() as Promise<T>;
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: `HTTP error! status: ${response.status}` };
+      }
+      throw new ApiError(
+        response.status,
+        errorData?.message ||
+          errorData?.error ||
+          `Request failed with status ${response.status}`
+      );
+    }
+
+    return response.json() as Promise<T>;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("Dynamic server usage") &&
+      typeof window === "undefined"
+    ) {
+      // Return a placeholder response during static rendering
+      // This will be replaced during client-side hydration
+      //   console.warn(
+      //     "Auth check during static rendering, will validate on client"
+      //   );
+      return null as unknown as T;
+    }
+    throw error;
+  }
 }
 
 // Client-side fetch
 async function clientFetch<T>(
   endpoint: string,
   method: string = "GET",
-  body?: any,
+  body?: unknown,
   options: RequestInit = {}
 ): Promise<T> {
   const config: RequestInit = {
@@ -133,7 +150,7 @@ async function clientFetch<T>(
 const apiFetch = <T>(
   endpoint: string,
   method: string = "GET",
-  body?: any,
+  body?: unknown,
   options: RequestInit = {}
 ): Promise<T> => {
   const isServer = typeof window === "undefined";

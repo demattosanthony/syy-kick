@@ -8,9 +8,9 @@ import { redirect } from "next/navigation";
 export default async function ShareThreadPage({
   params,
 }: {
-  params: { threadId: string };
+  params: Promise<{ threadId: string }>;
 }) {
-  const threadId = params.threadId;
+  const threadId = (await params).threadId;
 
   const thread = await api.threads.getPublicThread(threadId);
   const user = await api.auth.me();
