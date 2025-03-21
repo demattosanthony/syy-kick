@@ -1,39 +1,36 @@
-"use client";
+"use server";
 
-import { usePublicThreadQuery } from "@/features/chat/threads/api";
+import { getPublicThread, me } from "@/app/actions";
 import { ChatThread } from "@/features/chat/threads/components";
 import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
-import { useMeQuery } from "@/features/user/api";
-import { redirect, useParams } from "next/navigation";
-import { useMemo } from "react";
+import { redirect } from "next/navigation";
 
-export default function ShareThreadPage() {
-  const params = useParams<{ threadId: string }>();
+export default async function ShareThreadPage({
+  params,
+}: {
+  params: { threadId: string };
+}) {
   const threadId = params.threadId;
 
-  const { data: thread, isFetched, isLoading } = usePublicThreadQuery(threadId);
-  const { data: me } = useMeQuery();
+  const thread = await getPublicThread(threadId);
+  const user = await me();
 
-  const initalMessages = useMemo(() => {
-    if (!thread) return [];
+  if (!thread && thread?.isPublic !== true) {
+    redirect("/");
+  }
 
-    return mapThreadMessagesToMessages(thread);
-  }, [thread]);
+  const initialMessages = thread ? mapThreadMessagesToMessages(thread) : [];
 
   const isAllowedToCloneThread =
-    !thread?.organizationId ||
-    !!me?.organizations?.some((org) => org.id === thread?.organizationId);
-
-  if (isFetched && thread?.isPublic !== true) {
-    return redirect("/");
-  }
+    !thread.organizationId ||
+    !!user?.organizations?.some((org) => org.id === thread.organizationId);
 
   return (
     <ChatThread
-      initalMessages={initalMessages}
+      initalMessages={initialMessages}
       thread={thread}
       viewOnly
-      messagesAreBeingFetched={isLoading}
+      messagesAreBeingFetched={false}
       showCloneThreadButton={isAllowedToCloneThread}
     />
   );

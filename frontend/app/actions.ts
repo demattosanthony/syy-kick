@@ -125,3 +125,45 @@ export async function getOrgFromInviteToken(token: string) {
 
   return await response.json();
 }
+
+export async function getThread(threadId: string): Promise<any | null> {
+  const cookieStore = await cookies();
+  const cookieString = cookieStore.toString();
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL!}/threads/${threadId}`,
+    {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Cookie: cookieString,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return await response.json();
+}
+
+export async function getPublicThread(threadId: string): Promise<any | null> {
+  const cookieStore = await cookies();
+  const cookieString = cookieStore.toString();
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL!}/public/threads/${threadId}`,
+    {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Cookie: cookieString,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return await response.json();
+}
