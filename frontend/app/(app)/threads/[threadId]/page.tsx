@@ -9,11 +9,12 @@ export default async function ThreadsPage({
   searchParams,
 }: {
   params: Promise<{ threadId: string }>;
-  searchParams: { new?: string };
+  searchParams: Promise<{ new?: string }>;
 }) {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
 
-  const isNew = searchParams.new === "true";
+  const isNew = resolvedSearchParams.new === "true";
   const threadId = resolvedParams.threadId;
 
   // Only fetch the thread if it's not a new thread

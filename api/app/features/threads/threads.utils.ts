@@ -1,5 +1,5 @@
 // External dependencies
-import { CoreMessage, tool } from "ai";
+import { CoreMessage, generateText, tool } from "ai";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -34,6 +34,7 @@ import {
 import { DbUser } from "../../createAuthToken";
 import { PermissionManager } from "../permissions/permissions.tools";
 import { Permissions } from "../permissions/permissions.types";
+import { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -422,35 +423,35 @@ Tips:
     execute: async ({ query }) => {
       console.log("Searching web for: ", query);
 
-      interface WebSearchResult {
-        data: {
-          text: string;
-          title: string;
-          description: string;
-          url: string;
-          usage?: { tokens: number };
-        }[];
-      }
-
-      const response = await fetch(`https://s.jina.ai/?q=${query}&num=4`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${process.env.JINA_API_KEY}`,
-          "X-Engine": "direct",
-          "X-Retain-Images": "none",
-          "X-Return-Format": "text",
-        },
+      const { text, sources, providerMetadata } = await generateText({
+        model: MODELS["gemini-2.0-flash-online"].model,
+        prompt: `Search the web for information about ${query}`,
+        maxTokens: 1200,
       });
 
-      let results = (await response.json()) as WebSearchResult;
+      console.log("Generated text:", text);
+      console.log("Sources:", sources);
 
-      // Remove usage property from results
-      results.data = results.data.map((result) => {
-        const { usage, ...rest } = result;
-        return rest;
-      });
+      // access the grounding metadata. Casting to the provider metadata type
+      // is optional but provides autocomplete and type safety.
+      const metadata = providerMetadata?.google as
+        | GoogleGenerativeAIProviderMetadata
+        | undefined;
+      const groundingMetadata = metadata?.groundingMetadata;
 
-      return results.data;
+      console.log("Grounding metadata:", groundingMetadata);
+      console.log("\n\n\n");
+
+      const data = {
+        text,
+        sources,
+        groudingsSupport: groundingMetadata?.groundingSupports,
+        queries: groundingMetadata?.webSearchQueries,
+      };
+
+      console.log(data);
+
+      return data;
     },
   });
 
