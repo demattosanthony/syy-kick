@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader } from "@/components/ui/loader";
+import Image from "next/image";
 
 const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
   switch (tool.toolName) {
@@ -213,9 +214,11 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                     className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"
                   >
                     {result.url ? (
-                      <img
+                      <Image
                         src={getFaviconUrl(result.url) || ""}
                         alt=""
+                        width={16}
+                        height={16}
                         className="w-3 h-3"
                       />
                     ) : (

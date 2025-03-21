@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DialogTitle } from "@radix-ui/react-dialog";
 import PdfThumbnail from "./pdf-thumbnail";
+import Image from "next/image";
 
 export default function ChatAttachment({
   attachment,
@@ -25,8 +26,10 @@ export default function ChatAttachment({
                   key={`img-${attachment.name}-${index}`}
                   className="flex justify-end mb-4 cursor-pointer"
                 >
-                  <img
+                  <Image
                     key={index}
+                    height={200}
+                    width={200}
                     src={attachment.url}
                     alt="user attachment"
                     className="overflow-hidden rounded-lg h-52 max-w-[400px] object-contain"
@@ -36,7 +39,10 @@ export default function ChatAttachment({
               <DialogContent className="max-w-4xl p-0 m-0 overflow-hidden text-secondary">
                 <DialogTitle className="hidden" />
                 <div className="relative w-full h-full overflow-auto">
-                  <img
+                  <Image
+                    key={index}
+                    height={200}
+                    width={200}
                     src={attachment.url}
                     alt="user attachment"
                     className="w-full object-contain"

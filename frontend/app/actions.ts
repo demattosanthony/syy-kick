@@ -42,3 +42,24 @@ export async function getProject(pid: string): Promise<Project | null> {
 
   return await response.json();
 }
+
+export async function getOrgFromInviteToken(token: string) {
+  const cookieStore = await cookies();
+  const cookieString = cookieStore.toString();
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL!}/organizations/invite/${token}`,
+    {
+      method: "GET",
+      credentials: "include",
+      headers: {
+        Cookie: cookieString,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return await response.json();
+}
