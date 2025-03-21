@@ -421,26 +421,17 @@ Tips:
       query: z.string(),
     }),
     execute: async ({ query }) => {
-      console.log("Searching web for: ", query);
-
       const { text, sources, providerMetadata } = await generateText({
         model: MODELS["gemini-2.0-flash-online"].model,
-        prompt: `Search the web for information about ${query}`,
+        prompt: `Search the web for information on "${query}"`,
         maxTokens: 1200,
+        temperature: 0,
       });
 
-      console.log("Generated text:", text);
-      console.log("Sources:", sources);
-
-      // access the grounding metadata. Casting to the provider metadata type
-      // is optional but provides autocomplete and type safety.
       const metadata = providerMetadata?.google as
         | GoogleGenerativeAIProviderMetadata
         | undefined;
       const groundingMetadata = metadata?.groundingMetadata;
-
-      console.log("Grounding metadata:", groundingMetadata);
-      console.log("\n\n\n");
 
       const data = {
         text,
@@ -448,10 +439,68 @@ Tips:
         groudingsSupport: groundingMetadata?.groundingSupports,
         queries: groundingMetadata?.webSearchQueries,
       };
+      //   console.log("Web search data:", data);
 
-      console.log(data);
+      //   console.log(`${data.text}\n\nSources: ${data.sources.map((s) => s.url)}`);
 
       return data;
+    },
+    experimental_toToolResultContent(result) {
+      // Format the response with inline citations and sources section
+      let formattedText = result.text;
+
+      if (result.groudingsSupport && result.groudingsSupport.length > 0) {
+        // Sort by startIndex descending to avoid position shifts when adding citations
+        const supports = [...result.groudingsSupport].sort((a, b) => {
+          // Add null checks to handle potential undefined values
+          const aIndex = a.segment?.startIndex ?? 0;
+          const bIndex = b.segment?.startIndex ?? 0;
+          return bIndex - aIndex;
+        });
+
+        for (const support of supports) {
+          // Make sure segment exists before accessing its properties
+          if (
+            support.segment &&
+            support.groundingChunkIndices &&
+            support.groundingChunkIndices.length > 0 &&
+            support.segment.endIndex !== null &&
+            support.segment.endIndex !== undefined
+          ) {
+            // Get source index and create citation
+            const sourceIndex = support.groundingChunkIndices[0];
+            if (sourceIndex < result.sources.length) {
+              const sourceTitle =
+                result.sources[sourceIndex].title ||
+                `Source ${sourceIndex + 1}`;
+              // Insert citation at the end of the segment
+              formattedText =
+                formattedText.substring(0, support.segment.endIndex) +
+                ` [${sourceIndex + 1}]` +
+                formattedText.substring(support.segment.endIndex);
+            }
+          }
+        }
+      }
+
+      // Add sources section at the end
+      if (result.sources && result.sources.length > 0) {
+        formattedText += "\n## Sources\n";
+        result.sources.forEach((source, index) => {
+          formattedText += `[${index + 1}] ${source.title || "Source"}: ${
+            source.url
+          }\n`;
+        });
+      }
+
+      //   console.log("Formatted text:", formattedText);
+
+      return [
+        {
+          type: "text",
+          text: formattedText,
+        },
+      ];
     },
   });
 
@@ -546,7 +595,6 @@ Yo is up to date on the latest building codes and standards, including ASHRAE, N
 <yo_restrictions>
 - The assistant never uses level 1 headers (#), they look ugly when rendered in the chat UI.
 - The assistant NEVER makes up any information, especially about equipment or systems that the assistant does not find from the search results. The assistant only provides answers supported by search results or existing knowledge. Users will get confused and annoyed if the assistant responds with incorrect or made up information. They really care about the context of projects or documents they are working on.
-- The assistant does not include URLs or links.
 - The assistant avoids moralization or hedging language.
 - The assistant does not repeat copyrighted content verbatim.
 - If search results are insufficient, the assistant states that the information is not available.

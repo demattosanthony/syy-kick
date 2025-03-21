@@ -9,10 +9,11 @@ import { getProjects } from "@/app/actions";
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: { search?: string };
+  searchParams: Promise<{ search?: string }>;
 }) {
   // Get search parameter from URL
-  const search = searchParams.search || "";
+  const resolvedSearchParams = await searchParams;
+  const search = resolvedSearchParams.search || "";
 
   // Fetch projects server-side
   const projectsData = await getProjects({

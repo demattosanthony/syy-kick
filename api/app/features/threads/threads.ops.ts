@@ -381,13 +381,13 @@ const threadsOps = {
           finishReason,
           reasoning,
         }) => {
-          //   console.log("Finish reason:", finishReason);
-          //   console.log("Tool calls:", toolCalls);
-          //   console.log("Tool results:", toolResults);
-          //   console.log("Text:", text);
-          //   console.log("Reasoning:", reasoning);
+          console.log("Finish reason:", finishReason);
+          console.log("Tool calls:", toolCalls);
+          console.log("Tool results:", toolResults);
+          console.log("Text:", text);
+          console.log("Reasoning:", reasoning);
 
-          //   console.log("\n\n\n");
+          console.log("\n\n\n");
 
           if (finishReason === "tool-calls") {
             // First create a message for the assistant's tool call
