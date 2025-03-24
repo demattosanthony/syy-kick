@@ -255,6 +255,7 @@ class AuthApi extends ApiRequest {
     error?: string;
     insufficientSeats?: boolean;
     inactiveSubscription?: boolean;
+    alreadyMember?: boolean;
   }> {
     try {
       return await this.request<{
@@ -263,6 +264,7 @@ class AuthApi extends ApiRequest {
         error?: string;
         insufficientSeats?: boolean;
         inactiveSubscription?: boolean;
+        alreadyMember?: boolean;
       }>(`/auth/invite/${token}`, "POST");
     } catch (error: unknown) {
       if (error instanceof ApiError) {
