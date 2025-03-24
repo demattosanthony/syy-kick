@@ -20,7 +20,6 @@ import { User } from "@/types/user";
 import { WorkSpaceSwitcher } from "./workspace-switcher";
 import { ThreadsList } from "./sidebar-threads-list";
 import { ThreadsLink } from "./threads-link";
-import { SidebarProjectsList } from "./sidebar-projects-list";
 import { SidebarButton } from "./sidebar-button";
 import { DropdownMenuGroup } from "../ui/dropdown-menu";
 import { PricingDialog } from "../PricingDialog";
@@ -35,9 +34,10 @@ import {
   Workflow,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { CreateProjectDialog } from "@/features/projects/components";
 import { NewThreadButton } from "./new-thread-button";
 import { usePermissions } from "@/features/permissions/context";
+import SiteDialog from "@/features/sites/components/site-mutation-dialog";
+import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
 
 export function AppSidebar({
   user,
@@ -49,7 +49,7 @@ export function AppSidebar({
   const [isPinned, setIsPinned] = React.useState(true);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-  const { canCreateOrgProjects } = usePermissions();
+  const { canCreateOrgSites } = usePermissions();
 
   // Keep pin state in sync with sidebar state
   React.useEffect(() => {
@@ -86,8 +86,7 @@ export function AppSidebar({
     >
       <SidebarHeader>
         <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between">
-          <WorkSpaceSwitcher onDropdownOpenChange={setIsPopoverOpen} />
-
+          {isMobile ? <MobileWorkspaceSwitcher /> : <WorkSpaceSwitcher state={state} />}
           {state === "expanded" && (
             <div className="flex items-center">
               <Tooltip>
@@ -123,21 +122,22 @@ export function AppSidebar({
                   user.subscriptionStatus !== "active"
                 ) && (
                   <SidebarButton
-                    href="/projects"
+                    href="/sites"
                     icon={FolderClosed}
                     hoverIcon={FolderOpen}
-                    label="Projects"
+                    label="Sites"
                     actionTrigger={
-                      <CreateProjectDialog
+                      <SiteDialog
                         trigger={
                           <Button
-                            disabled={!canCreateOrgProjects}
+                            disabled={!canCreateOrgSites}
                             variant="ghost"
                             className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
                           >
                             <Plus className="h-6 w-6" />
                           </Button>
                         }
+                        mode="create"
                       />
                     }
                   />
@@ -158,9 +158,9 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {(state === "expanded" || isMobile) && (
+        {/* {(state === "expanded" || isMobile) && (
           <SidebarProjectsList user={user} />
-        )}
+        )} */}
 
         {(state === "expanded" || isMobile) && <ThreadsList user={user} />}
       </SidebarContent>

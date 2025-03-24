@@ -8,6 +8,7 @@ import {
   TransferableRolesPermissions,
   UpdateOrgMemberRoleRequest,
 } from "@/features/permissions/types";
+import { MutationSiteData, Site } from "@/features/sites/types/sites";
 import { Workflow } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
@@ -540,6 +541,7 @@ class ProjectsApi extends ApiRequest {
   private readonly CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks for large files
 
   async createProject(data: {
+    siteId: string;
     name: string;
     description?: string;
     address?: string;
@@ -570,6 +572,7 @@ class ProjectsApi extends ApiRequest {
     search?: string;
     page?: number;
     limit?: number;
+    siteId?: string;
   }): Promise<{
     data: Project[];
     pagination: {
@@ -581,6 +584,10 @@ class ProjectsApi extends ApiRequest {
     };
   }> {
     const queryParams = new URLSearchParams();
+
+    if (options?.siteId) {
+      queryParams.append("siteId", options.siteId);
+    }
 
     if (options?.search) {
       queryParams.append("search", options.search);
@@ -594,7 +601,11 @@ class ProjectsApi extends ApiRequest {
       queryParams.append("limit", options.limit.toString());
     }
 
-    return await this.request(`/projects?${queryParams.toString()}`);
+    try {
+      return await this.request(`/projects?${queryParams.toString()}`);
+    } catch (error) {
+      throw error;
+    }
   }
 
   async deleteProject(projectId: string): Promise<{ success: boolean }> {
@@ -884,6 +895,18 @@ class ProjectsApi extends ApiRequest {
       success: boolean;
     }>(`/projects/${projectId}/documents`, "POST", payload);
   }
+
+  // Temporary
+  async getUnlinkedProjects() {
+    try {
+      return await this.request<Project[]>(
+        `/projects/unlinked-projects`,
+        "GET"
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 class PermissionsApi extends ApiRequest {
@@ -994,6 +1017,79 @@ class WorkflowsApi extends ApiRequest {
   }
 }
 
+class SitesApi extends ApiRequest {
+  async listSites(options?: {
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    data: Site[];
+    pagination: {
+      page: number;
+      limit: number;
+      totalCount: number;
+      totalPages: number;
+      hasMore: boolean;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+
+    if (options?.search) {
+      queryParams.append("search", options.search);
+    }
+
+    if (options?.page !== undefined) {
+      queryParams.append("page", options.page.toString());
+    }
+
+    if (options?.limit !== undefined) {
+      queryParams.append("limit", options.limit.toString());
+    }
+
+    return await this.request(`/sites?${queryParams.toString()}`);
+  }
+
+  async createSite(data: MutationSiteData): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>("/sites", "POST", data);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateSite(
+    siteId: string,
+    data: MutationSiteData
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/sites/${siteId}`,
+        "PUT",
+        data
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async linkProjects(
+    siteId: string,
+    data: {
+      projectsIds: string[];
+    }
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/sites/${siteId}/unlinked-projects`,
+        "PUT",
+        data
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+}
+
 /**
  *  Centralized ApiClient class that uses the modules
  */
@@ -1008,6 +1104,7 @@ class ApiClient {
   projects: ProjectsApi;
   workflows: WorkflowsApi;
   permissions: PermissionsApi;
+  sites: SitesApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -1020,6 +1117,7 @@ class ApiClient {
     this.projects = new ProjectsApi(baseUrl);
     this.workflows = new WorkflowsApi(baseUrl);
     this.permissions = new PermissionsApi(baseUrl);
+    this.sites = new SitesApi(baseUrl);
   }
 }
 

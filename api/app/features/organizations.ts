@@ -18,7 +18,7 @@ import { Permissions } from "./permissions/permissions.types";
 import PermissionsFactory from "./permissions/permissions.factory";
 import { PermissionManager } from "./permissions/permissions.tools";
 import { permissionsOps } from "./permissions/permissions.ops";
-import Constants from "./permissions/permissions.constants";
+import PermissionsMiddlewares from "./permissions/permissions.middlewares";
 
 // Core Types
 type Role = "owner" | "member";
@@ -547,29 +547,38 @@ export default Router()
   .post("", handle.create)
   .get(
     "/:id",
-    permissions(Permissions.Resources.ORGANIZATION, Permissions.Actions.READ),
+    PermissionsMiddlewares.organizations(
+      Permissions.Resources.ORGANIZATION,
+      Permissions.Actions.READ
+    ),
     handle.get
   )
   .put(
     "/:id",
-    permissions(Permissions.Resources.ORGANIZATION, Permissions.Actions.UPDATE),
+    PermissionsMiddlewares.organizations(
+      Permissions.Resources.ORGANIZATION,
+      Permissions.Actions.UPDATE
+    ),
     handle.update
   )
   .delete(
     "/:id",
-    permissions(Permissions.Resources.ORGANIZATION, Permissions.Actions.DELETE),
+    PermissionsMiddlewares.organizations(
+      Permissions.Resources.ORGANIZATION,
+      Permissions.Actions.DELETE
+    ),
     handle.delete
   )
   .get(
     "/:id/permissions",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_MEMBERS,
       Permissions.Actions.READ
     )
   )
   .get(
     "/:id/members",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_MEMBERS,
       Permissions.Actions.READ
     ),
@@ -577,7 +586,7 @@ export default Router()
   )
   .get(
     "/:id/members/:userId",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_MEMBERS,
       Permissions.Actions.READ
     ),
@@ -585,7 +594,7 @@ export default Router()
   )
   .post(
     "/:id/seats/validate",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_SEATS,
       Permissions.Actions.READ
     ),
@@ -593,7 +602,7 @@ export default Router()
   )
   .put(
     "/:id/seats",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_SEATS,
       Permissions.Actions.UPDATE
     ),
@@ -601,7 +610,7 @@ export default Router()
   )
   .get(
     "/:id/transferable-permissions",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_INVITATIONS,
       Permissions.Actions.CREATE
     ),

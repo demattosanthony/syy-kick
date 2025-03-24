@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { DialogFooter } from "../../../components/ui/dialog";
-import LocationSearch from "./location-search";
 
 interface ProjectFormData {
   name: string;
@@ -23,15 +22,6 @@ interface ProjectFormData {
   projectNumber: string;
   estimatedStartDate: string;
   estimatedEndDate: string;
-  location: {
-    address: string;
-    city: string;
-    state: string;
-    country: string;
-    postalCode: string;
-    latitude: string;
-    longitude: string;
-  };
 }
 
 interface ProjectFormFieldsProps {
@@ -61,29 +51,6 @@ const ProjectFormFields = ({
             setFormData((prev) => ({ ...prev, name: e.target.value }))
           }
           required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="location">
-          Location <span className="text-red-500">*</span>
-        </Label>
-        <LocationSearch
-          value={formData.location}
-          onChange={(locationData) =>
-            setFormData((prev) => ({
-              ...prev,
-              location: {
-                address: locationData.address || "",
-                city: locationData.city || "",
-                state: locationData.state || "",
-                country: locationData.country || "",
-                postalCode: locationData.postalCode || "",
-                latitude: locationData.latitude || "",
-                longitude: locationData.longitude || "",
-              },
-            }))
-          }
         />
       </div>
 

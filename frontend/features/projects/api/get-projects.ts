@@ -4,10 +4,12 @@ import { Project } from "@/types/project";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 export function useInfiniteProjectsQuery({
+  siteId,
   search,
   limit = 10,
   initialData,
 }: {
+  siteId?: string;
   search?: string;
   limit?: number;
   initialData?: {
@@ -27,9 +29,10 @@ export function useInfiniteProjectsQuery({
   const { activeWorkspace } = useWorkspace();
 
   return useInfiniteQuery({
-    queryKey: ["infiniteProjects", search, limit, activeWorkspace?.id],
+    queryKey: ["infiniteProjects", siteId, search, limit, activeWorkspace?.id],
     queryFn: async ({ pageParam = 1 }) => {
       const response = await api.projects.listProjects({
+        siteId,
         search,
         page: pageParam,
         limit,

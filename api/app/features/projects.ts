@@ -15,10 +15,8 @@ import {
 import {
   documentEmbeddings,
   documents,
-  memberRoles,
   organizations,
   projects,
-  users,
 } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
@@ -26,12 +24,11 @@ import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
 import { getOrgIdOrUnedfined } from "../utils";
-import { permissions, Workspace } from "../middleware";
+import { Workspace } from "../middleware";
 import { Permissions } from "./permissions/permissions.types";
 import { PermissionManager } from "./permissions/permissions.tools";
-import { permissionsOps } from "./permissions/permissions.ops";
-import Constants from "./permissions/permissions.constants";
 import PermissionsFactory from "./permissions/permissions.factory";
+import PermissionsMiddlewares from "./permissions/permissions.middlewares";
 
 const schemas = {
   createProject: z
@@ -43,13 +40,7 @@ const schemas = {
       userId: z.string().uuid().optional(),
       estimated_start_date: z.string().datetime().optional(),
       estimated_end_date: z.string().datetime().optional(),
-      address: z.string().max(500).optional(),
-      city: z.string().max(100).optional(),
-      state: z.string().max(100).optional(),
-      country: z.string().max(100).optional(),
-      postalCode: z.string().max(20).optional(),
-      latitude: z.string().optional(),
-      longitude: z.string().optional(),
+      siteId: z.string().uuid(),
     })
     .refine((data) => data.organizationId || data.userId, {
       message: "Either organizationId or userId must be provided",
@@ -62,13 +53,7 @@ const schemas = {
     estimated_start_date: z.string().datetime().optional(),
     estimated_end_date: z.string().datetime().optional(),
     organizationId: z.string().optional(),
-    address: z.string().max(500).optional().nullable(),
-    city: z.string().max(100).optional().nullable(),
-    state: z.string().max(100).optional().nullable(),
-    country: z.string().max(100).optional().nullable(),
-    postalCode: z.string().max(20).optional().nullable(),
-    latitude: z.string().optional().nullable(),
-    longitude: z.string().optional().nullable(),
+    siteId: z.string().uuid(),
   }),
 
   docsUpload: z.object({
@@ -143,13 +128,7 @@ async function createProject(
         organizationId: data.organizationId,
         userId: data.userId,
         visibility: "private",
-        address: data.address,
-        city: data.city,
-        state: data.state,
-        country: data.country,
-        postalCode: data.postalCode,
-        latitude: data.latitude,
-        longitude: data.longitude,
+        siteId: data.siteId,
       })
       .returning()
       .then((res) => res[0]);
@@ -193,6 +172,7 @@ async function deleteProject(projectId: string) {
 }
 
 async function listProjects(params: {
+  siteId: string;
   organizationId?: string;
   userId?: string;
   search?: string;
@@ -200,10 +180,14 @@ async function listProjects(params: {
   limit?: number;
 }) {
   if (!params.organizationId && !params.userId) {
-    throw new Error("Either organizationId or userId must be provided");
+    throw new Error("Either organizationId or userId must be provided", {});
   }
 
-  let conditions = [];
+  if (!params.siteId) {
+    throw new Error("Please select a site");
+  }
+
+  let conditions = [eq(projects.siteId, params.siteId)];
 
   if (params.organizationId && params.userId) {
     const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
@@ -429,15 +413,7 @@ async function updateProject(
       estimatedEndDate: data.estimated_end_date
         ? new Date(data.estimated_end_date)
         : null,
-      address: data.address !== undefined ? data.address : project.address,
-      city: data.city !== undefined ? data.city : project.city,
-      state: data.state !== undefined ? data.state : project.state,
-      country: data.country !== undefined ? data.country : project.country,
-      postalCode:
-        data.postalCode !== undefined ? data.postalCode : project.postalCode,
-      latitude: data.latitude !== undefined ? data.latitude : project.latitude,
-      longitude:
-        data.longitude !== undefined ? data.longitude : project.longitude,
+      siteId: data.siteId || project.siteId,
     })
     .where(eq(projects.id, projectId))
     .returning()
@@ -783,6 +759,11 @@ const handlers = {
       return;
     }
 
+    if (!req.body.siteId) {
+      res.status(400).json({ error: "Please select a site" });
+      return;
+    }
+
     const validatedData = schemas.createProject.parse(data);
     const project = await createProject(validatedData, req.dbUser?.id);
 
@@ -790,16 +771,21 @@ const handlers = {
   },
 
   listProjects: async (req: Request, res: Response) => {
-    const { search, page, limit } = req.query;
+    const { search, page, limit, siteId } = req.query;
     const orgId = getOrgIdOrUnedfined(req.workspace);
-    const projectsList = await listProjects({
-      organizationId: orgId,
-      userId: req.dbUser?.id,
-      search: search as string,
-      page: page ? parseInt(page as string, 10) : undefined,
-      limit: limit ? parseInt(limit as string, 10) : undefined,
-    });
-    res.json(projectsList);
+    try {
+      const projectsList = await listProjects({
+        siteId: siteId as string,
+        organizationId: orgId,
+        userId: req.dbUser?.id,
+        search: search as string,
+        page: page ? parseInt(page as string, 10) : undefined,
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+      });
+      res.json(projectsList);
+    } catch (error: any) {
+      res.status(error.code || 500).json({ error: error.message });
+    }
   },
 
   getProject: async (req: Request, res: Response) => {
@@ -882,12 +868,35 @@ const handlers = {
 
     res.json(result);
   },
+
+  getUnlinkedProjects: async (req: Request, res: Response) => {
+    const orgId = getOrgIdOrUnedfined(req.workspace);
+
+    const conditions = [isNull(projects.siteId)];
+
+    if (orgId && req.dbUser!.id) {
+      const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
+        req.dbUser!.id,
+        orgId
+      );
+      conditions.push(inArray(projects.id, orgProjectsIds));
+    } else if (req.dbUser!.id) {
+      conditions.push(eq(projects.userId, req.dbUser!.id));
+    }
+
+    const projectsList = await db.query.projects.findMany({
+      where: and(...conditions),
+      orderBy: (projects, { desc }) => [desc(projects.createdAt)],
+    });
+
+    res.json(projectsList);
+  },
 };
 
 export default Router()
   .post(
     "/",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECTS,
       Permissions.Actions.CREATE
     ),
@@ -896,7 +905,7 @@ export default Router()
   .get("/", handlers.listProjects)
   .post(
     "/:projectId/documents",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
       Permissions.Actions.CREATE
     ),
@@ -904,7 +913,7 @@ export default Router()
   )
   .get(
     "/:projectId/documents",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
       Permissions.Actions.READ
     ),
@@ -912,7 +921,7 @@ export default Router()
   )
   .delete(
     "/:projectId/documents",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
       Permissions.Actions.DELETE
     ),
@@ -920,7 +929,7 @@ export default Router()
   )
   .patch(
     "/:projectId",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECTS,
       Permissions.Actions.UPDATE
     ),
@@ -928,7 +937,7 @@ export default Router()
   )
   .get(
     "/:projectId",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECTS,
       Permissions.Actions.READ
     ),
@@ -936,7 +945,7 @@ export default Router()
   )
   .delete(
     "/:projectId",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECTS,
       Permissions.Actions.DELETE
     ),
@@ -944,9 +953,18 @@ export default Router()
   )
   .get(
     "/:projectId/document",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
       Permissions.Actions.READ
     ),
     handlers.getDocument
+  )
+  // Temporary (projects with no site linked)
+  .get(
+    "/unlinked-projects",
+    PermissionsMiddlewares.projects(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.READ
+    ),
+    handlers.getUnlinkedProjects
   );

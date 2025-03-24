@@ -26,11 +26,7 @@ import SiteDialog from "@/features/sites/components/site-mutation-dialog";
 import { CreateProjectDialog } from "@/features/projects/components";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
-export function WorkSpaceSwitcher({
-  state,
-}: {
-  state: "expanded" | "collapsed";
-}) {
+export function WorkspaceDropdown() {
   const router = useRouter();
   const { workspaces, activeWorkspace, setActiveWorkspace } = useWorkspace();
 
@@ -72,16 +68,6 @@ export function WorkSpaceSwitcher({
     router.push(`/projects/${projectId}`);
   };
 
-  const onSiteSelect = (siteId: string) => {
-    const site = hoveredWorkspace?.sites.find((s) => s.id === siteId);
-    if (!hoveredWorkspace || !site) return;
-
-    setActiveWorkspace(hoveredWorkspace);
-    setOpen(false);
-
-    router.push(`/projects?siteId=${siteId}`);
-  };
-
   const handleCreateOrgComplete = async (org: {
     id: string;
     seats: number;
@@ -97,7 +83,6 @@ export function WorkSpaceSwitcher({
 
   const handleWorkspaceChange = (workspace: Workspace) => {
     setActiveWorkspace(workspace);
-    setOpen(false);
     router.push("/");
   };
 
@@ -107,17 +92,10 @@ export function WorkSpaceSwitcher({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-2 px-2 font-normal"
+          className="h-8 gap-1 px-2 font-normal"
         >
-          <WorkspaceLogo workspace={activeWorkspace} />
-          {state === "expanded" && (
-            <>
-              <p className="text-sm">
-                {activeWorkspace?.name || "Select Workspace"}
-              </p>
-              <ChevronDown className="h-4 w-4" />
-            </>
-          )}
+          {activeWorkspace?.name || "Select Workspace"}
+          <ChevronDown className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
 
@@ -147,7 +125,7 @@ export function WorkSpaceSwitcher({
                   setHoveredWorkspaceId(w.id);
                   setHoveredSiteId(null); // Important pour reset les projets
                 }}
-                onClick={() => handleWorkspaceChange(w)}
+                onClick={() => handleWorkspaceChange.bind(null, w)}
               >
                 <WorkspaceLogo workspace={w} />
                 {w.name}
@@ -204,16 +182,10 @@ export function WorkSpaceSwitcher({
                     hoveredSiteId === site.id && "bg-muted"
                   )}
                   onMouseEnter={() => setHoveredSiteId(site.id)}
-                  onClick={() => onSiteSelect(site.id)}
                 >
                   {site.name}
                 </div>
               ))}
-              {filteredSites.length === 0 && (
-                <div className="px-3 text-sm text-center text-muted-foreground">
-                  No sites found
-                </div>
-              )}
             </div>
 
             <div className="border-t p-2">
@@ -229,11 +201,6 @@ export function WorkSpaceSwitcher({
                   </Button>
                 }
                 mode={"create"}
-                organizationId={
-                  hoveredWorkspace.type === "organization"
-                    ? hoveredWorkspace.id
-                    : undefined
-                }
               />
             </div>
           </div>
@@ -263,11 +230,6 @@ export function WorkSpaceSwitcher({
                   {project.name}
                 </div>
               ))}
-              {filteredProjects.length === 0 && (
-                <div className="px-3 text-sm text-center text-muted-foreground">
-                  No projects found
-                </div>
-              )}
             </div>
             <div className="border-t p-2">
               <CreateProjectDialog
@@ -291,8 +253,7 @@ export function WorkSpaceSwitcher({
   );
 }
 
-const WorkspaceLogo = ({ workspace }: { workspace?: Workspace | null }) => {
-  if (!workspace) return null;
+const WorkspaceLogo = ({ workspace }: { workspace: Workspace }) => {
   return (
     <div className="flex h-6 w-6 items-center justify-center shrink-0">
       <Avatar className="h-6 w-6 rounded-full bg-transparent">

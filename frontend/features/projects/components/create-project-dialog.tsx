@@ -26,9 +26,10 @@ import { useCreateProjectMutation } from "../api";
 
 interface CreateProjectDialogProps {
   trigger: React.ReactNode;
+  siteId?: string | null;
 }
 
-const CreateProjectDialog = ({ trigger }: CreateProjectDialogProps) => {
+const CreateProjectDialog = ({ trigger, siteId }: CreateProjectDialogProps) => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -37,15 +38,6 @@ const CreateProjectDialog = ({ trigger }: CreateProjectDialogProps) => {
     projectNumber: "",
     estimatedStartDate: "",
     estimatedEndDate: "",
-    location: {
-      address: "",
-      city: "",
-      state: "",
-      country: "",
-      postalCode: "",
-      latitude: "",
-      longitude: "",
-    },
   });
 
   const createProjectMutation = useCreateProjectMutation();
@@ -53,26 +45,19 @@ const CreateProjectDialog = ({ trigger }: CreateProjectDialogProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate location is provided
-    if (!formData.location.address) {
-      toast.error("Location is required");
+    if (!siteId) {
+      toast.error("Please select a site");
       return;
     }
 
     try {
       const project = await createProjectMutation.mutateAsync({
+        siteId,
         name: formData.name,
         description: formData.description,
         project_number: formData.projectNumber,
         estimated_start_date: formData.estimatedStartDate || undefined,
         estimated_end_date: formData.estimatedEndDate || undefined,
-        address: formData.location.address,
-        city: formData.location.city,
-        state: formData.location.state,
-        country: formData.location.country,
-        postalCode: formData.location.postalCode,
-        latitude: formData.location.latitude,
-        longitude: formData.location.longitude,
       });
 
       setFormData({
@@ -81,15 +66,6 @@ const CreateProjectDialog = ({ trigger }: CreateProjectDialogProps) => {
         projectNumber: "",
         estimatedStartDate: "",
         estimatedEndDate: "",
-        location: {
-          address: "",
-          city: "",
-          state: "",
-          country: "",
-          postalCode: "",
-          latitude: "",
-          longitude: "",
-        },
       });
       setOpen(false);
       router.push(`/projects/${project.id}`);

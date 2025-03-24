@@ -49,15 +49,6 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
     projectNumber: "",
     estimatedStartDate: "",
     estimatedEndDate: "",
-    location: {
-      address: "",
-      city: "",
-      state: "",
-      country: "",
-      postalCode: "",
-      latitude: "",
-      longitude: "",
-    },
   });
 
   // Handle form submission
@@ -69,13 +60,6 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
         data: {
           name: formData.name,
           description: formData.description,
-          address: formData.location?.address || undefined,
-          city: formData.location?.city || undefined,
-          state: formData.location?.state || undefined,
-          country: formData.location?.country || undefined,
-          postalCode: formData.location?.postalCode || undefined,
-          latitude: formData.location?.latitude || undefined,
-          longitude: formData.location?.longitude || undefined,
           project_number: formData.projectNumber || undefined,
           estimated_start_date: formData.estimatedStartDate || undefined,
           estimated_end_date: formData.estimatedEndDate || undefined,
@@ -112,15 +96,6 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
         estimatedEndDate: project.estimatedEndDate || "",
         estimatedStartDate: project.estimatedStartDate || "",
         projectNumber: project.projectNumber || "",
-        location: {
-          address: project.address || "",
-          city: project.city || "",
-          state: project.state || "",
-          country: project.country || "",
-          postalCode: project.postalCode || "",
-          latitude: project.latitude || "",
-          longitude: project.longitude || "",
-        },
       });
     }
   }, [project]);

@@ -15,6 +15,7 @@ import {
   projects,
   resources,
   roles,
+  sites,
 } from "../../config/schema";
 import { permissionsOps } from "./permissions.ops";
 import Constants from "./permissions.constants";
@@ -439,6 +440,24 @@ export class PermissionManager {
   }
 
   /**
+   * Checks if a site is owned by a user (would mean that it belongs to his personal workspace)
+   * @param {string} userId - The user ID
+   * @param {string} siteId - The site ID
+   * @returns {Promise<boolean>} - True if the user owns the site, false otherwise
+   * @memberof PermissionManager
+   * @example
+   * const isUserSite = await PermissionManager.isUserSite("user-id", "site-id");
+   * console.log(isUserSite); // true
+   **/
+  static async isUserSite(userId: string, siteId: string): Promise<boolean> {
+    const site = await db.query.sites.findFirst({
+      where: and(eq(sites.id, siteId), eq(sites.userId, userId)),
+    });
+
+    return !!site;
+  }
+
+  /**
    * Checks if a user is a project member
    * @param {string} userId - The user ID
    * @param {string} projectId - The project ID
@@ -518,6 +537,75 @@ export class PermissionManager {
       return projectsList
         .map((project) => project.projectId)
         .filter((projectId): projectId is string => projectId !== null);
+    }
+
+    return [];
+  }
+
+  static async getUserSitesIds(
+    userId: string,
+    orgId: string
+  ): Promise<string[]> {
+    const userRole = await db.query.memberRoles.findFirst({
+      where: and(
+        eq(memberRoles.organizationId, orgId),
+        eq(memberRoles.userId, userId)
+      ),
+      with: {
+        role: true,
+      },
+    });
+
+    if (!userRole) {
+      return [];
+    }
+
+    if (
+      [
+        Permissions.Roles.ORGANIZATION_ADMIN,
+        Permissions.Roles.ORGANIZATION_MANAGER,
+      ].includes(userRole.role.name as Permissions.Roles)
+    ) {
+      const sitesList = await db.query.sites.findMany({
+        where: eq(sites.organizationId, orgId),
+      });
+
+      return sitesList.map((site) => site.id);
+    }
+
+    if (
+      [
+        Permissions.Roles.PROJECT_MANAGER,
+        Permissions.Roles.PROJECT_MEMBER,
+      ].includes(userRole.role.name as Permissions.Roles)
+    ) {
+      // Get the user's projects
+      const memberProjects = await db
+        .select({ projectId: memberRoles.projectId })
+        .from(memberRoles)
+        .where(
+          and(
+            eq(memberRoles.organizationId, orgId),
+            eq(memberRoles.userId, userId)
+          )
+        );
+
+      const projectIds = memberProjects
+        .map((p) => p.projectId)
+        .filter((id): id is string => !!id);
+
+      if (projectIds.length === 0) return [];
+
+      // Get the projects sites
+      const linkedProjects = await db
+        .selectDistinct({ siteId: projects.siteId })
+        .from(projects)
+        .where(inArray(projects.id, projectIds));
+
+      // Return the sites IDs
+      return linkedProjects
+        .map((p) => p.siteId)
+        .filter((id): id is string => !!id);
     }
 
     return [];
