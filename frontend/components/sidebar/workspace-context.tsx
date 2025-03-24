@@ -53,7 +53,7 @@ export const WorkspaceProvider = ({
       workspace
     )}; path=/; max-age=2147483647; secure${
       process.env.NODE_ENV === "production"
-        ? "; domain=.syyclops.com; samesite=lax"
+        ? "; domain=.syykick.com; samesite=lax"
         : "; samesite=lax"
     }`;
 

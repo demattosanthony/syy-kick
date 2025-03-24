@@ -43,7 +43,7 @@ const cookieOpts = {
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax",
   path: "/",
-  domain: process.env.NODE_ENV === "production" ? ".syyclops.com" : "",
+  domain: process.env.NODE_ENV === "production" ? ".syykick.com" : "",
   maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 year
 } as const;
 
