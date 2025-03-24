@@ -16,11 +16,22 @@ export default async function ProjectsPage({
   const search = resolvedSearchParams.search || "";
 
   // Fetch projects server-side
-  const projectsData = await api.projects.listProjects({
-    search,
-    page: 1,
-    limit: 10,
-  });
+  const projectsData = await api.projects
+    .listProjects({
+      search,
+      page: 1,
+      limit: 10,
+    })
+    .catch(() => ({
+      data: [],
+      pagination: {
+        page: 1,
+        limit: 10,
+        totalCount: 0,
+        totalPages: 0,
+        hasMore: false,
+      },
+    }));
 
   return (
     <main className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">
@@ -28,12 +39,12 @@ export default async function ProjectsPage({
         <h1 className="text-2xl font-bold ">Projects</h1>
 
         {/* Client component needs to be wrapped */}
-        <div suppressHydrationWarning>
+        <div>
           <CreateProjectDialog trigger={<Button>Create Project</Button>} />
         </div>
       </div>
       <SearchBar initialSearch={search} />
-      <ProjectsList initialProjects={projectsData} searchQuery={search} />
+      <ProjectsList initialProjects={projectsData} />
     </main>
   );
 }

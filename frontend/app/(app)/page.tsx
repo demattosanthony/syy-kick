@@ -4,9 +4,11 @@ import api from "@/lib/api";
 
 export default async function Home() {
   const user = await api.auth.me();
-  const { data } = await api.projects.listProjects({
-    limit: 6,
-  });
+  const { data } = await api.projects
+    .listProjects({
+      limit: 6,
+    })
+    .catch(() => ({ data: [] }));
 
   return (
     <Suspense>

@@ -14,7 +14,7 @@ export default async function ProjectPage({
   params: Promise<{ projectId: string }>;
 }) {
   const pid = (await params).projectId;
-  const project = await api.projects.getProject(pid);
+  const project = await api.projects.getProject(pid).catch(() => null);
 
   if (!project) {
     return null;

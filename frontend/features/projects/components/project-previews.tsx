@@ -2,9 +2,7 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { useInfiniteProjectsQuery } from "../api";
 import { Project } from "@/types/project";
-import { useRouter } from "next/navigation";
 import CreateProjectDialog from "./create-project-dialog";
 import { usePermissions } from "@/features/permissions/context";
 import Image from "next/image";
@@ -53,13 +51,8 @@ const PinStyles = () => (
   `}</style>
 );
 const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
-  const router = useRouter();
-
   const { canCreateOrgProjects } = usePermissions();
 
-  const handleProjectClick = (projectId: string) => {
-    router.push(`/projects/${projectId}`);
-  };
   return (
     <div className="w-full max-w-[950px] px-6 mx-auto">
       <PinStyles />
@@ -232,20 +225,6 @@ function AddProjectCard() {
         }
       />
     </motion.div>
-  );
-}
-
-function ProjectCardSkeleton() {
-  return (
-    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden w-[288px]">
-      <div className="h-[120px] w-full bg-muted animate-pulse"></div>
-      <div className="p-3">
-        <div className="h-4 bg-muted rounded animate-pulse w-3/4 mb-2"></div>
-        <div className="flex items-center justify-between">
-          <div className="h-3 bg-muted rounded animate-pulse w-1/3"></div>
-        </div>
-      </div>
-    </div>
   );
 }
 

@@ -246,6 +246,7 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
       return `[${match}](${url})`;
     });
   };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>

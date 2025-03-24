@@ -1,5 +1,6 @@
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import api from "@/lib/api";
+import { Project } from "@/types/project";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 export function useInfiniteProjectsQuery({
@@ -9,7 +10,19 @@ export function useInfiniteProjectsQuery({
 }: {
   search?: string;
   limit?: number;
-  initialData?: any;
+  initialData?: {
+    pages: {
+      data: Project[];
+      pagination: {
+        page: number;
+        limit: number;
+        totalCount: number;
+        totalPages: number;
+        hasMore: boolean;
+      };
+    }[];
+    pageParams: number[];
+  };
 } = {}) {
   const { activeWorkspace } = useWorkspace();
 

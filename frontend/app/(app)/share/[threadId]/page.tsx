@@ -12,7 +12,7 @@ export default async function ShareThreadPage({
 }) {
   const threadId = (await params).threadId;
 
-  const thread = await api.threads.getPublicThread(threadId);
+  const thread = await api.threads.getPublicThread(threadId).catch(() => null);
   const user = await api.auth.me();
 
   if (!thread || thread.isPublic !== true) {
@@ -30,7 +30,6 @@ export default async function ShareThreadPage({
       initalMessages={initialMessages}
       thread={thread}
       viewOnly
-      messagesAreBeingFetched={false}
       showCloneThreadButton={isAllowedToCloneThread}
     />
   );

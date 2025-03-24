@@ -12,7 +12,6 @@ import { useInfiniteProjectsQuery } from "../api";
 
 const ProjectsList = ({
   initialProjects,
-  searchQuery,
 }: {
   initialProjects: {
     data: Project[];
@@ -24,7 +23,6 @@ const ProjectsList = ({
       hasMore: boolean;
     };
   };
-  searchQuery: string;
 }) => {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
