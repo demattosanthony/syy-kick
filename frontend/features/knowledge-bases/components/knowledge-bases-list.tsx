@@ -6,11 +6,24 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRelativeTimeString } from "@/lib/utils";
-import { FolderClosed, FolderOpen } from "lucide-react";
+import { Book, BookOpen } from "lucide-react";
 import { useInfiniteKnowledgeBasesQuery } from "../api/get-knowledge-bases";
 import { KnowledgeBase } from "../types/knowledge-bases";
 
-const KnowledgeBasesList = () => {
+const KnowledgeBasesList = ({
+  initalData,
+}: {
+  initalData: {
+    data: KnowledgeBase[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalCount: number;
+      totalPages: number;
+      hasMore: boolean;
+    };
+  };
+}) => {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -20,6 +33,10 @@ const KnowledgeBasesList = () => {
     useInfiniteKnowledgeBasesQuery({
       search,
       limit: 10,
+      initalData: {
+        pages: [initalData],
+        pageParams: [1],
+      },
     });
 
   // Flatten the pages into a single array of knowledge bases
@@ -93,8 +110,8 @@ function KnowledgeBaseItem({
       <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full group">
         <div className="flex items-center gap-4 min-w-0">
           <div className="text-muted-foreground relative">
-            <FolderClosed className="w-6 h-6 absolute text-blue-400 fill-blue-400 transition-opacity duration-200 group-hover:opacity-0" />
-            <FolderOpen className="w-6 h-6 text-blue-400 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+            <Book className="w-6 h-6 absolute transition-opacity duration-200 group-hover:opacity-0" />
+            <BookOpen className="w-6 h-6 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
           </div>
 
           <div className="flex-1 min-w-0">

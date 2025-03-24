@@ -94,7 +94,7 @@ const CreateKnowledgeBaseDialog = ({
         <form onSubmit={handleSubmit} className="space-y-4 ">
           <div className="space-y-2">
             <Label htmlFor="name" className="text-sm font-medium">
-              Name
+              Name <span className="text-red-500">*</span>
             </Label>
             <Input
               id="name"
@@ -111,7 +111,7 @@ const CreateKnowledgeBaseDialog = ({
 
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium">
-              Description (optional)
+              Description
             </Label>
             <Textarea
               id="description"

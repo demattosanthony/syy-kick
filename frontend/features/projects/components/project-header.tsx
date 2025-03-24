@@ -7,7 +7,6 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Project } from "@/types/project";
 import { ProjectAddFileButton } from "@/features/projects/components";
-import { useMeQuery } from "@/features/user/api";
 import { usePermissions } from "@/features/permissions/context";
 
 const ProjectHeader = ({ project }: { project: Project }) => {
