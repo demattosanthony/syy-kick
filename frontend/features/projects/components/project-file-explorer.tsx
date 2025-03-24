@@ -249,14 +249,22 @@ export default function ProjectFileExplorer({
       >
         {isDragging && (
           <div
-            className="absolute inset-0 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50/80 z-10"
+            className="absolute inset-0 flex items-center justify-center border-2 border-dashed rounded-lg z-10"
+            style={{
+              borderColor: "hsl(var(--drag-drop-border))",
+              backgroundColor: "hsl(var(--drag-drop-background) / 0.8)",
+            }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <span className="text-sm text-gray-500 flex items-center gap-2">
+            <span
+              className="text-sm flex items-center gap-2"
+              style={{ color: "hsl(var(--drag-drop-text))" }}
+            >
               <svg
-                className="w-5 h-5 text-gray-400"
+                className="w-5 h-5"
+                style={{ color: "hsl(var(--drag-drop-text))" }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -312,14 +320,22 @@ export default function ProjectFileExplorer({
       {/* If near drag area, show dashed zone */}
       {isDragging && (
         <div
-          className="mb-2 w-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-2 bg-gray-50 transition-all duration-200"
+          className="mb-2 w-full flex items-center justify-center border-2 border-dashed rounded-lg py-2 transition-all duration-200 dark:border-gray-700 dark:bg-gray-800"
+          style={{
+            borderColor: "hsl(var(--drag-drop-border))",
+            backgroundColor: "hsl(var(--drag-drop-background))",
+          }}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <span className="text-sm text-gray-500 flex items-center gap-2">
+          <span
+            className="text-sm flex items-center gap-2"
+            style={{ color: "hsl(var(--drag-drop-text))" }}
+          >
             <svg
-              className="w-5 h-5 text-gray-400"
+              className="w-5 h-5"
+              style={{ color: "hsl(var(--drag-drop-text))" }}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -335,12 +351,11 @@ export default function ProjectFileExplorer({
           </span>
         </div>
       )}
-
       <div
         ref={explorerRef}
         className={cn(
           "divide-y w-full max-w-full overflow-x-hidden transition-all duration-200",
-          isDragging && "border-2 border-gray-400 bg-gray-50 rounded-lg"
+          isDragging && "border-2 border-border bg-accent/50 rounded-lg"
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

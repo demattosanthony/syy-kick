@@ -1,5 +1,5 @@
 // External dependencies
-import { CoreMessage, tool } from "ai";
+import { CoreMessage, generateText, tool } from "ai";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -34,6 +34,7 @@ import {
 import { DbUser } from "../../createAuthToken";
 import { PermissionManager } from "../permissions/permissions.tools";
 import { Permissions } from "../permissions/permissions.types";
+import { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -420,37 +421,71 @@ Tips:
       query: z.string(),
     }),
     execute: async ({ query }) => {
-      console.log("Searching web for: ", query);
+      const { text, sources, providerMetadata } = await generateText({
+        model: MODELS["gemini-2.0-flash-online"].model,
+        prompt: `Search the web for information on "${query}"`,
+        maxTokens: 1200,
+        temperature: 0,
+      });
 
-      interface WebSearchResult {
-        data: {
-          text: string;
-          title: string;
-          description: string;
-          url: string;
-          usage?: { tokens: number };
-        }[];
+      const metadata = providerMetadata?.google as
+        | Record<string, any>
+        | undefined;
+      const groundingMetadata = metadata?.groundingMetadata;
+      let formattedText = text;
+
+      // Add citations to text if groundingMetadata exists
+      if (groundingMetadata?.groundingSupports?.length) {
+        // Sort supports by startIndex descending to avoid position shifts
+        const supports = [...groundingMetadata.groundingSupports].sort(
+          (a, b) => (b.segment?.startIndex ?? 0) - (a.segment?.startIndex ?? 0)
+        );
+
+        for (const support of supports) {
+          const { segment, groundingChunkIndices } = support;
+          if (
+            segment?.endIndex != null &&
+            groundingChunkIndices?.length &&
+            groundingChunkIndices[0] < sources.length
+          ) {
+            // Insert citation at the end of the segment
+            const sourceIndex = groundingChunkIndices[0];
+            formattedText =
+              formattedText.substring(0, segment.endIndex) +
+              ` [${sourceIndex + 1}]` +
+              formattedText.substring(segment.endIndex);
+          }
+        }
       }
 
-      const response = await fetch(`https://s.jina.ai/?q=${query}&num=4`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${process.env.JINA_API_KEY}`,
-          "X-Engine": "direct",
-          "X-Retain-Images": "none",
-          "X-Return-Format": "text",
-        },
-      });
+      // Process sources to resolve redirect URLs
+      const processedSources = await Promise.all(
+        sources.map(async (source) => {
+          if (
+            source.url?.includes(
+              "vertexaisearch.cloud.google.com/grounding-api-redirect"
+            )
+          ) {
+            try {
+              const response = await fetch(source.url, {
+                method: "HEAD",
+                redirect: "manual",
+              });
+              const location = response.headers.get("location");
+              if (location) return { ...source, url: location };
+            } catch (error) {
+              console.error("Error resolving redirect URL:", error);
+            }
+          }
+          return source;
+        })
+      );
 
-      let results = (await response.json()) as WebSearchResult;
-
-      // Remove usage property from results
-      results.data = results.data.map((result) => {
-        const { usage, ...rest } = result;
-        return rest;
-      });
-
-      return results.data;
+      return {
+        text: formattedText,
+        sources: processedSources,
+        queries: groundingMetadata?.webSearchQueries,
+      };
     },
   });
 

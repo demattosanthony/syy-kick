@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import { PRICING_PLANS } from "@/lib/pricing";
 import { CreateOrgForm } from "@/features/organizations/components";
 import { useMeQuery } from "@/features/user/api";
+import Image from "next/image";
 
 export function WorkSpaceSwitcher({
   onDropdownOpenChange,
@@ -84,10 +85,12 @@ export function WorkSpaceSwitcher({
     return (
       <div className="flex h-6 w-6 items-center justify-center  shrink-0">
         {workspace.logo && (
-          <img
+          <Image
             src={workspace.logo}
             alt={workspace.name}
-            className="h-6 w-6 rounded-full"
+            width={24}
+            height={24}
+            className="h-6 w-6 rounded-full object-cover"
           />
         )}
       </div>
