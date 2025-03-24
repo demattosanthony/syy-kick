@@ -38,10 +38,7 @@ export default async function ProjectsPage({
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold ">Projects</h1>
 
-        {/* Client component needs to be wrapped */}
-        <div>
-          <CreateProjectDialog trigger={<Button>Create Project</Button>} />
-        </div>
+        <CreateProjectDialog trigger={<Button>Create Project</Button>} />
       </div>
       <SearchBar initialSearch={search} />
       <ProjectsList initialProjects={projectsData} />
