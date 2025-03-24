@@ -6,7 +6,7 @@ import {
   ProjectLayout,
   ProjectSidebar,
 } from "@/features/projects/components";
-import { getProject } from "@/app/actions";
+import api from "@/lib/api";
 
 export default async function ProjectPage({
   params,
@@ -14,7 +14,7 @@ export default async function ProjectPage({
   params: Promise<{ projectId: string }>;
 }) {
   const pid = (await params).projectId;
-  const project = await getProject(pid);
+  const project = await api.projects.getProject(pid).catch(() => null);
 
   if (!project) {
     return null;

@@ -540,6 +540,7 @@ const threadsOps = {
       // Pipe the data out as SSE
       const streamResult = result.pipeDataStreamToResponse(res, {
         sendReasoning: true,
+        sendSources: true,
       });
 
       return streamResult;

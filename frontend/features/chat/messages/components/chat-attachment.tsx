@@ -37,6 +37,7 @@ export default function ChatAttachment({
                 <DialogTitle className="hidden" />
                 <div className="relative w-full h-full overflow-auto">
                   <img
+                    key={index}
                     src={attachment.url}
                     alt="user attachment"
                     className="w-full object-contain"

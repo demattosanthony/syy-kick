@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import PdfThumbnail from "../pdf-thumbnail";
+import Image from "next/image";
 
 interface FileUploadSectionProps {
   uploads: Array<{ type: string; preview: string }>;
@@ -20,7 +21,9 @@ export function FileUploadSection({
           className="relative h-24 w-24 rounded-lg overflow-hidden border border-border shadow-sm group"
         >
           {upload.type === "image" ? (
-            <img
+            <Image
+              height={96}
+              width={96}
               src={upload.preview}
               alt={`Upload ${index + 1}`}
               className="h-full w-full object-cover transition-transform group-hover:scale-105"
