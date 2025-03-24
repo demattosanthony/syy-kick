@@ -1,8 +1,13 @@
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import api from "@/lib/api";
+import { Thread } from "@/types/chat";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
-export function useThreadsQuery(search?: string, projectId?: string) {
+export function useThreadsQuery(
+  search?: string,
+  projectId?: string,
+  initalThreads?: Thread[]
+) {
   const { activeWorkspace } = useWorkspace();
 
   return useInfiniteQuery({
@@ -20,5 +25,13 @@ export function useThreadsQuery(search?: string, projectId?: string) {
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 1,
+    initialData: {
+      pages: [
+        initalThreads
+          ? { threads: initalThreads, nextPage: undefined }
+          : { threads: [], nextPage: undefined },
+      ],
+      pageParams: [1],
+    },
   });
 }
