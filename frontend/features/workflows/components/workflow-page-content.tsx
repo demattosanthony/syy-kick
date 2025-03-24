@@ -3,22 +3,24 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { Loader2, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useWorkflowQuery } from "../api";
 import { Attachment } from "ai";
 import api from "@/lib/api";
 import ProcessingIndicator from "./workflow-processing";
 import ErrorDisplay from "./workflow-error-display";
 import OutputDisplay from "./workflow-output-display";
 import FileUploadInput from "./workflow-file-input";
+import { Workflow } from "../workflows.types";
 
 type ExtendedAttachment = Attachment & { file_key: string };
 
 export default function WorkflowPageContent({
   workflowId,
+  workflow,
 }: {
   workflowId: string;
+  workflow?: Workflow;
 }) {
   const router = useRouter();
   const [files, setFiles] = useState<Record<string, File | null>>({});
@@ -29,7 +31,6 @@ export default function WorkflowPageContent({
   } | null>(null);
   const hasAutoHiddenReasoning = useRef(false);
 
-  const { data: workflow, isLoading } = useWorkflowQuery(workflowId);
   const { handleSubmit, messages, setInput, status, setMessages } = useChat({
     api: `${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/run`,
     credentials: "include",
@@ -169,15 +170,6 @@ export default function WorkflowPageContent({
     title: "Output",
     description: "View the final results",
   };
-
-  // #### Render Logic
-  if (isLoading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   if (!workflow) {
     return (
