@@ -15,10 +15,8 @@ import {
 import {
   documentEmbeddings,
   documents,
-  memberRoles,
   organizations,
   projects,
-  users,
 } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
@@ -29,8 +27,6 @@ import { getOrgIdOrUnedfined } from "../utils";
 import { permissions, Workspace } from "../middleware";
 import { Permissions } from "./permissions/permissions.types";
 import { PermissionManager } from "./permissions/permissions.tools";
-import { permissionsOps } from "./permissions/permissions.ops";
-import Constants from "./permissions/permissions.constants";
 import PermissionsFactory from "./permissions/permissions.factory";
 
 const schemas = {

@@ -8,7 +8,9 @@ export function useDeleteKnowledgeBaseContentMutation() {
     mutationFn: ({ kbId, path }: { kbId: string; path: string }) =>
       api.knowledgeBases.deleteDocs(kbId, path),
     onSuccess: (_, { kbId }) => {
-      queryClient.invalidateQueries({ queryKey: ["kb-docs", kbId] });
+      queryClient.invalidateQueries({
+        queryKey: ["knowledge-base-docs", kbId],
+      });
     },
   });
 }

@@ -287,17 +287,17 @@ export default function ProjectFileExplorer({
     return (
       <div
         ref={explorerRef}
-        className="relative flex flex-col items-center justify-center py-12 px-4 text-center w-full max-w-full"
+        className="relative flex flex-col items-center justify-center py-12 px-4 text-center w-full max-w-full bg-background"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         {isDragging && (
           <div
-            className="absolute inset-0 flex items-center justify-center border-2 border-dashed rounded-lg z-10"
+            className="absolute inset-0 flex items-center justify-center border-2 border-dashed rounded-lg z-10 backdrop-blur-sm"
             style={{
               borderColor: "hsl(var(--drag-drop-border))",
-              backgroundColor: "hsl(var(--drag-drop-background) / 0.8)",
+              backgroundColor: "hsl(var(--drag-drop-background) / 0.9)",
             }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}

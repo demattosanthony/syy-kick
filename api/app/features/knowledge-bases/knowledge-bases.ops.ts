@@ -1,10 +1,12 @@
-import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { documents, knowledgeBases } from "../../config/schema";
 import db from "../../config/db";
 import { schemas } from "./knowledge-bases.schemas";
 import { getKnowledgeBaseOrThrow } from "./knowledge-bases.utils";
 import s3 from "../../config/s3";
+import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../../config/unstructured";
+import { queue } from "../../doc-job-queue";
 
 export async function createKnowledgeBase(
   data: z.infer<typeof schemas.createKnowledgeBase>,
@@ -73,8 +75,6 @@ export async function getKnowledgeBase(knowledgeBaseId: string) {
 }
 
 export async function deleteKnowledgeBase(knowledgeBaseId: string) {
-  const kb = await getKnowledgeBaseOrThrow(knowledgeBaseId);
-
   // Delete associated documents from S3 and DB
   const docs = await db.query.documents.findMany({
     where: eq(documents.knowledgeBaseId, knowledgeBaseId),
@@ -110,47 +110,245 @@ export async function uploadDocs(
 ) {
   await getKnowledgeBaseOrThrow(knowledgeBaseId);
 
-  const createdDocs = [];
-  for (const entry of data.entries) {
+  // Keep track of any paths created this run to avoid re-inserting
+  const createdThisRun = new Set<string>();
+  const createdDocs: any[] = [];
+
+  // Sort entries so folders are created before files; if two folders, shorter path first
+  const sortedEntries = [...data.entries].sort((a, b) => {
+    if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+    return a.path.length - b.path.length;
+  });
+
+  for (const entry of sortedEntries) {
+    // 1. Normalize the incoming path
+    const normalizedEntryPath = normalizePath(entry.path);
+
+    // 2. Combine with basePath if provided
     const fullPath = data.basePath
-      ? `${data.basePath}/${entry.path}`
-      : entry.path;
-    const [doc] = await db
+      ? normalizePath(`${data.basePath}/${normalizedEntryPath}`)
+      : normalizedEntryPath;
+
+    // Extract the final name (file or folder name)
+    const finalName = fullPath.split("/").pop()!;
+
+    // Skip hidden files/folders, i.e., any whose final name begins with "."
+    if (finalName.startsWith(".")) {
+      console.log(`Skipping hidden file/folder: ${fullPath}`);
+      continue;
+    }
+
+    // If we've already processed this path in the same request, skip
+    if (createdThisRun.has(fullPath)) {
+      continue;
+    }
+
+    // 3. Check if there's already a doc with this exact path in DB
+    const existingDoc = await db.query.documents.findFirst({
+      where: and(
+        eq(documents.knowledgeBaseId, knowledgeBaseId),
+        eq(documents.path, fullPath)
+      ),
+    });
+    if (existingDoc) {
+      continue; // Skip existing documents
+    }
+
+    // 4. Ensure parent folder exists (only if there's a parent path)
+    let parentId: string | null = null;
+    if (fullPath.includes("/")) {
+      parentId = await ensureParentFolderExists(knowledgeBaseId, fullPath);
+    }
+
+    // 5. Insert the folder or file
+    const [newDoc] = await db
       .insert(documents)
       .values({
         name: fullPath.split("/").pop()!,
         type: entry.type,
         path: fullPath,
+        parentId,
         knowledgeBaseId,
-        fileKey: entry.type === "file" ? entry.fileKey : undefined,
-        size: entry.size,
-        mimeType: entry.mimeType,
-        fileHash: entry.sha256,
+        ...(entry.type === "file"
+          ? {
+              fileKey: entry.fileKey,
+              size: entry.size,
+              mimeType: entry.mimeType,
+              fileHash: entry.sha256,
+            }
+          : {}),
       })
       .returning();
-    createdDocs.push(doc);
+
+    // Mark this path as created
+    createdThisRun.add(fullPath);
+    createdDocs.push(newDoc);
   }
+
+  // Process uploaded files in the background if needed
+  for (const doc of createdDocs) {
+    const extension = doc.name.toLowerCase().match(/\.[^.]*$/)?.[0];
+    if (
+      doc.type === "file" &&
+      doc.fileKey &&
+      ALLOWED_UNSTRUCTURED_EXTENSIONS.includes(extension)
+    ) {
+      await queue.addToQueue({
+        fileKey: doc.fileKey,
+        fileName: doc.path,
+        mimeType: doc.mimeType || "",
+        documentId: doc.id,
+      });
+    }
+  }
+
   return { success: true };
+}
+
+/**
+ * Recursively creates missing folder ancestors if they don't exist.
+ * Returns the ID of the final parent folder.
+ */
+async function ensureParentFolderExists(
+  knowledgeBaseId: string,
+  fullPath: string
+): Promise<string | null> {
+  // If there's no slash, it means there's no parent folder, e.g. "myFolder"
+  if (!fullPath.includes("/")) {
+    return null;
+  }
+
+  // e.g. parentPath = "folderA" or "folderA/folderB"
+  const parentPath = fullPath.split("/").slice(0, -1).join("/");
+  const normalizedParentPath = normalizePath(parentPath);
+
+  if (!normalizedParentPath) {
+    // This means fullPath was something like "/file.txt" after trimming
+    // or there's effectively no real parent. Return null.
+    return null;
+  }
+
+  // Check if parent folder already exists
+  let parent = await db.query.documents.findFirst({
+    where: and(
+      eq(documents.knowledgeBaseId, knowledgeBaseId),
+      eq(documents.path, normalizedParentPath),
+      eq(documents.type, "folder")
+    ),
+  });
+
+  // If not found, recursively create that parent
+  if (!parent) {
+    // Create the parent's parent first
+    const grandParentId = await ensureParentFolderExists(
+      knowledgeBaseId,
+      normalizedParentPath
+    );
+
+    // Insert the parent folder
+    const [parentDoc] = await db
+      .insert(documents)
+      .values({
+        name: normalizedParentPath.split("/").pop()!,
+        path: normalizedParentPath,
+        type: "folder",
+        knowledgeBaseId,
+        parentId: grandParentId,
+      })
+      .returning();
+
+    parent = parentDoc;
+  }
+
+  return parent.id;
+}
+
+/**
+ * Normalizes a path:
+ * - Trims leading/trailing slashes
+ * - Replaces multiple slashes with a single slash
+ */
+function normalizePath(input: string) {
+  // Remove leading/trailing slashes
+  const trimmed = input.replace(/^\/+|\/+$/g, "");
+  // Replace multiple consecutive slashes with single
+  return trimmed.replace(/\/{2,}/g, "/");
 }
 
 export async function getDocs(knowledgeBaseId: string, path: string = "") {
   await getKnowledgeBaseOrThrow(knowledgeBaseId);
-  const docs = await db.query.documents.findMany({
-    where: and(
-      eq(documents.knowledgeBaseId, knowledgeBaseId),
-      path === "" ? isNull(documents.parentId) : eq(documents.path, path)
-    ),
-  });
 
-  return await Promise.all(
-    docs.map(async (doc) => {
-      if (doc.fileKey) {
-        const url = await s3.presign(doc.fileKey, { expiresIn: 60 * 60 });
-        return { ...doc, url };
+  try {
+    const normalizedPath = path.trim();
+
+    // If path is not empty, first find the folder document to get its ID
+    let parentId: string | null = null;
+    if (normalizedPath !== "") {
+      const folder = await db.query.documents.findFirst({
+        where: and(
+          eq(documents.knowledgeBaseId, knowledgeBaseId),
+          eq(documents.path, normalizedPath),
+          eq(documents.type, "folder")
+        ),
+      });
+
+      // Return an empty array if folder not found
+      if (!folder) {
+        console.log(
+          `Folder not found at path: ${normalizedPath} for knowledge base: ${knowledgeBaseId}`
+        );
+        return [];
       }
-      return doc;
-    })
-  );
+      parentId = folder.id;
+    }
+
+    const docs = await db.query.documents.findMany({
+      where: and(
+        eq(documents.knowledgeBaseId, knowledgeBaseId),
+        parentId === null
+          ? isNull(documents.parentId)
+          : eq(documents.parentId, parentId)
+      ),
+      with: {
+        processingJob: true,
+      },
+      orderBy: [asc(documents.type), asc(documents.name)],
+    });
+
+    // Add presigned URLs for files and sort the results
+    const docsWithUrls = await Promise.all(
+      docs.map(async (doc) => {
+        if (doc.type === "file" && doc.fileKey) {
+          const url = await s3.presign(doc.fileKey, { expiresIn: 60 * 60 });
+          return { ...doc, url };
+        }
+        return doc;
+      })
+    );
+
+    // Filter out dot files and sort GitHub-style
+    return docsWithUrls
+      .filter((doc) => !doc.name.startsWith("."))
+      .sort((a, b) => {
+        // Sort by type (folders first)
+        if (a.type !== b.type) {
+          return a.type === "folder" ? -1 : 1;
+        }
+
+        // Then sort by name (case-insensitive)
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+
+        // Natural sort for numbers
+        return nameA.localeCompare(nameB, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      });
+  } catch (error) {
+    console.log("Error getting knowledge base contents:", error);
+    throw new Error("Failed to fetch knowledge base contents");
+  }
 }
 
 export async function deleteDocs(knowledgeBaseId: string, path: string) {
