@@ -152,3 +152,55 @@ export async function getDocs(knowledgeBaseId: string, path: string = "") {
     })
   );
 }
+
+export async function deleteDocs(knowledgeBaseId: string, path: string) {
+  await getKnowledgeBaseOrThrow(knowledgeBaseId);
+
+  try {
+    // Get all documents at and below this path
+    const docsToDelete = await db.query.documents.findMany({
+      where: and(
+        eq(documents.knowledgeBaseId, knowledgeBaseId),
+        // Match exact path or path starting with path/
+        or(eq(documents.path, path), like(documents.path, `${path}/%`))
+      ),
+    });
+
+    if (docsToDelete.length === 0) {
+      throw new Error(`Path '${path}' not found`);
+    }
+
+    // Delete files from S3 first
+    for (const doc of docsToDelete) {
+      if (doc.type === "file" && doc.fileKey) {
+        try {
+          await s3.delete(doc.fileKey);
+        } catch (s3Error) {
+          console.error(
+            `Failed to delete file from S3: ${doc.fileKey}`,
+            s3Error
+          );
+          // Continue with other deletions even if one fails
+        }
+      }
+    }
+
+    // Delete all matching documents from database
+    await db
+      .delete(documents)
+      .where(
+        and(
+          eq(documents.knowledgeBaseId, knowledgeBaseId),
+          or(eq(documents.path, path), like(documents.path, `${path}/%`))
+        )
+      );
+
+    return true;
+  } catch (error: any) {
+    console.error("Delete docs error:", error);
+    if (error.message.includes("not found")) {
+      throw new Error(`Path '${path}' not found`);
+    }
+    throw new Error("Failed to delete documents");
+  }
+}

@@ -1,35 +1,40 @@
 import api from "@/lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 export const useUploadKnowledgeBaseFiles = () => {
   const queryClient = useQueryClient();
+  const [progress, setProgress] = useState(0);
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: ({
       knowledgeBaseId,
       files,
       basePath,
-      onProgress,
     }: {
       knowledgeBaseId: string;
       files: File[];
       basePath?: string;
-      onProgress?: (progress: number) => void;
     }) =>
       api.knowledgeBases.uploadFiles(
         knowledgeBaseId,
         files,
         basePath,
-        onProgress
+        (progress) => {
+          setProgress(progress);
+        }
       ),
-    onSuccess: (_, variables) => {
+    onSuccess: (_, { knowledgeBaseId }) => {
       // Invalidate documents for the knowledge base to reflect new uploads
       queryClient.invalidateQueries({
-        queryKey: ["knowledge-base-docs", variables.knowledgeBaseId],
+        queryKey: ["knowledge-base-docs", knowledgeBaseId],
       });
+      setProgress(0);
     },
-    onError: (error) => {
-      console.error("Failed to upload files:", error);
+    onError: () => {
+      setProgress(0);
     },
   });
+
+  return { ...mutation, progress };
 };

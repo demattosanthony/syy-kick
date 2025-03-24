@@ -52,4 +52,12 @@ export default Router()
       Permissions.Actions.READ
     ),
     handlers.getDocs
+  )
+  .delete(
+    "/:knowledgeBaseId/documents",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Actions.DELETE
+    ),
+    handlers.deleteDocs
   );

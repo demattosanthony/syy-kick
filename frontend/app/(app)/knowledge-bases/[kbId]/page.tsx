@@ -1,5 +1,6 @@
 "use server";
 
+import KnowledgeBaseLayout from "@/features/knowledge-bases/components/knowledge-base-layout";
 import api from "@/lib/api";
 
 export default async function ProjectPage({
@@ -14,5 +15,9 @@ export default async function ProjectPage({
     return null;
   }
 
-  return <>{kb.name}</>;
+  return (
+    <KnowledgeBaseLayout kb={kb}>
+      <div></div>
+    </KnowledgeBaseLayout>
+  );
 }

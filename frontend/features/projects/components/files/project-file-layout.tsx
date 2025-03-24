@@ -23,6 +23,7 @@ const ProjectFileLayout = ({
           <CardContent className="p-2 px-0 overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
             <ProjectFileExplorer
               projectId={projectId}
+              contentSource="project"
               variant="compact"
               initialOpenPathChain={pathArray}
             />
@@ -34,6 +35,6 @@ const ProjectFileLayout = ({
       </div>
     </div>
   );
-}
+};
 
 export default ProjectFileLayout;

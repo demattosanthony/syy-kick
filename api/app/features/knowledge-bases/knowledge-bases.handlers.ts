@@ -97,3 +97,12 @@ export const getDocs = async (req: Request, res: Response) => {
   const docs = await ops.getDocs(knowledgeBaseId, path as string);
   res.json(docs);
 };
+
+export const deleteDocs = async (req: Request, res: Response) => {
+  const { knowledgeBaseId } = req.params;
+  const { path } = req.query;
+
+  await ops.deleteDocs(knowledgeBaseId, decodeURIComponent(path as string));
+
+  res.json({ success: true });
+};
