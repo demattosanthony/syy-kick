@@ -34,7 +34,6 @@ export default function SiteDialog({
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<MutationSiteData>({
     name: "",
-    slug: "",
     description: null,
     type: "organization",
     address: {
@@ -68,7 +67,6 @@ export default function SiteDialog({
     if (site) {
       setFormData({
         name: site.name,
-        slug: site.slug,
         description: site.description || "",
         type: organizationId ? "organization" : "personal",
         address: {
@@ -170,30 +168,6 @@ export default function SiteDialog({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, name: e.target.value }))
               }
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="slug">
-              Slug <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="slug"
-              placeholder="Site slug"
-              value={formData.slug}
-              onChange={(e) => {
-                // check if not special characters
-                const regex = /^[a-zA-Z0-9-]*$/;
-                if (!regex.test(e.target.value)) {
-                  return;
-                }
-
-                setFormData((prev) => ({
-                  ...prev,
-                  slug: e.target.value.trim().replace(/\s+/g, "-"),
-                }));
-              }}
               required
             />
           </div>

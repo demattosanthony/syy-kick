@@ -19,6 +19,7 @@ import PermissionsFactory from "./permissions/permissions.factory";
 import { PermissionManager } from "./permissions/permissions.tools";
 import { permissionsOps } from "./permissions/permissions.ops";
 import PermissionsMiddlewares from "./permissions/permissions.middlewares";
+import { slugify } from "../utils";
 
 // Core Types
 type Role = "owner" | "member";
@@ -135,6 +136,7 @@ const ops = {
           .update(organizations)
           .set({
             name: data.name,
+            slug: data.name ? slugify(data.name) : organizations.slug,
             domain: data.domain,
             logo: data.logo,
             updatedAt: new Date(),

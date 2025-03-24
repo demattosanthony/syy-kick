@@ -23,7 +23,7 @@ import s3 from "../config/s3";
 import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
-import { getOrgIdOrUnedfined } from "../utils";
+import { getOrgIdOrUnedfined, slugify } from "../utils";
 import { Workspace } from "../middleware";
 import { Permissions } from "./permissions/permissions.types";
 import { PermissionManager } from "./permissions/permissions.tools";
@@ -117,6 +117,7 @@ async function createProject(
       .insert(projects)
       .values({
         name: data.name,
+        slug: slugify(data.name),
         description: data.description,
         projectNumber: data.project_number,
         estimatedStartDate: data.estimated_start_date
@@ -405,6 +406,7 @@ async function updateProject(
     .update(projects)
     .set({
       name: data.name || project.name,
+      slug: data.name ? slugify(data.name) : project.slug,
       description: data.description ?? project.description,
       projectNumber: data.project_number ?? project.projectNumber,
       estimatedStartDate: data.estimated_start_date

@@ -6,6 +6,7 @@ import { PaginatedSites, Site, SiteData } from "./sites.types";
 import { formatSites, validationSchema } from "./sites.utils";
 import { sites } from "./sites.schema";
 import { projects } from "../../config/schema";
+import { slugify } from "../../utils";
 
 export const sitesOps = {
   getAllSites: async (params: {
@@ -95,7 +96,7 @@ export const sitesOps = {
   }): Promise<void> => {
     const siteData = {
       name: data.name,
-      slug: data.slug,
+      slug: slugify(data.name),
       description: data.description,
       address: data.address.address,
       city: data.address.city,
@@ -121,6 +122,7 @@ export const sitesOps = {
   }): Promise<void> => {
     const siteUpdates = {
       name: data.name,
+      slug: slugify(data.name),
       description: data.description,
       address: data.address.address,
       city: data.address.city,

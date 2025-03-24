@@ -25,7 +25,6 @@ export const formatSites = (sites: Site[]): FormattedSite[] => {
 export const validationSchema = {
   create: z.object({
     name: z.string().min(1).max(255).nonempty(),
-    slug: z.string().min(1).max(255).nonempty(),
     description: z.string().nullable(),
     address: z.object({
       address: z.string().nonempty(),
@@ -40,7 +39,6 @@ export const validationSchema = {
   }),
   update: z.object({
     name: z.string().min(1).max(255).nonempty(),
-    slug: z.string().min(1).max(255).nonempty(),
     description: z.string().nullable(),
     address: z.object({
       address: z.string().nonempty(),

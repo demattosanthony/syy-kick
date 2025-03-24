@@ -33,7 +33,7 @@ export const siteHandlers = {
 
     if (
       req.workspace?.type === "organization" &&
-      req.body.type === "organization"
+      req.body.type === "organization" // User may create the site from workspace switcher
     ) {
       if (req.body.organizationId) {
         identifiers.organizationId = req.body.organizationId;

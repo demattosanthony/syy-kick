@@ -19,7 +19,10 @@ export type Site = {
   updatedAt: string;
 };
 
-export type MutationSiteData = Omit<Site, "id" | "createdAt" | "updatedAt"> & {
+export type MutationSiteData = Omit<
+  Site,
+  "id" | "createdAt" | "updatedAt" | "slug"
+> & {
   organizationId?: string;
   type: "organization" | "personal";
 };
