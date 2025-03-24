@@ -26,16 +26,18 @@ export default function KnowledgeBaseLayout({
 
         <div className="flex-1 h-full w-full px-4">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_265px] gap-4 w-full mt-4 max-w-full">
-            <Card className="w-full min-w-0 shadow-none h-[max-content] max-h-[calc(100vh*0.65)]">
-              <CardContent className="p-2 h-full">
-                <ScrollArea className="h-full w-full">
-                  <ProjectFileExplorer
-                    contentSource="knowledge-base"
-                    knowledgeBaseId={kb.id}
-                  />
-                </ScrollArea>
-              </CardContent>
-            </Card>
+            <div className="flex flex-col gap-4">
+              <Card className="w-full min-w-0 shadow-none h-[max-content] max-h-[calc(100vh*0.65)]">
+                <CardContent className="p-2 h-full">
+                  <ScrollArea className="h-full w-full">
+                    <ProjectFileExplorer
+                      contentSource="knowledge-base"
+                      knowledgeBaseId={kb.id}
+                    />
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
