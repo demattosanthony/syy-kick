@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { documents, knowledgeBases } from "../../config/schema";
 import db from "../../config/db";
@@ -25,15 +25,47 @@ export async function createKnowledgeBase(
 
 export async function listKnowledgeBases(
   userId: string,
-  organizationId?: string
+  organizationId?: string,
+  page: number = 1,
+  pageSize: number = 10,
+  searchQuery?: string
 ) {
-  const conditions = organizationId
+  let conditions = organizationId
     ? [eq(knowledgeBases.organizationId, organizationId)]
     : [eq(knowledgeBases.userId, userId)];
 
-  return await db.query.knowledgeBases.findMany({
+  // Add search condition if a search query is provided
+  if (searchQuery && searchQuery.trim() !== "") {
+    const searchTerm = `%${searchQuery.trim().toLowerCase()}%`;
+    // Use case-insensitive search by converting both the search term and the name to lowercase
+    conditions.push(like(sql`LOWER(${knowledgeBases.name})`, searchTerm));
+  }
+
+  const offset = (page - 1) * pageSize;
+
+  const results = await db.query.knowledgeBases.findMany({
     where: and(...conditions),
+    limit: pageSize,
+    offset: offset,
+    orderBy: desc(knowledgeBases.createdAt),
   });
+
+  const totalCount = await db
+    .select({ count: count() })
+    .from(knowledgeBases)
+    .where(and(...conditions))
+    .then((res) => res[0].count);
+
+  return {
+    data: results,
+    pagination: {
+      page,
+      pageSize,
+      totalCount,
+      totalPages: Math.ceil(totalCount / pageSize),
+      hasMore: page * pageSize < totalCount,
+    },
+  };
 }
 
 export async function getKnowledgeBase(knowledgeBaseId: string) {

@@ -28,7 +28,33 @@ export const listKnowledgeBases = async (req: Request, res: Response) => {
   }
 
   const orgId = getOrgIdOrUnedfined(req.workspace);
-  const kbs = await ops.listKnowledgeBases(userId, orgId);
+
+  // Extract pagination parameters from query with defaults
+  const page = parseInt((req.query.page as string) || "1", 10);
+  const pageSize = parseInt((req.query.pageSize as string) || "10", 10);
+
+  const searchQuery = req.query.search as string | undefined;
+
+  // Validate pagination parameters
+  if (isNaN(page) || page < 1) {
+    res.status(400).json({ error: "Invalid page parameter" });
+    return;
+  }
+
+  if (isNaN(pageSize) || pageSize < 1 || pageSize > 100) {
+    res.status(400).json({
+      error: "Invalid pageSize parameter (must be between 1 and 100)",
+    });
+    return;
+  }
+
+  const kbs = await ops.listKnowledgeBases(
+    userId,
+    orgId,
+    page,
+    pageSize,
+    searchQuery
+  );
   res.json(kbs);
 };
 

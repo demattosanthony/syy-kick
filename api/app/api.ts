@@ -17,6 +17,7 @@ import projectRoutes from "./features/projects";
 import workflowRoutes from "./features/workflows/workflows.routes";
 import permissionsRoutes from "./features/permissions/permissions.routes";
 import analyticsRoutes from "./features/analytics";
+import knowledgeBasesRoutes from "./features/knowledge-bases/knowledge-bases.routes";
 
 export default Router()
   .use("/auth", authRoutes)
@@ -78,6 +79,7 @@ export default Router()
   .use("/organizations", auth, organizationRoutes)
   .use("/projects", auth, checkSub, projectRoutes)
   .use("/workflows", auth, workflowRoutes)
+  .use("/knowledge-bases", auth, knowledgeBasesRoutes)
   .post(
     "/presigned-url",
     auth,

@@ -29,6 +29,7 @@ import { Button } from "../ui/button";
 import {
   ArrowLeftToLine,
   ArrowRightToLine,
+  BookOpen,
   FolderClosed,
   FolderOpen,
   Plus,
@@ -38,6 +39,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { CreateProjectDialog } from "@/features/projects/components";
 import { NewThreadButton } from "./new-thread-button";
 import { usePermissions } from "@/features/permissions/context";
+import CreateKnowledgeBaseDialog from "@/features/knowledge-bases/components/create-knowledge-base-dialog";
 
 export function AppSidebar({
   user,
@@ -154,6 +156,27 @@ export function AppSidebar({
                   />
                 </SidebarMenuItem>
               )}
+
+              <SidebarMenuItem>
+                <SidebarButton
+                  href="/knowledge-bases"
+                  label="Knowledge Bases"
+                  icon={BookOpen}
+                  hoverIcon={BookOpen}
+                  actionTrigger={
+                    <CreateKnowledgeBaseDialog
+                      trigger={
+                        <Button
+                          variant="ghost"
+                          className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                        >
+                          <Plus className="h-6 w-6" />
+                        </Button>
+                      }
+                    />
+                  }
+                />
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

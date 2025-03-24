@@ -7,30 +7,36 @@ import { useEffect, useRef, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRelativeTimeString } from "@/lib/utils";
 import { FolderClosed, FolderOpen } from "lucide-react";
+import { useInfiniteKnowledgeBasesQuery } from "../api/get-knowledge-bases";
+import { KnowledgeBase } from "../types/knowledge-bases";
 
-// For now, we'll simulate infinite loading with a simple query.
-// If you need true infinite loading, extend useKnowledgeBases with useInfiniteQuery.
 const KnowledgeBasesList = () => {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Assuming useKnowledgeBases could be adapted for infinite loading later
-  const { data, isLoading, isFetching } = useKnowledgeBases();
+  // Use the infinite query hook instead of the regular query
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+    useInfiniteKnowledgeBasesQuery({
+      search,
+      limit: 10,
+    });
 
-  // For simplicity, we'll use a flat list. For infinite loading, you'd need:
-  // const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteKnowledgeBasesQuery({ search, limit: 10 });
-
-  // Simulate unique knowledge bases (in case of future infinite loading)
-  const uniqueKnowledgeBases = useMemo(() => {
-    if (!data) return [];
-    const kbMap = new Map<string, KnowledgeBase>();
-    data.forEach((kb) => kbMap.set(kb.id, kb));
-    return Array.from(kbMap.values());
+  // Flatten the pages into a single array of knowledge bases
+  const knowledgeBases = useMemo(() => {
+    if (!data?.pages) return [];
+    return data.pages.flatMap((page) => page.data);
   }, [data]);
 
-  // Infinite loading effect (commented out for now; enable with useInfiniteQuery)
-  /*
+  // Ensure we have unique knowledge bases (in case of overlaps between pages)
+  const uniqueKnowledgeBases = useMemo(() => {
+    if (!knowledgeBases.length) return [];
+    const kbMap = new Map<string, KnowledgeBase>();
+    knowledgeBases.forEach((kb) => kbMap.set(kb.id, kb));
+    return Array.from(kbMap.values());
+  }, [knowledgeBases]);
+
+  // Infinite loading effect
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -42,13 +48,13 @@ const KnowledgeBasesList = () => {
     );
 
     const currentTarget = scrollRef.current;
+
     if (currentTarget) observer.observe(currentTarget);
 
     return () => {
       if (currentTarget) observer.unobserve(currentTarget);
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-  */
 
   return (
     <ScrollArea className="h-[calc(100vh-175px)] px-2">
@@ -63,9 +69,9 @@ const KnowledgeBasesList = () => {
           ))}
 
           <div ref={scrollRef} className="h-10">
-            {(isFetching || isLoading) && (
+            {(isFetchingNextPage || isLoading) && (
               <div className="space-y-4">
-                {Array.from({ length: 5 }).map((_, i) => (
+                {Array.from({ length: 3 }).map((_, i) => (
                   <KnowledgeBaseSkeleton key={i} />
                 ))}
               </div>

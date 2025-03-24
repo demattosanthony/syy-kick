@@ -5,11 +5,8 @@ export const useCreateKnowledgeBase = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: {
-      name: string;
-      description?: string;
-      visibility?: "private" | "public";
-    }) => api.knowledgeBases.createKnowledgeBase(data),
+    mutationFn: (data: { name: string; description?: string }) =>
+      api.knowledgeBases.createKnowledgeBase(data),
     onSuccess: (newKnowledgeBase) => {
       // Invalidate and refetch the list of knowledge bases
       queryClient.invalidateQueries({ queryKey: ["knowledge-bases"] });

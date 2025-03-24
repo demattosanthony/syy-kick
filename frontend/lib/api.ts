@@ -900,7 +900,6 @@ export class KnowledgeBasesApi extends ApiRequest {
   async createKnowledgeBase(data: {
     name: string;
     description?: string;
-    visibility?: "private" | "public";
   }): Promise<KnowledgeBase> {
     return await this.request("/knowledge-bases", "POST", data);
   }
@@ -909,8 +908,26 @@ export class KnowledgeBasesApi extends ApiRequest {
     return await this.request(`/knowledge-bases/${knowledgeBaseId}`);
   }
 
-  async listKnowledgeBases(): Promise<KnowledgeBase[]> {
-    return await this.request("/knowledge-bases");
+  async listKnowledgeBases(
+    page: number = 1,
+    pageSize: number = 10,
+    search?: string
+  ): Promise<{
+    data: KnowledgeBase[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalCount: number;
+      totalPages: number;
+      hasMore: boolean;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("page", page.toString());
+    queryParams.append("pageSize", pageSize.toString());
+    if (search) queryParams.append("search", search);
+
+    return await this.request(`/knowledge-bases?${queryParams.toString()}`);
   }
 
   async deleteKnowledgeBase(
@@ -924,7 +941,6 @@ export class KnowledgeBasesApi extends ApiRequest {
     data: {
       name?: string;
       description?: string;
-      visibility?: "private" | "public";
     }
   ): Promise<KnowledgeBase> {
     return await this.request(
