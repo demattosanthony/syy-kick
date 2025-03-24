@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Yo",
+  title: "Syykick",
   icons: {
     icon: "/icon.svg",
   },
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Yo",
+    title: "Syykick",
   },
   other: {
     "apple-mobile-web-app-capable": "yes",

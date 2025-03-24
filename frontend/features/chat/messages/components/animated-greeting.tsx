@@ -11,7 +11,7 @@ const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
   const [, setIsAnimated] = useAtom(animatedAtom);
 
   const getGreeting = () => {
-    if (!name) return "Welcome to Yo";
+    if (!name) return "Welcome to Syykick";
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
     if (hour < 17) return "Good Afternoon";

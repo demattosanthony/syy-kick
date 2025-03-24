@@ -72,7 +72,7 @@ export default function LoginPage() {
           </div>
 
           <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">
-            Yo! Let&apos;s get started
+            Let&apos;s get started!
           </h3>
           {/* <p className="text-base text-muted-foreground text-center">
             What's up?
