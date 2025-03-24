@@ -4,19 +4,21 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Syyclops3dEye from "../../chat/messages/components/syy-eye";
 import { useAuth } from "@/features/auth/hooks";
-import { useOrgFromInviteToken } from "../api";
+import Image from "next/image";
 
-const JoinOrgHandler = ({ token }: { token: string }) => {
+const JoinOrgHandler = ({
+  token,
+  initialOrgDetails,
+}: {
+  token: string;
+  initialOrgDetails: any;
+}) => {
   const { handleJoinOrg } = useAuth();
   const [, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Query to fetch org details from the invite token
-  const {
-    data: orgDetails,
-    isLoading: isLoadingOrg,
-    error: fetchOrgError,
-  } = useOrgFromInviteToken(token);
+  // Use initialOrgDetails instead of fetching
+  const orgDetails = initialOrgDetails;
 
   const handleJoin = async (provider: "google" | "microsoft") => {
     setIsLoading(true);
@@ -56,15 +58,75 @@ const JoinOrgHandler = ({ token }: { token: string }) => {
     }
   };
 
-  if (isLoadingOrg) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-lg">Loading organization details...</p>
-      </div>
-    );
-  }
+  // Helper to render auth buttons
+  const renderAuthButtons = (disabled = false) => (
+    <div className="flex flex-col gap-4">
+      <Button
+        className="font-semibold w-[320px] flex justify-start h-[50px]"
+        onClick={() => handleJoin("google")}
+        variant="outline"
+        disabled={disabled}
+      >
+        <Image
+          height={20}
+          width={20}
+          src="/logos/google.svg"
+          alt="google"
+          className="h-5 w-5 mr-1"
+        />
+        Continue with Google
+      </Button>
+      <Button
+        className="font-semibold w-[320px] flex justify-start h-[50px]"
+        onClick={() => handleJoin("microsoft")}
+        variant="outline"
+        disabled={disabled}
+      >
+        <Image
+          height={20}
+          width={20}
+          src="/logos/msft.svg"
+          alt="msft"
+          className="h-5 w-5 mr-1"
+        />
+        Continue with Microsoft
+      </Button>
+    </div>
+  );
 
-  if (fetchOrgError || !orgDetails || !orgDetails.organization) {
+  // Helper to render footer
+  const renderFooter = () => (
+    <div className="absolute bottom-4 flex flex-col items-center gap-2">
+      <footer className="text-xs text-gray-500 text-center shrink-0">
+        By using our service, you agree to our{" "}
+        <a
+          href="/policies/terms-of-use"
+          className="underline hover:text-gray-700"
+        >
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a
+          href="/policies/privacy-policy"
+          className="underline hover:text-gray-700"
+        >
+          Privacy Policy
+        </a>
+      </footer>
+    </div>
+  );
+
+  // Helper to render content layout
+  const renderLayout = (children: React.ReactNode) => (
+    <div className="min-h-screen flex flex-col items-center px-4 py-12 h-full">
+      <main className="flex flex-col gap-8 items-center w-full justify-center h-[75%]">
+        {children}
+      </main>
+      {renderFooter()}
+    </div>
+  );
+
+  if (!orgDetails || !orgDetails.organization) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-lg text-red-500">
@@ -74,77 +136,41 @@ const JoinOrgHandler = ({ token }: { token: string }) => {
     );
   }
 
-  return (
-    <div className="min-h-screen flex flex-col items-center px-4 py-12 h-full">
-      <main className="flex flex-col gap-8 items-center w-full justify-center h-[75%]">
-        {orgDetails?.organization.logoUrl ? (
-          <img
-            src={orgDetails.organization.logoUrl}
-            alt={`${orgDetails.organization.name} logo`}
-            className="h-[75px] w-[75px] object-cover rounded-full"
-          />
-        ) : (
-          <Syyclops3dEye size={155} />
-        )}
-
-        <div className="flex flex-col items-center w-[400px] gap-2">
-          <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">
-            Join {orgDetails?.organization.name || "Organization"}
-          </h3>
-          <p className="text-base text-muted-foreground text-center">
-            You&apos;ve been invited to join {orgDetails?.organization.name}
-          </p>
+  return renderLayout(
+    <>
+      {/* Organization logo or eye */}
+      {orgDetails?.organization.logoUrl ? (
+        <img
+          src={orgDetails.organization.logoUrl}
+          alt={`${orgDetails.organization.name} logo`}
+          className="h-[75px] w-[75px] object-cover rounded-full"
+        />
+      ) : (
+        <div className="mb-4">
+          <Syyclops3dEye size={95} animate={false} />
         </div>
+      )}
 
-        {error && (
-          <p className="text-sm text-red-500 mt-1 px-2 max-w-[550px] text-center">
-            {error}
-          </p>
-        )}
-
-        <div className="flex flex-col gap-4">
-          <Button
-            className="font-semibold w-[320px] flex justify-start h-[50px]"
-            onClick={() => handleJoin("google")}
-            variant="outline"
-          >
-            <img
-              src="/logos/google.svg"
-              alt="google"
-              className="h-5 w-5 mr-1"
-            />
-            Continue with Google
-          </Button>
-          <Button
-            className="font-semibold w-[320px] flex justify-start h-[50px]"
-            onClick={() => handleJoin("microsoft")}
-            variant="outline"
-          >
-            <img src="/logos/msft.svg" alt="msft" className="h-5 w-5 mr-1" />
-            Continue with Microsoft
-          </Button>
-        </div>
-      </main>
-
-      <div className="absolute bottom-4 flex flex-col items-center gap-2">
-        <footer className="text-xs text-gray-500 text-center shrink-0">
-          By using our service, you agree to our{" "}
-          <a
-            href="/policies/terms-of-use"
-            className="underline hover:text-gray-700"
-          >
-            Terms of Service
-          </a>{" "}
-          and{" "}
-          <a
-            href="/policies/privacy-policy"
-            className="underline hover:text-gray-700"
-          >
-            Privacy Policy
-          </a>
-        </footer>
+      {/* Organization info */}
+      <div className="flex flex-col items-center w-[400px] gap-2">
+        <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">
+          Join {orgDetails?.organization.name || "Organization"}
+        </h3>
+        <p className="text-base text-muted-foreground text-center">
+          You&apos;ve been invited to join {orgDetails?.organization.name}
+        </p>
       </div>
-    </div>
+
+      {/* Error message if any */}
+      {error && (
+        <p className="text-sm text-red-500 mt-1 px-2 max-w-[550px] text-center">
+          {error}
+        </p>
+      )}
+
+      {/* Auth buttons */}
+      {renderAuthButtons()}
+    </>
   );
 };
 

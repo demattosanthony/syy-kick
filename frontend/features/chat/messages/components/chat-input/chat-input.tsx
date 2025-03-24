@@ -148,10 +148,10 @@ function ChatInputForm(
           <div className="flex flex-col flex-1 relative">
             {/* Drag message section above the input */}
             {isDragging && (
-              <div className="mb-2 w-full max-w-[640px] flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-2 bg-gray-50 transition-all duration-200">
-                <span className="text-sm text-gray-500 flex items-center gap-2">
+              <div className="mb-2 w-full max-w-[640px] flex items-center justify-center border-2 border-dashed border-border rounded-lg py-2 bg-accent transition-all duration-200">
+                <span className="text-sm text-muted-foreground flex items-center gap-2">
                   <svg
-                    className="w-5 h-5 text-gray-400"
+                    className="w-5 h-5 text-muted-foreground"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
