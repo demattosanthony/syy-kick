@@ -3,6 +3,27 @@
 import { ChatThread } from "@/features/chat/threads/components";
 import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
 import api from "@/lib/api";
+import type { Metadata } from "next";
+
+type Props = {
+  params: Promise<{ threadId: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { threadId } = await params;
+
+  const thread = await api.threads.getThread(threadId);
+  const lastMessage = thread.messages[thread.messages.length - 1];
+
+  return {
+    title: thread.title + " - Syykick",
+    description: lastMessage?.text.slice(0, 250),
+    openGraph: {
+      title: thread.title + " - Syykick",
+      description: lastMessage?.text.slice(0, 250),
+    },
+  };
+}
 
 export default async function ThreadsPage({
   params,
