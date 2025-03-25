@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { useSidebar } from "../../../../components/ui/sidebar";
 import { useSetAtom } from "jotai";
 import { selectedArtifactAtom } from "@/atoms/chat";
 import { Badge } from "../../../../components/ui/badge";
@@ -12,7 +11,6 @@ const ArtifactPreview: React.FC<{
   messages: Message[];
 }> = ({ artifact, messages }) => {
   const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
-  const { setOpen } = useSidebar();
   const { version, title } = getArtifactVersionInfo(artifact, messages);
 
   return (
@@ -22,14 +20,13 @@ const ArtifactPreview: React.FC<{
       )}
       onClick={() => {
         setSelectedArtifact({ ...artifact, version });
-        setOpen(false);
       }}
     >
       <div className="flex items-center p-3 cursor-pointer">
         <div className="p-1 mr-2 text-2xl">📑</div>
         <div className="flex flex-col flex-1">
           <div className="flex justify-between items-center">
-            <h3 className="text-base font-medium">{title}</h3>
+            <h3 className="text-base font-medium mr-2">{title}</h3>
             <Badge variant="secondary">v{version}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">

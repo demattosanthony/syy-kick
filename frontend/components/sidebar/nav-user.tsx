@@ -113,7 +113,10 @@ export function NavUser({
               activeWorkspace?.type === "personal" && (
                 <>
                   <DropdownMenuGroup>
-                    <DropdownMenuItem onClick={handleBillingPortal}>
+                    <DropdownMenuItem
+                      onClick={handleBillingPortal}
+                      className="cursor-pointer"
+                    >
                       <CreditCard />
                       Billing
                     </DropdownMenuItem>
@@ -124,7 +127,7 @@ export function NavUser({
 
             <DropdownMenuGroup>
               <Link href="/settings">
-                <DropdownMenuItem>
+                <DropdownMenuItem className="hover:cursor-pointer">
                   <Settings />
                   Settings
                 </DropdownMenuItem>
@@ -174,7 +177,7 @@ export function NavUser({
               </div>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logOut}>
+            <DropdownMenuItem onClick={logOut} className="cursor-pointer">
               <LogOut />
               Log out
             </DropdownMenuItem>

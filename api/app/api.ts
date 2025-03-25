@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import s3 from "./config/s3";
 import { handle } from "./utils";
 import { auth, checkSub } from "./middleware";
+import threadsOps from "./features/threads/threads.ops";
 
 // Routes
 import authRoutes from "./features/auth";
@@ -13,10 +14,20 @@ import threadRoutes from "./features/threads/threads.routes";
 import paymentRoutes, { webhook } from "./features/payments";
 import organizationRoutes from "./features/organizations";
 import projectRoutes from "./features/projects";
+import workflowRoutes from "./features/workflows/workflows.routes";
+import permissionsRoutes from "./features/permissions/permissions.routes";
+import analyticsRoutes from "./features/analytics";
 
 export default Router()
   .use("/auth", authRoutes)
   .use("/models", modelRoutes)
+  // Add a public endpoint for accessing shared threads
+  .get(
+    "/public/threads/:threadId",
+    handle(async (req) => {
+      return threadsOps.getThread(req.params.threadId);
+    })
+  )
   .use("/threads", auth, checkSub, threadRoutes)
   .post("/payments/webhook", webhook)
   .use("/payments", auth, paymentRoutes)
@@ -66,6 +77,7 @@ export default Router()
   )
   .use("/organizations", auth, organizationRoutes)
   .use("/projects", auth, checkSub, projectRoutes)
+  .use("/workflows", auth, workflowRoutes)
   .post(
     "/presigned-url",
     auth,
@@ -92,4 +104,6 @@ export default Router()
         },
       };
     })
-  );
+  )
+  .use("/permissions", auth, permissionsRoutes)
+  .use("/analytics", analyticsRoutes);

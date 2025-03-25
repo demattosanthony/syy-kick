@@ -80,6 +80,6 @@ const ProjectStatusCard = ({ project }: { project: Project }) => {
       </div>
     </Card>
   );
-}
+};
 
 export default ProjectStatusCard;

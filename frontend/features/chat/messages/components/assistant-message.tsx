@@ -12,7 +12,6 @@ import {
   extractSpecialContent,
   getArtifactVersionInfo,
 } from "@/lib/artifact-utils";
-import { useSidebar } from "@/components/ui/sidebar";
 import ThinkingDropdown from "./thinking-dropdown";
 import ToolCallMessageContent from "./tool-call-result";
 
@@ -22,7 +21,6 @@ const TextContent: React.FC<{
   index: number;
 }> = ({ text, messages, index }) => {
   const { artifact, cleanContent } = extractSpecialContent(text);
-  const { open, setOpen } = useSidebar();
   const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
   const [alreadyAutoSelected, setAlreadyAutoSelected] = useAtom(
     alreadyAutoSelectedArtifactAtom
@@ -43,7 +41,6 @@ const TextContent: React.FC<{
         };
         setSelectedArtifact(artifactWithVersion);
         setAlreadyAutoSelected(artifactKey);
-        if (open) setOpen(false);
       }
     }
   }, [
@@ -52,8 +49,6 @@ const TextContent: React.FC<{
     setSelectedArtifact,
     alreadyAutoSelected,
     setAlreadyAutoSelected,
-    open,
-    setOpen,
   ]);
 
   const elements = [];
@@ -102,28 +97,48 @@ const TextContent: React.FC<{
 
 const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
   React.memo(({ message, messages }) => {
+    // Determine if we should auto-close the thinking dropdown
+    const shouldAutoCloseThinking = React.useMemo(() => {
+      if (!message.parts?.length) return false;
+
+      // Check if there are any non-reasoning parts
+      // If there are tool invocations or text content, we should auto-close thinking
+      return message.parts.some(
+        (part) =>
+          part.type === "tool-invocation" ||
+          (part.type === "text" && part.text?.trim().length > 0)
+      );
+    }, [message.parts]);
+
     if (message.parts?.length) {
       return (
         <React.Fragment>
-          {message.parts.map((part, index) =>
-            part.type === "tool-invocation" ? (
-              <ToolCallMessageContent
-                key={`tool-${index}`}
-                tool={part.toolInvocation}
-              />
-            ) : part.type === "text" ? (
-              <TextContent
-                key={`text-${index}`}
-                text={part.text}
-                messages={messages}
-                index={index}
-              />
-            ) : part.type === "reasoning" ? (
-              <ThinkingDropdown key={`reasoning-${index}`}>
-                <MarkdownViewer content={part.reasoning} />
-              </ThinkingDropdown>
-            ) : null
-          )}
+          {message.parts
+            .sort((a, b) =>
+              a.type === "reasoning" ? -1 : b.type === "reasoning" ? 1 : 0
+            )
+            .map((part, index) =>
+              part.type === "reasoning" ? (
+                <ThinkingDropdown
+                  key={`reasoning-${index}`}
+                  autoClose={shouldAutoCloseThinking}
+                >
+                  <MarkdownViewer content={part.reasoning} />
+                </ThinkingDropdown>
+              ) : part.type === "tool-invocation" ? (
+                <ToolCallMessageContent
+                  key={`tool-${index}`}
+                  tool={part.toolInvocation}
+                />
+              ) : part.type === "text" ? (
+                <TextContent
+                  key={`text-${index}`}
+                  text={part.text}
+                  messages={messages}
+                  index={index}
+                />
+              ) : null
+            )}
         </React.Fragment>
       );
     }
@@ -142,8 +157,8 @@ const AssistantMessage: React.FC<{
 }> = ({ message, showEye, messages }) => (
   <div className="flex flex-col justify-start">
     <div className="flex">
-      <div className="mr-1 w-[32px] h-[32px]">
-        {showEye && <Syyclops3dEye size={32} animate={false} />}
+      <div className="mr-[1px] mt-1 w-[32px] h-[32px] min-h-[32px] min-w-[32px]">
+        {showEye && <Syyclops3dEye size={22} animate={false} />}
       </div>
 
       <div className="max-w-full md:max-w-[750px] overflow-hidden bg-background break-words mt-[1px] flex flex-col gap-2">

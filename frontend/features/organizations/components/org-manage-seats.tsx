@@ -11,31 +11,23 @@ import { toast } from "sonner";
 import { PRICING_PLANS } from "@/lib/pricing";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useUpdateOrganizationSeatsMutation } from "../api";
+import { usePermissions } from "@/features/permissions/context";
 
 const OrgManageSeats = ({
   org,
-  members,
+  occupiedSeats,
 }: {
   org: Organization;
-  members:
-    | {
-        user: {
-          id: string;
-          email: string;
-          name: string;
-          profilePicture: string;
-        };
-        role: "owner" | "member";
-      }[]
-    | undefined;
+  occupiedSeats: number;
 }) => {
   const [seats, setSeats] = useState(org.seats);
   const [isLoading, setIsLoading] = useState(false);
   const hasChanges = seats !== org.seats;
-  const memberCount = members?.length || 0;
   const updateSeats = useUpdateOrganizationSeatsMutation();
   const pathName = usePathname();
   const searchParams = useSearchParams();
+
+  const { canUpdateOrgSeats } = usePermissions();
 
   const handleSave = async () => {
     try {
@@ -89,35 +81,39 @@ const OrgManageSeats = ({
                 : "Complete your organization setup by adding billing information."}
             </p>
           </div>
-          <Button
-            onClick={async () => {
-              try {
-                if (org.subscriptionStatus === "active") {
-                  const url = await api.payments.createPortalSession(
-                    org.id,
-                    pathName + "?" + searchParams.toString()
-                  );
-                  window.location.href = url;
-                } else {
-                  const url = await api.payments.createCheckoutSession(
-                    PRICING_PLANS.TEAMS.lookup_key,
-                    org.seats,
-                    org.id
-                  );
-                  window.location.href = url;
+          {canUpdateOrgSeats && (
+            <Button
+              onClick={async () => {
+                try {
+                  if (org.subscriptionStatus === "active") {
+                    const url = await api.payments.createPortalSession(
+                      org.id,
+                      pathName + "?" + searchParams.toString()
+                    );
+                    window.location.href = url;
+                  } else {
+                    const url = await api.payments.createCheckoutSession(
+                      PRICING_PLANS.TEAMS.lookup_key,
+                      org.seats,
+                      org.id
+                    );
+                    window.location.href = url;
+                  }
+                } catch (error) {
+                  console.error("Error with billing action:", error);
                 }
-              } catch (error) {
-                console.error("Error with billing action:", error);
+              }}
+              className={
+                org.subscriptionStatus === "active"
+                  ? ""
+                  : "bg-blue-600 hover:bg-blue-700 animate-pulse"
               }
-            }}
-            className={
-              org.subscriptionStatus === "active"
-                ? ""
-                : "bg-blue-600 hover:bg-blue-700 animate-pulse"
-            }
-          >
-            {org.subscriptionStatus === "active" ? "Manage Billing" : "Upgrade"}
-          </Button>
+            >
+              {org.subscriptionStatus === "active"
+                ? "Manage Billing"
+                : "Upgrade"}
+            </Button>
+          )}
         </div>
 
         {/* Divider */}
@@ -128,7 +124,7 @@ const OrgManageSeats = ({
           <div>
             <h3 className="text-sm font-medium">Seat Management</h3>
             <p className="text-sm text-muted-foreground">
-              {memberCount} of {org.seats} seats used ($
+              {occupiedSeats} of {org.seats} seats used ($
               {org.seats * PRICING_PLANS.TEAMS.cost}/month)
             </p>
           </div>
@@ -138,7 +134,7 @@ const OrgManageSeats = ({
               <div
                 className="h-full bg-primary rounded-full"
                 style={{
-                  width: `${(memberCount / org.seats) * 100}%`,
+                  width: `${(occupiedSeats / org.seats) * 100}%`,
                 }}
               />
             </div>
@@ -151,9 +147,11 @@ const OrgManageSeats = ({
                   size="sm"
                   className="h-7 w-7"
                   onClick={() =>
-                    setSeats((prev) => Math.max(memberCount, prev - 1))
+                    setSeats((prev) => Math.max(occupiedSeats, prev - 1))
                   }
-                  disabled={isLoading || seats <= memberCount}
+                  disabled={
+                    isLoading || seats <= occupiedSeats || !canUpdateOrgSeats
+                  }
                 >
                   <Minus className="h-3 w-3" />
                 </Button>
@@ -162,13 +160,13 @@ const OrgManageSeats = ({
                   value={seats}
                   onChange={(e) => {
                     const value = Math.max(
-                      memberCount,
-                      parseInt(e.target.value) || memberCount
+                      occupiedSeats,
+                      parseInt(e.target.value) || occupiedSeats
                     );
                     setSeats(value);
                   }}
                   className="w-8 h-7 text-center p-0"
-                  disabled={isLoading}
+                  disabled={isLoading || !canUpdateOrgSeats}
                 />
 
                 <Button
@@ -177,7 +175,7 @@ const OrgManageSeats = ({
                   size="sm"
                   className="h-7 w-7"
                   onClick={() => setSeats((prev) => prev + 1)}
-                  disabled={isLoading}
+                  disabled={isLoading || !canUpdateOrgSeats}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
@@ -196,6 +194,6 @@ const OrgManageSeats = ({
       </Card>
     </section>
   );
-}
+};
 
 export default OrgManageSeats;

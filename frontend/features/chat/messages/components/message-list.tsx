@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import { Check, Copy } from "lucide-react";
 
 interface MessageBubbleProps {
@@ -91,41 +91,27 @@ const UserMessage = ({ message }: { message: Message }) => {
   );
 };
 
-import { useEffect } from "react";
 import { MessageRole } from "@/types/chat";
-import Syyclops3dEye from "./syy-eye";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Message } from "ai";
 import AssistantMessage from "./assistant-message";
+import {
+  AssistantSkeletonMessage,
+  UserSkeletonMessage,
+} from "./message-skeletons";
+import { Loader } from "@/components/ui/loader";
+import { ChatContainer } from "@/components/ui/chat-container";
 
 const LoadingMessage = React.memo(() => {
   return (
-    <div className="mb-4 flex flex-col justify-start">
-      <div className="flex gap-2">
-        <div className="mr-[1px] w-[32px] h-[32px]">
-          <Syyclops3dEye size={32} animate={false} />
+    <div className="mb-4 mt flex flex-col justify-start">
+      <div className="flex items-center gap-1">
+        <div className="w-[32px] h-full">
+          {/* <Syyclops3dEye size={22} animate={false} /> */}
         </div>
 
         <div className="flex items-center rounded-lg bg-background">
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            {[0, 1, 2].map((index) => (
-              <motion.span
-                key={index}
-                className="inline-block w-2 h-2 rounded-full bg-current"
-                initial={{ opacity: 0.3, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  duration: 0.6,
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                  delay: index * 0.2,
-                }}
-              >
-                &nbsp;
-              </motion.span>
-            ))}
-          </div>
+          <Loader variant="wave" size="lg" />
         </div>
       </div>
     </div>
@@ -136,44 +122,61 @@ LoadingMessage.displayName = "LoadingMessage";
 
 // Memo helps to prevent unnecessary re-renders. Fixes issue when lots of messages and user types in chat input form is laggy
 const ChatMessagesList = React.memo(
-  ({ messages, isLoading }: { messages: Message[]; isLoading: boolean }) => {
-    useEffect(() => {
-      const container = document.querySelector(".overflow-y-auto");
-      if (container) {
-        container.scrollTop = container.scrollHeight;
-      }
-    }, [messages.length]);
+  ({
+    messages,
+    status,
+    showSkeletons = false,
+  }: {
+    messages: Message[];
+    status: "error" | "submitted" | "streaming" | "ready";
+    showSkeletons?: boolean;
+  }) => {
+    const chatContainerRef = useRef<HTMLDivElement>(null);
 
     return (
       <div className="flex-1 w-full h-full relative">
-        <div
+        <ChatContainer
           className={cn(
-            "absolute inset-0 overflow-y-auto",
-            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
+            "absolute inset-0 overflow-y-auto p-4 flex flex-col",
+            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent pt-20"
           )}
+          autoScroll
+          ref={chatContainerRef}
         >
-          <div className="max-w-[840px] mx-auto pt-20 p-4 flex flex-col gap-2">
-            {messages.map((message, index) => {
-              const nextMessage = messages[index + 1];
-              const showEye =
-                message.role !== MessageRole.user &&
-                (!nextMessage || nextMessage.role === MessageRole.user) &&
-                !isLoading;
+          <div className="max-w-[840px] mx-auto w-full flex-1 flex flex-col gap-2">
+            {showSkeletons ? (
+              // Show skeleton messages when loading the thread
+              <>
+                <UserSkeletonMessage />
+                <AssistantSkeletonMessage />
+                <UserSkeletonMessage />
+                <AssistantSkeletonMessage />
+              </>
+            ) : (
+              // Show actual messages
+              messages.map((message, index) => {
+                const nextMessage = messages[index + 1];
+                const showEye =
+                  message.role !== MessageRole.user &&
+                  (!nextMessage || nextMessage.role === MessageRole.user);
 
-              return message.role === MessageRole.user ? (
-                <UserMessage key={index} message={message} />
-              ) : (
-                <AssistantMessage
-                  key={index}
-                  message={message}
-                  showEye={showEye}
-                  messages={messages}
-                />
-              );
-            })}
-            {isLoading && <LoadingMessage />}
+                return message.role === MessageRole.user ? (
+                  <UserMessage key={index} message={message} />
+                ) : (
+                  <AssistantMessage
+                    key={index}
+                    message={message}
+                    showEye={showEye}
+                    messages={messages}
+                  />
+                );
+              })
+            )}
+            {(status === "submitted" || status === "streaming") && (
+              <LoadingMessage />
+            )}
           </div>
-        </div>
+        </ChatContainer>
       </div>
     );
   }

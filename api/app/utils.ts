@@ -10,9 +10,9 @@ export function getOrgIdOrUnedfined(workspace?: Workspace) {
 
 export async function generateThreadTitle(message: string) {
   const { text } = await generateText({
-    model: MODELS["gemini-2.0-flash"].model,
-    temperature: 0.6,
-    prompt: `Generate a title for the following user message. The title should describe what their message is about so they can later find it easily. THe title should be 3 words give or take. Only respond with the title and nothing else.\n\nUser message:\n\n${message}`,
+    model: MODELS["gpt-4o-mini"].model,
+    temperature: 0.65,
+    prompt: `Generate a title for the following user message. The title should describe what their message is about so they can later find it easily. The title should be 3 to 4 words give or take. Only respond with the title and nothing else.\n\nUser message:\n\n${message}`,
   });
 
   return text;

@@ -6,6 +6,7 @@ import {
   cosineDistance,
   eq,
   ilike,
+  inArray,
   isNull,
   like,
   or,
@@ -14,6 +15,7 @@ import {
 import {
   documentEmbeddings,
   documents,
+  memberRoles,
   organizations,
   projects,
   users,
@@ -24,6 +26,12 @@ import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
 import { getOrgIdOrUnedfined } from "../utils";
+import { permissions, Workspace } from "../middleware";
+import { Permissions } from "./permissions/permissions.types";
+import { PermissionManager } from "./permissions/permissions.tools";
+import { permissionsOps } from "./permissions/permissions.ops";
+import Constants from "./permissions/permissions.constants";
+import PermissionsFactory from "./permissions/permissions.factory";
 
 const schemas = {
   createProject: z
@@ -105,7 +113,10 @@ async function getProjectOrThrow(projectId: string) {
 }
 
 // Ops methods
-async function createProject(data: z.infer<typeof schemas.createProject>) {
+async function createProject(
+  data: z.infer<typeof schemas.createProject>,
+  userId: string
+) {
   // Check organization exists if organizationId is provided
   if (data.organizationId) {
     const org = await db.query.organizations.findFirst({
@@ -116,43 +127,51 @@ async function createProject(data: z.infer<typeof schemas.createProject>) {
     }
   }
 
-  // Check user exists if userId is provided
-  if (data.userId) {
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, data.userId),
-    });
-    if (!user) {
-      throw new Error("User not found");
+  return await db.transaction(async (tx) => {
+    const newProject = await db
+      .insert(projects)
+      .values({
+        name: data.name,
+        description: data.description,
+        projectNumber: data.project_number,
+        estimatedStartDate: data.estimated_start_date
+          ? new Date(data.estimated_start_date)
+          : null,
+        estimatedEndDate: data.estimated_end_date
+          ? new Date(data.estimated_end_date)
+          : null,
+        organizationId: data.organizationId,
+        userId: data.userId,
+        visibility: "private",
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        country: data.country,
+        postalCode: data.postalCode,
+        latitude: data.latitude,
+        longitude: data.longitude,
+      })
+      .returning()
+      .then((res) => res[0]);
+
+    if (data?.organizationId) {
+      const orgRoleAndResources =
+        await PermissionManager.getOrgRoleResourcesPermissions(
+          userId,
+          data.organizationId
+        );
+
+      await PermissionsFactory.addProjectsAccess(
+        userId,
+        [newProject.id],
+        data.organizationId,
+        orgRoleAndResources.role.id,
+        orgRoleAndResources.resources
+      );
     }
-  }
 
-  const newProject = await db
-    .insert(projects)
-    .values({
-      name: data.name,
-      description: data.description,
-      projectNumber: data.project_number,
-      estimatedStartDate: data.estimated_start_date
-        ? new Date(data.estimated_start_date)
-        : null,
-      estimatedEndDate: data.estimated_end_date
-        ? new Date(data.estimated_end_date)
-        : null,
-      organizationId: data.organizationId,
-      userId: data.userId,
-      visibility: "private",
-      address: data.address,
-      city: data.city,
-      state: data.state,
-      country: data.country,
-      postalCode: data.postalCode,
-      latitude: data.latitude,
-      longitude: data.longitude,
-    })
-    .returning()
-    .then((res) => res[0]);
-
-  return newProject;
+    return newProject;
+  });
 }
 
 async function deleteProject(projectId: string) {
@@ -177,6 +196,8 @@ async function listProjects(params: {
   organizationId?: string;
   userId?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 }) {
   if (!params.organizationId && !params.userId) {
     throw new Error("Either organizationId or userId must be provided");
@@ -184,8 +205,12 @@ async function listProjects(params: {
 
   let conditions = [];
 
-  if (params.organizationId) {
-    conditions.push(eq(projects.organizationId, params.organizationId));
+  if (params.organizationId && params.userId) {
+    const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
+      params.userId,
+      params.organizationId
+    );
+    conditions.push(inArray(projects.id, orgProjectsIds));
   } else if (params.userId) {
     conditions.push(eq(projects.userId, params.userId));
   }
@@ -194,12 +219,37 @@ async function listProjects(params: {
     conditions.push(ilike(projects.name, `%${params.search}%`));
   }
 
+  // Set default pagination values
+  const page = params.page || 1;
+  const limit = params.limit || 10;
+  const offset = (page - 1) * limit;
+
+  // Get total count for pagination metadata
+  const countResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(projects)
+    .where(and(...conditions));
+
+  const totalCount = countResult[0]?.count || 0;
+
+  // Get paginated projects
   const projs = await db.query.projects.findMany({
     where: and(...conditions),
     orderBy: (projects, { desc }) => [desc(projects.createdAt)],
+    limit: limit,
+    offset: offset,
   });
 
-  return projs;
+  return {
+    data: projs,
+    pagination: {
+      page,
+      limit,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      hasMore: page * limit < totalCount,
+    },
+  };
 }
 
 async function getProject(projectId: string) {
@@ -248,8 +298,12 @@ export async function getProjectDocs(projectId: string, path: string = "") {
           eq(documents.type, "folder")
         ),
       });
+      // Instead of throwing an error, return an empty array if folder not found
       if (!folder) {
-        throw new Error("Folder not found");
+        console.log(
+          `Folder not found at path: ${normalizedPath} for project: ${projectId}`
+        );
+        return [];
       }
       parentId = folder.id;
     }
@@ -404,6 +458,7 @@ export async function getDocContent(projectId: string, path: string) {
   });
 
   if (!document) {
+    console.log(`Document not found at path: ${path}`);
     throw new Error("File not found");
   }
 
@@ -587,104 +642,130 @@ async function createFolderStructure(
   return { success: true };
 }
 
-/**
- * Search for documents within a project using semantic search
- * @param projectId The project to search within
- * @param query The search query
- * @param limit Maximum number of results to return
- * @returns Array of documents with their similarity scores
- */
-export async function searchProjectDocuments(
-  projectId: string,
-  query: string,
-  limit: number = 20
-) {
-  // First verify the project exists
-  await getProjectOrThrow(projectId);
+export async function searchProjectDocuments(params: {
+  query: string;
+  workspace: Workspace;
+  projectIds?: string[];
+  limit?: number;
+}) {
+  const { projectIds, query, limit = 20, workspace } = params;
+  try {
+    // If projectIds are provided, verify they exist
+    if (projectIds && projectIds.length > 0) {
+      try {
+        // Verify at least one project exists (could enhance to check all)
+        await getProjectOrThrow(projectIds[0]);
+      } catch (error) {
+        console.error(
+          `Project verification failed for ID ${projectIds[0]}:`,
+          error
+        );
+        throw new Error(`Invalid project ID: ${projectIds[0]}`);
+      }
+    } else if (!workspace.id) {
+      throw new Error(
+        "Either projectIds, userId, or organizationId must be provided"
+      );
+    }
 
-  // Get the embedding for the search query
-  const { embeddings } = await smallOpenaiEmbeddingModel.doEmbed({
-    values: [query],
-  });
-  const queryEmbedding = embeddings[0];
+    // Get the embedding for the search query
+    let queryEmbedding;
+    try {
+      const { embeddings } = await smallOpenaiEmbeddingModel.doEmbed({
+        values: [query],
+      });
+      queryEmbedding = embeddings[0];
+    } catch (error) {
+      console.error("Failed to generate embedding for search query:", error);
+      throw new Error("Failed to process search query");
+    }
 
-  // Search for similar documents using vector similarity
-  const results = await db
-    .select({
-      documentId: documentEmbeddings.documentId,
-      text: documentEmbeddings.text,
-      metadata: documentEmbeddings.metadata,
-      fileKey: documents.fileKey,
-      similarity: sql<number>`1 - (${cosineDistance(
-        documentEmbeddings.embedding,
-        queryEmbedding
-      )})`.as("similarity"),
-      document: documents,
-    })
-    .from(documentEmbeddings)
-    .innerJoin(documents, eq(documents.id, documentEmbeddings.documentId))
-    .where(
-      and(
-        eq(documents.projectId, projectId),
+    // Build the where clause based on provided parameters
+    let whereClause;
+    if (projectIds && projectIds.length > 0) {
+      // Search within specific projects
+      whereClause = and(
+        inArray(documents.projectId, projectIds),
         sql`1 - (${cosineDistance(
           documentEmbeddings.embedding,
           queryEmbedding
         )}) > 0.45`
-      )
-    )
-    .orderBy(
-      sql`1 - (${cosineDistance(
-        documentEmbeddings.embedding,
-        queryEmbedding
-      )}) DESC`
-    )
-    .limit(limit);
-
-  // Add presigned URLs for files that need them
-  const resultsWithUrls = await Promise.all(
-    results.map(async (result) => {
-      if (result.document.fileKey) {
-        const url = s3.presign(result.document.fileKey, {
-          expiresIn: 60 * 60, // 1 hour
-        });
-        return {
-          ...result,
-          document: {
-            ...result.document,
-            url,
-          },
-        };
-      }
-      return result;
-    })
-  );
-
-  return resultsWithUrls;
-}
-
-/**
- * Checks if a user has permission to modify a project
- * @throws Error if user doesn't have permission
- */
-async function checkProjectUpdatePermission(projectId: string, userId: string) {
-  const project = await getProject(projectId);
-
-  // Check if user owns the project directly
-  if (project.userId === userId) {
-    return true;
-  }
-
-  // Check if user is an owner in the organization that owns the project
-  if (project.organization) {
-    const isOrgOwner = project.organization.members?.some(
-      (member) => member.userId === userId && member.role === "owner"
-    );
-    if (isOrgOwner) {
-      return true;
+      );
+    } else if (workspace.type === "organization") {
+      // When workspace is an organization, projectIds should be provided
+      return [];
+    } else if (workspace.type === "personal") {
+      // Search across all projects owned by the user
+      whereClause = and(
+        eq(projects.userId, workspace.id),
+        sql`1 - (${cosineDistance(
+          documentEmbeddings.embedding,
+          queryEmbedding
+        )}) > 0.45`
+      );
     }
-  }
 
-  throw new Error("You don't have permission to modify this project");
+    // Search for similar documents using vector similarity
+    const results = await db
+      .select({
+        documentId: documentEmbeddings.documentId,
+        text: documentEmbeddings.text,
+        metadata: documentEmbeddings.metadata,
+        fileKey: documents.fileKey,
+        similarity: sql<number>`1 - (${cosineDistance(
+          documentEmbeddings.embedding,
+          queryEmbedding
+        )})`.as("similarity"),
+        document: documents,
+        project: projects,
+      })
+      .from(documentEmbeddings)
+      .innerJoin(documents, eq(documents.id, documentEmbeddings.documentId))
+      .innerJoin(projects, eq(projects.id, documents.projectId))
+      .where(whereClause)
+      .orderBy(
+        sql`1 - (${cosineDistance(
+          documentEmbeddings.embedding,
+          queryEmbedding
+        )}) DESC`
+      )
+      .limit(limit);
+
+    console.log(`Found ${results.length} documents matching query: "${query}"`);
+
+    // Add presigned URLs for files that need them
+    const resultsWithUrls = await Promise.all(
+      results.map(async (result) => {
+        if (result.document.fileKey) {
+          try {
+            const url = s3.presign(result.document.fileKey, {
+              expiresIn: 60 * 60, // 1 hour
+            });
+            return {
+              ...result,
+              document: {
+                ...result.document,
+                url,
+              },
+            };
+          } catch (error) {
+            console.error(
+              `Failed to generate presigned URL for file ${result.document.fileKey}:`,
+              error
+            );
+            // Return the result without URL rather than failing the entire operation
+            return result;
+          }
+        }
+        return result;
+      })
+    );
+
+    return resultsWithUrls;
+  } catch (error) {
+    console.error("Error in searchProjectDocuments:", error);
+    throw error;
+  }
 }
 
 // Route handlers
@@ -697,18 +778,26 @@ const handlers = {
       organizationId: orgId,
     };
 
+    if (!req.dbUser?.id) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
     const validatedData = schemas.createProject.parse(data);
-    const project = await createProject(validatedData);
+    const project = await createProject(validatedData, req.dbUser?.id);
+
     res.json(project);
   },
 
   listProjects: async (req: Request, res: Response) => {
-    const { search } = req.query;
+    const { search, page, limit } = req.query;
     const orgId = getOrgIdOrUnedfined(req.workspace);
     const projectsList = await listProjects({
       organizationId: orgId,
       userId: req.dbUser?.id,
       search: search as string,
+      page: page ? parseInt(page as string, 10) : undefined,
+      limit: limit ? parseInt(limit as string, 10) : undefined,
     });
     res.json(projectsList);
   },
@@ -754,19 +843,11 @@ const handlers = {
         return;
       }
 
-      await checkProjectUpdatePermission(projectId, userId);
-
       const validatedData = schemas.updateProject.parse(req.body);
       const project = await updateProject(projectId, validatedData);
       res.json(project);
     } catch (error: any) {
-      if (
-        error.message === "You don't have permission to modify this project"
-      ) {
-        res.status(403).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: "Failed to update project" });
-      }
+      res.status(500).json({ error: "Failed to update project" });
     }
   },
 
@@ -804,14 +885,68 @@ const handlers = {
 };
 
 export default Router()
-  .post("/", handlers.createProject)
+  .post(
+    "/",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.CREATE
+    ),
+    handlers.createProject
+  )
   .get("/", handlers.listProjects)
-
-  .post("/:projectId/documents", handlers.documentsUpload)
-  .get("/:projectId/documents", handlers.getDocuments)
-  .delete("/:projectId/documents", handlers.deleteContents)
-
-  .patch("/:projectId", handlers.updateProject)
-  .get("/:projectId", handlers.getProject)
-  .delete("/:projectId", handlers.deleteProject)
-  .get("/:projectId/document", handlers.getDocument);
+  .post(
+    "/:projectId/documents",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Actions.CREATE
+    ),
+    handlers.documentsUpload
+  )
+  .get(
+    "/:projectId/documents",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Actions.READ
+    ),
+    handlers.getDocuments
+  )
+  .delete(
+    "/:projectId/documents",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Actions.DELETE
+    ),
+    handlers.deleteContents
+  )
+  .patch(
+    "/:projectId",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.UPDATE
+    ),
+    handlers.updateProject
+  )
+  .get(
+    "/:projectId",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.READ
+    ),
+    handlers.getProject
+  )
+  .delete(
+    "/:projectId",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.DELETE
+    ),
+    handlers.deleteProject
+  )
+  .get(
+    "/:projectId/document",
+    permissions(
+      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Actions.READ
+    ),
+    handlers.getDocument
+  );

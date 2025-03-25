@@ -1,14 +1,12 @@
-import { modelAtom, uploadsAtom } from "@/atoms/chat";
-import { useDragAndDrop } from "@/components/DragDropProvider";
-import { FileUpload } from "@/types/chat";
 import { useAtom } from "jotai";
+import { modelAtom, uploadsAtom } from "@/atoms/chat";
+import { FileUpload } from "@/types/chat";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
 export function useFileUpload(acceptedTypes: string[]) {
   const [uploads, setUploads] = useAtom(uploadsAtom);
   const [model] = useAtom(modelAtom);
-  const { isDragging, setIsDragging } = useDragAndDrop();
 
   const validateFileSize = (file: File) => {
     if (file.type.startsWith("image/")) {
@@ -23,8 +21,6 @@ export function useFileUpload(acceptedTypes: string[]) {
       }
       return isValidSize;
     }
-
-    // For non-image files (like PDFs)
     const isValidSize = !model.maxFileSize || file.size <= model.maxFileSize;
     if (!isValidSize) {
       toast.error(
@@ -38,16 +34,23 @@ export function useFileUpload(acceptedTypes: string[]) {
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
-
     const files = Array.from(e.target.files || []);
+    processFiles(files);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = Array.from(e.dataTransfer.files);
+    processFiles(files);
+  };
+
+  const processFiles = (files: File[]) => {
     const validFiles = files.filter((file) => {
-      // First check if file type is accepted
       if (!acceptedTypes.includes(file.type)) {
         toast.error(`File type not supported at this time.`);
         return false;
       }
-
-      // Then validate file size
       return validateFileSize(file);
     });
 
@@ -74,55 +77,17 @@ export function useFileUpload(acceptedTypes: string[]) {
     setUploads([]);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const newUploads: FileUpload[] = Array.from(e.dataTransfer.files)
-      .filter((file) => {
-        // First check if file type is accepted
-        if (!acceptedTypes.includes(file.type)) {
-          toast.error(`File type not supported at this time.`);
-          return false;
-        }
-
-        // Then validate file size
-        return validateFileSize(file);
-      })
-      .map((file) => ({
-        file,
-        preview: URL.createObjectURL(file),
-        type: file.type.startsWith("image/") ? "image" : "pdf",
-      }));
-
-    setUploads((prev) => [...prev, ...newUploads]);
-  };
-
   useEffect(() => {
     return () => {
       uploads.forEach((upload) => URL.revokeObjectURL(upload.preview));
     };
-  }, []);
+  }, [uploads]);
 
   return {
     uploads,
     handleFiles,
     removeUpload,
     clearUploads,
-    isDragging,
-    handleDragOver,
-    handleDragLeave,
     handleDrop,
   };
 }

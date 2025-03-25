@@ -10,6 +10,7 @@ import {
   createThreadSchema,
   getThreadsSchema,
   inferenceSchema,
+  updateThreadSchema,
 } from "./threads.schemas";
 
 const router = Router();
@@ -27,13 +28,14 @@ router.post(
 router.get(
   "/",
   handle(async (req) => {
-    const { page, search } = getThreadsSchema.parse(req.query);
+    const { page, search, projectId } = getThreadsSchema.parse(req.query);
     const orgId = getOrgIdOrUnedfined(req.workspace);
     return threadsOps.listThreads(
       req.dbUser!.id,
       parseInt(page || "1", 10),
       (search || "").trim(),
-      orgId
+      orgId,
+      projectId
     );
   })
 );
@@ -43,6 +45,19 @@ router.get(
   "/:threadId",
   handle(async (req) => {
     return threadsOps.getThread(req.params.threadId);
+  })
+);
+
+// Update thread
+router.put(
+  "/:threadId",
+  handle(async (req) => {
+    const { projectId, title, isPublic } = updateThreadSchema.parse(req.body);
+    return threadsOps.updateThread(req.params.threadId, req.dbUser!.id, {
+      isPublic,
+      title,
+      projectId,
+    });
   })
 );
 
@@ -68,6 +83,14 @@ router.delete(
   handle(async (req) => {
     const orgId = getOrgIdOrUnedfined(req.workspace);
     return threadsOps.deleteThread(req.dbUser!.id, req.params.threadId, orgId);
+  })
+);
+
+// Clone a thread
+router.post(
+  "/:threadId/clone",
+  handle(async (req) => {
+    return threadsOps.cloneThread(req.dbUser!.id, req.params.threadId);
   })
 );
 

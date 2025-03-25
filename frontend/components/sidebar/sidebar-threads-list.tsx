@@ -15,7 +15,10 @@ import { Button } from "../ui/button";
 import { SidebarItem } from "./sidebar-item";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { ChevronRight, History } from "lucide-react";
-import { useDeleteThreadMutation, useThreadsQuery } from "@/features/chat/threads/api";
+import {
+  useDeleteThreadMutation,
+  useThreadsQuery,
+} from "@/features/chat/threads/api";
 
 interface ThreadsListProps {
   user: User;
@@ -33,7 +36,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
       : null
     : null;
   const { data, isLoading } = useThreadsQuery();
-  const threads = (data?.pages[0]?.threads ?? []).slice(0, 6);
+  const threads = (data?.pages[0]?.threads ?? []).slice(0, 8);
 
   const deleteThreadMutation = useDeleteThreadMutation();
 
@@ -73,6 +76,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
                       currentId={currentThreadId as string}
                       onDelete={handleThreadDelete}
                       itemType="thread"
+                      canDeleteItem
                     />
                   )
               )}

@@ -17,6 +17,7 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import { ChevronRight, FolderClosed } from "lucide-react";
 import { useProjectsQuery } from "@/features/projects/api";
 import { useDeleteProjectMutation } from "@/features/projects/api";
+import { usePermissions } from "@/features/permissions/context";
 
 interface ProjectsListProps {
   user: User;
@@ -34,8 +35,12 @@ export function SidebarProjectsList({ user }: ProjectsListProps) {
       : null
     : null;
 
-  const { data: projects, isLoading } = useProjectsQuery();
+  const { data: projects, isLoading } = useProjectsQuery({
+    limit: 8,
+  });
   const deleteProjectMutatio = useDeleteProjectMutation();
+
+  const { canDeleteOrgProjects } = usePermissions();
 
   const handleDeleteProject = async (id: string) => {
     await deleteProjectMutatio.mutateAsync(id);
@@ -70,6 +75,7 @@ export function SidebarProjectsList({ user }: ProjectsListProps) {
                   href={`/projects/${project.id}`}
                   currentId={currentProjectId as string}
                   onDelete={handleDeleteProject}
+                  canDeleteItem={canDeleteOrgProjects}
                   itemType="project"
                 />
               ))}

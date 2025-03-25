@@ -59,6 +59,17 @@ const useAuth = () => {
         return { requiresAuth: true };
       }
 
+      if (result.alreadyMember) {
+        // User is already a member, redirect to home page
+        queryClient.invalidateQueries({ queryKey: ["me"] });
+        router.push("/");
+        return { success: true, alreadyMember: true };
+      }
+
+      if (result.error) {
+        return result;
+      }
+
       // Success case
       await queryClient.invalidateQueries({ queryKey: ["me"] });
       return { success: true };

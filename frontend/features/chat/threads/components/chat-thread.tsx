@@ -22,14 +22,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import { useAtom } from "jotai";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 // Components
 import { Thread } from "@/types/chat";
 import { toast } from "sonner";
 import ThreadHeader from "./thread-header";
 import { useResizeLayout } from "../hooks";
-import { ArtifactViewer, ChatInputForm, ChatMessagesList } from "@/features/chat/messages/components";
+import {
+  ArtifactViewer,
+  ChatInputForm,
+  ChatMessagesList,
+} from "@/features/chat/messages/components";
+import { CloneThreadButton } from "./clone-thread-button";
 
 type ExtendedAttachment = Attachment & {
   file_key: string;
@@ -38,9 +43,15 @@ type ExtendedAttachment = Attachment & {
 export default function ThreadPage({
   initalMessages,
   thread,
+  viewOnly = false,
+  messagesAreBeingFetched = false,
+  showCloneThreadButton = false,
 }: {
   initalMessages: Message[];
   thread?: Thread;
+  viewOnly?: boolean;
+  messagesAreBeingFetched?: boolean;
+  showCloneThreadButton?: boolean;
 }) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -216,22 +227,31 @@ export default function ThreadPage({
         <div className="flex-1">
           <ChatMessagesList
             messages={messages}
-            isLoading={status === "submitted"}
+            status={status}
+            showSkeletons={messagesAreBeingFetched}
           />
         </div>
 
-        <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
-          <ChatInputForm
-            input={input}
-            setInput={setInput}
-            handleInputChange={handleInputChange}
-            onSubmit={onSubmit}
-            stop={stop}
-            isGenerating={status === "streaming"}
-            showContextSelector={thread?.project !== null}
-            projectId={thread?.project?.id}
-          />
-        </div>
+        {!viewOnly && (
+          <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
+            <ChatInputForm
+              input={input}
+              setInput={setInput}
+              handleInputChange={handleInputChange}
+              onSubmit={onSubmit}
+              stop={stop}
+              isGenerating={status === "streaming"}
+              showContextSelector={thread?.project !== null}
+              projectId={thread?.project?.id}
+            />
+          </div>
+        )}
+
+        {showCloneThreadButton && (
+          <div className="w-full flex items-center justify-center mx-auto px-6 pb-8 md:pb-4 md:p-2">
+            <CloneThreadButton threadId={threadId} />
+          </div>
+        )}
       </div>
     </div>
   );

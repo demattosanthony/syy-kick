@@ -1,22 +1,13 @@
 "use client";
 
-import { ProjectFileLayout } from "@/features/projects/components";
+import ProjectFileLayout from "@/features/projects/components/files/project-file-layout";
 import ProjectFileViewer from "@/features/projects/components/files/project-file-viewer";
 import { Card, CardContent } from "@/components/ui/card";
-import { useParams, usePathname } from "next/navigation";
+import { useDecodedPathParams } from "@/features/projects/hooks/use-decoded-path-param";
 import { useProjectDocQuery } from "@/features/projects/api";
 
 export default function Page() {
-  const pathname = usePathname();
-  const params = useParams();
-  const projectId = params.projectId as string;
-
-  // Remove the fixed parts of the path to get the file path
-  const currentPath = pathname
-    .replace(`/projects/${projectId}/blob/`, "")
-    .replace(/^\/+|\/+$/g, ""); // Trim any leading/trailing slashes
-
-  const pathArray = currentPath ? currentPath.split("/") : [];
+  const { projectId, decodedPathArray, currentPath } = useDecodedPathParams();
 
   const { data: doc } = useProjectDocQuery(projectId, currentPath);
 
@@ -31,7 +22,7 @@ export default function Page() {
   return (
     <ProjectFileLayout
       projectId={projectId}
-      pathArray={pathArray}
+      pathArray={decodedPathArray}
       rightContent={rightContent}
     />
   );

@@ -1,53 +1,65 @@
-"use client";
+"use server";
 
-import { useThreadQuery } from "@/features/chat/threads/api";
 import { ChatThread } from "@/features/chat/threads/components";
-import { Message } from "ai/react";
-import { useParams, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
+import api from "@/lib/api";
+import type { Metadata } from "next";
 
-export default function ThreadsPage() {
-  const searchParams = useSearchParams();
-  const params = useParams<{ threadId: string }>();
-  const isNew = searchParams.get("new") === "true";
-  const threadId = params.threadId;
+type Props = {
+  params: Promise<{ threadId: string }>;
+};
 
-  const { data: thread } = useThreadQuery(threadId, isNew);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { threadId } = await params;
 
-  const initalMessages = useMemo(() => {
-    if (isNew) return [];
+  const thread = await api.threads.getThread(threadId);
+  const lastMessage = thread.messages[thread.messages.length - 1];
 
-    if (!thread) return [];
+  if (!thread || !thread.title) {
+    return {
+      title: "Syykick",
+      description: "Syykick",
+      openGraph: {
+        title: "Syykick",
+        description: "Syykick",
+      },
+    };
+  }
 
-    return (
-      thread?.messages?.map(
-        (message): Message => ({
-          content: message.text,
-          role: message.role as "user" | "assistant",
-          id: message.id,
-          createdAt: message.createdAt
-            ? new Date(message.createdAt)
-            : undefined,
-          reasoning: message.reasoning,
-          experimental_attachments: message.attachments?.map((attachment) => ({
-            name: attachment.fileName,
-            url: attachment.url,
-            file_key: attachment.fileKey,
-            contentType: attachment.mimeType,
-          })),
-          toolInvocations: message.toolCalls?.map((toolCall) => ({
-            id: toolCall.id,
-            toolName: toolCall.toolName,
-            status: toolCall.status,
-            result: toolCall.result,
-            args: toolCall.args,
-            toolCallId: toolCall.toolCallId,
-            state: "result" as const,
-          })),
-        })
-      ) ?? []
-    );
-  }, [isNew, thread]);
+  return {
+    title: thread.title + " - Syykick",
+    description: lastMessage?.text.slice(0, 250),
+    openGraph: {
+      title: thread.title + " - Syykick",
+      description: lastMessage?.text.slice(0, 250),
+    },
+  };
+}
 
-  return <ChatThread initalMessages={initalMessages} thread={thread} />;
+export default async function ThreadsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ threadId: string }>;
+  searchParams: Promise<{ new?: string }>;
+}) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+
+  const isNew = resolvedSearchParams.new === "true";
+  const threadId = resolvedParams.threadId;
+
+  // Only fetch the thread if it's not a new thread
+  const thread = isNew ? undefined : await api.threads.getThread(threadId);
+
+  const initialMessages =
+    isNew || !thread ? [] : mapThreadMessagesToMessages(thread);
+
+  return (
+    <ChatThread
+      initalMessages={initialMessages}
+      thread={thread}
+      messagesAreBeingFetched={false}
+    />
+  );
 }

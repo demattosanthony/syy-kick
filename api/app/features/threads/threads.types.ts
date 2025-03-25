@@ -15,6 +15,7 @@ type ThreadWithMessages = {
   userId: string;
   organizationId?: string | null;
   projectId?: string | null;
+  isPublic?: boolean;
   createdAt: Date;
   updatedAt: Date;
   messages: {

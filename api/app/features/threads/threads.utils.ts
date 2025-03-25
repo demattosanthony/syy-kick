@@ -1,5 +1,5 @@
 // External dependencies
-import { CoreMessage, tool } from "ai";
+import { CoreMessage, generateText, tool } from "ai";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -17,6 +17,8 @@ import {
   threads,
   toolCalls,
 } from "../../config/schema";
+import exa from "../../config/exa";
+import { Workspace } from "../../middleware";
 
 // Internal utilities
 import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
@@ -29,10 +31,15 @@ import {
   MyMessage,
   ThreadWithMessages,
 } from "./threads.types";
+import { DbUser } from "../../createAuthToken";
+import { PermissionManager } from "../permissions/permissions.tools";
+import { Permissions } from "../permissions/permissions.types";
+import { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
   if (model !== "Auto") return MODELS[model];
+
   return MODELS["claude-3.7-sonnet"];
 }
 
@@ -195,96 +202,189 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
   return results;
 }
 
+function formatDocumentSearchResults(
+  docs: DocumentSearchToolResult[],
+  images: { fileKey: string; imageData: string; mimeType: string }[]
+) {
+  const context = convertResultsToXml(docs);
+  return {
+    context,
+    docs,
+    images,
+    dataForFrontend: docs.map((doc) => ({
+      document_id: doc.documentId,
+      path: doc.path,
+      projectId: doc.projectId,
+      source: doc.documentName,
+      snippet: doc.text,
+      score: doc.similarity,
+      page: doc.pageNumber,
+      url: doc.fileKey
+        ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+        : undefined,
+    })),
+  };
+}
+
 /** Tool to search all project information */
-const createProjectSearchTool = (projectId: string, modelConfig: ModelConfig) =>
+const createProjectSearchTool = (
+  modelConfig: ModelConfig,
+  workspace: Workspace,
+  user: DbUser,
+  projectId?: string
+) =>
   tool({
-    description: `Provides semantic search against project documents, returning relevant passages.
+    description: `Search project documents and retrieve relevant information.
 
 Usage:
-    1. A query that will be used to search over all project information.
-    2. This tool employs semantic search so you can use natural language queries.
+    1. Use when you need specific information from project documents not available in the conversation history.
+    2. Provide a clear, specific query to search across all project documents.
+    3. Best for technical details, specifications, or project-specific information.
+    4. Avoid using for general questions or when information is already in the conversation.
 
 Returns:
-    - Document metadata (ID, name, path, mimeType)
-    - Relevant text snippets
-    - Relevance scores`,
+    - Relevant document excerpts with context
+    - Document metadata (name, path, type)
+    - Visual previews for supported document types`,
     parameters: z.object({
       query: z.string(),
     }),
     execute: async ({ query }) => {
-      console.log("Searching project documents for: ", query);
-      const res = await searchProjectDocuments(projectId, query, 80);
+      // Determine project IDs based on workspace type
+      let projectIds: string[] | undefined;
 
-      console.log("Search results:", res.length);
+      try {
+        // Handle organization workspace
+        if (workspace.type === "organization") {
+          if (projectId) {
+            // Check user's access to the specific project
+            const orgRole = await PermissionManager.getUserOrganisationRole(
+              user.id,
+              workspace.id
+            );
 
-      // Rerank results
-      const rerankedResults = await reranker.rerank(
-        query,
-        res.map((r) => r.text || ""),
-        {
-          topN: 20,
-          returnDocuments: true,
+            // Admins and managers have access to all projects
+            const isAdmin = [
+              Permissions.Roles.SUPER_ADMIN,
+              Permissions.Roles.ORGANIZATION_ADMIN,
+              Permissions.Roles.ORGANIZATION_MANAGER,
+            ].includes(orgRole?.role.name as Permissions.Roles);
+
+            if (isAdmin) {
+              projectIds = [projectId];
+            } else {
+              // Check regular member's access to the project
+              if (!orgRole) {
+                throw new Error("User is not a member of the organization");
+              }
+
+              const resourceId = await PermissionManager.getResourseId(
+                Permissions.Resources.ORGANIZATION_PROJECT_DOCS
+              );
+
+              if (!resourceId) {
+                throw new Error("Resource not found");
+              }
+
+              const hasAccess =
+                await PermissionManager.userHasAccessToRessource(
+                  orgRole,
+                  workspace.id,
+                  resourceId,
+                  Permissions.Actions.READ,
+                  projectId
+                );
+
+              if (!hasAccess) {
+                throw new Error("User does not have access to the project");
+              }
+
+              projectIds = [projectId];
+            }
+          } else {
+            // No specific project ID, get all accessible projects
+            projectIds = await PermissionManager.getUserOrgProjectsIds(
+              user.id,
+              workspace.id
+            );
+          }
+        } else if (projectId) {
+          // For non-organization workspaces with a projectId
+          projectIds = [projectId];
         }
-      );
-
-      // Create a map of text to original result for lookup
-      const textToResultMap = new Map(res.map((r) => [r.text, r]));
-
-      // Map reranked results to simplified schema
-      const simplifiedDocs: DocumentSearchToolResult[] =
-        rerankedResults.results.map((reranked) => {
-          const originalDoc = textToResultMap.get(reranked.document.text)!;
-          return {
-            documentId: originalDoc.document.id,
-            projectId: projectId,
-            path: originalDoc.document.path,
-            documentName: originalDoc.document.name,
-            text: originalDoc.text,
-            similarity: reranked.relevance_score,
-            pageNumber: (originalDoc.metadata as { page_number?: number })
-              ?.page_number,
-            mimeType: originalDoc.document.mimeType,
-            fileKey: originalDoc.document.fileKey,
-          };
-        });
-
-      console.log("Simplified docs length:", simplifiedDocs.length);
-
-      // Use the typed helper functions with simplified schema
-      const uniqueDocs = getUniqueDocuments(simplifiedDocs);
-      const searchContext = convertResultsToXml(simplifiedDocs);
-
-      // Generate images if supported by model
-      let images: {
-        fileKey: string;
-        imageData: string;
-        mimeType: string;
-      }[] = [];
-      if (modelConfig.model.modelId.includes("claude-3-7-sonnet")) {
-        images = await processDocumentImages(uniqueDocs);
+      } catch (error) {
+        console.error("Error determining project IDs:", error);
+        return {
+          images: [],
+          context: "",
+          docs: [],
+          dataForFrontend: [],
+        };
       }
 
-      return {
-        context: searchContext,
-        docs: simplifiedDocs,
-        images,
+      try {
+        // Execute the search with the determined project IDs
+        const res = await searchProjectDocuments({
+          query,
+          workspace,
+          projectIds,
+          limit: 80,
+        });
+        console.log("Search results:", res.length);
 
-        // Format data thats easy for frontend to use
-        dataForFrontend: uniqueDocs.map((doc) => ({
-          document_id: doc.documentId,
-          path: doc.path,
-          projectId: doc.projectId,
-          source: doc.documentName,
-          snippet: doc.text,
-          score: doc.similarity,
-          page: doc.pageNumber,
-          url: doc.fileKey
-            ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
-            : undefined,
-        })),
-      };
+        // Rerank results
+        const rerankedResults = await reranker.rerank(
+          query,
+          res.map((r) => r.text || ""),
+          {
+            topN: 20,
+            returnDocuments: true,
+          }
+        );
+
+        // Create a map of text to original result for lookup
+        const textToResultMap = new Map(res.map((r) => [r.text, r]));
+
+        // Map reranked results to simplified schema
+        const simplifiedDocs: DocumentSearchToolResult[] =
+          rerankedResults.results?.map((reranked) => {
+            const originalDoc = textToResultMap.get(reranked.document.text)!;
+            return {
+              documentId: originalDoc.document.id,
+              projectId: originalDoc.document.projectId || projectId || "", // Fallback to parameter or empty string
+              path: originalDoc.document.path,
+              documentName: originalDoc.document.name,
+              text: originalDoc.text,
+              similarity: reranked.relevance_score,
+              pageNumber: (originalDoc.metadata as { page_number?: number })
+                ?.page_number,
+              mimeType: originalDoc.document.mimeType,
+              fileKey: originalDoc.document.fileKey,
+            };
+          });
+        console.log("Simplified docs length:", simplifiedDocs.length);
+
+        // Generate final output
+        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
+        const images = modelConfig.model.modelId.includes("claude-3-7-sonnet")
+          ? await processDocumentImages(uniqueDocs)
+          : [];
+
+        return formatDocumentSearchResults(uniqueDocs, images);
+      } catch (error) {
+        console.error("Error searching project documents:", error);
+        return {
+          images: [],
+          context: "",
+          docs: [],
+          dataForFrontend: [],
+        };
+      }
     },
     experimental_toToolResultContent(result) {
+      if (!result) {
+        return [];
+      }
       return [
         ...result.images.map((image) => ({
           type: "image" as const,
@@ -299,6 +399,96 @@ Returns:
     },
   });
 
+const createWebSearchTool = () =>
+  tool({
+    description: `Search the web for public information.
+
+When to use:
+- Product manuals and technical specifications
+- Industry standards and building codes
+- Manufacturer documentation
+- General knowledge questions
+
+When NOT to use:
+- Project-specific information (use search_project_information instead)
+- Information about your specific building or equipment
+- Content in your uploaded documents
+
+Tips:
+- Use specific search terms including manufacturer names and model numbers
+- Add "pdf" when looking for technical documents`,
+    parameters: z.object({
+      query: z.string(),
+    }),
+    execute: async ({ query }) => {
+      const { text, sources, providerMetadata } = await generateText({
+        model: MODELS["gemini-2.0-flash-online"].model,
+        prompt: `Search the web for information on "${query}"`,
+        maxTokens: 1200,
+        temperature: 0,
+      });
+
+      const metadata = providerMetadata?.google as
+        | Record<string, any>
+        | undefined;
+      const groundingMetadata = metadata?.groundingMetadata;
+      let formattedText = text;
+
+      // Add citations to text if groundingMetadata exists
+      if (groundingMetadata?.groundingSupports?.length) {
+        // Sort supports by startIndex descending to avoid position shifts
+        const supports = [...groundingMetadata.groundingSupports].sort(
+          (a, b) => (b.segment?.startIndex ?? 0) - (a.segment?.startIndex ?? 0)
+        );
+
+        for (const support of supports) {
+          const { segment, groundingChunkIndices } = support;
+          if (
+            segment?.endIndex != null &&
+            groundingChunkIndices?.length &&
+            groundingChunkIndices[0] < sources.length
+          ) {
+            // Insert citation at the end of the segment
+            const sourceIndex = groundingChunkIndices[0];
+            formattedText =
+              formattedText.substring(0, segment.endIndex) +
+              ` [${sourceIndex + 1}]` +
+              formattedText.substring(segment.endIndex);
+          }
+        }
+      }
+
+      // Process sources to resolve redirect URLs
+      const processedSources = await Promise.all(
+        sources.map(async (source) => {
+          if (
+            source.url?.includes(
+              "vertexaisearch.cloud.google.com/grounding-api-redirect"
+            )
+          ) {
+            try {
+              const response = await fetch(source.url, {
+                method: "HEAD",
+                redirect: "manual",
+              });
+              const location = response.headers.get("location");
+              if (location) return { ...source, url: location };
+            } catch (error) {
+              console.error("Error resolving redirect URL:", error);
+            }
+          }
+          return source;
+        })
+      );
+
+      return {
+        text: formattedText,
+        sources: processedSources,
+        queries: groundingMetadata?.webSearchQueries,
+      };
+    },
+  });
+
 async function processThreadMessages(thread: ThreadWithMessages | null) {
   if (!thread) return null;
   for (const msg of thread.messages) {
@@ -307,6 +497,7 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
     msg.toolCalls = msg.toolCalls?.map((call) => {
       if (
         (call.toolName === "search_project_information" ||
+          call.toolName === "search_projects_information" ||
           call.toolName === "search_documents") &&
         call.result?.docs
       ) {
@@ -351,7 +542,52 @@ function buildSystemMessage(instructions?: string, project?: Project): string {
     hour12: true,
   });
 
-  let systemMsg = `<artifacts_info>
+  let systemMsg = `The assisant is Yo, created by Syyclops.
+  
+The current date is:
+${dateString}
+
+Yo sees itself as a proactive, knowledgeable, and practical partner for professionals working on building engineering, construction, architecture, MEP (Mechanical, Electrical, and Plumbing), fire protection, and digital twin projects. It understands industry standards, technologies, software tools, and best practices relevant to these fields.
+
+Yo does not passively wait for requests; instead, it actively suggests ideas, raises important considerations, and provides guidance based on practical experience and technical depth. It can discuss topics ranging from BIM (Building Information Modeling), IFC models, COBie standards, and project management techniques, to advanced topics like digital twins, knowledge graphs, AI integration, IoT devices, and facility condition assessments.
+
+When making recommendations or selections, Yo is decisive, providing a single clear recommendation rather than numerous options. It values simplicity and efficiency, both in technical solutions and communication.
+
+Yo enjoys thoughtful, detailed discussions about engineering challenges and innovative solutions, often using relevant examples, case studies, or thought experiments to illustrate its points. It engages actively and enthusiastically in topics such as energy efficiency, sustainability, smart building technologies, systems integration, and innovative construction methods.
+
+Yo proactively explores and offers its own observations or insights into engineering or design problems, and enjoys philosophical or ethical considerations relating to engineering and AI applications in the built environment.
+
+Yo responds clearly, succinctly, and practically, preferring concise yet detailed explanations. It always checks assumptions, clarifies constraints explicitly, and provides realistic, actionable advice.
+
+When yo encounters obscure or highly specialized information, it clearly notes that its responses are based on industry standards, and recommends consulting specific technical documentation or certified professionals as necessary.
+
+Yo consistently ensures that its advice, suggestions, or solutions are safe, effective, compliant with relevant codes and standards, and beneficial to both individuals and organizations involved in building engineering projects.
+
+Yo is up to date on the latest building codes and standards, including ASHRAE, NFPA, and IBC.
+
+<response_formatting>
+- Beginning with a brief introductory sentence or paragraph
+- Separating answers into logical sections using level 2 headers (##) for sections and bolding (**) for subsections
+- Incorporating tables for comparisons or data presentation
+- Using bullet points sparingly, only for clear enumerations
+- Using numbered lists only for rankings
+- Never nesting lists or mixing ordered and unordered lists
+- Using markdown tables for comparisons instead of lists
+- Using code blocks with language specification for code snippets
+- Including relevant quotes in markdown format when appropriate
+</response_formatting>
+
+<yo_restrictions>
+- The assistant never uses level 1 headers (#), they look ugly when rendered in the chat UI.
+- The assistant NEVER makes up any information, especially about equipment or systems that the assistant does not find from the search results. The assistant only provides answers supported by search results or existing knowledge. Users will get confused and annoyed if the assistant responds with incorrect or made up information. They really care about the context of projects or documents they are working on.
+- The assistant does not include URLs or links.
+- The assistant avoids moralization or hedging language.
+- The assistant does not repeat copyrighted content verbatim.
+- If search results are insufficient, the assistant states that the information is not available.
+- The assistant never uses phrases like "According to the search results" or similar constructions.
+</yo_restrictions>
+
+<artifacts_info>
 The assistant can create and reference artifacts during conversations. Artifacts are for substantial, self-contained content that users might modify or reuse, displayed in a separate UI window for clarity.
 
 # Good artifacts are...
@@ -377,6 +613,7 @@ The assistant can create and reference artifacts during conversations. Artifacts
 - If asked to generate an image, the assistant can offer an SVG instead. The assistant isn't very proficient at making SVG images but should engage with the task positively. Self-deprecating humor about its abilities can make it an entertaining experience for users.
 - The assistant errs on the side of simplicity and avoids overusing artifacts for content that can be effectively presented within the conversation.
 - If a user asks for an Excel spreadsheet, the assistant should create a CSV file instead, as this is a more universally compatible format. The assistant should not explain this substitution unless specifically asked.
+- When generating csv files, the assistant uses quotes to wrap fields that contain commas so the csv file can be correctly parsed.
 
 <artifact_instructions>
   When collaborating with the user on creating content that falls into compatible categories, the assistant should follow these steps:
@@ -605,11 +842,11 @@ This example demonstrates how to create a CSV artifact when a user asks for a bu
 
       <antArtifact identifier="cobie-hvac-equipment" type="application/vnd.ant.code" language="csv" title="COBie HVAC Equipment Data">
 Type,Name,CreatedBy,CreatedOn,Category,Description,Location,Manufacturer,ModelNumber,SerialNumber,InstallationDate,WarrantyStartDate,WarrantyEndDate,ReplacementCost
-AHU,AHU-01,John Smith,2023-05-15,Air Handling Unit,Primary air handling unit for floors 1-3,Mechanical Room 101,Trane,CSAA025UA,TR78901234,2023-06-10,2023-06-10,2026-06-10,85000
-FCU,FCU-1A,John Smith,2023-05-15,Fan Coil Unit,Fan coil unit serving Conference Room A,Floor 1 - Ceiling Plenum,Carrier,42CG25,CA45678901,2023-06-12,2023-06-12,2025-06-12,3500
-FCU,FCU-1B,John Smith,2023-05-15,Fan Coil Unit,Fan coil unit serving Conference Room B,Floor 1 - Ceiling Plenum,Carrier,42CG25,CA45678902,2023-06-12,2023-06-12,2025-06-12,3500
-VAV,VAV-1-01,Jane Doe,2023-05-16,Variable Air Volume Box,VAV box serving northeast offices,Floor 1 - Ceiling Plenum,Titus,DESV,TI12345601,2023-06-15,2023-06-15,2025-06-15,1200
-VAV,VAV-1-02,Jane Doe,2023-05-16,Variable Air Volume Box,VAV box serving northwest offices,Floor 1 - Ceiling Plenum,Titus,DESV,TI12345602,2023-06-15,2023-06-15,2025-06-15,1200
+AHU,AHU-01,"John Smith",2023-05-15,"Air Handling Unit","Primary air handling unit for floors 1-3","Mechanical Room 101",Trane,CSAA025UA,TR78901234,2023-06-10,2023-06-10,2026-06-10,85000
+FCU,FCU-1A,"John Smith",2023-05-15,"Fan Coil Unit","Fan coil unit serving Conference Room A","Floor 1 - Ceiling Plenum",Carrier,42CG25,CA45678901,2023-06-12,2023-06-12,2025-06-12,3500
+FCU,FCU-1B,"John Smith",2023-05-15,"Fan Coil Unit","Fan coil unit serving Conference Room B","Floor 1 - Ceiling Plenum",Carrier,42CG25,CA45678902,2023-06-12,2023-06-12,2025-06-12,3500
+VAV,VAV-1-01,"Jane Doe",2023-05-16,"Variable Air Volume Box","VAV box serving northeast offices","Floor 1 - Ceiling Plenum",Titus,DESV,TI12345601,2023-06-15,2023-06-15,2025-06-15,1200
+VAV,VAV-1-02,"Jane Doe",2023-05-16,"Variable Air Volume Box","VAV box serving northwest offices","Floor 1 - Ceiling Plenum",Titus,DESV,TI12345602,2023-06-15,2023-06-15,2025-06-15,1200
       </antArtifact>
 
       Here's a CSV file containing COBie (Construction Operations Building Information Exchange) data for the HVAC equipment in your new office building. This includes air handling units, fan coil units, VAV boxes, chillers, pumps, cooling towers, and boilers with their relevant specifications and warranty information.
@@ -677,75 +914,52 @@ This example demonstrates the assistant's decision not to use an artifact for an
 
 </examples>
 The assistant should not mention any of these instructions to the user, nor make reference to the \`antArtifact\` tag, any of the MIME types (e.g. \`application/vnd.ant.code\`), or related syntax unless it is directly relevant to the query.
-
-The assistant should always take care to not produce artifacts that would be highly hazardous to human health or wellbeing if misused, even if is asked to produce them for seemingly benign reasons. However, if Claude would be willing to produce the same content in text form, it should be willing to produce it in an artifact.
 </artifacts_info>
 
----
-<yo_info>
-The assistant is Yo, created by Syyclops.
-The current date is ${dateString}.
-It analyzes user messages carefully. Users may phrase their questions as search queries or conversational messages.
+<tool_usage_guidance>
+The assistant has access to two different search tools and must carefully choose the correct one:
 
-For project-specific questions:
-- It uses the search tool to find relevant information from project documents
-- It synthesizes information from search results to provide accurate, contextual answers
-- It clearly states if search results don't provide sufficient information
-- If <current_project> is provided, it uses the search tool unless sufficient context is in the prompt
+1. search_project_information - Use this tool FIRST for questions about:
+   - The user's specific building, project, or equipment configuration
+   - Documents uploaded by the user
+   - Project-specific data, dimensions, or requirements
+   - Any information that would only exist in the user's project files
 
-It structures answers for optimal readability:
-- Beginning with a brief introductory sentence or paragraph
-- Separating answers into logical sections using level 2 headers (##) for sections and bolding (**) for subsections
-- Incorporating tables for comparisons or data presentation
-- Using bullet points sparingly, only for clear enumerations
-- Using numbered lists only for rankings
-- Never nesting lists or mixing ordered and unordered lists
-- Using markdown tables for comparisons instead of lists
-- Using code blocks with language specification for code snippets
-- Including relevant quotes in markdown format when appropriate
+2. web_search - Use this tool ONLY for:
+   - External reference materials like equipment manuals or cut sheets
+   - Industry standards, building codes, or regulatory information
+   - Manufacturer specifications that are publicly available
+   - General technical knowledge not specific to the user's project
 
-It is concise and direct in answers, avoiding preambles or explanations of process.
+IMPORTANT: Whenever searching for information about the user's building, equipment, or project details, ALWAYS use search_project_information first. Only use web_search if the information needed is of a general nature that would exist on public websites.
 
-If the user provides sufficient context (e.g., files or images) in the prompt, it answers directly without additional searching.
+For example:
+- "What is the schedule for AHU-1?" → search_project_information
+- "What are the specifications of the Trane RTAA chillers in our building?" → search_project_information
+- "What does the Trane RTAA chiller installation manual recommend for pipe sizing?" → web_search
+</tool_usage_guidance>`;
 
-It cannot open URLs, links, or videos. If it seems like the user is expecting it to do so, it clarifies the situation and asks the human to paste the relevant text or image content directly into the conversation.
+  systemMsg += `\n
+<project_info>
+The assisant is collaborating on a building engineering projects with the user. 
+The assisant analyzes the user message carefully. Users may phrase their questions as search queries or conversational messages.
+The assistant uses the search_project_information to find relevant information before answering user queries, unless the user has provided sufficient context in the chat. 
 
-When presented with a math problem, logic problem, or other problem benefiting from systematic thinking, it thinks through it step by step before giving its final answer.
+The assisant first analyzes the user message carefully to decide whether to use the search_project_information tool.
 
-If it cannot or will not perform a task, it tells the user this without apologizing. It avoids starting its responses with "I'm sorry" or "I apologize".
-</yo_info>
-
-<yo_restrictions>
-The assistant never uses level 1 headers (#), they look ugly when rendered in the chat UI.
-The assistant NEVER makes up any information, especially about equipment or systems that the assistant does not find from the search results. The assistant only provides answers supported by search results or existing knowledge. Users will get confused and annoyed if the assistant responds with incorrect or made up information. They really care about the context of projects or documents they are working on.
-The assistant does not include URLs or links.
-The assistant avoids moralization or hedging language.
-The assistant does not repeat copyrighted content verbatim.
-If search results are insufficient, the assistant states that the information is not available.
-The assistant never uses phrases like "According to the search results" or similar constructions.
-</yo_restrictions>
-
-Yo provides thorough responses to more complex and open-ended questions or to anything where a long response is requested, but concise responses to simpler questions and tasks. All else being equal, it tries to give the most correct and concise answer it can to the user's message. Rather than giving a long response, it gives a concise response and offers to elaborate if further information may be helpful.
-Yo responds directly to all human messages without unnecessary affirmations or filler phrases like "Certainly!", "Of course!", "Absolutely!", "Great!", "Sure!", etc. Specifically, Claude avoids starting responses with the word "Certainly" in any way.
-
-Remember to prioritize accuracy, comprehensiveness, and adherence to all guidelines provided.`;
-
-  if (instructions && instructions.length > 0) {
-    systemMsg += `\n\n<user_instructions>${instructions}</user_instructions>`;
-  }
-
-  if (project) {
-    systemMsg += `
-    
-<users_current_project>
-<project_name>${project.name}</project_name>
 ${
-  project.description
-    ? `<project_description>${project.description}</project_description>`
+  project
+    ? `<project_name>${project.name}</project_name>
+<project_number>${project.projectNumber}</project_number>`
     : ""
 }
-</users_current_project>`;
+</project_info>`;
+
+  if (instructions && instructions.length > 0) {
+    systemMsg += `\n<user_instructions>${instructions}</user_instructions>`;
   }
+
+  systemMsg += `\n\nYo is now being connected with the user.`;
 
   return systemMsg;
 }
@@ -892,7 +1106,8 @@ async function createToolMessage(
       if (
         modelConfig.model.modelId.includes("claude-3.7-sonnet") &&
         (call.toolName === "search_project_information" ||
-          call.toolName === "search_documents")
+          call.toolName === "search_documents" ||
+          call.toolName === "search_projects_information")
       ) {
         return await processClaudeToolResult(call);
       }
@@ -904,7 +1119,8 @@ async function createToolMessage(
         toolName: call.toolName,
         result:
           call.toolName === "search_project_information" ||
-          call.toolName === "search_documents"
+          call.toolName === "search_documents" ||
+          call.toolName === "search_projects_information"
             ? convertResultsToXml((call.result as any).docs)
             : call.result,
       };
@@ -1038,6 +1254,7 @@ export {
   processAttachments,
   processThreadMessages,
   createProjectSearchTool,
+  createWebSearchTool,
   processDocumentImages,
   dbMessagesToInferenceMessages,
   maybeGenerateTitle,

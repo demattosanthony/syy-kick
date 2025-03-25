@@ -1,17 +1,16 @@
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
-import { DragAndDropProvider } from "@/components/DragDropProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
 import { LoginButtons } from "@/features/auth/components";
 import { FinishOrgSetupBanner } from "@/features/organizations/components";
-import { me } from "../actions";
+import api from "@/lib/api";
 
 export default async function MainAppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await me();
+  const user = await api.auth.me();
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar:state")?.value !== "false";
 
@@ -21,17 +20,15 @@ export default async function MainAppLayout({
 
       <SidebarInset>
         <div className="h-full w-full flex flex-col max-h-[-webkit-fill-available] relative">
-          <DragAndDropProvider>
-            <FinishOrgSetupBanner />
+          <FinishOrgSetupBanner />
 
-            {!user && (
-              <div className="absolute top-4 right-4 z-10">
-                <LoginButtons />
-              </div>
-            )}
+          {!user && (
+            <div className="absolute top-4 right-4 z-10">
+              <LoginButtons />
+            </div>
+          )}
 
-            {children}
-          </DragAndDropProvider>
+          {children}
         </div>
       </SidebarInset>
     </SidebarProvider>

@@ -8,7 +8,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { CreateProjectDialog } from "@/features/projects/components";
 
-export function ProjectsButton() {
+export function ProjectsButton({
+  canAdd = false
+}: {
+  canAdd: boolean;
+}) {
   const router = useRouter();
   const { state, toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
@@ -44,7 +48,7 @@ export function ProjectsButton() {
         )}
       </Button>
 
-      {state === "expanded" && !isMobile && (
+      {state === "expanded" && !isMobile && canAdd && (
         <CreateProjectDialog
           trigger={
             <Button

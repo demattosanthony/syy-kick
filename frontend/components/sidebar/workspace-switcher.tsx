@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Building, ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import { PRICING_PLANS } from "@/lib/pricing";
 import { CreateOrgForm } from "@/features/organizations/components";
 import { useMeQuery } from "@/features/user/api";
+import Image from "next/image";
 
 export function WorkSpaceSwitcher({
   onDropdownOpenChange,
@@ -63,8 +64,8 @@ export function WorkSpaceSwitcher({
   const WorkspaceLogo = ({ workspace }: { workspace: Workspace }) => {
     if (workspace.type === "personal") {
       return (
-        <div className="flex h-5 w-5 items-center justify-center shrink-0">
-          <Avatar className="h-5 w-5 rounded-full bg-transparent">
+        <div className="flex h-6 w-6 items-center justify-center shrink-0">
+          <Avatar className="h-6 w-6 rounded-full bg-transparent">
             <AvatarImage src={user?.profilePicture} alt={user?.name} />
             <AvatarFallback>
               {user?.name
@@ -77,12 +78,20 @@ export function WorkSpaceSwitcher({
       );
     }
 
+    if (!workspace.logo) {
+      return null;
+    }
+
     return (
-      <div className="flex h-5 w-5 items-center justify-center  shrink-0">
-        {workspace.logo ? (
-          <img src={workspace.logo} alt={workspace.name} className="h-5 w-5 " />
-        ) : (
-          <Building className="h-4 w-4" />
+      <div className="flex h-6 w-6 items-center justify-center  shrink-0">
+        {workspace.logo && (
+          <Image
+            src={workspace.logo}
+            alt={workspace.name}
+            width={24}
+            height={24}
+            className="h-6 w-6 rounded-full object-cover"
+          />
         )}
       </div>
     );
@@ -90,13 +99,13 @@ export function WorkSpaceSwitcher({
 
   if (!activeWorkspace) {
     return (
-      <Skeleton className="h-5 group-data-[collapsible=icon]:w-5 w-36 group-data-[collapsible=icon]:rounded-full" />
+      <Skeleton className="h-6 group-data-[collapsible=icon]:w-6 w-36 group-data-[collapsible=icon]:rounded-full" />
     );
   }
 
   return (
     <SidebarMenuItem className="flex items-center flex-col">
-      <DropdownMenu onOpenChange={onDropdownOpenChange}>
+      <DropdownMenu modal={false} onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground flex w-full group-data-[collapsible=icon]:justify-center justify-start items-center gap-2 px-1">
             <WorkspaceLogo workspace={activeWorkspace} />

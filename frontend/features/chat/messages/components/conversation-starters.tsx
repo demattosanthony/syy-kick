@@ -1,11 +1,19 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Button } from "../../../../components/ui/button";
 import { useAtom } from "jotai";
 import { AUTO_MODEL_CONFIG, initalInputAtom, modelAtom } from "@/atoms/chat";
-import { Plug, Search, LucideIcon, Building, Files } from "lucide-react";
+import {
+  Plug,
+  Search,
+  LucideIcon,
+  Building,
+  Files,
+  Shield,
+  ClipboardCheck,
+} from "lucide-react";
 import { animatedAtom } from "./animated-greeting";
+import { Button } from "@/components/ui/button";
 
 interface ConversationStartersProps {
   triggerFileInput: () => void;
@@ -26,8 +34,9 @@ const CONVERSATION_STARTERS: StarterButtonProps[] = [
   {
     icon: Search,
     iconColor: "text-red-500",
-    label: "Analyze PDF",
-    inputText: "Help me ",
+    label: "Mechanical Room Layout Review",
+    inputText:
+      "Please analyze this mechanical room drawing/documentation and provide a detailed assessment focused on:\n\n1. Space utilization efficiency (equipment clearances, service access, pipe/duct routing)\n2. Code compliance specific to mechanical rooms (ventilation, emergency access, fire separations)\n3. Equipment arrangement optimization for:\n   - Maintenance accessibility (filter replacement, coil cleaning, valve access)\n   - Future equipment replacement pathways\n   - Noise/vibration isolation between critical components\n4. Pipe and duct routing efficiency evaluation\n5. Safety considerations (relief valve discharge, combustion air, emergency ventilation)\n6. Specific recommendations for layout improvements with sketched annotations if possible\n\nIdentify any critical spatial conflicts, maintenance accessibility concerns, or code violations that should be addressed during design development. Format your analysis as a professional review document with clear sections for each evaluation category.",
     requiresFile: true,
   },
   {
@@ -38,19 +47,28 @@ const CONVERSATION_STARTERS: StarterButtonProps[] = [
       "Extract my energy usage from this bill and return it in a table format",
     requiresFile: true,
   },
-  //   {
-  //     icon: NotebookPen,
-  //     iconColor: "text-blue-500",
-  //     label: "Write a Report",
-  //     inputText: "Help me write a report about ",
-  //     requiresFile: false,
-  //   },
   {
     icon: Building,
     iconColor: "text-purple-500",
     label: "Generate Basis of Design",
     inputText:
       "Analyze this document and create a comprehensive Basis of Design (BOD) document. First, carefully review the content to extract all relevant engineering requirements, specifications, and project parameters. Then, generate a well-structured markdown BOD document that includes:\n\n1. Project Overview\n2. Design Criteria and Standards\n3. System Descriptions (HVAC, Plumbing, Electrical, etc.)\n4. Load Calculations and Assumptions\n5. Equipment Selections\n6. Control Strategies\n7. Energy Efficiency Measures\n8. Sustainability Considerations\n\nFormat the BOD as a professional markdown document with appropriate headings, tables, and bullet points. This document should serve as a clear reference for all engineering design decisions and requirements. MAKE SURE to return the document as an artifact in markdown format.",
+    requiresFile: true,
+  },
+  {
+    icon: Shield,
+    iconColor: "text-amber-500",
+    label: "Code Compliance Review",
+    inputText:
+      "Please review this document for code compliance issues and provide a comprehensive analysis that includes:\n\n1. Applicable codes and standards identified\n2. Areas of potential non-compliance\n3. Life safety considerations\n4. Accessibility requirements\n5. Energy code provisions\n6. Recommendations to address compliance gaps\n\nOrganize your findings by system type (architectural, structural, mechanical, electrical, plumbing) with specific code references where possible. Highlight critical issues that require immediate attention and suggest practical solutions for resolving them.",
+    requiresFile: true,
+  },
+  {
+    icon: ClipboardCheck,
+    iconColor: "text-indigo-500",
+    label: "Commissioning Plan",
+    inputText:
+      "Based on this project documentation, develop a comprehensive building commissioning plan that includes:\n\n1. Systems to be commissioned (HVAC, lighting, plumbing, specialty systems, etc.)\n2. Commissioning scope and process for each system\n3. Testing requirements and acceptance criteria\n4. Required documentation and deliverables\n5. Roles and responsibilities of team members\n6. Commissioning schedule aligned with construction milestones\n7. Training requirements for facility staff\n\nFormat the plan as a detailed document with appropriate sections, tables, and checklists that can be used throughout the construction process. Include recommendations for specific testing procedures that address critical performance aspects of each system.",
     requiresFile: true,
   },
   {
@@ -137,10 +155,10 @@ function StarterButton({
   );
 }
 
-const ConversationStarters = ({
+export default function ConversationStarters({
   triggerFileInput,
   triggerTextAreaFocus,
-}: ConversationStartersProps) => {
+}: ConversationStartersProps) {
   const [, setInput] = useAtom(initalInputAtom);
   const [, setModel] = useAtom(modelAtom);
   const [alreadyAnimated] = useAtom(animatedAtom);
@@ -181,5 +199,3 @@ const ConversationStarters = ({
     </motion.div>
   );
 }
-
-export default ConversationStarters;
