@@ -173,7 +173,6 @@ const handlers = {
   joinWithInvite: async (req: Request, res: Response) => {
     try {
       const invite = await checkInvite(req.params.token);
-      await checkOrgCapacity(invite.organizationId as string);
 
       if (!req.dbUser) {
         res.status(401).json({
@@ -188,9 +187,25 @@ const handlers = {
         return;
       }
 
+      // Check if the user is already a member of this organization
+      const existingMembership = await db.query.memberRoles.findFirst({
+        where: and(
+          eq(memberRoles.organizationId, invite.organizationId),
+          eq(memberRoles.userId, req.dbUser.id)
+        ),
+      });
+
+      if (existingMembership) {
+        // User is already a member, return success with alreadyMember flag
+        res.json({ success: true, alreadyMember: true });
+        return;
+      }
+
       if (invite.email !== req.dbUser.email) {
         throw new Error("wrong_email");
       }
+
+      await checkOrgCapacity(invite.organizationId as string);
 
       await addOrgMember(
         invite.organizationId as string,
