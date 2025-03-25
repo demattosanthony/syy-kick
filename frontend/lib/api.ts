@@ -36,73 +36,7 @@ const getCommonHeaders = () => ({
   "Content-Type": "application/json",
 });
 
-// Server-side fetch with cookies
-async function serverFetch<T>(
-  endpoint: string,
-  method: string = "GET",
-  body?: unknown,
-  options: RequestInit = {}
-): Promise<T> {
-  const { cookies } = await import("next/headers");
-
-  try {
-    const cookieStore = await cookies();
-
-    const cookieString = cookieStore.toString();
-
-    const config: RequestInit = {
-      method,
-      credentials: "include",
-      headers: {
-        ...getCommonHeaders(),
-        ...(options.headers || {}),
-        Cookie: cookieString,
-      },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    };
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-
-    if (
-      response.status === 403 &&
-      typeof window !== "undefined" &&
-      !window.location.pathname.startsWith("/forbidden")
-    ) {
-      window.location.href = "/forbidden";
-    }
-
-    if (!response.ok) {
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = { message: `HTTP error! status: ${response.status}` };
-      }
-      throw new ApiError(
-        response.status,
-        errorData?.message ||
-          errorData?.error ||
-          `Request failed with status ${response.status}`
-      );
-    }
-
-    return response.json() as Promise<T>;
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("Dynamic server usage") &&
-      typeof window === "undefined"
-    ) {
-      // Return a placeholder response during static rendering
-      // This will be replaced during client-side hydration
-      //   console.warn(
-      //     "Auth check during static rendering, will validate on client"
-      //   );
-      return null as unknown as T;
-    }
-    throw error;
-  }
-}
+import { serverFetch } from "../app/actions";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -186,29 +120,9 @@ class ApiRequest {
   ): Promise<T> {
     const isServer = typeof window === "undefined";
     if (isServer) {
-      // For server-side uploads
-      const { cookies } = await import("next/headers");
-      const cookieStore = cookies();
-
-      const cookieHeader = cookieStore.toString();
-
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          Cookie: cookieHeader,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new ApiError(
-          response.status,
-          `Upload failed with status ${response.status}`
-        );
-      }
-
-      return response.json();
+      // For server-side uploads, use an action
+      const { serverUploadFormData } = await import("../app/actions");
+      return serverUploadFormData<T>(endpoint, formData);
     } else {
       // For client-side uploads
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
