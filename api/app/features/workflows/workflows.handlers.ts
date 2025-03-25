@@ -69,15 +69,17 @@ const workflowHandlers = {
     res.flushHeaders();
 
     const modelConfig = MODELS[workflow.modelName];
-
     const attachments = message.experimental_attachments;
-    const attachment = attachments[0];
 
     try {
-      const attachmentData = await generateAttachmentData(
-        attachment.file_key,
-        "application/pdf",
-        true
+      const attachmentsData = await Promise.all(
+        attachments.map(async (attachment: any) => {
+          return generateAttachmentData(
+            attachment.file_key,
+            "application/pdf",
+            true
+          );
+        })
       );
 
       const response = streamText({
@@ -85,43 +87,46 @@ const workflowHandlers = {
         maxSteps: 10,
         messages: [
           {
-            role: "system",
-            content: workflow.systemMessage,
-          },
-          {
             role: "user",
             content: [
               {
-                type: "file",
-                mimeType: "application/pdf",
-                data: attachmentData,
-              },
-              {
-                type: "text",
+                type: "text" as const,
                 text: workflow.prompt,
               },
+              ...attachmentsData.map((attachmentData) => ({
+                type: "file" as const,
+                mimeType: "application/pdf",
+                data: attachmentData,
+              })),
             ],
           },
         ],
         providerOptions: {
           anthropic: {
-            thinking: { type: "enabled", budgetTokens: 6_000 },
+            thinking: { type: "enabled", budgetTokens: 4_500 },
+          },
+          openai: {
+            reasoningEffort: "medium",
           },
         },
-        onStepFinish: async ({
-          finishReason,
-          text,
-          toolCalls,
-          toolResults,
-          reasoning,
-        }) => {
-          // console.log("Tool calls:", toolCalls);
-          // console.log("Tool results:", toolResults.length);
-          // console.log("Finish reason:", finishReason);
-          // console.log("Text:", text);
-          // console.log("Reasoning:", reasoning);
-          // console.log("\n\n\n");
+        onError: (error) => {
+          console.error("Error running workflow:", error);
+          res.status(500).json({ error: "Failed to process workflow" });
         },
+        // onStepFinish: async ({
+        //   finishReason,
+        //   text,
+        //   toolCalls,
+        //   toolResults,
+        //   reasoning,
+        // }) => {
+        //   console.log("Tool calls:", toolCalls);
+        //   console.log("Tool results:", toolResults.length);
+        //   console.log("Finish reason:", finishReason);
+        //   console.log("Text:", text);
+        //   console.log("Reasoning:", reasoning);
+        //   console.log("\n\n\n");
+        // },
       });
 
       // Pipe the data out as SSE

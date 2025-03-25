@@ -127,7 +127,7 @@ export function NavUser({
 
             <DropdownMenuGroup>
               <Link href="/settings">
-                <DropdownMenuItem className="cursor-pointer">
+                <DropdownMenuItem className="hover:cursor-pointer">
                   <Settings />
                   Settings
                 </DropdownMenuItem>

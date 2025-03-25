@@ -1,13 +1,28 @@
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import api from "@/lib/api";
+import { Project } from "@/types/project";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 export function useInfiniteProjectsQuery({
   search,
   limit = 10,
+  initialData,
 }: {
   search?: string;
   limit?: number;
+  initialData?: {
+    pages: {
+      data: Project[];
+      pagination: {
+        page: number;
+        limit: number;
+        totalCount: number;
+        totalPages: number;
+        hasMore: boolean;
+      };
+    }[];
+    pageParams: number[];
+  };
 } = {}) {
   const { activeWorkspace } = useWorkspace();
 
@@ -27,6 +42,7 @@ export function useInfiniteProjectsQuery({
         ? lastPage.pagination.page + 1
         : undefined;
     },
+    initialData: initialData,
   });
 }
 

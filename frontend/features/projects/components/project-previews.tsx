@@ -2,10 +2,11 @@
 
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { useInfiniteProjectsQuery } from "../api";
 import { Project } from "@/types/project";
-import { useRouter } from "next/navigation";
 import CreateProjectDialog from "./create-project-dialog";
+import { usePermissions } from "@/features/permissions/context";
+import Image from "next/image";
+import Link from "next/link";
 
 // Add this style tag for the pin point shape
 const PinStyles = () => (
@@ -49,39 +50,14 @@ const PinStyles = () => (
     }
   `}</style>
 );
+const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
+  const { canCreateOrgProjects } = usePermissions();
 
-const ProjectPreviews = () => {
-  const router = useRouter();
-
-  const { data, isLoading } = useInfiniteProjectsQuery({
-    limit: 6,
-  });
-
-  // Use a Set to deduplicate projects by ID and limit to 6 most recent
-  const recentProjects = useMemo(() => {
-    const projectsMap = new Map<string, Project>();
-
-    if (data?.pages) {
-      data.pages.forEach((page) => {
-        page.data.forEach((project) => {
-          if (!projectsMap.has(project.id)) {
-            projectsMap.set(project.id, project);
-          }
-        });
-      });
-    }
-
-    return Array.from(projectsMap.values()).slice(0, 6);
-  }, [data?.pages]);
-
-  const handleProjectClick = (projectId: string) => {
-    router.push(`/projects/${projectId}`);
-  };
   return (
     <div className="w-full max-w-[950px] px-6 mx-auto">
       <PinStyles />
 
-      {recentProjects.length > 0 && (
+      {projects?.length > 0 && (
         <div className="flex flex-col gap-1 mb-3 ">
           <h3 className="text-lg font-medium">Recent Projects</h3>
           <p className="text-sm text-muted-foreground">
@@ -90,13 +66,7 @@ const ProjectPreviews = () => {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <ProjectCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : recentProjects.length === 0 ? (
+      {projects.length === 0 && canCreateOrgProjects ? (
         <div className="flex justify-center items-center w-full">
           <div className="bg-card text-card-foreground rounded-xl shadow-sm border border-border p-6 w-full max-w-md flex flex-col items-center text-center">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
@@ -119,16 +89,19 @@ const ProjectPreviews = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {recentProjects.map((project) => (
-            <ProjectCard
+          {projects.map((project) => (
+            <Link
               key={project.id}
-              project={project}
-              onClick={() => handleProjectClick(project.id)}
-            />
+              href={`/projects/${project.id}`}
+              prefetch={true}
+              className="block"
+            >
+              <ProjectCard project={project} />
+            </Link>
           ))}
 
           {/* Add "Create Project" card if there are fewer than 6 projects */}
-          {recentProjects.length < 6 && <AddProjectCard />}
+          {projects.length < 6 && canCreateOrgProjects && <AddProjectCard />}
         </div>
       )}
     </div>
@@ -137,10 +110,9 @@ const ProjectPreviews = () => {
 
 interface ProjectCardProps {
   project: Project;
-  onClick: () => void;
 }
 
-function ProjectCard({ project, onClick }: ProjectCardProps) {
+function ProjectCard({ project }: ProjectCardProps) {
   const mapUrl = useMemo(() => {
     // Create Google Maps Static API URL for satellite view
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -163,14 +135,17 @@ function ProjectCard({ project, onClick }: ProjectCardProps) {
         boxShadow: "var(--shadow-md)",
       }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      onClick={onClick}
     >
       <div className="relative h-[120px] w-full bg-muted">
         {/* Map Image */}
-        <img
+        <Image
           src={mapUrl}
           alt={`Location of ${project.name}`}
           className="w-full h-full object-cover"
+          fill
+          sizes="(max-width: 768px) 100vw, 33vw"
+          priority={false} // Only set to true for above-the-fold images
+          loading="lazy"
           onError={(e) => {
             // Fallback if image fails to load
             e.currentTarget.src =
@@ -250,20 +225,6 @@ function AddProjectCard() {
         }
       />
     </motion.div>
-  );
-}
-
-function ProjectCardSkeleton() {
-  return (
-    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden w-[288px]">
-      <div className="h-[120px] w-full bg-muted animate-pulse"></div>
-      <div className="p-3">
-        <div className="h-4 bg-muted rounded animate-pulse w-3/4 mb-2"></div>
-        <div className="flex items-center justify-between">
-          <div className="h-3 bg-muted rounded animate-pulse w-1/3"></div>
-        </div>
-      </div>
-    </div>
   );
 }
 

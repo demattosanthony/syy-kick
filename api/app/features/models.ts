@@ -9,6 +9,7 @@ import { google } from "@ai-sdk/google";
 import { xai } from "@ai-sdk/xai";
 import { togetherai } from "@ai-sdk/togetherai";
 import { createPerplexity } from "@ai-sdk/perplexity";
+import { mistral } from "@ai-sdk/mistral";
 import { wrapLanguageModel, extractReasoningMiddleware } from "ai";
 
 const perplexity = createPerplexity({
@@ -52,6 +53,17 @@ export const anthropicModels = (
       maxFileSize: 32 * 1024 * 1024, // 32MB
       description:
         "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
+    },
+    "claude-3.5-sonnet": {
+      model: anthropic("claude-3-5-sonnet-latest"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "anthropic",
+      supportsSystemMessages: true,
+      supportedMimeTypes: [],
+      maxImageSize: 5 * 1024 * 1024, // 5MB
+      description:
+        "Claude 3.5 Haiku is the next generation of our fastest model. For a similar speed to Claude 3 Haiku, Claude 3.5 Haiku improves across every skill set and surpasses Claude 3 Opus, the largest model in our previous generation, on many intelligence benchmarks.",
     },
     "claude-3.5-haiku": {
       model: anthropic("claude-3-5-haiku-latest"),
@@ -195,30 +207,32 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
     },
-    // "gemini-2.0-flash-thinking": {
-    //   model: google("gemini-2.0-flash-thinking-exp-01-21"),
-    //   supportsToolUse: false,
-    //   supportsStreaming: true,
-    //   provider: "google",
-    //   supportsSystemMessages: true,
-    //   supportedMimeTypes,
-    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-    //   maxFileSize: 50 * 1024 * 1024, // 50MB
-    //   description:
-    //     "Gemini 2.0 Flash Thinking is an experimental model trained to expose its reasoning process in responses. By making its thinking process explicit, this model demonstrates enhanced reasoning capabilities compared to other Gemini 2.0 Flash models.",
-    // },
-    // "gemini-1.5-pro": {
-    //   model: google("gemini-1.5-pro-latest"),
-    //   supportsToolUse: true,
-    //   supportsStreaming: true,
-    //   provider: "google",
-    //   supportsSystemMessages: true,
-    //   supportedMimeTypes,
-    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-    //   maxFileSize: 50 * 1024 * 1024, // 50MB
-    //   description:
-    //     "Gemini 1.5 Pro is the latest model of the Gemini family. It's a mid-size multimodal model that supports up to 1 million tokens and excels at long-context tasks.",
-    // },
+    "gemini-2.0-flash-online": {
+      model: google("gemini-2.0-flash", {
+        useSearchGrounding: true,
+      }),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "google",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 2 * 1024 * 1024 * 1024, //
+      maxFileSize: 50 * 1024 * 1024, // 50MB
+      description:
+        "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
+    },
+    "gemini-1.5-pro": {
+      model: google("gemini-1.5-pro-latest"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "google",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+      maxFileSize: 50 * 1024 * 1024, // 50MB
+      description:
+        "Gemini 1.5 Pro is the latest model of the Gemini family. It's a mid-size multimodal model that supports up to 1 million tokens and excels at long-context tasks.",
+    },
     // "gemini-2.0-flash-online": {
     //   model: google("gemini-2.0-flash", {
     //     useSearchGrounding: true,
@@ -363,14 +377,44 @@ export const perplexityModels = (
   };
 };
 
+export const mistralModels = (apiKey?: string): Record<string, ModelConfig> => {
+  if (!apiKey) return {};
+
+  const supportedMimeTypes: string[] = [];
+
+  return {
+    "mistral-large": {
+      model: mistral("mistral-large-latest"),
+      supportsToolUse: false,
+      supportsStreaming: true,
+      provider: "mistral",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      description:
+        "Mistral Large is a large language model optimized for performance and accuracy. It is suitable for a wide range of tasks that require high-quality responses.",
+    },
+    "mistral-small": {
+      model: mistral("mistral-small-latest"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "mistral",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      description:
+        "Mistral Small is a smaller version of the Mistral language model that is optimized for speed and efficiency. It is suitable for tasks that require quick responses and low resource usage.",
+    },
+  };
+};
+
 export const MODELS: Record<string, ModelConfig> = {
   ...anthropicModels(process.env.ANTHROPIC_API_KEY),
   ...openaiModels(process.env.OPENAI_API_KEY),
   ...googleModels(process.env.GOOGLE_GENERATIVE_AI_API_KEY),
   ...xAiModels(process.env.XAI_API_KEY),
+  ...mistralModels(process.env.MISTRAL_API_KEY),
   //   ...togetherAiModels(process.env.TOGETHER_AI_API_KEY),
   //   ...groqModels(process.env.GROQ_API_KEY),
-  //   ...perplexityModels(process.env.PPLX_API_KEY),
+  ...perplexityModels(process.env.PPLX_API_KEY),
 };
 
 export const embeddingModel = openai.embedding("text-embedding-3-large", {

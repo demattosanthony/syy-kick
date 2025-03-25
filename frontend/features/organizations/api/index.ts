@@ -6,8 +6,6 @@ export * from './update-organization';
 
 /** Members */
 export * from './members/get-members';
-export * from './members/delete-member';
-export * from './members/update-member';
 
 /** Seats */
 export * from './seats/update-seats';

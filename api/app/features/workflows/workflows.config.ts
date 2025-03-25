@@ -6,12 +6,27 @@ const workflows = [
       "This workflow evaluates a Request for Proposal (RFP) pdf file based on the setty criteria.",
     maxSteps: 5,
     modelName: "claude-3.7-sonnet",
-    prompt: "Evaluate this RFP.",
     authorizedOrganizationIds: [
       "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
       "a5b8c99d-9e1d-42a9-8473-b52471932d51",
     ],
-    systemMessage: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
+    inputs: [
+      {
+        id: "rfp-document",
+        type: "file",
+        title: "Upload RFP document",
+        description: "Upload the document you want to analyze",
+        acceptedFileTypes: "application/pdf",
+        required: true,
+      },
+    ],
+    output: {
+      type: "table",
+      title: "Evaluation Results",
+      description: "View the final evaluation results",
+    },
+    buttonText: "Run RFP Evaluation",
+    prompt: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
 
 # Setty & Associates Overview
 Setty & Associates, established in 1984, is a family-owned, multidisciplinary design engineering firm specializing in mechanical, electrical, plumbing, and fire protection (MEP/FP) engineering services. Their expertise encompasses commissioning, energy services, and sustainable design, aiming to deliver high-performing, energy-efficient buildings. ​
@@ -167,9 +182,268 @@ Here is a template of what the csv artifact result should look like:
 
 Ensure all your math is correct before creating the evaluation results artifact.`,
   },
+
+  {
+    id: "window-door-schedule-generator",
+    title: "Window & Door Schedule Generator",
+    description:
+      "This workflow generates a window and door schedule based on architectural drawings.",
+    maxSteps: 5,
+    modelName: "claude-3.7-sonnet",
+    authorizedOrganizationIds: [
+      "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+      "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+    ],
+    inputs: [
+      {
+        id: "architectural-drawings",
+        type: "file",
+        title: "Architectural Drawings",
+        description: "Upload the document you want to analyze",
+        acceptedFileTypes: "application/pdf",
+        required: true,
+      },
+    ],
+    output: {
+      type: "table",
+      title: "Evaluation Results",
+      description: "View the final evaluation results",
+    },
+    prompt: `You are an AI assistant specialized in analyzing architectural PDF plans. Your primary task is to extract window and door schedules from these plans, calculate areas, and present the information in a structured CSV format.
+
+Your goal is to create two separate schedules: one for windows and one for doors. Each schedule should include the following columns: Item, Height, Width, and Area (sq ft). Follow these steps:
+
+1. Scan the PDF content for window and door schedules, dimensions, and relevant symbols.
+2. Extract the necessary information for each window and door.
+3. Convert all measurements to feet and inches if they're in a different unit.
+4. Calculate the area in square feet for each item based on the height and width.
+5. Round the calculated areas to two decimal places.
+6. Organize the information into two separate tables: one for windows and one for doors.
+7. Format the tables as CSV with proper formatting.
+
+Before providing your final output, work through the following steps inside <extraction_and_calculation> tags in your thinking block:
+- List all window and door items found in the PDF content.
+- For each item, write down the extracted dimensions and perform any necessary unit conversions.
+- Verify that all measurements are in feet and inches (e.g., 5'0").
+- Show your area calculations for each item, ensuring they're in square feet and rounded to two decimal places.
+- Note any challenges you encounter and how you resolve them.
+- If any information is missing or unclear, explain what's missing and how you plan to address it (e.g., by prompting the user for clarification or making estimates based on similar elements).
+
+Your final output should be a CSV artifact containing both the window and door schedules. Use the following format for the artifact:
+
+<antArtifact identifier="window-door-schedules" type="application/vnd.ant.code" language="csv" title="Window and Door Schedules">
+WINDOW SCHEDULE
+Item,Height,Width,Area (sq ft)
+Window/Storefront A,7'0",10'0",70.00
+Window/Storefront C,7'0",9'0",63.00
+Window/Storefront D,7'0",7'0",49.00
+Window/Storefront F,7'0",3'0",21.00
+Window/Storefront G,7'0",2'0",14.00
+Window/Storefront H,7'0",6'0",42.00
+Window/Storefront I,2'0",6'0",12.00
+Window/Storefront J,2'0",9'0",18.00
+Window/Storefront K,2'0",10'0",20.00
+
+DOOR SCHEDULE
+Item,Height,Width,Area (sq ft)
+Door Type A1,7'0",3'0",21.00
+</antArtifact>
+
+Ensure that your CSV content includes both the window and door schedules, with a clear separation between them.
+
+Remember:
+- All measurements must be in feet and inches (e.g., 7'0").
+- Areas should be calculated in square feet and rounded to two decimal places.
+- Make sure to include the double quotes in the height and width measurements (e.g., 7'0").
+- Verify the accuracy of all extracted and calculated information before including it in the final output.
+- Format exactly as shown in the example above, with no extra quotes around the entire values.
+
+Your final output should consist only of the CSV artifact and should not duplicate or rehash any of the work you did in the thinking block.`,
+  },
+  {
+    id: "equipment-serving",
+    title: "Equipment Serving List Builder",
+    description:
+      "Creates HVAC equipment service area tables from mechanical drawings by extracting data from schedules and floorplans. Maps equipment IDs to service areas in a structured format for facility management.",
+    maxSteps: 5,
+    modelName: "claude-3.7-sonnet",
+    prompt: `You are tasked with creating an 'Equipment Serving' list based on contract mechanical drawings. Your objective is to identify which areas HVAC equipment serves using the provided drawings. The mechanical drawings are attached as a PDF file.
+
+Follow these steps to complete the task:
+
+1. Extract information from the Mechanical Schedules:
+   - Identify all HVAC equipment listed in the schedules.
+   - Check if service areas are explicitly listed for each piece of equipment.
+
+2. Determine Service Areas:
+   - Primary Source: Use the information from the mechanical schedules whenever available.
+   - Secondary Source: If service areas are not listed in the schedules, analyze the mechanical floorplans to trace equipment locations and ductwork paths.
+
+3. Create the HVAC Equipment Service Table:
+   - List each HVAC equipment ID.
+   - Assign the corresponding service area(s) to each equipment ID.
+
+4. Handle uncertainties and finalize the output:
+   - Ensure all equipment has an assigned area.
+   - If you're uncertain about any service area, flag it for user confirmation by adding "[NEEDS CONFIRMATION]" after the area description.
+
+5. Format your final output as follows:
+   - Use a table format with two columns: "Equipment ID" and "Service Area(s)"
+   - List each piece of equipment on a separate row
+   - If multiple areas are served by one piece of equipment, separate them with commas
+
+Your final response to the user is a csv artifact with the equipment serving list.
+
+<artifacts_info>
+Artifacts are for self contained content that users will modify or reuse, displayed in a separate UI window for clarity.
+
+<artifact_instructions>
+  When creating the artifact you follow these steps:
+
+  1. Wrap the content in opening and closing \`<antArtifact>\` tags.
+  2. Assign an identifier to the \`identifier\` attribute of the opening \`<antArtifact>\` tag. For updates, reuse the prior identifier. For new artifacts, the identifier should be descriptive and relevant to the content, using kebab-case (e.g., "example-code-snippet"). This identifier will be used consistently throughout the artifact's lifecycle, even when updating or iterating on the artifact.
+  3. Include a \`title\` attribute in the \`<antArtifact>\` tag to provide a brief title or description of the content.
+  4. Add a \`type\` attribute to the opening \`<antArtifact>\` tag to specify the type of content the artifact represents. Since you are always creating a csv artifact the type should be:
+    - type="application/vnd.ant.code" language="csv"
+</artifact_instructions>
+
+Here is a template of what the csv artifact result should look like:
+
+<example_artifact>
+   <user_query>Analyze the mechanical drawings and create an equipment serving list.</user_query>
+
+   <assistant_response>
+      Based on my analysis of the mechanical drawings, here is the equipment serving list:
+
+        <antArtifact identifier="equipment-serving-list" type="application/vnd.ant.code" language="csv" title="HVAC Equipment Serving List">
+            Equipment ID,Service Area(s)
+            AHU-1,"First Floor Offices, Conference Room A"
+            AHU-2,"Second Floor Open Office Area, Meeting Rooms 201-205"
+            FCU-1,"Server Room 101"
+            FCU-2,"IT Closet 202"
+            FCU-3,"Second Floor, Room 201 [NEEDS CONFIRMATION]"
+            RTU-1,"Cafeteria, Kitchen Area"
+            RTU-2,"Third Floor, Open Plan Area"
+            VAV-1-1,"First Floor North Zone"
+            VAV-1-2,"First Floor South Zone"
+            VAV-2-1,"Second Floor East Zone"
+            VAV-2-2,"Second Floor West Zone"
+            EF-1,"Restrooms 101, 102"
+            EF-2,"Restrooms 201, 202"
+            EF-3,"Kitchen Hood"
+        </antArtifact>
+    </assistant_response>
+</example_artifact>
+</artifacts_info>
+
+Ensure all equipment is properly identified and mapped to their respective service areas before creating the artifact.`,
+    inputs: [
+      {
+        id: "mechanical-drawings",
+        type: "file",
+        title: "Mechanical Drawings PDF",
+        description: "Containing mechanical schedules and floorplans",
+        acceptedFileTypes: "application/pdf",
+        required: true,
+      },
+      {
+        id: "mechanical-schedule",
+        type: "file",
+        title: "Mechanical Schedule PDF",
+        description: "Primary source for areas served",
+        acceptedFileTypes: "application/pdf",
+        required: false,
+      },
+      {
+        id: "mechanical-floorplans",
+        type: "file",
+        title: "Mechanical Floorplans PDF",
+        description: "Secondary source if schedules do not list service areas",
+        acceptedFileTypes: "application/pdf",
+        required: false,
+      },
+    ],
+    output: {
+      type: "table",
+      title: "Equipment Serving List",
+      description: "View the generated equipment serving list",
+    },
+    buttonText: "Generate Equipment Serving List",
+    authorizedOrganizationIds: [
+      "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+      "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+      "282c0c89-85d7-4b94-bd31-6e87b0637cc1",
+    ],
+    systemMessage: "",
+  },
+
+  {
+    id: "bod-generator",
+    title: "Basis of Design Generator",
+    description:
+      "This workflow generates a Basis of Design (BOD) document based engineering drawings.",
+    maxSteps: 5,
+    modelName: "claude-3.7-sonnet",
+    authorizedOrganizationIds: [
+      "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+      "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+    ],
+    inputs: [
+      {
+        id: "engineering-drawings",
+        type: "file",
+        title: "Drawings and Plans",
+        description: "Upload the engineering drawings",
+        acceptedFileTypes: "application/pdf",
+        required: true,
+      },
+    ],
+    prompt: `You are tasked with generating a Basis of Design (BOD) document based on a provided PDF file containing mechanical, electrical, plumbing, or other engineering specifications. Your goal is to extract key information from the PDF and organize it into a clear, structured BOD document.
+
+Carefully analyze the content of the PDF file. Pay attention to important details such as project scope, design criteria, system descriptions, and performance requirements.
+
+Create a Basis of Design document that includes the following sections:
+
+1. Project Overview
+2. Design Criteria and Standards
+3. System Descriptions
+4. Performance Requirements
+5. Sustainability and Energy Efficiency Considerations
+6. Key Assumptions and Limitations
+7. Interdisciplinary Coordination
+8. References
+
+For each section:
+- Extract relevant information from the PDF content
+- Summarize key points concisely
+- Use bullet points or numbered lists where appropriate
+- Include specific technical details, calculations, or references when necessary
+
+Ensure that your BOD document is:
+- Clear and well-organized
+- Technical yet accessible to various stakeholders
+- Consistent in formatting and terminology
+
+Format your output as a Markdown document. Use appropriate Markdown syntax for headings, lists, and emphasis.
+
+Your final output should be wrapped in artifact tags as follows:
+
+<antArtifact identifier="bod-document" type="text/markdown" title="Basis of Design Document">
+[Your Markdown-formatted BOD document goes here]
+</antArtifact>
+
+Remember, your final output should only include the Markdown-formatted BOD document within the specified artifact tags. Do not include any explanations, notes, or other content outside of these tags.`,
+    output: {
+      type: "text/markdown",
+      title: "Basis of Design Document",
+      description: "View the generated Basis of Design document",
+    },
+  },
 ];
 
-function getWorkflowById(id: "rfpEvaluation") {
+function getWorkflowById(
+  id: "rfpEvaluation" | "equipmentServing" | "bodGenerator"
+) {
   return workflows.find((workflow) => workflow.id === id);
 }
 

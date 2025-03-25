@@ -1,30 +1,65 @@
-"use client";
+"use server";
 
-import { useThreadQuery } from "@/features/chat/threads/api";
 import { ChatThread } from "@/features/chat/threads/components";
 import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
-import { useParams, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import api from "@/lib/api";
+import type { Metadata } from "next";
 
-export default function ThreadsPage() {
-  const searchParams = useSearchParams();
-  const params = useParams<{ threadId: string }>();
-  const isNew = searchParams.get("new") === "true";
-  const threadId = params.threadId;
+type Props = {
+  params: Promise<{ threadId: string }>;
+};
 
-  const { data: thread, isLoading } = useThreadQuery(threadId, isNew);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { threadId } = await params;
 
-  const initalMessages = useMemo(() => {
-    if (isNew || !thread) return [];
+  const thread = await api.threads.getThread(threadId);
+  const lastMessage = thread.messages[thread.messages.length - 1];
 
-    return mapThreadMessagesToMessages(thread);
-  }, [isNew, thread]);
+  if (!thread || !thread.title) {
+    return {
+      title: "Syykick",
+      description: "Syykick",
+      openGraph: {
+        title: "Syykick",
+        description: "Syykick",
+      },
+    };
+  }
+
+  return {
+    title: thread.title + " - Syykick",
+    description: lastMessage?.text.slice(0, 250),
+    openGraph: {
+      title: thread.title + " - Syykick",
+      description: lastMessage?.text.slice(0, 250),
+    },
+  };
+}
+
+export default async function ThreadsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ threadId: string }>;
+  searchParams: Promise<{ new?: string }>;
+}) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+
+  const isNew = resolvedSearchParams.new === "true";
+  const threadId = resolvedParams.threadId;
+
+  // Only fetch the thread if it's not a new thread
+  const thread = isNew ? undefined : await api.threads.getThread(threadId);
+
+  const initialMessages =
+    isNew || !thread ? [] : mapThreadMessagesToMessages(thread);
 
   return (
     <ChatThread
-      initalMessages={initalMessages}
+      initalMessages={initialMessages}
       thread={thread}
-      messagesAreBeingFetched={isLoading && !isNew}
+      messagesAreBeingFetched={false}
     />
   );
 }

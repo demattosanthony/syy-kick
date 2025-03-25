@@ -19,8 +19,8 @@
     "@types/jsonwebtoken": "^9.0.8",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.16",
-    "@types/pg": "^8.11.11",
     "@types/passport-microsoft": "^1.0.3",
+    "@types/pg": "^8.11.11",
     "drizzle-kit": "^0.30.4"
   },
   "peerDependencies": {
@@ -31,12 +31,12 @@
     "@ai-sdk/deepseek": "^0.1.8",
     "@ai-sdk/google": "^1.1.14",
     "@ai-sdk/groq": "^1.1.7",
-    "@ai-sdk/mistral": "^1.1.6",
+    "@ai-sdk/mistral": "^1.1.18",
     "@ai-sdk/openai": "^1.2.5",
     "@ai-sdk/perplexity": "^0.0.7",
     "@ai-sdk/togetherai": "^0.1.9",
     "@ai-sdk/xai": "^1.1.8",
-    "ai": "^4.1.61",
+    "ai": "^4.2.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.39.1",
@@ -48,6 +48,7 @@
     "passport-microsoft": "^2.1.0",
     "passport-saml": "^3.2.4",
     "pg": "^8.13.1",
+    "resend": "^4.1.2",
     "stripe": "^17.6.0",
     "tiktoken": "^1.0.20",
     "unstructured-client": "^0.20.0"

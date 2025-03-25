@@ -76,6 +76,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
                       currentId={currentThreadId as string}
                       onDelete={handleThreadDelete}
                       itemType="thread"
+                      canDeleteItem
                     />
                   )
               )}

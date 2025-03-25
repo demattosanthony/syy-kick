@@ -1,41 +1,61 @@
-"use client";
+"use server";
 
-import { usePublicThreadQuery } from "@/features/chat/threads/api";
 import { ChatThread } from "@/features/chat/threads/components";
 import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
-import { useMeQuery } from "@/features/user/api";
-import { redirect, useParams } from "next/navigation";
-import { useMemo } from "react";
+import api from "@/lib/api";
+import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
-export default function ShareThreadPage() {
-  const params = useParams<{ threadId: string }>();
-  const threadId = params.threadId;
+type Props = {
+  params: Promise<{ threadId: string }>;
+};
 
-  const { data: thread, isFetched, isLoading } = usePublicThreadQuery(threadId);
-  const { data: me } = useMeQuery();
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { threadId } = await params;
 
-  const initalMessages = useMemo(() => {
-    if (!thread) return [];
+  const thread = await api.threads.getPublicThread(threadId).catch(() => null);
 
-    return mapThreadMessagesToMessages(thread);
-  }, [thread]);
+  if (!thread || thread.isPublic !== true) {
+    redirect("/");
+  }
+
+  const lastMessage = thread.messages[thread.messages.length - 1];
+
+  return {
+    title: thread.title + " - Syykick",
+    description: lastMessage?.text.slice(0, 250),
+    openGraph: {
+      title: thread.title + " - Syykick",
+      description: lastMessage?.text.slice(0, 250),
+    },
+  };
+}
+
+export default async function ShareThreadPage({
+  params,
+}: {
+  params: Promise<{ threadId: string }>;
+}) {
+  const threadId = (await params).threadId;
+
+  const thread = await api.threads.getPublicThread(threadId).catch(() => null);
+  const user = await api.auth.me();
+
+  if (!thread || thread.isPublic !== true) {
+    redirect("/");
+  }
+
+  const initialMessages = thread ? mapThreadMessagesToMessages(thread) : [];
 
   const isAllowedToCloneThread =
-    !thread?.organizationId ||
-    !!me?.organizationMembers?.some(
-      (member) => member.organization.id === thread?.organizationId
-    );
-
-  if (isFetched && thread?.isPublic !== true) {
-    return redirect("/");
-  }
+    !thread.organizationId ||
+    !!user?.organizations?.some((org) => org.id === thread.organizationId);
 
   return (
     <ChatThread
-      initalMessages={initalMessages}
+      initalMessages={initialMessages}
       thread={thread}
       viewOnly
-      messagesAreBeingFetched={isLoading}
       showCloneThreadButton={isAllowedToCloneThread}
     />
   );

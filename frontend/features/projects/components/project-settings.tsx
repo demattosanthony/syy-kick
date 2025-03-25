@@ -23,15 +23,22 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // API and data fetching imports
-import { useDeleteProjectMutation, useProjectQuery, useUpdateProjectMutation, } from "../api";
+import {
+  useDeleteProjectMutation,
+  useProjectQuery,
+  useUpdateProjectMutation,
+} from "../api";
 
 // Custom component imports
 import ProjectFormFields from "./project-form-fields";
+import { usePermissions } from "@/features/permissions/context";
 
 const ProjectSettings = ({ pid }: { pid: string }) => {
   const router = useRouter();
 
   const { data: project } = useProjectQuery(pid);
+
+  const { canDeleteOrgProjects } = usePermissions();
 
   const updateProjectMutation = useUpdateProjectMutation();
   const deleteProjectMutation = useDeleteProjectMutation();
@@ -158,7 +165,12 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
               </div>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive">Delete Project</Button>
+                  <Button
+                    disabled={!canDeleteOrgProjects}
+                    variant="destructive"
+                  >
+                    Delete Project
+                  </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -187,6 +199,6 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
       </div>
     </div>
   );
-}
+};
 
 export default ProjectSettings;

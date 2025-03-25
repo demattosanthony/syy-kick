@@ -37,6 +37,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { CreateProjectDialog } from "@/features/projects/components";
 import { NewThreadButton } from "./new-thread-button";
+import { usePermissions } from "@/features/permissions/context";
 
 export function AppSidebar({
   user,
@@ -48,6 +49,7 @@ export function AppSidebar({
   const [isPinned, setIsPinned] = React.useState(true);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
+  const { canCreateOrgProjects } = usePermissions();
 
   // Keep pin state in sync with sidebar state
   React.useEffect(() => {
@@ -129,6 +131,7 @@ export function AppSidebar({
                       <CreateProjectDialog
                         trigger={
                           <Button
+                            disabled={!canCreateOrgProjects}
                             variant="ghost"
                             className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
                           >

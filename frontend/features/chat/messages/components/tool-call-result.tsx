@@ -1,6 +1,6 @@
 import { File, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import React from "react";
+import React, { useCallback } from "react";
 import { ToolInvocation } from "ai";
 import {
   Sheet,
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader } from "@/components/ui/loader";
+import Image from "next/image";
+import MarkdownViewer from "./viewers/markdown-viewer";
 
 const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
   switch (tool.toolName) {
@@ -157,25 +159,18 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
 const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
   const [open, setOpen] = React.useState(false);
   const hasResults = tool.state === "result" && tool.result;
-  const resultCount = hasResults ? tool.result.length : 0;
+  const toolResponse = hasResults ? tool.result : undefined;
+  const sources: Array<string | { url?: string; title?: string }> =
+    toolResponse?.sources || [];
+  const resultCount = sources.length;
+  const queries: string[] = toolResponse?.queries || [];
 
-  const toolResponse: {
-    text: string;
-    title: string;
-    url: string;
-    description: string;
-  }[] = hasResults ? tool.result : undefined;
-
-  // Show loading state
   if (tool.state === "partial-call" || tool.state === "call") {
     return (
-      <div className="">
-        <Loader variant="text-shimmer" text="Searching the web..." size="lg" />
-      </div>
+      <Loader variant="text-shimmer" text="Searching the web..." size="lg" />
     );
   }
 
-  // Format URL for display
   const formatUrl = (url: string) => {
     try {
       const urlObj = new URL(url);
@@ -185,38 +180,95 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
     }
   };
 
-  // Get favicon URL using Firefox's favicon service
-  const getFaviconUrl = (url: string) => {
+  const getSourceUrl = (source: any): string =>
+    typeof source === "string" ? source : source?.url || "";
+
+  const getSourceTitle = (source: any): string => {
+    if (typeof source === "string") return formatUrl(source);
+    if (source?.title) return source.title;
+    if (source?.url) return formatUrl(source.url);
+    return "Unknown source";
+  };
+
+  const getFaviconUrl = (source: any) => {
     try {
+      if (source.title?.includes(".")) {
+        return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(
+          source.title
+        )}&sz=32`;
+      }
+      const url = getSourceUrl(source);
       const urlObj = new URL(url);
-      return `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${urlObj.origin}&size=32`;
+      if (
+        urlObj.hostname.includes("vertexaisearch.cloud.google.com") ||
+        urlObj.pathname.includes("grounding-api-redirect")
+      ) {
+        return null;
+      }
+      return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(
+        urlObj.hostname
+      )}&sz=32`;
     } catch (e) {
       return null;
     }
   };
 
+  // Clean text content by removing the "Sources" section if it exists
+  const cleanTextContent = (text: string): string => {
+    // Regular expression to match the "Sources" section at the end of the text
+    const sourcesRegex = /\n+## Sources\n([\s\S]*?)$/;
+    return text.replace(sourcesRegex, "");
+  };
+
+  // Process inline citations to make them clickable
+  const processCitations = (text: string): string => {
+    if (!text || !sources.length) return text;
+
+    // Regular expression to find citation patterns like [1], [2], etc.
+    // Using a regex with lookahead and lookbehind to avoid replacing citations inside markdown links
+    const citationRegex = /(?<!\]\()(\[\d+\])(?!\))/g;
+
+    return text.replace(citationRegex, (match) => {
+      // Extract the number from [n]
+      const numMatch = match.match(/\[(\d+)\]/);
+      if (!numMatch) return match;
+
+      const sourceIndex = parseInt(numMatch[1]) - 1;
+      if (sourceIndex < 0 || sourceIndex >= sources.length) return match;
+
+      const source = sources[sourceIndex];
+      const url = getSourceUrl(source);
+
+      // Only convert to link if we have a valid URL
+      if (!url) return match;
+
+      // Create a markdown link
+      return `[${match}](${url})`;
+    });
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <div
-          className={cn(
-            "w-fit rounded-3xl border border-border p-2 cursor-pointer hover:bg-secondary/30 transition-colors duration-200 h-[34px] flex items-center"
-          )}
-        >
-          {hasResults ? (
+        <div className="w-fit rounded-3xl border border-border p-2 cursor-pointer hover:bg-secondary/30 transition-colors duration-200 h-[34px] flex items-center">
+          {hasResults && sources.length > 0 ? (
             <div className="flex items-center gap-2">
-              {/* Show first 3 favicons */}
               <div className="flex -space-x-1">
-                {toolResponse.slice(0, 3).map((result, idx: number) => (
+                {sources.slice(0, 3).map((source, idx) => (
                   <div
                     key={`favicon-${idx}`}
                     className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"
                   >
-                    {result.url ? (
-                      <img
-                        src={getFaviconUrl(result.url) || ""}
+                    {getSourceUrl(source) ? (
+                      <Image
+                        src={getFaviconUrl(source) || ""}
                         alt=""
+                        width={16}
+                        height={16}
                         className="w-3 h-3"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
                       />
                     ) : (
                       <Search className="w-3 h-3 text-muted-foreground" />
@@ -224,9 +276,8 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                   </div>
                 ))}
               </div>
-
               <span className="font-normal text-sm">
-                {resultCount} web pages
+                {resultCount} web {resultCount === 1 ? "source" : "sources"}
               </span>
             </div>
           ) : (
@@ -243,34 +294,86 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Search Results</SheetTitle>
-          <SheetDescription>Results for "{tool.args?.query}"</SheetDescription>
         </SheetHeader>
-        <div className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto mt-4">
-          {toolResponse?.map((result, idx: number) => (
-            <div
-              key={`result-${idx}`}
-              className="flex flex-col gap-2 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
-              onClick={() => window.open(result.url, "_blank")}
-            >
-              <small className="text-sm font-semibold leading-none">
-                {result.title}
-              </small>
-              <p className="text-sm line-clamp-3">{result.text}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-5 h-5 flex-shrink-0">
-                  <Avatar className="w-full h-full">
-                    <AvatarImage src={getFaviconUrl(result.url) || ""} alt="" />
-                    <AvatarFallback>
-                      <Search className="w-3 h-3 text-muted-foreground" />
-                    </AvatarFallback>
-                  </Avatar>
+        <div className="flex flex-col gap-4 h-[calc(100vh-100px)] overflow-hidden mt-4">
+          <div className="flex-1 overflow-y-auto pr-2">
+            {toolResponse?.text && (
+              <div className="flex flex-col gap-3 p-4 rounded-lg bg-secondary/30 mb-6">
+                {queries?.length > 0 && (
+                  <div className="border-b border-border pb-3 mb-3">
+                    <h4 className="text-xs uppercase font-medium text-muted-foreground mb-2">
+                      Search Queries
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {queries.map((query, idx) => (
+                        <div
+                          key={`query-${idx}`}
+                          className="text-xs bg-secondary/40 rounded-full px-3 py-1"
+                        >
+                          {query}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="text-sm prose prose-sm max-w-none">
+                  <MarkdownViewer
+                    content={processCitations(
+                      cleanTextContent(toolResponse.text)
+                    )}
+                  />
                 </div>
-                <span className="text-xs text-muted-foreground truncate">
-                  {formatUrl(result.url)}
-                </span>
+                {sources.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-border">
+                    <h4 className="text-xs uppercase font-medium text-muted-foreground mb-3">
+                      Sources
+                    </h4>
+                    <div className="grid gap-2.5">
+                      {sources.map((source, idx) => {
+                        const url = getSourceUrl(source);
+                        const title = getSourceTitle(source);
+                        return (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            id={`source-${idx}`}
+                            key={`source-${idx}`}
+                            className="flex items-center gap-3 p-2.5 rounded-md hover:bg-primary/10 hover:text-primary transition-colors duration-150 group relative pl-8"
+                          >
+                            <div className="absolute left-0 w-6 h-6 flex items-center justify-center">
+                              <div className="font-semibold text-xs group-hover:text-primary">
+                                [{idx + 1}]
+                              </div>
+                            </div>
+                            <div className="w-5 h-5 flex-shrink-0">
+                              <Avatar className="w-full h-full">
+                                <AvatarImage
+                                  src={getFaviconUrl(source) || ""}
+                                  alt=""
+                                />
+                                <AvatarFallback className="bg-secondary/70">
+                                  <Search className="w-3 h-3 text-muted-foreground" />
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm truncate group-hover:underline">
+                                {title}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {formatUrl(url)}
+                              </div>
+                            </div>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )}
+          </div>
         </div>
       </SheetContent>
     </Sheet>

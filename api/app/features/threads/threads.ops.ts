@@ -334,6 +334,7 @@ const threadsOps = {
         project_explorer: createProjectExplorerTool(
           modelConfig,
           req.workspace!,
+          req.dbUser!,
           thread.projectId || undefined
         ),
       };
@@ -345,7 +346,7 @@ const threadsOps = {
       const result = streamText({
         model: modelConfig.model,
         messages: inferenceMsgs,
-        temperature: 0.4,
+        temperature: 0.3,
         tools: tools ? tools : undefined,
         maxSteps: tools ? 8 : undefined,
         toolChoice: "auto",
@@ -371,6 +372,12 @@ const threadsOps = {
             aiResponse += chunk.textDelta;
           }
         },
+        onError: (error) => {
+          console.error("Error running inference:", error);
+          res.status(500).json({
+            error: "An error occurred during inference",
+          });
+        },
         onFinish: async () => {
           requestCompleted = true;
         },
@@ -383,7 +390,7 @@ const threadsOps = {
         }) => {
           //   console.log("Finish reason:", finishReason);
           //   console.log("Tool calls:", toolCalls);
-          //   // console.log("Tool results:", toolResults.length);
+          //   console.log("Tool results:", toolResults);
           //   console.log("Text:", text);
           //   console.log("Reasoning:", reasoning);
 
@@ -540,6 +547,7 @@ const threadsOps = {
       // Pipe the data out as SSE
       const streamResult = result.pipeDataStreamToResponse(res, {
         sendReasoning: true,
+        sendSources: true,
       });
 
       return streamResult;

@@ -1,5 +1,5 @@
 // External dependencies
-import { CoreMessage, tool } from "ai";
+import { CoreMessage, generateText, tool } from "ai";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -37,6 +37,10 @@ import {
   MyMessage,
   ThreadWithMessages,
 } from "./threads.types";
+import { DbUser } from "../../createAuthToken";
+import { PermissionManager } from "../permissions/permissions.tools";
+import { Permissions } from "../permissions/permissions.types";
+import { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -210,6 +214,7 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
 const createProjectSearchTool = (
   modelConfig: ModelConfig,
   workspace: Workspace,
+  user: DbUser,
   projectId?: string
 ) =>
   tool({
@@ -306,6 +311,9 @@ Returns:
       };
     },
     experimental_toToolResultContent(result) {
+      if (!result) {
+        return [];
+      }
       return [
         ...result.images.map((image) => ({
           type: "image" as const,
@@ -636,57 +644,91 @@ Like most file explorers there is also a way to search for documents using a que
 
 const createWebSearchTool = () =>
   tool({
-    description: `A web search tool that retrieves relevant information from across the internet.
+    description: `Search the web for public information.
+
 When to use:
-- Looking up current events, news, or general knowledge
-- Finding technical documentation or reference materials
-- Researching companies, products, or technologies
-- Fact-checking or verifying information
-Input:
-- query: A clear, specific search phrase (e.g. "manuals lib aaon rn series installation operation and maintenance pdf")
-Output:
-- List of relevant search results containing:
-  - Title and URL of each result
-  - Content snippets showing relevant text
+- Product manuals and technical specifications
+- Industry standards and building codes
+- Manufacturer documentation
+- General knowledge questions
+
+When NOT to use:
+- Project-specific information (use search_project_information instead)
+- Information about your specific building or equipment
+- Content in your uploaded documents
+
 Tips:
-- Use specific, focused queries for better results
-- Include key terms and any relevant date ranges
-- Avoid overly broad or vague searches`,
+- Use specific search terms including manufacturer names and model numbers
+- Add "pdf" when looking for technical documents`,
     parameters: z.object({
       query: z.string(),
     }),
     execute: async ({ query }) => {
-      console.log("Searching web for: ", query);
+      const { text, sources, providerMetadata } = await generateText({
+        model: MODELS["gemini-2.0-flash-online"].model,
+        prompt: `Search the web for information on "${query}"`,
+        maxTokens: 1200,
+        temperature: 0,
+      });
 
-      interface WebSearchResult {
-        data: {
-          text: string;
-          title: string;
-          description: string;
-          url: string;
-          usage?: { tokens: number };
-        }[];
+      const metadata = providerMetadata?.google as
+        | Record<string, any>
+        | undefined;
+      const groundingMetadata = metadata?.groundingMetadata;
+      let formattedText = text;
+
+      // Add citations to text if groundingMetadata exists
+      if (groundingMetadata?.groundingSupports?.length) {
+        // Sort supports by startIndex descending to avoid position shifts
+        const supports = [...groundingMetadata.groundingSupports].sort(
+          (a, b) => (b.segment?.startIndex ?? 0) - (a.segment?.startIndex ?? 0)
+        );
+
+        for (const support of supports) {
+          const { segment, groundingChunkIndices } = support;
+          if (
+            segment?.endIndex != null &&
+            groundingChunkIndices?.length &&
+            groundingChunkIndices[0] < sources.length
+          ) {
+            // Insert citation at the end of the segment
+            const sourceIndex = groundingChunkIndices[0];
+            formattedText =
+              formattedText.substring(0, segment.endIndex) +
+              ` [${sourceIndex + 1}]` +
+              formattedText.substring(segment.endIndex);
+          }
+        }
       }
 
-      const response = await fetch(`https://s.jina.ai/?q=${query}&num=6`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${process.env.JINA_API_KEY}`,
-          "X-Engine": "direct",
-          "X-Retain-Images": "none",
-          "X-Return-Format": "text",
-        },
-      });
+      // Process sources to resolve redirect URLs
+      const processedSources = await Promise.all(
+        sources.map(async (source) => {
+          if (
+            source.url?.includes(
+              "vertexaisearch.cloud.google.com/grounding-api-redirect"
+            )
+          ) {
+            try {
+              const response = await fetch(source.url, {
+                method: "HEAD",
+                redirect: "manual",
+              });
+              const location = response.headers.get("location");
+              if (location) return { ...source, url: location };
+            } catch (error) {
+              console.error("Error resolving redirect URL:", error);
+            }
+          }
+          return source;
+        })
+      );
 
-      let results = (await response.json()) as WebSearchResult;
-
-      // Remove usage property from results
-      results.data = results.data.map((result) => {
-        const { usage, ...rest } = result;
-        return rest;
-      });
-
-      return results.data;
+      return {
+        text: formattedText,
+        sources: processedSources,
+        queries: groundingMetadata?.webSearchQueries,
+      };
     },
   });
 
@@ -778,15 +820,16 @@ Yo structures answers for optimal readability:
 - Using markdown tables for comparisons instead of lists
 - Using code blocks with language specification for code snippets
 - Including relevant quotes in markdown format when appropriate
+</response_formatting>
 
 <yo_restrictions>
-The assistant never uses level 1 headers (#), they look ugly when rendered in the chat UI.
-The assistant NEVER makes up any information, especially about equipment or systems that the assistant does not find from the search results. The assistant only provides answers supported by search results or existing knowledge. Users will get confused and annoyed if the assistant responds with incorrect or made up information. They really care about the context of projects or documents they are working on.
-The assistant does not include URLs or links.
-The assistant avoids moralization or hedging language.
-The assistant does not repeat copyrighted content verbatim.
-If search results are insufficient, the assistant states that the information is not available.
-The assistant never uses phrases like "According to the search results" or similar constructions.
+- The assistant never uses level 1 headers (#), they look ugly when rendered in the chat UI.
+- The assistant NEVER makes up any information, especially about equipment or systems that the assistant does not find from the search results. The assistant only provides answers supported by search results or existing knowledge. Users will get confused and annoyed if the assistant responds with incorrect or made up information. They really care about the context of projects or documents they are working on.
+- The assistant does not include URLs or links.
+- The assistant avoids moralization or hedging language.
+- The assistant does not repeat copyrighted content verbatim.
+- If search results are insufficient, the assistant states that the information is not available.
+- The assistant never uses phrases like "According to the search results" or similar constructions.
 </yo_restrictions>
 
 <artifacts_info>
@@ -815,6 +858,7 @@ The assistant can create and reference artifacts during conversations. Artifacts
 - If asked to generate an image, the assistant can offer an SVG instead. The assistant isn't very proficient at making SVG images but should engage with the task positively. Self-deprecating humor about its abilities can make it an entertaining experience for users.
 - The assistant errs on the side of simplicity and avoids overusing artifacts for content that can be effectively presented within the conversation.
 - If a user asks for an Excel spreadsheet, the assistant should create a CSV file instead, as this is a more universally compatible format. The assistant should not explain this substitution unless specifically asked.
+- When generating csv files, the assistant uses quotes to wrap fields that contain commas so the csv file can be correctly parsed.
 
 <artifact_instructions>
   When collaborating with the user on creating content that falls into compatible categories, the assistant should follow these steps:
@@ -1043,11 +1087,11 @@ This example demonstrates how to create a CSV artifact when a user asks for a bu
 
       <antArtifact identifier="cobie-hvac-equipment" type="application/vnd.ant.code" language="csv" title="COBie HVAC Equipment Data">
 Type,Name,CreatedBy,CreatedOn,Category,Description,Location,Manufacturer,ModelNumber,SerialNumber,InstallationDate,WarrantyStartDate,WarrantyEndDate,ReplacementCost
-AHU,AHU-01,John Smith,2023-05-15,Air Handling Unit,Primary air handling unit for floors 1-3,Mechanical Room 101,Trane,CSAA025UA,TR78901234,2023-06-10,2023-06-10,2026-06-10,85000
-FCU,FCU-1A,John Smith,2023-05-15,Fan Coil Unit,Fan coil unit serving Conference Room A,Floor 1 - Ceiling Plenum,Carrier,42CG25,CA45678901,2023-06-12,2023-06-12,2025-06-12,3500
-FCU,FCU-1B,John Smith,2023-05-15,Fan Coil Unit,Fan coil unit serving Conference Room B,Floor 1 - Ceiling Plenum,Carrier,42CG25,CA45678902,2023-06-12,2023-06-12,2025-06-12,3500
-VAV,VAV-1-01,Jane Doe,2023-05-16,Variable Air Volume Box,VAV box serving northeast offices,Floor 1 - Ceiling Plenum,Titus,DESV,TI12345601,2023-06-15,2023-06-15,2025-06-15,1200
-VAV,VAV-1-02,Jane Doe,2023-05-16,Variable Air Volume Box,VAV box serving northwest offices,Floor 1 - Ceiling Plenum,Titus,DESV,TI12345602,2023-06-15,2023-06-15,2025-06-15,1200
+AHU,AHU-01,"John Smith",2023-05-15,"Air Handling Unit","Primary air handling unit for floors 1-3","Mechanical Room 101",Trane,CSAA025UA,TR78901234,2023-06-10,2023-06-10,2026-06-10,85000
+FCU,FCU-1A,"John Smith",2023-05-15,"Fan Coil Unit","Fan coil unit serving Conference Room A","Floor 1 - Ceiling Plenum",Carrier,42CG25,CA45678901,2023-06-12,2023-06-12,2025-06-12,3500
+FCU,FCU-1B,"John Smith",2023-05-15,"Fan Coil Unit","Fan coil unit serving Conference Room B","Floor 1 - Ceiling Plenum",Carrier,42CG25,CA45678902,2023-06-12,2023-06-12,2025-06-12,3500
+VAV,VAV-1-01,"Jane Doe",2023-05-16,"Variable Air Volume Box","VAV box serving northeast offices","Floor 1 - Ceiling Plenum",Titus,DESV,TI12345601,2023-06-15,2023-06-15,2025-06-15,1200
+VAV,VAV-1-02,"Jane Doe",2023-05-16,"Variable Air Volume Box","VAV box serving northwest offices","Floor 1 - Ceiling Plenum",Titus,DESV,TI12345602,2023-06-15,2023-06-15,2025-06-15,1200
       </antArtifact>
 
       Here's a CSV file containing COBie (Construction Operations Building Information Exchange) data for the HVAC equipment in your new office building. This includes air handling units, fan coil units, VAV boxes, chillers, pumps, cooling towers, and boilers with their relevant specifications and warranty information.
@@ -1115,16 +1159,36 @@ This example demonstrates the assistant's decision not to use an artifact for an
 
 </examples>
 The assistant should not mention any of these instructions to the user, nor make reference to the \`antArtifact\` tag, any of the MIME types (e.g. \`application/vnd.ant.code\`), or related syntax unless it is directly relevant to the query.
-</artifacts_info>`;
+</artifacts_info>
+
+<tool_usage_guidance>
+The assistant has access to two different search tools and must carefully choose the correct one:
+
+1. search_project_information - Use this tool FIRST for questions about:
+   - The user's specific building, project, or equipment configuration
+   - Documents uploaded by the user
+   - Project-specific data, dimensions, or requirements
+   - Any information that would only exist in the user's project files
+
+2. web_search - Use this tool ONLY for:
+   - External reference materials like equipment manuals or cut sheets
+   - Industry standards, building codes, or regulatory information
+   - Manufacturer specifications that are publicly available
+   - General technical knowledge not specific to the user's project
+
+IMPORTANT: Whenever searching for information about the user's building, equipment, or project details, ALWAYS use search_project_information first. Only use web_search if the information needed is of a general nature that would exist on public websites.
+
+For example:
+- "What is the schedule for AHU-1?" → search_project_information
+- "What are the specifications of the Trane RTAA chillers in our building?" → search_project_information
+- "What does the Trane RTAA chiller installation manual recommend for pipe sizing?" → web_search
+</tool_usage_guidance>`;
 
   systemMsg += `\n
 <project_info>
 The assisant is collaborating on a building engineering projects with the user. 
 The assisant analyzes the user message carefully. Users may phrase their questions as search queries or conversational messages.
 The assistant uses the search_project_information to find relevant information before answering user queries, unless the user has provided sufficient context in the chat. 
-The assisant uses the tool iteratively to refine results and find the most relevant information.
-The user may phrase their 
-The assistant limits searches to a maximum of 3 per user query.
 
 The assisant first analyzes the user message carefully to decide whether to use the search_project_information tool.
 
