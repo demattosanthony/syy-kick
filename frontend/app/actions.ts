@@ -23,6 +23,7 @@ export async function serverFetch<T>(
       credentials: "include",
       headers: {
         Cookie: cookieString,
+        ...(options.headers || {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     };
