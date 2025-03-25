@@ -235,12 +235,12 @@ Returns:
     }),
     execute: async ({ query }) => {
       console.log("Searching project documents for: ", query);
-      const res = await searchProjectDocuments(
-        projectId || null,
+      const res = await searchProjectDocuments({
         query,
-        80,
-        workspace
-      );
+        workspace,
+        projectIds: projectId ? [projectId] : [],
+        limit: 80,
+      });
 
       console.log("Search results:", res.length);
 
@@ -548,12 +548,12 @@ Like most file explorers there is also a way to search for documents using a que
             searchProjectId = pathParts[0];
           }
 
-          const res = await searchProjectDocuments(
-            searchProjectId || null,
+          const res = await searchProjectDocuments({
             query,
-            80,
-            workspace
-          );
+            workspace,
+            projectIds: searchProjectId ? [searchProjectId] : [],
+            limit: 80,
+          });
 
           console.log("Search results:", res.length);
 
