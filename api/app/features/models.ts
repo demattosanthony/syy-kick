@@ -195,6 +195,18 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
     //   description:
     //     "Improved quality, especially for world knowledge, code, and long context",
     // },
+    "gemini-2.5-pro-exp": {
+      model: google("gemini-2.5-pro-exp-03-25"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "google",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 2 * 1024 * 1024 * 1024, //
+      maxFileSize: 50 * 1024 * 1024, // 50MB
+      description:
+        "Gemini 2.5 is a thinking model, designed to tackle increasingly complex problems. Google's first 2.5 model, Gemini 2.5 Pro Experimental, leads common benchmarks by meaningful margins and showcases strong reasoning and code capabilities.",
+    },
     "gemini-2.0-flash": {
       model: google("gemini-2.0-flash"),
       supportsToolUse: true,

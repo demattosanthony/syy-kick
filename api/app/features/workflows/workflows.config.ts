@@ -189,7 +189,7 @@ Ensure all your math is correct before creating the evaluation results artifact.
     description:
       "This workflow generates a window and door schedule based on architectural drawings.",
     maxSteps: 5,
-    modelName: "claude-3.7-sonnet",
+    modelName: "gemini-2.5-pro-exp",
     authorizedOrganizationIds: [
       "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
       "a5b8c99d-9e1d-42a9-8473-b52471932d51",
@@ -266,7 +266,7 @@ Your final output should consist only of the CSV artifact and should not duplica
     description:
       "Creates HVAC equipment service area tables from mechanical drawings by extracting data from schedules and floorplans. Maps equipment IDs to service areas in a structured format for facility management.",
     maxSteps: 5,
-    modelName: "claude-3.7-sonnet",
+    modelName: "gemini-2.5-pro-exp",
     prompt: `You are tasked with creating an 'Equipment Serving' list based on contract mechanical drawings. Your objective is to identify which areas HVAC equipment serves using the provided drawings. The mechanical drawings are attached as a PDF file.
 
 Follow these steps to complete the task:

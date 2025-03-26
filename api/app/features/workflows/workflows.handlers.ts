@@ -103,7 +103,7 @@ const workflowHandlers = {
         ],
         providerOptions: {
           anthropic: {
-            thinking: { type: "enabled", budgetTokens: 12_000 },
+            thinking: { type: "enabled", budgetTokens: 4_500 },
           },
           openai: {
             reasoningEffort: "medium",

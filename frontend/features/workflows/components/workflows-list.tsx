@@ -9,12 +9,16 @@ import { useWorkflowsQuery } from "../api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Workflow } from "../workflows.types";
 
-export default function WorkflowsList() {
+interface WorkflowsListProps {
+  initalData?: Workflow[];
+}
+
+export default function WorkflowsList(props: WorkflowsListProps) {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { data: workflows, isLoading } = useWorkflowsQuery();
+  const { data: workflows, isLoading } = useWorkflowsQuery(props.initalData);
 
   // Filter workflows by search term if provided
   const filteredWorkflows = search

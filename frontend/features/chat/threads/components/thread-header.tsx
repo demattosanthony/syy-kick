@@ -1,11 +1,11 @@
 "use client";
 
-import { Check, Plus, Share, Slash } from "lucide-react";
+import { Check, MenuIcon, Plus, Share, Slash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useParams, useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { messagesAtom } from "@/atoms/chat";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
@@ -28,6 +28,7 @@ export default function ThreadHeader() {
   const params = useParams();
   const router = useRouter();
   const [shareLinkCopied, setShareLinkCopied] = React.useState(false);
+  const { toggleSidebar } = useSidebar();
 
   const threadId = params.threadId as string;
   const [, setMessages] = useAtom(messagesAtom);
@@ -62,7 +63,9 @@ export default function ThreadHeader() {
       <div className="flex w-full items-center justify-between">
         <div className="flex items-center gap-2 md:justify-start">
           <div className="md:hidden">
-            <SidebarTrigger />
+            <Button variant={"ghost"} size={"icon"} onClick={toggleSidebar}>
+              <MenuIcon />
+            </Button>
           </div>
 
           <div>
@@ -87,7 +90,9 @@ export default function ThreadHeader() {
               </Breadcrumb>
             )}
           </div>
+        </div>
 
+        <div className="flex-shrink-0 mr-1">
           <Button
             variant="ghost"
             size="icon"
@@ -99,9 +104,7 @@ export default function ThreadHeader() {
           >
             <Plus className="h-4 w-4" />
           </Button>
-        </div>
 
-        <div className="flex-shrink-0 mr-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

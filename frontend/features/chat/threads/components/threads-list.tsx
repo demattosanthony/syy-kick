@@ -13,16 +13,18 @@ import { cn, getRelativeTimeString } from "@/lib/utils";
 export default function ThreadsList({
   projectId,
   compact = false,
+  initalThreads,
 }: {
   projectId?: string;
   compact?: boolean;
+  initalThreads?: Thread[];
 }) {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useThreadsQuery(search, projectId);
+    useThreadsQuery(search, projectId, initalThreads);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
