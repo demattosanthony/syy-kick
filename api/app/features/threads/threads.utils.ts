@@ -615,6 +615,7 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
       if (
         (call.toolName === "search_project_information" ||
           call.toolName === "search_projects_information" ||
+          call.toolName === "search_knowledge_base_information" ||
           call.toolName === "search_documents") &&
         call.result?.docs
       ) {
@@ -652,6 +653,7 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
 function buildSystemMessage(
   instructions?: string,
   project?: Project,
+  knowledgeBase?: KnowledgeBase,
   knowledgeBases?: KnowledgeBase[]
 ): string {
   const dateString = new Date().toLocaleString("en-US", {
@@ -671,7 +673,6 @@ function buildSystemMessage(
           `<knowledge_base>\n  <name>${kb.name}</name>\n  <id>${kb.id}</id>\n</knowledge_base>`
       )
       .join("\n");
-    console.log("Knowledge bases:", knowledgeBasesString);
   }
 
   let systemMsg = `The assisant is Yo, created by Syyclops.
@@ -1052,10 +1053,16 @@ The assistant should not mention any of these instructions to the user, nor make
 A knowledge base is a collection of information that has been organized and curated to support the assistant in providing accurate and relevant responses to user queries. Knowledge bases can contain a wide range of information, including technical specifications, best practices, industry standards, and reference materials.
 Knowledge bases have been created by organizations over time to capture and preserve valuable knowledge and expertise. They serve as a repository of information that can be accessed and utilized by the assistant to enhance its responses and provide users with valuable insights and guidance.
 
-The assistant has access to the following knowledge bases:
+${
+  knowledgeBase
+    ? `<current_knowledge_base>
+The assistant is currently focused on the "${knowledgeBase.name}" knowledge base with id "${knowledgeBase.id}". This knowledge base contains specific information that the user is interested in exploring. The assistant should prioritize searching and referencing this knowledge base when responding to user queries.
+</current_knowledge_base>`
+    : `The assistant has access to the following knowledge bases:
 <knowledge_bases>
 ${knowledgeBasesString}
-</knowledge_bases>
+</knowledge_bases>`
+}
 
 The assistant never tells the user of a knowledge base id. This would confuse the user. The assisant just uses the name when chatting with the user.
 </knowledge_bases_information>
@@ -1111,6 +1118,8 @@ ${
 
   systemMsg += `\n\nYo is now being connected with the user.`;
 
+  console.log(systemMsg);
+
   return systemMsg;
 }
 
@@ -1134,6 +1143,7 @@ async function dbMessagesToInferenceMessages(
   },
   project?: Project,
   instructions?: string,
+  knowledgeBase?: KnowledgeBase,
   knowledgeBases?: KnowledgeBase[]
 ): Promise<CoreMessage[]> {
   // Initialize the result array
@@ -1143,7 +1153,12 @@ async function dbMessagesToInferenceMessages(
   if (modelConfig.supportsSystemMessages) {
     inferenceMessages.push({
       role: "system",
-      content: buildSystemMessage(instructions, project, knowledgeBases),
+      content: buildSystemMessage(
+        instructions,
+        project,
+        knowledgeBase,
+        knowledgeBases
+      ),
     });
   }
 

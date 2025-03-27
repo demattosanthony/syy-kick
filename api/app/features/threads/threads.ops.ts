@@ -329,7 +329,6 @@ const threadsOps = {
         1,
         999
       );
-      console.log("Knowledge bases:", knowledgeBases);
 
       // 6) Prepare messages for inference
       const inferenceMsgs = await dbMessagesToInferenceMessages(
@@ -337,6 +336,7 @@ const threadsOps = {
         modelConfig,
         thread.project,
         instructions && instructions.length > 0 ? instructions : undefined,
+        thread.knowledgeBase,
         knowledgeBases.data
       );
 
@@ -348,12 +348,14 @@ const threadsOps = {
       // 7) Create tools for the assistant if project ID exists
       let tools = {
         web_search: createWebSearchTool(),
-        search_projects_information: createProjectSearchTool(
-          modelConfig,
-          req.workspace!,
-          req.dbUser!,
-          thread.projectId || undefined
-        ),
+        ...(thread.knowledgeBase === undefined && {
+          search_projects_information: createProjectSearchTool(
+            modelConfig,
+            req.workspace!,
+            req.dbUser!,
+            thread.projectId || undefined
+          ),
+        }),
         search_knowledge_base: createKnowledgeBaseSearchTool(modelConfig),
       };
 
@@ -448,14 +450,15 @@ const threadsOps = {
                 (r) => r.toolCallId === toolCall.toolCallId
               );
 
-              if (
-                result &&
-                ((toolCall.toolName as string) ===
-                  "search_project_information" ||
-                  (toolCall.toolName as string) === "search_documents" ||
-                  (toolCall.toolName as string) ===
-                    "search_projects_information")
-              ) {
+              // Define the tool names that should trigger the specific logic below
+              const projectSearchToolNames = [
+                "search_project_information",
+                "search_documents",
+                "search_knowledge_base",
+              ];
+              const toolName = toolCall.toolName as string;
+
+              if (result && projectSearchToolNames.includes(toolName)) {
                 console.log("Project search tool result:", toolCall);
                 await db
                   .update(toolCallsTable)
