@@ -71,10 +71,7 @@ const ProjectHeader = ({
 
             {canUpdateOrgProjects &&
               (type === "project" && project ? (
-                <Link
-                  href={`/projects/${project.id}/settings`}
-                  prefetch={false}
-                >
+                <Link href={`/projects/${project.id}/settings`}>
                   <Button variant={"ghost"} size={"icon"}>
                     <Settings className="w-4 h-4" />
                   </Button>
@@ -82,10 +79,7 @@ const ProjectHeader = ({
               ) : (
                 type === "knowledge-base" &&
                 knowledgeBase && (
-                  <Link
-                    href={`/knowledge-bases/${knowledgeBase.id}/settings`}
-                    prefetch={false}
-                  >
+                  <Link href={`/knowledge-bases/${knowledgeBase.id}/settings`}>
                     <Button variant={"ghost"} size={"icon"}>
                       <Settings className="w-4 h-4" />
                     </Button>

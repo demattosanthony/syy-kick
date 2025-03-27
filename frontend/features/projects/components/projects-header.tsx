@@ -19,7 +19,7 @@ export default function ProjectsHeader() {
     <div className="h-14 flex items-center justify-between w-full px-4">
       <div>{project && <ProjectNavBreadcrumbs project={project} />}</div>
 
-      {!isProjectSettingsPage && (
+      {!isProjectSettingsPage && pathname !== `/projects/${pid}` && (
         <ProjectAddFileButton projectId={pid} contentSource="project" />
       )}
     </div>
