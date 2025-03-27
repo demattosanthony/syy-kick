@@ -49,9 +49,10 @@ type DocumentSearchToolResult = {
   path: string;
   documentName: string;
   text: string | null;
-  projectId: string;
+  projectId?: string;
   similarity: number;
   pageNumber?: number;
+  knowledgeBaseId?: string;
   mimeType?: string | null;
   fileKey?: string | null;
 };

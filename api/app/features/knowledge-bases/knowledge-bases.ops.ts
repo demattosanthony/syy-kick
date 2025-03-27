@@ -1,12 +1,28 @@
-import { and, asc, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  cosineDistance,
+  count,
+  desc,
+  eq,
+  isNull,
+  like,
+  or,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
-import { documents, knowledgeBases } from "../../config/schema";
+import {
+  documentEmbeddings,
+  documents,
+  knowledgeBases,
+} from "../../config/schema";
 import db from "../../config/db";
 import { schemas } from "./knowledge-bases.schemas";
 import { getKnowledgeBaseOrThrow } from "./knowledge-bases.utils";
 import s3 from "../../config/s3";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../../config/unstructured";
 import { queue } from "../../doc-job-queue";
+import { smallOpenaiEmbeddingModel } from "../models";
 
 export async function createKnowledgeBase(
   data: z.infer<typeof schemas.createKnowledgeBase>,
@@ -400,5 +416,101 @@ export async function deleteDocs(knowledgeBaseId: string, path: string) {
       throw new Error(`Path '${path}' not found`);
     }
     throw new Error("Failed to delete documents");
+  }
+}
+
+export async function searchKnowledgeBaseDocuments(params: {
+  knowledgeBaseId: string;
+  query: string;
+  limit?: number;
+}) {
+  const { knowledgeBaseId, query, limit = 20 } = params;
+
+  try {
+    // 1. Verify the knowledge base exists
+    await getKnowledgeBaseOrThrow(knowledgeBaseId);
+
+    // 2. Get the embedding for the search query
+    let queryEmbedding;
+    try {
+      const { embeddings } = await smallOpenaiEmbeddingModel.doEmbed({
+        values: [query],
+      });
+      queryEmbedding = embeddings[0];
+    } catch (error) {
+      console.error("Failed to generate embedding for search query:", error);
+      throw new Error("Failed to process search query");
+    }
+
+    // 3. Build the where clause
+    const whereClause = and(
+      eq(documents.knowledgeBaseId, knowledgeBaseId),
+      // Use a similarity threshold (cosine similarity > 0.45)
+      sql`1 - (${cosineDistance(
+        documentEmbeddings.embedding,
+        queryEmbedding
+      )}) > 0.45`
+    );
+
+    // 4. Search for similar documents using vector similarity
+    const results = await db
+      .select({
+        documentId: documentEmbeddings.documentId,
+        text: documentEmbeddings.text,
+        metadata: documentEmbeddings.metadata,
+        similarity: sql<number>`1 - (${cosineDistance(
+          documentEmbeddings.embedding,
+          queryEmbedding
+        )})`.as("similarity"),
+        document: documents,
+      })
+      .from(documentEmbeddings)
+      .innerJoin(documents, eq(documents.id, documentEmbeddings.documentId))
+      .where(whereClause)
+      .orderBy(
+        sql`1 - (${cosineDistance(
+          documentEmbeddings.embedding,
+          queryEmbedding
+        )}) DESC`
+      )
+      .limit(limit);
+
+    console.log(
+      `Found ${results.length} documents in KB ${knowledgeBaseId} matching query: "${query}"`
+    );
+
+    // 5. Add presigned URLs for files
+    const resultsWithUrls = await Promise.all(
+      results.map(async (result) => {
+        if (result.document.type === "file" && result.document.fileKey) {
+          try {
+            const url = await s3.presign(result.document.fileKey, {
+              expiresIn: 60 * 60, // 1 hour
+            });
+            return {
+              ...result,
+              document: {
+                ...result.document,
+                url,
+              },
+            };
+          } catch (error) {
+            console.error(
+              `Failed to generate presigned URL for file ${result.document.fileKey}:`,
+              error
+            );
+            // Return the result without URL rather than failing the entire operation
+            return result;
+          }
+        }
+        return result;
+      })
+    );
+
+    return resultsWithUrls;
+  } catch (error) {
+    console.error("Error in searchKnowledgeBaseDocuments:", error);
+    // Re-throw the original error or a more specific one if needed
+    throw error;
   }
 }

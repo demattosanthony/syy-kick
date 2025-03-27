@@ -18,6 +18,7 @@ import { embeddingModel } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
+  createKnowledgeBaseSearchTool,
   createProjectSearchTool,
   createWebSearchTool,
   dbMessagesToInferenceMessages,
@@ -25,6 +26,8 @@ import {
   maybeGenerateTitle,
   processThreadMessages,
 } from "./threads.utils";
+import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
+import { getOrgIdOrUnedfined } from "../../utils";
 
 const threadsOps = {
   async createThread(
@@ -319,12 +322,22 @@ const threadsOps = {
       // 4) Determine appropriate model
       const modelConfig = await getModelConfig(model);
 
+      // Find knowledge bases the user or org has
+      const knowledgeBases = await listKnowledgeBases(
+        req.dbUser!.id,
+        getOrgIdOrUnedfined(req.workspace),
+        1,
+        999
+      );
+      console.log("Knowledge bases:", knowledgeBases);
+
       // 6) Prepare messages for inference
       const inferenceMsgs = await dbMessagesToInferenceMessages(
         rawMessages,
         modelConfig,
         thread.project,
-        instructions && instructions.length > 0 ? instructions : undefined
+        instructions && instructions.length > 0 ? instructions : undefined,
+        knowledgeBases.data
       );
 
       // console.log("Inference messages:", inferenceMsgs);
@@ -341,6 +354,7 @@ const threadsOps = {
           req.dbUser!,
           thread.projectId || undefined
         ),
+        search_knowledge_base: createKnowledgeBaseSearchTool(modelConfig),
       };
 
       let aiResponse = "";
