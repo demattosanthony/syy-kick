@@ -16,8 +16,7 @@ import { Organization, User } from "@/types/user";
 import { FileUploadMixin } from "./file-upload-mixin";
 import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 /**
  * Custom ApiError class for error handling
