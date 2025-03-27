@@ -2,7 +2,7 @@
 
 import { Check, MenuIcon, Plus, Share, Slash } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { messagesAtom } from "@/atoms/chat";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -14,7 +14,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import Link from "next/link";
-import { useThreadQuery } from "@/features/chat/threads/api";
 import {
   Tooltip,
   TooltipContent,
@@ -23,17 +22,18 @@ import {
 import { toast } from "sonner";
 import React from "react";
 import api from "@/lib/api";
+import { Thread } from "@/types/chat";
 
-export default function ThreadHeader() {
-  const params = useParams();
+interface ThreadHeaderProps {
+  thread: Thread;
+}
+
+export default function ThreadHeader({ thread }: ThreadHeaderProps) {
   const router = useRouter();
   const [shareLinkCopied, setShareLinkCopied] = React.useState(false);
   const { toggleSidebar } = useSidebar();
 
-  const threadId = params.threadId as string;
   const [, setMessages] = useAtom(messagesAtom);
-
-  const { data: thread } = useThreadQuery(threadId, false);
 
   const handleCopyShareLink = async () => {
     if (!thread) return;
@@ -54,6 +54,18 @@ export default function ThreadHeader() {
     }
   };
 
+  // Determine parent entity and link
+  let parentName: string | undefined;
+  let parentLink: string | undefined;
+
+  if (thread?.project) {
+    parentName = thread.project.name;
+    parentLink = `/projects/${thread.project.id}`;
+  } else if (thread?.knowledgeBase) {
+    parentName = thread.knowledgeBase.name;
+    parentLink = `/knowledge-bases/${thread.knowledgeBase.id}`;
+  }
+
   return (
     <header
       className={cn(
@@ -69,15 +81,15 @@ export default function ThreadHeader() {
           </div>
 
           <div>
-            {thread?.project && (
+            {parentName && parentLink && (
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem>
                     <Link
-                      href={`/projects/${thread.project.id}`}
+                      href={parentLink}
                       className="hover:text-blue-500 hover:underline"
                     >
-                      {thread.project.name}
+                      {parentName}
                     </Link>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator>
