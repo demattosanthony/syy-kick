@@ -54,24 +54,23 @@ const ProjectHeader = ({
             </div>
           </div>
 
-          {type === "project" && project && (
-            <div className="flex gap-2">
-              {canCreateOrgProjectDocs && (
-                <ProjectAddFileButton projectId={project.id} />
-              )}
+          <div className="flex gap-2">
+            {canCreateOrgProjectDocs && (
+              <ProjectAddFileButton
+                projectId={project?.id}
+                contentSource={type}
+                knowledgeBaseId={knowledgeBase?.id}
+              />
+            )}
 
-              {canUpdateOrgProjects && (
-                <Link
-                  href={`/projects/${project.id}/settings`}
-                  prefetch={false}
-                >
-                  <Button variant={"ghost"} size={"icon"}>
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                </Link>
-              )}
-            </div>
-          )}
+            {canUpdateOrgProjects && type == "project" && project && (
+              <Link href={`/projects/${project.id}/settings`} prefetch={false}>
+                <Button variant={"ghost"} size={"icon"}>
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </header>

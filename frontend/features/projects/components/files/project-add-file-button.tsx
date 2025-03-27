@@ -10,27 +10,71 @@ import {
 import { Progress } from "@/components/ui/progress";
 import React from "react";
 import { useUploadDocsMutation } from "../../api";
+import { useUploadKnowledgeBaseFiles } from "@/features/knowledge-bases/api";
 
 interface UploadButtonsProps {
-  projectId: string;
+  projectId?: string;
+  knowledgeBaseId?: string;
+  contentSource: "project" | "knowledge-base";
 }
 
-const ProjectAddFileButton = ({ projectId }: UploadButtonsProps) => {
+const ProjectAddFileButton = ({
+  projectId,
+  knowledgeBaseId,
+  contentSource,
+}: UploadButtonsProps) => {
   const [open, setOpen] = React.useState(false);
+
   const {
-    mutateAsync: uploadFiles,
-    isPending,
-    progress,
+    mutateAsync: uploadProjectFiles,
+    isPending: isProjectUploading,
+    progress: projectUploadProgress,
   } = useUploadDocsMutation();
+
+  const {
+    mutateAsync: uploadKnowledgeBaseFiles,
+    isPending: isKnowledgeBaseUploading,
+    progress: knowledgeBaseUploadProgress,
+  } = useUploadKnowledgeBaseFiles();
+
+  const isPending =
+    contentSource === "project" ? isProjectUploading : isKnowledgeBaseUploading;
+  const progress =
+    contentSource === "project"
+      ? projectUploadProgress
+      : knowledgeBaseUploadProgress;
+  const contentId = contentSource === "project" ? projectId : knowledgeBaseId;
+
+  // Ensure one ID is provided based on contentSource
+  if (!contentId) {
+    console.error(
+      `Either projectId or knowledgeBaseId is required when contentSource is "${contentSource}"`
+    );
+    // Optionally return null or an error indicator component
+    return null;
+  }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     try {
-      setOpen(false); // Close popover after successful upload
+      setOpen(false); // Close popover
       const fileArray = Array.from(files);
-      await uploadFiles({ projectId, files: fileArray });
+
+      // Call the appropriate upload function with the correct parameter structure
+      if (contentSource === "project") {
+        await uploadProjectFiles({
+          projectId: contentId as string,
+          files: fileArray,
+        });
+      } else {
+        await uploadKnowledgeBaseFiles({
+          knowledgeBaseId: contentId as string,
+          files: fileArray,
+        });
+      }
+
       console.log("Files uploaded successfully");
     } catch (error: unknown) {
       console.error("Failed to upload files:", error);
@@ -44,9 +88,22 @@ const ProjectAddFileButton = ({ projectId }: UploadButtonsProps) => {
     if (!files || files.length === 0) return;
 
     try {
-      setOpen(false); // Close popover after successful upload
+      setOpen(false); // Close popover
       const fileArray = Array.from(files);
-      await uploadFiles({ projectId, files: fileArray });
+
+      // Call the appropriate upload function with the correct parameter structure
+      if (contentSource === "project") {
+        await uploadProjectFiles({
+          projectId: contentId as string,
+          files: fileArray,
+        });
+      } else {
+        await uploadKnowledgeBaseFiles({
+          knowledgeBaseId: contentId as string,
+          files: fileArray,
+        });
+      }
+
       console.log("Folder uploaded successfully");
     } catch (error: unknown) {
       console.error("Failed to upload folder:", error);
