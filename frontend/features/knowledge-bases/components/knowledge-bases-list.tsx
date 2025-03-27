@@ -6,23 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRelativeTimeString } from "@/lib/utils";
-import {
-  Book,
-  Bookmark,
-  BookMarked,
-  BookOpen,
-  BookText,
-  MoreHorizontal,
-  Trash,
-} from "lucide-react";
+import { BookMarked, BookOpen, MoreHorizontal, Trash } from "lucide-react";
 import { useInfiniteKnowledgeBasesQuery } from "../api/get-knowledge-bases";
 import { KnowledgeBase } from "../types/knowledge-bases";
 import { useDeleteKnowledgeBase } from "../api";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -34,6 +21,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { usePermissions } from "@/features/permissions/context";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const KnowledgeBasesList = ({
   initalData,
@@ -130,15 +124,14 @@ function KnowledgeBaseItem({
 }: {
   knowledgeBase: KnowledgeBase;
 }) {
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  const { canDeleteOrgProjects } = usePermissions();
   const deleteKnowledgeBaseMutation = useDeleteKnowledgeBase();
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsPopoverOpen(false);
     setIsDeleteDialogOpen(true);
   };
 
@@ -167,37 +160,36 @@ function KnowledgeBaseItem({
               </p>
             </div>
 
-            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <div className="flex items-center">
-                <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsPopoverOpen(!isPopoverOpen);
-                      }}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-40 p-0" align="end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={handleDelete}
-                    >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Delete
-                    </Button>
-                  </PopoverContent>
-                </Popover>
+            {canDeleteOrgProjects && (
+              <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="flex items-center">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-fit">
+                      <DropdownMenuItem
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                        onClick={handleDelete}
+                      >
+                        <Trash className="h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </Link>
