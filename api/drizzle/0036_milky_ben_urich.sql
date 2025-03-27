@@ -1,0 +1,2 @@
+ALTER TABLE "threads" ADD COLUMN "knowledge_base_id" uuid;--> statement-breakpoint
+ALTER TABLE "threads" ADD CONSTRAINT "threads_knowledge_base_id_knowledge_bases_id_fk" FOREIGN KEY ("knowledge_base_id") REFERENCES "public"."knowledge_bases"("id") ON DELETE cascade ON UPDATE no action;

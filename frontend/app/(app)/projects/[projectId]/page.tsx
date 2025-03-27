@@ -22,11 +22,11 @@ export default async function ProjectPage({
 
   return (
     <>
-      <ProjectLayout project={project}>
-        <ProjectContent projectId={pid} />
-        <ProjectSidebar project={project} projectId={pid} />
+      <ProjectLayout project={project} type="project">
+        <ProjectContent projectId={pid} type="project" />
+        <ProjectSidebar project={project} type="project" />
       </ProjectLayout>
-      <ProjectFooter projectId={pid} />
+      <ProjectFooter projectId={pid} type="project" />
     </>
   );
 }

@@ -242,12 +242,17 @@ export const threads = pgTable("threads", {
   projectId: uuid("project_id").references(() => projects.id, {
     onDelete: "cascade",
   }),
+  knowledgeBaseId: uuid("knowledge_base_id").references(
+    () => knowledgeBases.id,
+    { onDelete: "cascade" }
+  ),
 });
 export type Thread = typeof threads.$inferSelect;
 export type ThreadWithRelations = Thread & {
   messages: Message[];
   project?: Project;
   organization?: Organization;
+  knowledgeBase?: KnowledgeBase;
   user: User;
 };
 
@@ -431,6 +436,10 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
     fields: [threads.projectId],
     references: [projects.id],
   }),
+  knowledgeBase: one(knowledgeBases, {
+    fields: [threads.knowledgeBaseId],
+    references: [knowledgeBases.id],
+  }),
 }));
 
 export const documentsRelations = relations(documents, ({ one, many }) => ({
@@ -555,6 +564,7 @@ export const knowledgeBasesRelations = relations(
       references: [users.id],
     }),
     documents: many(documents),
+    threads: many(threads),
   })
 );
 

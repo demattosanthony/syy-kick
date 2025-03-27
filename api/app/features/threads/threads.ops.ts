@@ -1,5 +1,5 @@
 // External dependencies
-import { generateText, streamText } from "ai";
+import { streamText } from "ai";
 import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { Request, Response } from "express";
 import { z } from "zod";
@@ -14,7 +14,7 @@ import {
 } from "../../config/schema";
 
 // Internal features
-import { embeddingModel, MODELS } from "../models";
+import { embeddingModel } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
@@ -30,7 +30,8 @@ const threadsOps = {
   async createThread(
     userId: string,
     organizationId?: string,
-    projectId?: string
+    projectId?: string,
+    knowledgeBaseId?: string
   ) {
     if (!userId) throw new Error("User ID is required");
     const id = crypto.randomUUID();
@@ -40,6 +41,7 @@ const threadsOps = {
       userId,
       organizationId: organizationId || null,
       projectId: projectId || null,
+      knowledgeBaseId: knowledgeBaseId || null,
       createdAt: now,
       updatedAt: now,
     });
@@ -117,6 +119,7 @@ const threadsOps = {
         },
         project: true,
         organization: true,
+        knowledgeBase: true,
       },
     });
     if (!thread) return null;
@@ -124,6 +127,7 @@ const threadsOps = {
     // Cast the thread to match ThreadWithMessages type
     const typedThread: ThreadWithMessages = {
       ...thread,
+      knowledgeBase: thread.knowledgeBase || undefined,
       messages: thread.messages.map((msg) => ({
         ...msg,
         attachments: (msg.attachments || []).map((att) => ({
@@ -170,7 +174,8 @@ const threadsOps = {
     page: number,
     search: string,
     organizationId?: string,
-    projectId?: string
+    projectId?: string,
+    knowledgeBaseId?: string
   ) {
     const LIMIT = 10;
     const offset = (page - 1) * LIMIT;
@@ -186,6 +191,11 @@ const threadsOps = {
     // Add project filtering if projectId is provided
     if (projectId) {
       conditions.push(eq(threads.projectId, projectId));
+    }
+
+    // Add knowledge base filtering if knowledgeBaseId is provided
+    if (knowledgeBaseId) {
+      conditions.push(eq(threads.knowledgeBaseId, knowledgeBaseId));
     }
 
     let baseQuery;

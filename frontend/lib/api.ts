@@ -464,12 +464,14 @@ class UploadApi extends ApiRequest {
 class ThreadApi extends ApiRequest {
   async createThread(
     organizationId?: string,
-    projectId?: string
+    projectId?: string,
+    knowledgeBaseId?: string
   ): Promise<{ id: string }> {
     try {
       return await this.request<{ id: string }>("/threads", "POST", {
         organizationId,
         projectId,
+        knowledgeBaseId,
       });
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 402) {
@@ -482,12 +484,14 @@ class ThreadApi extends ApiRequest {
   async getThreads(
     page: number = 1,
     search: string = "",
-    projectId?: string
+    projectId?: string,
+    knowledgeBaseId?: string
   ): Promise<Thread[]> {
     const queryParams = new URLSearchParams({
       page: page.toString(),
       search: search,
       ...(projectId && { projectId }),
+      ...(knowledgeBaseId && { knowledgeBaseId }),
     });
     const endpoint = `/threads?${queryParams.toString()}`;
 

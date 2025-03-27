@@ -41,6 +41,7 @@ type ThreadWithMessages = {
   }[];
   project?: any;
   organization?: any;
+  knowledgeBase?: any;
 };
 
 type DocumentSearchToolResult = {
