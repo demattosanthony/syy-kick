@@ -400,9 +400,16 @@ Returns:
   });
 
 /** Tool to search knowledge base documents */
-const createKnowledgeBaseSearchTool = (modelConfig: ModelConfig) =>
+const createKnowledgeBaseSearchTool = (
+  modelConfig: ModelConfig,
+  knowledgeBase?: KnowledgeBase
+) =>
   tool({
-    description: `Search information within a specific knowledge base.
+    description: `Search information within a specific knowledge base. ${
+      knowledgeBase
+        ? `The current knowledge this will search over is the "${knowledgeBase.name}" knowledge base.`
+        : ""
+    }
 
 Usage:
     1. Use when you need information stored within a designated knowledge base.
@@ -415,19 +422,27 @@ Returns:
     - Visual previews for supported document types`,
     parameters: z.object({
       query: z.string(),
-      knowledgeBaseId: z
-        .string()
-        .describe("The ID of the knowledge base to search within."),
+      ...(knowledgeBase
+        ? {}
+        : {
+            knowledgeBaseId: z
+              .string()
+              .describe("The ID of the knowledge base to search within."),
+          }),
     }),
     execute: async ({ query, knowledgeBaseId }) => {
       // TODO: Add permission checks if necessary in the future.
       // For now, assuming access based on organization membership.
 
+      const targetKnowledgeBaseId: string = knowledgeBase
+        ? knowledgeBase.id
+        : (knowledgeBaseId as string);
+
       try {
         // Execute the search within the specified knowledge base
         const res = await searchKnowledgeBaseDocuments({
           query,
-          knowledgeBaseId: knowledgeBaseId,
+          knowledgeBaseId: targetKnowledgeBaseId,
           limit: 80, // Same limit as project search for consistency
         });
         console.log(
@@ -465,7 +480,7 @@ Returns:
               mimeType: originalDoc.document.mimeType,
               fileKey: originalDoc.document.fileKey,
               // Add knowledgeBaseId for frontend context if needed
-              knowledgeBaseId: knowledgeBaseId,
+              knowledgeBaseId: targetKnowledgeBaseId,
             };
           }) ?? []; // Ensure it defaults to an empty array if results are null/undefined
         console.log(
@@ -482,7 +497,7 @@ Returns:
         return formatDocumentSearchResults(uniqueDocs, images);
       } catch (error) {
         console.error(
-          `Error searching knowledge base ${knowledgeBaseId}:`,
+          `Error searching knowledge base ${targetKnowledgeBaseId}:`,
           error
         );
         // Return a structured error message
@@ -1056,7 +1071,7 @@ Knowledge bases have been created by organizations over time to capture and pres
 ${
   knowledgeBase
     ? `<current_knowledge_base>
-The assistant is currently focused on the "${knowledgeBase.name}" knowledge base with id "${knowledgeBase.id}". This knowledge base contains specific information that the user is interested in exploring. The assistant should prioritize searching and referencing this knowledge base when responding to user queries.
+The assistant is currently focused on the "${knowledgeBase.name}". This knowledge base contains specific information that the user is interested in exploring. The assistant should prioritize searching and referencing this knowledge base when responding to user queries.
 </current_knowledge_base>`
     : `The assistant has access to the following knowledge bases:
 <knowledge_bases>

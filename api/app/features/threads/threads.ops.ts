@@ -356,7 +356,10 @@ const threadsOps = {
             thread.projectId || undefined
           ),
         }),
-        search_knowledge_base: createKnowledgeBaseSearchTool(modelConfig),
+        search_knowledge_base: createKnowledgeBaseSearchTool(
+          modelConfig,
+          thread.knowledgeBase
+        ),
       };
 
       let aiResponse = "";
@@ -450,7 +453,7 @@ const threadsOps = {
                 (r) => r.toolCallId === toolCall.toolCallId
               );
 
-              // Define the tool names that should trigger the specific logic below
+              // Define the tool names that need this unique storage handling
               const projectSearchToolNames = [
                 "search_project_information",
                 "search_documents",

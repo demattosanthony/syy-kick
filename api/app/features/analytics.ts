@@ -10,80 +10,6 @@ import {
   users,
 } from "../config/schema";
 import { Request, Response, Router } from "express";
-import { encoding_for_model } from "tiktoken";
-
-/** ─────────────────────────────────────────────────────────────────────────
- *  Calculate total tokens processed in messages
- *  ───────────────────────────────────────────────────────────────────────── */
-const calculateTokens = async () => {
-  // Get all messages
-  const allMessages = await db
-    .select({ text: messages.text, model: messages.model })
-    .from(messages)
-    .where(sql`${messages.text} IS NOT NULL`);
-
-  let totalTokens = 0;
-
-  // Group messages by model to avoid recreating encoders
-  const messagesByModel: Record<string, string[]> = {};
-
-  // Pre-process and group messages by model
-  for (const message of allMessages) {
-    const model = message.model || "gpt-4o"; // Default to gpt-4o
-    if (!messagesByModel[model]) {
-      messagesByModel[model] = [];
-    }
-    messagesByModel[model].push(message.text || "");
-  }
-
-  // Process each model group with a single encoder instance
-  for (const [model, texts] of Object.entries(messagesByModel)) {
-    try {
-      // Create encoder once per model
-      const enc = encoding_for_model("gpt-4o");
-
-      // Process in batches of 100 for large datasets
-      const BATCH_SIZE = 100;
-      for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-        const batch = texts.slice(i, i + BATCH_SIZE);
-
-        // Count tokens for each message in the batch
-        for (const text of batch) {
-          totalTokens += enc.encode(text).length;
-        }
-      }
-
-      // Free the encoder after processing all messages for this model
-      enc.free();
-    } catch (error) {
-      // If model-specific encoder fails, try the fallback encoder
-      try {
-        const fallbackModel = "gpt-3.5-turbo";
-        console.warn(
-          `Falling back to ${fallbackModel} encoder for model: ${model}`
-        );
-
-        const enc = encoding_for_model(fallbackModel);
-
-        // Process in batches
-        const BATCH_SIZE = 100;
-        for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-          const batch = texts.slice(i, i + BATCH_SIZE);
-
-          for (const text of batch) {
-            totalTokens += enc.encode(text).length;
-          }
-        }
-
-        enc.free();
-      } catch (e) {
-        console.error("Error calculating tokens with fallback encoder:", e);
-      }
-    }
-  }
-
-  return totalTokens;
-};
 
 const handlers = {
   getAnalytics: async (req: Request, res: Response) => {
@@ -227,11 +153,6 @@ const handlers = {
         .limit(10);
 
       /** ─────────────────────────────────────────────────────────────────────────
-       *  7) Token usage statistics
-       *  ───────────────────────────────────────────────────────────────────────── */
-      const totalTokensProcessed = await calculateTokens();
-
-      /** ─────────────────────────────────────────────────────────────────────────
        *  Aggregate the results and send back
        *  ───────────────────────────────────────────────────────────────────────── */
       const analytics = {
@@ -242,7 +163,6 @@ const handlers = {
           threads: threadCount,
           documents: documentCount,
           messages: messageCount,
-          tokensProcessed: totalTokensProcessed,
         },
         processing: {
           currentlyProcessing,
