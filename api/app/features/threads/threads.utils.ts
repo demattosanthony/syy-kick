@@ -1133,8 +1133,6 @@ ${
 
   systemMsg += `\n\nYo is now being connected with the user.`;
 
-  console.log(systemMsg);
-
   return systemMsg;
 }
 

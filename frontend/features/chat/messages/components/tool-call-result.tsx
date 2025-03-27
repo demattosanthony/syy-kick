@@ -123,12 +123,13 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
                 key={`result-${idx}`}
                 className="flex flex-col gap-3 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
                 onClick={() => {
-                  window.open(
-                    `/projects/${result.projectId}/blob/${result.path}${
-                      result.page ? `?page=${result.page}` : ""
-                    }`,
-                    "_blank"
-                  );
+                  if (result.projectId && result.path)
+                    window.open(
+                      `/projects/${result.projectId}/blob/${result.path}${
+                        result.page ? `?page=${result.page}` : ""
+                      }`,
+                      "_blank"
+                    );
                 }}
               >
                 <div className="flex items-center gap-3">

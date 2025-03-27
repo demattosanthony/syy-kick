@@ -51,6 +51,12 @@ const ProjectHeader = ({
                   {project.postalCode ? `, ${project.postalCode}` : ""}
                 </span>
               )}
+
+              {type === "knowledge-base" && knowledgeBase?.description && (
+                <span className="text-sm text-muted-foreground">
+                  {knowledgeBase.description}
+                </span>
+              )}
             </div>
           </div>
 
