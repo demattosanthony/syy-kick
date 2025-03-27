@@ -19,7 +19,7 @@ export default function ProjectLayout({
   children,
 }: ProjectLayoutProps) {
   return (
-    <div className="h-screen w-full flex justify-center pt-14 overflow-x-hidden">
+    <div className="h-screen w-full flex justify-center pt-6 overflow-x-hidden">
       <div className="flex flex-col items-center max-w-5xl w-full flex-1 min-w-0">
         <ProjectHeader
           project={project}

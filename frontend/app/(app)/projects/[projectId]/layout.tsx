@@ -31,6 +31,7 @@ export default async function ProjectPageLayout({
   return (
     <div className="min-h-screen bg-background flex items-center flex-col relative">
       <ProjectsHeader />
+
       {children}
     </div>
   );

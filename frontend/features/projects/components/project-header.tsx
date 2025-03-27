@@ -69,13 +69,29 @@ const ProjectHeader = ({
               />
             )}
 
-            {canUpdateOrgProjects && type == "project" && project && (
-              <Link href={`/projects/${project.id}/settings`} prefetch={false}>
-                <Button variant={"ghost"} size={"icon"}>
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </Link>
-            )}
+            {canUpdateOrgProjects &&
+              (type === "project" && project ? (
+                <Link
+                  href={`/projects/${project.id}/settings`}
+                  prefetch={false}
+                >
+                  <Button variant={"ghost"} size={"icon"}>
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </Link>
+              ) : (
+                type === "knowledge-base" &&
+                knowledgeBase && (
+                  <Link
+                    href={`/knowledge-bases/${knowledgeBase.id}/settings`}
+                    prefetch={false}
+                  >
+                    <Button variant={"ghost"} size={"icon"}>
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                )
+              ))}
           </div>
         </div>
       </div>
