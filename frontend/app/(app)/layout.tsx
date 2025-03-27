@@ -5,6 +5,8 @@ import { LoginButtons } from "@/features/auth/components";
 import { FinishOrgSetupBanner } from "@/features/organizations/components";
 import api from "@/lib/api";
 
+export const dynamic = "force-dynamic";
+
 export default async function MainAppLayout({
   children,
 }: {
