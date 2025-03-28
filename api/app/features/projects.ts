@@ -137,7 +137,7 @@ async function createProject(
           ? new Date(data.estimated_end_date)
           : null,
         organizationId: data.organizationId,
-        userId: data.userId,
+        userId: userId,
         visibility: "private",
         address: data.address,
         city: data.city,
