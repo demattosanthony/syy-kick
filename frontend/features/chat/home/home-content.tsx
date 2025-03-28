@@ -23,6 +23,7 @@ import ProjectPreviews from "@/features/projects/components/project-previews";
 import ChatInputForm from "@/features/chat/messages/components/chat-input/chat-input";
 import { User } from "@/types/user";
 import { Project } from "@/types/project";
+import Image from "next/image";
 
 interface HomeContentProps {
   user: User | null;
@@ -79,7 +80,11 @@ export default function HomeContent({
 
       <main className="flex-1 flex flex-col py-6 overflow-y-auto">
         <div className="flex flex-col items-center w-full gap-6 pb-4">
-          <div className="flex flex-col gap-6 min-h-[74px] mt-[16vh]">
+          <div className="w-[85px] flex items-center justify-center min-h-[85px] mt-[16vh]">
+            <Image src="/logo512.png" width={85} height={85} alt="Logo" />
+          </div>
+
+          <div className="flex flex-col gap-6 min-h-[72px]">
             <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
           </div>
 
