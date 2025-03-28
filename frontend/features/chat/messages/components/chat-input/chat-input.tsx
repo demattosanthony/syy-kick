@@ -47,9 +47,8 @@ function ChatInputForm(
   const [selectedModel] = useAtom(modelAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const { uploads, handleFiles, removeUpload, handleDrop } = useFileUpload(
-    selectedModel.supportedMimeTypes || []
-  );
+  const { uploads, handleFiles, removeUpload, handleDrop, processFiles } =
+    useFileUpload(selectedModel.supportedMimeTypes || []);
 
   React.useImperativeHandle(ref, () => ({
     triggerFileInput: () => fileInputRef.current?.click(),
@@ -183,6 +182,7 @@ function ChatInputForm(
               isGenerating={isGenerating}
               textAreaRef={textAreaRef}
               setFocused={setFocused}
+              processFiles={processFiles}
             />
           </div>
           <ActionButtons
