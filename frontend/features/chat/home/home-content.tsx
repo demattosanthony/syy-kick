@@ -15,7 +15,6 @@ import { pricingPlanDialogOpenAtom } from "@/components/PricingDialog";
 import ConversationStarters from "@/features/chat/messages/components/conversation-starters";
 import InstallPrompt from "@/components/InstallPrompt";
 import { toast } from "sonner";
-import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
 import {
   AnimatedGreeting,
   ChatInputFormRef,
