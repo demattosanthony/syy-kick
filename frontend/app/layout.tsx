@@ -11,7 +11,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Syykick",
   icons: {
-    icon: "/icon.svg",
+    icon: "/logo192.png",
   },
   manifest: "/manifest.json",
   appleWebApp: {

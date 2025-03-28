@@ -1,4 +1,5 @@
 import { atom, useAtom } from "jotai";
+import Image from "next/image";
 import { useEffect } from "react";
 
 interface AnimatedGreetingProps {
@@ -11,7 +12,7 @@ const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
   const [, setIsAnimated] = useAtom(animatedAtom);
 
   const getGreeting = () => {
-    if (!name) return "Welcome to Syykick";
+    if (!name) return "Hi, I'm Syykick";
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
     if (hour < 17) return "Good Afternoon";
@@ -26,16 +27,17 @@ const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
   }, [setIsAnimated]);
 
   return (
-    <div className="flex flex-col items-center gap-1">
-      <h3
-        className="scroll-m-20 text-2xl md:text-4xl font-semibold text-center tracking-normal"
-        aria-label={greetingText}
-      >
-        {greetingText}
-      </h3>
-      <div className="text-lg font-medium text-center tracking-normal">
-        {assistText}
+    <div className="flex flex-col items-center justify-center gap-1">
+      <div className="flex items-center gap-4">
+        <Image src={"/logo512.png"} width={32} height={32} alt="logo" />
+        <h3
+          className="text-3xl md:text-4xl tracking-normal "
+          aria-label={greetingText}
+        >
+          {greetingText}
+        </h3>
       </div>
+      <p className="text-lg">{assistText}</p>
     </div>
   );
 };

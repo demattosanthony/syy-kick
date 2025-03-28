@@ -80,11 +80,7 @@ export default function HomeContent({
 
       <main className="flex-1 flex flex-col py-6 overflow-y-auto">
         <div className="flex flex-col items-center w-full gap-6 pb-4">
-          <div className="w-[115px] flex items-center justify-center min-h-[115px] mt-[16vh]">
-            <Syyclops3dEye size={115} animate={false} />
-          </div>
-
-          <div className="flex flex-col gap-6 min-h-[72px]">
+          <div className="flex flex-col gap-6 min-h-[74px] mt-[16vh]">
             <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
           </div>
 
