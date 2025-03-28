@@ -7,6 +7,8 @@ export const formatSites = (sites: Site[]): FormattedSite[] => {
     name: site.name,
     slug: site.slug,
     description: site.description,
+    organizationId: site.organizationId,
+    userId: site.userId,
     address: {
       address: site.address,
       city: site.city,

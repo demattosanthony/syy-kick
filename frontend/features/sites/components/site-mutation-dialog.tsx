@@ -1,5 +1,5 @@
+"use client";
 import { useEffect, useMemo, useState } from "react";
-import useCreateSiteMutation from "../api/create-site";
 import {
   Dialog,
   DialogContent,
@@ -14,15 +14,16 @@ import { Input } from "@/components/ui/input";
 import { LocationSearch } from "@/features/projects/components";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import useUpdateSiteMutation from "../api/update-site";
 import { toast } from "sonner";
 import { Site, MutationSiteData } from "../types/sites";
+import { useCreateSiteMutation, useUpdateSiteMutation } from "../api";
 
 interface CreateSiteDialogProps {
   trigger: React.ReactNode;
   mode?: "create" | "update";
   site?: Site;
   organizationId?: string;
+  onUpdate?: () => void;
 }
 
 export default function SiteDialog({
@@ -30,6 +31,7 @@ export default function SiteDialog({
   mode,
   site,
   organizationId,
+  onUpdate,
 }: CreateSiteDialogProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<MutationSiteData>({
@@ -105,6 +107,11 @@ export default function SiteDialog({
 
       toast.error(error.message);
     }
+
+    if (isUpdateSuccess && onUpdate) {
+      onUpdate();
+    }
+
   }, [
     isCreateSuccess,
     isCreateError,
@@ -137,7 +144,11 @@ export default function SiteDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Create a new Site</DialogTitle>
+          <DialogTitle>{
+            mode === "create" ?
+              "Create a new Site"
+              : "Update your site"
+          }</DialogTitle>
           <DialogDescription></DialogDescription>
         </DialogHeader>
         <form

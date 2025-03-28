@@ -38,6 +38,8 @@ import { NewThreadButton } from "./new-thread-button";
 import { usePermissions } from "@/features/permissions/context";
 import SiteDialog from "@/features/sites/components/site-mutation-dialog";
 import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
+import useGetUnlinkedProjectsQuery from "@/features/projects/api/get-unlinked-projects";
+import LinkProjectDialog from "@/features/projects/components/link-projects-dialog";
 
 export function AppSidebar({
   user,
@@ -49,7 +51,11 @@ export function AppSidebar({
   const [isPinned, setIsPinned] = React.useState(true);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-  const { canCreateOrgSites } = usePermissions();
+  const { canCreateOrgSites, canUpdateOrgSites } = usePermissions();
+
+  const {
+    data: unlinkedProjects, // Projects with no site associated
+  } = useGetUnlinkedProjectsQuery();
 
   // Keep pin state in sync with sidebar state
   React.useEffect(() => {
@@ -121,27 +127,27 @@ export function AppSidebar({
                   activeWorkspace?.type === "personal" &&
                   user.subscriptionStatus !== "active"
                 ) && (
-                  <SidebarButton
-                    href="/sites"
-                    icon={FolderClosed}
-                    hoverIcon={FolderOpen}
-                    label="Sites"
-                    actionTrigger={
-                      <SiteDialog
-                        trigger={
-                          <Button
-                            disabled={!canCreateOrgSites}
-                            variant="ghost"
-                            className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
-                          >
-                            <Plus className="h-6 w-6" />
-                          </Button>
-                        }
-                        mode="create"
-                      />
-                    }
-                  />
-                )}
+                    <SidebarButton
+                      href="/sites"
+                      icon={FolderClosed}
+                      hoverIcon={FolderOpen}
+                      label="Sites"
+                      actionTrigger={
+                        <SiteDialog
+                          trigger={
+                            <Button
+                              disabled={!canCreateOrgSites}
+                              variant="ghost"
+                              className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                            >
+                              <Plus className="h-6 w-6" />
+                            </Button>
+                          }
+                          mode="create"
+                        />
+                      }
+                    />
+                  )}
               </SidebarMenuItem>
 
               {activeWorkspace?.type === "organization" && (
@@ -181,6 +187,9 @@ export function AppSidebar({
               </DropdownMenuGroup>
             )}
 
+          {unlinkedProjects && unlinkedProjects.length > 0 && canUpdateOrgSites && (
+            <LinkProjectDialog unlinkedProjects={unlinkedProjects} />
+          )}
           <NavUser user={user} onDropdownOpenChange={setIsPopoverOpen} />
         </SidebarMenu>
       </SidebarFooter>

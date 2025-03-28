@@ -244,6 +244,11 @@ export function MobileWorkspaceSwitcher() {
 
               <CreateProjectDialog
                 siteId={selectedSite.id}
+                organizationId={
+                  selectedWorkspace?.type === "organization"
+                    ? selectedWorkspace.id
+                    : undefined
+                }
                 trigger={
                   <Button variant="outline" className="w-full gap-2">
                     <Plus className="h-4 w-4" />

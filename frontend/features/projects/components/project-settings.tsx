@@ -44,6 +44,7 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
   const deleteProjectMutation = useDeleteProjectMutation();
 
   const [formData, setFormData] = useState({
+    siteId: "",
     name: "",
     description: "",
     projectNumber: "",
@@ -58,6 +59,7 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
       await updateProjectMutation.mutateAsync({
         projectId: pid,
         data: {
+          siteId: formData.siteId,
           name: formData.name,
           description: formData.description,
           project_number: formData.projectNumber || undefined,
@@ -91,6 +93,7 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
   useEffect(() => {
     if (project) {
       setFormData({
+        siteId: project.siteId ?? "",
         name: project.name,
         description: project.description || "",
         estimatedEndDate: project.estimatedEndDate || "",
@@ -125,6 +128,7 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
                         ? "Saving..."
                         : "Save Changes"
                     }
+                    showSiteSelector={false}
                   />
                 </form>
               </Card>

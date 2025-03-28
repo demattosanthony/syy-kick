@@ -91,7 +91,7 @@ export default class PermissionsMiddlewares {
         return;
       }
 
-      const { siteId } = req.params;
+      const { id: siteId } = req.params;
 
       const isUserSite = await PermissionManager.isUserSite(userId, siteId);
 

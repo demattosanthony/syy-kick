@@ -18,21 +18,27 @@ import {
 } from "@/components/ui/dialog";
 
 // Custom component imports
-import ProjectFormFields from "./project-form-fields";
+import ProjectFormFields, { ProjectFormData } from "./project-form-fields";
 
 // API and data fetching imports
 import { ApiError } from "@/lib/api";
 import { useCreateProjectMutation } from "../api";
 
+// Permissions
+import { usePermissions } from "@/features/permissions/context";
+
 interface CreateProjectDialogProps {
   trigger: React.ReactNode;
+  organizationId?: string;
   siteId?: string | null;
 }
 
-const CreateProjectDialog = ({ trigger, siteId }: CreateProjectDialogProps) => {
+const CreateProjectDialog = ({ trigger, organizationId, siteId }: CreateProjectDialogProps) => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ProjectFormData>({
+    siteId: "",
+    organizationId,
     name: "",
     description: "",
     projectNumber: "",
@@ -41,6 +47,7 @@ const CreateProjectDialog = ({ trigger, siteId }: CreateProjectDialogProps) => {
   });
 
   const createProjectMutation = useCreateProjectMutation();
+  const { canCreateOrgProjects } = usePermissions();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +60,7 @@ const CreateProjectDialog = ({ trigger, siteId }: CreateProjectDialogProps) => {
     try {
       const project = await createProjectMutation.mutateAsync({
         siteId,
+        organizationId,
         name: formData.name,
         description: formData.description,
         project_number: formData.projectNumber,
@@ -61,6 +69,8 @@ const CreateProjectDialog = ({ trigger, siteId }: CreateProjectDialogProps) => {
       });
 
       setFormData({
+        siteId: "",
+        organizationId,
         name: "",
         description: "",
         projectNumber: "",
@@ -83,7 +93,9 @@ const CreateProjectDialog = ({ trigger, siteId }: CreateProjectDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogTrigger asChild disabled={!canCreateOrgProjects}>
+        {trigger}
+      </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Create a new Project</DialogTitle>
@@ -97,6 +109,7 @@ const CreateProjectDialog = ({ trigger, siteId }: CreateProjectDialogProps) => {
             submitButtonText={
               createProjectMutation.isPending ? "Creating..." : "Create Project"
             }
+            showSiteSelector={siteId ? false : true}
           />
         </form>
       </DialogContent>

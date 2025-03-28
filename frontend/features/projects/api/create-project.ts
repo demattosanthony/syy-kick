@@ -6,6 +6,7 @@ export function useCreateProjectMutation() {
 
   return useMutation({
     mutationFn: (data: {
+      organizationId?: string;
       siteId: string;
       name: string;
       description: string;

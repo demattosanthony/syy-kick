@@ -15,8 +15,11 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { DialogFooter } from "../../../components/ui/dialog";
+import { SitesSelector } from "@/features/sites/components";
 
-interface ProjectFormData {
+export interface ProjectFormData {
+  siteId: string;
+  organizationId?: string;
   name: string;
   description: string;
   projectNumber: string;
@@ -29,6 +32,7 @@ interface ProjectFormFieldsProps {
   setFormData: React.Dispatch<React.SetStateAction<ProjectFormData>>;
   isSubmitting: boolean;
   submitButtonText: string;
+  showSiteSelector: boolean;
 }
 
 const ProjectFormFields = ({
@@ -36,6 +40,7 @@ const ProjectFormFields = ({
   setFormData,
   isSubmitting,
   submitButtonText,
+  showSiteSelector = false,
 }: ProjectFormFieldsProps) => {
   return (
     <>
@@ -53,6 +58,21 @@ const ProjectFormFields = ({
           required
         />
       </div>
+
+      {showSiteSelector && (
+        <div className="space-y-2">
+          <Label htmlFor="siteId">
+            Site <span className="text-red-500">*</span>
+          </Label>
+          <SitesSelector
+            value={formData.siteId}
+            onValueChange={(value) =>
+              setFormData((prev) => ({ ...prev, siteId: value }))
+            }
+            disabled={isSubmitting}
+          />
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="projectNumber">Project Number</Label>

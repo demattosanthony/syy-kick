@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/features/chat/threads/components";
 import { CreateProjectDialog } from "@/features/projects/components";
 import api from "@/lib/api";
-import { usePermissions } from "@/features/permissions/context";
+import { SiteHeader } from "@/features/sites/components";
 
 export default async function ProjectsPage({
   searchParams,
@@ -14,9 +14,7 @@ export default async function ProjectsPage({
 }) {
   // Get search parameter from URL
   const resolvedSearchParams = await searchParams;
-  const search = resolvedSearchParams.search || "";
-
-  const { canCreateOrgProjects } = usePermissions();
+  const search = resolvedSearchParams.search ?? "";
 
   // Fetch projects server-side
   const projectsData = await api.projects
@@ -37,15 +35,21 @@ export default async function ProjectsPage({
       },
     }));
 
+  const siteData = resolvedSearchParams.siteId ? await api.sites.getSite(resolvedSearchParams.siteId) : null;
+
   return (
     <main className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">
+      {siteData && <SiteHeader
+        site={siteData}
+      />}
       <div className="flex items-center justify-between mb-6 mt-6">
         <h1 className="text-2xl font-bold ">Projects</h1>
 
-        {canCreateOrgProjects && resolvedSearchParams.siteId && (
+        {resolvedSearchParams.siteId && siteData && (
           <CreateProjectDialog
             trigger={<Button>Create Project</Button>}
             siteId={resolvedSearchParams.siteId}
+            organizationId={siteData.organizationId}
           />
         )}
       </div>

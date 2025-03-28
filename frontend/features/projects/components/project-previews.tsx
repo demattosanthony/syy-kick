@@ -7,6 +7,7 @@ import CreateProjectDialog from "./create-project-dialog";
 import { usePermissions } from "@/features/permissions/context";
 import Image from "next/image";
 import Link from "next/link";
+import { useWorkspace } from "@/components/sidebar/workspace-context";
 
 // Add this style tag for the pin point shape
 const PinStyles = () => (
@@ -52,6 +53,7 @@ const PinStyles = () => (
 );
 const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
   const { canCreateOrgProjects } = usePermissions();
+  const { activeWorkspace } = useWorkspace();
 
   return (
     <div className="w-full max-w-[950px] px-6 mx-auto">
@@ -79,6 +81,11 @@ const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
               Get started by creating a project to organize your work
             </p>
             <CreateProjectDialog
+              organizationId={
+                activeWorkspace?.type === "organization"
+                  ? activeWorkspace.id
+                  : undefined
+              }
               trigger={
                 <button className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium">
                   New Project

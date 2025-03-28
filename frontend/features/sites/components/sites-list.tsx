@@ -2,7 +2,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useInfiniteGetSitesQuery from "../api/get-sites";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Site } from "../types/sites";
@@ -16,9 +16,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin } from "lucide-react";
+import { Calendar, Clock, MapPin, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import SiteDialog from "./site-mutation-dialog";
+import { usePermissions } from "@/features/permissions/context";
+import { SiteDeleteDialog, SiteMutationDialog } from ".";
 
 const SitesList = () => {
   const searchParams = useSearchParams();
@@ -26,6 +27,8 @@ const SitesList = () => {
     () => searchParams.get("search") || "",
     [searchParams]
   );
+
+  const { canUpdateOrgSites } = usePermissions();
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -69,7 +72,7 @@ const SitesList = () => {
       ) : (
         <div className="flex flex-col gap-4">
           {sites.map((site) => (
-            <SiteItem key={site.id} site={site} />
+            <SiteItem key={site.id} site={site} canUpdate={canUpdateOrgSites} />
           ))}
 
           <div ref={scrollRef} className="h-10">
@@ -103,9 +106,12 @@ function SitesSkeleton() {
   );
 }
 
-function SiteItem({ site }: { site: Site }) {
+function SiteItem({ site, canUpdate }: { site: Site, canUpdate: boolean }) {
   const { name, description, address, createdAt, updatedAt } = site;
-  const formattedAddress = `${address.address}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`;
+
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const formattedAddress = useMemo(() => `${address.address}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`, [address]);
 
   const createdDate = new Date(createdAt);
   const updatedDate = new Date(updatedAt);
@@ -184,14 +190,15 @@ function SiteItem({ site }: { site: Site }) {
               variant="outline"
               size="lg"
               className="w-40"
-              onClick={() => {}}
+              onClick={() => { }}
             >
               View Details
             </Button>
           </Link>
-          <SiteDialog
+          <SiteMutationDialog
             trigger={
               <Button
+                disabled={!canUpdate}
                 variant="default"
                 size="lg"
                 className="w-40"
@@ -206,6 +213,17 @@ function SiteItem({ site }: { site: Site }) {
             site={site}
           />
         </div>
+        {/* delete icon button */}
+        <Button variant="destructive" size="icon" onClick={() => {
+          setShowDeleteDialog(true);
+        }}>
+          <Trash className="h-4 w-4" />
+        </Button>
+        <SiteDeleteDialog
+          showDeleteDialog={showDeleteDialog}
+          setShowDeleteDialog={setShowDeleteDialog}
+          site={site}
+        />
       </CardFooter>
     </Card>
   );

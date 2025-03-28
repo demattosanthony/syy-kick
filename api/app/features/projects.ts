@@ -37,13 +37,9 @@ const schemas = {
       description: z.string().max(255).optional(),
       project_number: z.string().optional(),
       organizationId: z.string().uuid().optional(),
-      userId: z.string().uuid().optional(),
       estimated_start_date: z.string().datetime().optional(),
       estimated_end_date: z.string().datetime().optional(),
       siteId: z.string().uuid(),
-    })
-    .refine((data) => data.organizationId || data.userId, {
-      message: "Either organizationId or userId must be provided",
     }),
 
   updateProject: z.object({
@@ -127,7 +123,7 @@ async function createProject(
           ? new Date(data.estimated_end_date)
           : null,
         organizationId: data.organizationId,
-        userId: data.userId,
+        userId: !data.organizationId ? userId : undefined,
         visibility: "private",
         siteId: data.siteId,
       })
@@ -195,6 +191,8 @@ async function listProjects(params: {
       params.userId,
       params.organizationId
     );
+
+    console.log(orgProjectsIds, '<--- orgProjectsIds')
     conditions.push(inArray(projects.id, orgProjectsIds));
   } else if (params.userId) {
     conditions.push(eq(projects.userId, params.userId));
@@ -586,11 +584,11 @@ async function createFolderStructure(
         projectId,
         ...(entry.type === "file"
           ? {
-              fileKey: entry.fileKey,
-              size: entry.size,
-              mimeType: entry.mimeType,
-              fileHash: entry.sha256,
-            }
+            fileKey: entry.fileKey,
+            size: entry.size,
+            mimeType: entry.mimeType,
+            fileHash: entry.sha256,
+          }
           : {}),
       })
       .returning();
@@ -752,8 +750,8 @@ const handlers = {
     const orgId = getOrgIdOrUnedfined(req.workspace);
     const data = {
       ...req.body,
-      userId: orgId ? undefined : req.dbUser?.id,
-      organizationId: orgId,
+      userId: !req.body.organizationId ? req.dbUser?.id : undefined,
+      organizationId: req.body.organizationId ? orgId : undefined,
     };
 
     if (!req.dbUser?.id) {
@@ -870,29 +868,6 @@ const handlers = {
 
     res.json(result);
   },
-
-  getUnlinkedProjects: async (req: Request, res: Response) => {
-    const orgId = getOrgIdOrUnedfined(req.workspace);
-
-    const conditions = [isNull(projects.siteId)];
-
-    if (orgId && req.dbUser!.id) {
-      const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
-        req.dbUser!.id,
-        orgId
-      );
-      conditions.push(inArray(projects.id, orgProjectsIds));
-    } else if (req.dbUser!.id) {
-      conditions.push(eq(projects.userId, req.dbUser!.id));
-    }
-
-    const projectsList = await db.query.projects.findMany({
-      where: and(...conditions),
-      orderBy: (projects, { desc }) => [desc(projects.createdAt)],
-    });
-
-    res.json(projectsList);
-  },
 };
 
 export default Router()
@@ -960,13 +935,4 @@ export default Router()
       Permissions.Actions.READ
     ),
     handlers.getDocument
-  )
-  // Temporary (projects with no site linked)
-  .get(
-    "/unlinked-projects",
-    PermissionsMiddlewares.projects(
-      Permissions.Resources.ORGANIZATION_PROJECTS,
-      Permissions.Actions.READ
-    ),
-    handlers.getUnlinkedProjects
   );

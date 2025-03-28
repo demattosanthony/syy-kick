@@ -15,6 +15,8 @@ export type Site = {
   slug: string;
   description: string | null;
   address: Address;
+  organizationId?: string;
+  userId?: string;
   createdAt: string;
   updatedAt: string;
 };

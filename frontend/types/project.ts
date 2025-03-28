@@ -11,7 +11,7 @@ export interface Project {
   updatedAt: string;
   organization?: Organization;
   user?: User;
-
+  siteId?: string;
   projectNumber?: string;
   estimatedStartDate?: string;
   estimatedEndDate?: string;

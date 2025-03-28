@@ -73,8 +73,8 @@ async function clientFetch<T>(
     throw new ApiError(
       response.status,
       errorData?.message ||
-        errorData?.error ||
-        `Request failed with status ${response.status}`
+      errorData?.error ||
+      `Request failed with status ${response.status}`
     );
   }
 
@@ -542,6 +542,7 @@ class ProjectsApi extends ApiRequest {
 
   async createProject(data: {
     siteId: string;
+    organizationId?: string | null;
     name: string;
     description?: string;
     address?: string;
@@ -562,8 +563,7 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -612,8 +612,7 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`,
       "DELETE"
     );
@@ -629,8 +628,7 @@ class ProjectsApi extends ApiRequest {
     }
 
     return await this.request(
-      `/projects/${projectId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -900,7 +898,7 @@ class ProjectsApi extends ApiRequest {
   async getUnlinkedProjects() {
     try {
       return await this.request<Project[]>(
-        `/projects/unlinked-projects`,
+        `/unlinked-projects`,
         "GET"
       );
     } catch (error) {
@@ -1057,6 +1055,14 @@ class SitesApi extends ApiRequest {
     }
   }
 
+  async getSite(siteId: string): Promise<Site> {
+    try {
+      return await this.request<Site>(`/sites/${siteId}`);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async updateSite(
     siteId: string,
     data: MutationSiteData
@@ -1072,15 +1078,25 @@ class SitesApi extends ApiRequest {
     }
   }
 
+  async deleteSite(siteId: string): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/sites/${siteId}`,
+        "DELETE"
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Temporary
   async linkProjects(
     siteId: string,
-    data: {
-      projectsIds: string[];
-    }
+    data: { projectsIds: string[] }
   ): Promise<{ message: string }> {
     try {
       return await this.request<{ message: string }>(
-        `/sites/${siteId}/unlinked-projects`,
+        `/sites/${siteId}/link-projects`,
         "PUT",
         data
       );
