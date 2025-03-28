@@ -126,7 +126,7 @@ function KnowledgeBaseItem({
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const { canDeleteOrgProjects } = usePermissions();
+  const { canDeleteOrgKnowledgeBaseDocs } = usePermissions();
   const deleteKnowledgeBaseMutation = useDeleteKnowledgeBase();
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -160,7 +160,7 @@ function KnowledgeBaseItem({
               </p>
             </div>
 
-            {canDeleteOrgProjects && (
+            {canDeleteOrgKnowledgeBaseDocs && (
               <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <div className="flex items-center">
                   <DropdownMenu>

@@ -488,7 +488,8 @@ function FileExplorerItem({
             : ""
         );
 
-  const { canDeleteOrgProjectDocs } = usePermissions();
+  const { canDeleteOrgProjectDocs, canDeleteOrgKnowledgeBaseDocs } =
+    usePermissions();
 
   const deleteProjectContentMutation = useDeleteProjectContentMutation();
   const deleteKnowledgeBaseContentMutation =
@@ -680,7 +681,11 @@ function FileExplorerItem({
                 <Button
                   variant="ghost"
                   className="w-full justify-start text-destructive hover:bg-destructive/10"
-                  disabled={!canDeleteOrgProjectDocs}
+                  disabled={
+                    contentSource === "project"
+                      ? !canDeleteOrgProjectDocs
+                      : !canDeleteOrgKnowledgeBaseDocs
+                  }
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();

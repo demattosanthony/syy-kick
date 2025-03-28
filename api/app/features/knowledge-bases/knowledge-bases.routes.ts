@@ -7,7 +7,7 @@ export default Router()
   .post(
     "/",
     permissions(
-      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.CREATE
     ),
     handlers.createKnowledgeBase
@@ -16,7 +16,7 @@ export default Router()
   .get(
     "/:knowledgeBaseId",
     permissions(
-      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.READ
     ),
     handlers.getKnowledgeBase
@@ -24,7 +24,7 @@ export default Router()
   .patch(
     "/:knowledgeBaseId",
     permissions(
-      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.UPDATE
     ),
     handlers.updateKnowledgeBase
@@ -32,7 +32,7 @@ export default Router()
   .delete(
     "/:knowledgeBaseId",
     permissions(
-      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.DELETE
     ),
     handlers.deleteKnowledgeBase
@@ -40,7 +40,7 @@ export default Router()
   .post(
     "/:knowledgeBaseId/documents",
     permissions(
-      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.CREATE
     ),
     handlers.uploadDocs
@@ -48,7 +48,7 @@ export default Router()
   .get(
     "/:knowledgeBaseId/documents",
     permissions(
-      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.READ
     ),
     handlers.getDocs
@@ -56,7 +56,7 @@ export default Router()
   .delete(
     "/:knowledgeBaseId/documents",
     permissions(
-      Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.DELETE
     ),
     handlers.deleteDocs

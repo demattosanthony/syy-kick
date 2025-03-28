@@ -21,7 +21,12 @@ const ProjectHeader = ({
   type,
   knowledgeBase,
 }: ProjectHeaderProps) => {
-  const { canUpdateOrgProjects, canCreateOrgProjectDocs } = usePermissions();
+  const {
+    canUpdateOrgProjects,
+    canCreateOrgProjectDocs,
+    canUpdateOrgKnowledgeBases,
+    canCreateOrgKnowledgeBaseDocs,
+  } = usePermissions();
 
   const name = project?.name ?? knowledgeBase?.name ?? "";
   const logo = project?.organization?.logoUrl ?? project?.user?.profilePicture;
@@ -61,7 +66,8 @@ const ProjectHeader = ({
           </div>
 
           <div className="flex gap-2">
-            {canCreateOrgProjectDocs && (
+            {((type === "project" && canCreateOrgProjectDocs) ||
+              (type === "knowledge-base" && canCreateOrgKnowledgeBaseDocs)) && (
               <ProjectAddFileButton
                 projectId={project?.id}
                 contentSource={type}
@@ -69,23 +75,23 @@ const ProjectHeader = ({
               />
             )}
 
-            {canUpdateOrgProjects &&
-              (type === "project" && project ? (
-                <Link href={`/projects/${project.id}/settings`}>
+            {type === "project" && project && canUpdateOrgProjects && (
+              <Link href={`/projects/${project.id}/settings`}>
+                <Button variant={"ghost"} size={"icon"}>
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </Link>
+            )}
+
+            {type === "knowledge-base" &&
+              knowledgeBase &&
+              canUpdateOrgKnowledgeBases && (
+                <Link href={`/knowledge-bases/${knowledgeBase.id}/settings`}>
                   <Button variant={"ghost"} size={"icon"}>
                     <Settings className="w-4 h-4" />
                   </Button>
                 </Link>
-              ) : (
-                type === "knowledge-base" &&
-                knowledgeBase && (
-                  <Link href={`/knowledge-bases/${knowledgeBase.id}/settings`}>
-                    <Button variant={"ghost"} size={"icon"}>
-                      <Settings className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                )
-              ))}
+              )}
           </div>
         </div>
       </div>
