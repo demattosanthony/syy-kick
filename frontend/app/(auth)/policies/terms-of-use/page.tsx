@@ -7,17 +7,17 @@ export default function TermsOfUsePage() {
     <div className="h-screen w-screen overflow-y-auto flex justify-center ">
       <div className="max-w-5xl py-12 h-full w-full">
         <MarkdownViewer
-          content={`## Yo Platform Terms of Service
+          content={`## Syykick Platform Terms of Service
 
-### Welcome to Yo
+### Welcome to Syykick
 
-By accessing or using the Yo platform at yo.syyclops.com (the "Platform"), you agree to comply with and be bound by these Terms of Service ("Terms"). Please read them carefully before using our services.
+By accessing or using the Syykick platform at syykick.com (the "Platform"), you agree to comply with and be bound by these Terms of Service ("Terms"). Please read them carefully before using our services.
 
 Syyclops Inc. provides an AI assistant platform specifically designed for building engineering professionals. Our platform helps users across all phases of building engineering projects, from initial design and planning to construction, operation, and maintenance. These Terms govern your relationship with us and your use of our services.
 
 ### Important Notice About AI-Generated Content
 
-**DISCLAIMER: YO IS AN AI PLATFORM AND DOES NOT GUARANTEE ACCURACY.** The Yo platform utilizes artificial intelligence to generate responses. AI systems have limitations and may produce incorrect, incomplete, or misleading information. Users are solely responsible for verifying all AI-generated content before relying on it. Syyclops Inc. expressly disclaims all liability for any decisions or actions taken based on AI-generated content. Always exercise critical judgment when using our services, especially for building engineering applications where safety and compliance are essential.
+**DISCLAIMER: SYYKICK IS AN AI PLATFORM AND DOES NOT GUARANTEE ACCURACY.** The Syykick platform utilizes artificial intelligence to generate responses. AI systems have limitations and may produce incorrect, incomplete, or misleading information. Users are solely responsible for verifying all AI-generated content before relying on it. Syyclops Inc. expressly disclaims all liability for any decisions or actions taken based on AI-generated content. Always exercise critical judgment when using our services, especially for building engineering applications where safety and compliance are essential.
 
 ### Account Registration and Security
 
