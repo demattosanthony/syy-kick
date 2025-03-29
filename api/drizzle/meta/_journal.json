@@ -260,6 +260,13 @@
       "when": 1743248125036,
       "tag": "0036_wandering_scrambler",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1743279133807,
+      "tag": "0037_stale_wiccan",
+      "breakpoints": true
     }
   ]
 }
