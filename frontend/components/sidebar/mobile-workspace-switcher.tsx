@@ -30,6 +30,7 @@ export function MobileWorkspaceSwitcher() {
     null
   );
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [siteDialogOpen, setSiteDialogOpen] = useState(false);
 
   const [workspaceSearch, setWorkspaceSearch] = useState("");
   const [siteSearch, setSiteSearch] = useState("");
@@ -194,13 +195,14 @@ export function MobileWorkspaceSwitcher() {
               ))}
 
               <SiteDialog
-                trigger={
-                  <Button variant="outline" className="w-full gap-2">
-                    <Plus className="h-4 w-4" />
-                    Create Site
-                  </Button>
-                }
                 mode="create"
+                organizationId={
+                  selectedWorkspace?.type === "organization"
+                    ? selectedWorkspace.id
+                    : undefined
+                }
+                showDialog={siteDialogOpen}
+                setShowDialog={setSiteDialogOpen}
               />
             </>
           )}
