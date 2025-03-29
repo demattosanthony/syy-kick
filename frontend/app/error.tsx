@@ -1,13 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
+import Image from "next/image";
 
 export default function ErrorPage() {
   return (
     <div className="h-[90%] flex items-center justify-center p-4">
       <div className="text-center space-y-4 items-center flex flex-col">
-        <Syyclops3dEye size={125} />
+        <Image src={"/logo512.png"} width={105} height={105} alt="" />
         <h1 className="text-4xl font-bold text-primary">
           Site Under Construction
         </h1>

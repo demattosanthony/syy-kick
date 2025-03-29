@@ -1,4 +1,5 @@
 import { atom, useAtom } from "jotai";
+import Image from "next/image";
 import { useEffect } from "react";
 
 interface AnimatedGreetingProps {
@@ -11,7 +12,7 @@ const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
   const [, setIsAnimated] = useAtom(animatedAtom);
 
   const getGreeting = () => {
-    if (!name) return "Welcome to Yo";
+    if (!name) return "Hi, I'm Syykick";
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
     if (hour < 17) return "Good Afternoon";
