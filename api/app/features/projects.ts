@@ -4,15 +4,18 @@ import {
   and,
   asc,
   cosineDistance,
+  desc,
   eq,
   ilike,
   inArray,
   isNull,
   like,
   or,
+  SQL,
   sql,
 } from "drizzle-orm";
 import {
+  accessLogs,
   documentEmbeddings,
   documents,
   organizations,
@@ -168,6 +171,8 @@ async function deleteProject(projectId: string) {
   await db.delete(projects).where(eq(projects.id, projectId));
 }
 
+type SortOption = "recent" | "name-asc" | "name-desc" | "created-asc" | "created-desc";
+
 async function listProjects(params: {
   siteId: string;
   organizationId?: string;
@@ -175,53 +180,155 @@ async function listProjects(params: {
   search?: string;
   page?: number;
   limit?: number;
+  sort?: SortOption;
 }) {
   if (!params.organizationId && !params.userId) {
-    throw new Error("Either organizationId or userId must be provided", {});
+    throw new Error("Either organizationId or userId must be provided");
   }
-
   if (!params.siteId) {
     throw new Error("Please select a site");
   }
 
-  let conditions = [eq(projects.siteId, params.siteId)];
+  // Pagination
+  const page = params.page || 1;
+  const limit = params.limit || 10;
+  const offset = (page - 1) * limit;
+
+  const conditions = [eq(projects.siteId, params.siteId)];
 
   if (params.organizationId && params.userId) {
     const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
       params.userId,
       params.organizationId
     );
-
-    console.log(orgProjectsIds, '<--- orgProjectsIds')
     conditions.push(inArray(projects.id, orgProjectsIds));
   } else if (params.userId) {
     conditions.push(eq(projects.userId, params.userId));
   }
 
   if (params.search) {
-    conditions.push(ilike(projects.name, `%${params.search}%`));
+    conditions.push(
+      sql`(
+        ${ilike(projects.name, `%${params.search}%`)} 
+        OR 
+        ${ilike(projects.projectNumber, `%${params.search}%`)}
+      )`
+    );
   }
 
-  // Set default pagination values
-  const page = params.page || 1;
-  const limit = params.limit || 10;
-  const offset = (page - 1) * limit;
+  if (params.sort === "recent" && params.userId) {
+    return await getPaginatedRecentProjects({
+      siteId: params.siteId,
+      organizationId: params.organizationId,
+      userId: params.userId,
+      page: params.page,
+      limit: params.limit,
+      conditions,
+    });
+  }
 
-  // Get total count for pagination metadata
+  let orderBy: Array<SQL> = [];
+  if (params.sort) {
+    switch (params.sort) {
+      case "name-asc":
+        orderBy = [asc(projects.name)];
+        break;
+      case "name-desc":
+        orderBy = [desc(projects.name)];
+        break;
+      case "created-asc":
+        orderBy = [asc(projects.createdAt)];
+        break;
+      case "created-desc":
+        orderBy = [desc(projects.createdAt)];
+        break;
+      case "recent": // fallback
+        orderBy = [desc(projects.createdAt)];
+        break;
+      default:
+        break;
+    }
+  }
+
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(projects)
     .where(and(...conditions));
-
   const totalCount = countResult[0]?.count || 0;
 
-  // Get paginated projects
   const projs = await db.query.projects.findMany({
     where: and(...conditions),
-    orderBy: (projects, { desc }) => [desc(projects.createdAt)],
-    limit: limit,
-    offset: offset,
+    orderBy,
+    limit,
+    offset,
   });
+
+  return {
+    data: projs,
+    pagination: {
+      page,
+      limit,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      hasMore: page * limit < totalCount,
+    },
+  };
+}
+
+async function getPaginatedRecentProjects(params: {
+  siteId: string;
+  organizationId?: string;
+  conditions?: Array<SQL>;
+  userId?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const page = params.page || 1;
+  const limit = params.limit || 10;
+  const offset = (page - 1) * limit;
+
+  const [totalCountResult] = await db
+    .select({
+      totalCount: sql<number>`COUNT(DISTINCT ${projects.id})`,
+    })
+    .from(projects)
+    .leftJoin(accessLogs, eq(accessLogs.projectId, projects.id))
+    .where(and(...params.conditions ?? []));
+  const totalCount = totalCountResult?.totalCount ?? 0;
+
+  const projs = await db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      description: projects.description,
+      slug: projects.slug,
+      projectNumber: projects.projectNumber,
+      visibility: projects.visibility,
+      estimatedStartDate: projects.estimatedStartDate,
+      estimatedEndDate: projects.estimatedEndDate,
+      address: projects.address,
+      city: projects.city,
+      state: projects.state,
+      country: projects.country,
+      postalCode: projects.postalCode,
+      latitude: projects.latitude,
+      longitude: projects.longitude,
+      siteId: projects.siteId,
+      organizationId: projects.organizationId,
+      userId: projects.userId,
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+      lastAccess: sql`MAX(${accessLogs.createdAt})`.as("lastAccess"),
+    })
+    .from(projects)
+    .leftJoin(accessLogs, eq(accessLogs.projectId, projects.id))
+    .where(and(...params.conditions ?? []))
+    .groupBy(projects.id)
+    .orderBy(sql`MAX(${accessLogs.createdAt}) DESC NULLS LAST`)
+    .limit(limit)
+    .offset(offset);
+
+  console.log("projs", projs);
 
   return {
     data: projs,
@@ -771,7 +878,8 @@ const handlers = {
   },
 
   listProjects: async (req: Request, res: Response) => {
-    const { search, page, limit, siteId } = req.query;
+    const { search, page, limit, siteId, sort } = req.query;
+
     const orgId = getOrgIdOrUnedfined(req.workspace);
     try {
       const projectsList = await listProjects({
@@ -781,6 +889,7 @@ const handlers = {
         search: search as string,
         page: page ? parseInt(page as string, 10) : undefined,
         limit: limit ? parseInt(limit as string, 10) : undefined,
+        sort: sort as SortOption,
       });
       res.json(projectsList);
     } catch (error: any) {

@@ -14,6 +14,7 @@ import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
+import { SortOption } from "@/features/projects/types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
@@ -573,6 +574,7 @@ class ProjectsApi extends ApiRequest {
     page?: number;
     limit?: number;
     siteId?: string;
+    sort?: SortOption;
   }): Promise<{
     data: Project[];
     pagination: {
@@ -599,6 +601,10 @@ class ProjectsApi extends ApiRequest {
 
     if (options?.limit !== undefined) {
       queryParams.append("limit", options.limit.toString());
+    }
+
+    if (options?.sort) {
+      queryParams.append("sort", options.sort);
     }
 
     try {

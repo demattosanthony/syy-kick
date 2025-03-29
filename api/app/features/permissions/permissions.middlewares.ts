@@ -24,22 +24,31 @@ export default class PermissionsMiddlewares {
         return;
       }
 
+      const resourceId = await PermissionManager.getResourseId(resource);
+
+      if (!resourceId) {
+        res.status(403).json({ error: "Resource not found." });
+        return;
+      }
+
       let orgRole = await PermissionManager.getUserOrganisationRole(
         userId,
         orgId
       );
 
       if (!orgRole) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.UNAUTHORIZED,
+          {
+            organizationId: orgId,
+          }
+        );
         res
           .status(403)
           .json({ error: "You don't have access to this resource." });
-        return;
-      }
-
-      const resourceId = await PermissionManager.getResourseId(resource);
-
-      if (!resourceId) {
-        res.status(403).json({ error: "Resource not found." });
         return;
       }
 
@@ -58,11 +67,30 @@ export default class PermissionsMiddlewares {
       );
 
       if (!hasAccess) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.UNAUTHORIZED,
+          {
+            organizationId: orgId,
+          }
+        );
         res
           .status(403)
           .json({ error: "You don't have access to this resource." });
         return;
       }
+
+      await PermissionManager.logAccess(
+        userId,
+        action,
+        resource,
+        Permissions.Status.AUTHORIZED,
+        {
+          organizationId: orgId,
+        }
+      );
 
       next();
     };
@@ -87,6 +115,15 @@ export default class PermissionsMiddlewares {
         action === Permissions.Actions.CREATE &&
         !orgId
       ) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.AUTHORIZED,
+          {
+            organizationId: orgId,
+          }
+        );
         next();
         return;
       }
@@ -97,6 +134,15 @@ export default class PermissionsMiddlewares {
 
       // Check if the user is the site owner, if so, skip permission check
       if (siteId && isUserSite) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.AUTHORIZED,
+          {
+            siteId,
+          }
+        );
         next();
         return;
       }
@@ -107,22 +153,31 @@ export default class PermissionsMiddlewares {
         return;
       }
 
+      const resourceId = await PermissionManager.getResourseId(resource);
+
+      if (!resourceId) {
+        res.status(403).json({ error: "Resource not found." });
+        return;
+      }
+
       let orgRole = await PermissionManager.getUserOrganisationRole(
         userId,
         orgId
       );
 
       if (!orgRole) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.UNAUTHORIZED,
+          {
+            siteId,
+          }
+        );
         res
           .status(403)
           .json({ error: "You don't have access to this resource." });
-        return;
-      }
-
-      const resourceId = await PermissionManager.getResourseId(resource);
-
-      if (!resourceId) {
-        res.status(403).json({ error: "Resource not found." });
         return;
       }
 
@@ -139,6 +194,15 @@ export default class PermissionsMiddlewares {
           Permissions.Roles.ORGANIZATION_MANAGER,
         ].includes(orgRole.role.name as Permissions.Roles)
       ) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.AUTHORIZED,
+          {
+            siteId,
+          }
+        );
         next();
         return;
       }
@@ -219,6 +283,15 @@ export default class PermissionsMiddlewares {
       );
 
       if (!orgRole) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.UNAUTHORIZED,
+          {
+            projectId,
+          }
+        );
         res
           .status(403)
           .json({ error: "You don't have access to this resource." });
@@ -245,10 +318,18 @@ export default class PermissionsMiddlewares {
           Permissions.Roles.ORGANIZATION_MANAGER,
         ].includes(orgRole.role.name as Permissions.Roles)
       ) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.AUTHORIZED,
+          {
+            projectId,
+          }
+        );
         next();
         return;
       }
-
       // projectId not provided, required for a project resource if the action is not create
       if (
         !projectId &&
@@ -268,11 +349,31 @@ export default class PermissionsMiddlewares {
       );
 
       if (!hasAccess) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.UNAUTHORIZED,
+          {
+            projectId,
+          }
+        );
         res
           .status(403)
           .json({ error: "You don't have access to this resource." });
         return;
       }
+
+      await PermissionManager.logAccess(
+        userId,
+        action,
+        resource,
+        Permissions.Status.AUTHORIZED,
+        {
+          projectId,
+        }
+      );
+
       next();
     };
   }

@@ -6,6 +6,7 @@ import { SearchBar } from "@/features/chat/threads/components";
 import { CreateProjectDialog } from "@/features/projects/components";
 import api from "@/lib/api";
 import { SiteHeader } from "@/features/sites/components";
+import ProjectsFilters from "@/features/projects/components/projects-filters";
 
 export default async function ProjectsPage({
   searchParams,
@@ -53,7 +54,10 @@ export default async function ProjectsPage({
           />
         )}
       </div>
-      <SearchBar initialSearch={search} />
+      <div className="flex items-center justify-between mb-6 mt-6 gap-2">
+        <SearchBar initialSearch={search} className="flex-1" />
+        <ProjectsFilters />
+        </div>
       <ProjectsList initialProjects={projectsData} />
     </main>
   );

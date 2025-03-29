@@ -22,8 +22,6 @@ import { CreateOrgForm } from "@/features/organizations/components";
 import api from "@/lib/api";
 import { PRICING_PLANS } from "@/lib/pricing";
 import { Workspace } from "@/types/workspace";
-import SiteDialog from "@/features/sites/components/site-mutation-dialog";
-import { CreateProjectDialog } from "@/features/projects/components";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 export function WorkSpaceSwitcher({
@@ -215,27 +213,6 @@ export function WorkSpaceSwitcher({
                 </div>
               )}
             </div>
-
-            <div className="border-t p-2">
-              <SiteDialog
-                trigger={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Site
-                  </Button>
-                }
-                mode={"create"}
-                organizationId={
-                  hoveredWorkspace.type === "organization"
-                    ? hoveredWorkspace.id
-                    : undefined
-                }
-              />
-            </div>
           </div>
         )}
 
@@ -268,26 +245,6 @@ export function WorkSpaceSwitcher({
                   No projects found
                 </div>
               )}
-            </div>
-            <div className="border-t p-2">
-              <CreateProjectDialog
-                siteId={hoveredSite.id}
-                organizationId={
-                  hoveredWorkspace?.type === "organization"
-                    ? hoveredWorkspace.id
-                    : undefined
-                }
-                trigger={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Project
-                  </Button>
-                }
-              />
             </div>
           </div>
         )}

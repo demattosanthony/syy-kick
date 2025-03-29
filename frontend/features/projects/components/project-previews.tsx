@@ -108,7 +108,7 @@ const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
           ))}
 
           {/* Add "Create Project" card if there are fewer than 6 projects */}
-          {projects.length < 6 && canCreateOrgProjects && <AddProjectCard />}
+          {projects.length < 6 && canCreateOrgProjects && <AddProjectCard organizationId={activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined} />}
         </div>
       )}
     </div>
@@ -182,9 +182,9 @@ function ProjectCard({ project }: ProjectCardProps) {
           <p className="text-xs text-muted-foreground">
             {project.address
               ? project.address +
-                (project.city ? `, ${project.city}` : "") +
-                (project.state ? `, ${project.state}` : "") +
-                (project.postalCode ? `, ${project.postalCode}` : "")
+              (project.city ? `, ${project.city}` : "") +
+              (project.state ? `, ${project.state}` : "") +
+              (project.postalCode ? `, ${project.postalCode}` : "")
               : "No location"}
           </p>
         </div>
@@ -193,7 +193,7 @@ function ProjectCard({ project }: ProjectCardProps) {
   );
 }
 
-function AddProjectCard() {
+function AddProjectCard({ organizationId }: { organizationId: string | undefined }) {
   return (
     <motion.div
       className="bg-card text-card-foreground rounded-lg shadow-sm border border-border overflow-hidden cursor-pointer h-full flex flex-col items-center justify-center"
@@ -205,6 +205,7 @@ function AddProjectCard() {
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
       <CreateProjectDialog
+        organizationId={organizationId}
         trigger={
           <div className="p-6 flex flex-col items-center text-center">
             <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-3">

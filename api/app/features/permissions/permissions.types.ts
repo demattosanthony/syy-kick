@@ -30,6 +30,11 @@ export namespace Permissions {
     ORGANIZATION = "organization",
     PROJECT = "project",
   }
+
+  export enum Status {
+    AUTHORIZED = "authorized",
+    UNAUTHORIZED = "unauthorized",
+  }
 }
 
 export interface Role {

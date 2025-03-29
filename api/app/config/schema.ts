@@ -374,6 +374,19 @@ export const memberRoles = pgTable("member_roles", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const accessLogs = pgTable("access_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  documentId: uuid("document_id").references(() => documents.id, { onDelete: "cascade" }),
+  actionId: uuid("action_id").references(() => actions.id, { onDelete: "cascade" }).notNull(),
+  status: text("status", { enum: ["authorized", "unauthorized"] }).notNull().default("authorized"),
+  resourceId: uuid("resource_id").references(() => resources.id, { onDelete: "cascade" }).notNull(),
+  siteId: uuid("site_id").references(() => sites.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 /** ---- End Permissions ---- */
 
 // Relations
@@ -548,6 +561,37 @@ export const memberRolesRelations = relations(memberRoles, ({ one, many }) => ({
     references: [roles.id],
   }),
   permissions: many(permissions),
+}));
+
+export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [accessLogs.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [accessLogs.organizationId],
+    references: [organizations.id],
+  }),
+  project: one(projects, {
+    fields: [accessLogs.projectId],
+    references: [projects.id],
+  }),
+  document: one(documents, {
+    fields: [accessLogs.documentId],
+    references: [documents.id],
+  }),
+  action: one(actions, {
+    fields: [accessLogs.actionId],
+    references: [actions.id],
+  }),
+  resource: one(resources, {
+    fields: [accessLogs.resourceId],
+    references: [resources.id],
+  }),
+  site: one(sites, {
+    fields: [accessLogs.siteId],
+    references: [sites.id],
+  }),
 }));
 
 export type MessageAttachment = {
