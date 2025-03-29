@@ -106,10 +106,6 @@ const LoadingMessage = React.memo(() => {
   return (
     <div className="mb-4 mt flex flex-col justify-start">
       <div className="flex items-center gap-1">
-        <div className="w-[32px] h-full">
-          {/* <Syyclops3dEye size={22} animate={false} /> */}
-        </div>
-
         <div className="flex items-center rounded-lg bg-background">
           <Loader variant="wave" size="lg" />
         </div>
