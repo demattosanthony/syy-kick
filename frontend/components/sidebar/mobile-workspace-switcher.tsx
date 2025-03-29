@@ -17,8 +17,6 @@ import { CreateProjectDialog } from "@/features/projects/components";
 import SiteDialog from "@/features/sites/components/site-mutation-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Workspace } from "@/types/workspace";
-import { PRICING_PLANS } from "@/lib/pricing";
-import api from "@/lib/api";
 
 export function MobileWorkspaceSwitcher() {
   const router = useRouter();
@@ -64,24 +62,6 @@ export function MobileWorkspaceSwitcher() {
     setStep("workspace");
 
     router.push(`/projects/${project.id}`);
-  };
-
-  const handleCreateOrgComplete = async (org: {
-    id: string;
-    seats: number;
-  }) => {
-    // go to checkout for the org
-    const url = await api.payments.createCheckoutSession(
-      PRICING_PLANS.TEAMS.lookup_key,
-      org.seats,
-      org.id
-    );
-    window.location.href = url;
-  };
-
-  const handleWorkspaceChange = (workspace: Workspace) => {
-    setActiveWorkspace(workspace);
-    router.push("/");
   };
 
   return (
