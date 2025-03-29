@@ -133,8 +133,6 @@ function ProjectCard({ project }: ProjectCardProps) {
     return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=17&size=400x200&maptype=satellite&key=${apiKey}`;
   }, [project]);
 
-  console.log(JSON.stringify(project, null, 2));
-
   return (
     <motion.div
       className="bg-card text-card-foreground rounded-lg shadow-sm border border-border overflow-hidden cursor-pointer"

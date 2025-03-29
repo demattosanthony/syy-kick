@@ -1,23 +1,11 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { SiteDeleteDialog, SiteMutationDialog } from ".";
+import { SiteDropdownActions } from ".";
 import { useMemo } from "react";
-import { EllipsisVertical, Trash, Edit } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { usePermissions } from "@/features/permissions/context";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Site } from "../types/sites";
 
 export default function SiteHeader({ site }: { site: Site }) {
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const router = useRouter();
   const { canDeleteOrgSites, canUpdateOrgSites } = usePermissions();
 
   const mapUrl = useMemo(() => {
@@ -58,49 +46,13 @@ export default function SiteHeader({ site }: { site: Site }) {
           </div>
         </div>
         <div className="flex flex-col items-end justify-end p-4">
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="text-primary">
-                <EllipsisVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <SiteMutationDialog
-                trigger={
-                  <DropdownMenuItem
-                    disabled={!canUpdateOrgSites}
-                    onSelect={(e) => e.preventDefault()}
-                    className="hover:cursor-pointer"
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Update
-                  </DropdownMenuItem>
-                }
-                onUpdate={() => {
-                  router.refresh();
-                }}
-                mode="update"
-                site={site}
-                organizationId={site.organizationId}
-              />
-              <DropdownMenuItem
-                disabled={!canDeleteOrgSites}
-                onSelect={() => setShowDeleteDialog(true)}
-                className="text-destructive hover:cursor-pointer"
-              >
-                <Trash className="w-4 h-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <SiteDeleteDialog
-            showDeleteDialog={showDeleteDialog}
-            setShowDeleteDialog={setShowDeleteDialog}
+          <SiteDropdownActions
             site={site}
+            canUpdateOrgSites={canUpdateOrgSites}
+            canDeleteOrgSites={canDeleteOrgSites}
           />
         </div>
       </div>
-    </div>
+    </div >
   );
 }

@@ -52,6 +52,7 @@ export function AppSidebar({
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   const { canCreateOrgSites, canUpdateOrgSites } = usePermissions();
+  const [showCreateSiteDialog, setShowCreateSiteDialog] = React.useState(false);
 
   const {
     data: unlinkedProjects, // Projects with no site associated
@@ -131,27 +132,26 @@ export function AppSidebar({
                   activeWorkspace?.type === "personal" &&
                   user.subscriptionStatus !== "active"
                 ) && (
-                  <SidebarButton
-                    href="/sites"
-                    icon={MapPinIcon}
-                    hoverIcon={MapPinIcon}
-                    label="Sites"
-                    actionTrigger={
-                      <SiteDialog
-                        trigger={
-                          <Button
-                            disabled={!canCreateOrgSites}
-                            variant="ghost"
-                            className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
-                          >
-                            <Plus className="h-6 w-6" />
-                          </Button>
-                        }
-                        mode="create"
-                      />
-                    }
-                  />
-                )}
+                    <SidebarButton
+                      href="/sites"
+                      icon={MapPinIcon}
+                      hoverIcon={MapPinIcon}
+                      label="Sites"
+                      actionTrigger={
+                        <Button
+                          disabled={!canCreateOrgSites}
+                          variant="ghost"
+                          className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowCreateSiteDialog(true);
+                          }}
+                        >
+                          <Plus className="h-6 w-6" />
+                        </Button>
+                      }
+                    />
+                  )}
               </SidebarMenuItem>
 
               {activeWorkspace?.type === "organization" && (
@@ -200,6 +200,12 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
+      <SiteDialog
+        organizationId={activeWorkspace?.id}
+        mode="create"
+        showDialog={showCreateSiteDialog}
+        setShowDialog={setShowCreateSiteDialog}
+      />
     </Sidebar>
   );
 }

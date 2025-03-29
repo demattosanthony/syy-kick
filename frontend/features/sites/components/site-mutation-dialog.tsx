@@ -7,7 +7,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -17,23 +16,25 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Site, MutationSiteData } from "../types/sites";
 import { useCreateSiteMutation, useUpdateSiteMutation } from "../api";
+import { PropagationStopper } from "@/components/propagation-stopper";
 
 interface CreateSiteDialogProps {
-  trigger: React.ReactNode;
   mode?: "create" | "update";
   site?: Site;
   organizationId?: string;
   onUpdate?: () => void;
+  showDialog: boolean;
+  setShowDialog: (showDialog: boolean) => void;
 }
 
-export default function SiteDialog({
-  trigger,
+export default function SiteMutationDialog({
   mode,
   site,
   organizationId,
   onUpdate,
+  showDialog,
+  setShowDialog,
 }: CreateSiteDialogProps) {
-  const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<MutationSiteData>({
     name: "",
     description: null,
@@ -95,7 +96,7 @@ export default function SiteDialog({
 
       toast.success(siteResult.message);
 
-      setOpen(false);
+      setShowDialog(false);
     }
 
     if ((isCreateError && creationError) || (isUpdateError && updateError)) {
@@ -140,93 +141,97 @@ export default function SiteDialog({
   }, [mode, isCreating, isUpdating]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={showDialog} onOpenChange={setShowDialog}>
       <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{
-            mode === "create" ?
-              "Create a new Site"
-              : "Update your site"
-          }</DialogTitle>
-          <DialogDescription></DialogDescription>
-        </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (mode === "create") {
-              createSite({
-                ...formData,
-                organizationId,
-                type: organizationId ? "organization" : "personal",
-              });
-            } else {
-              if (site) {
-                updateSite({ siteId: site.id, data: formData });
+        <PropagationStopper>
+          <DialogHeader>
+            <DialogTitle>{
+              mode === "create" ?
+                "Create a new Site"
+                : "Update your site"
+            }</DialogTitle>
+            <DialogDescription></DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (mode === "create") {
+                createSite({
+                  ...formData,
+                  organizationId,
+                  type: organizationId ? "organization" : "personal",
+                });
+              } else {
+                if (site) {
+                  updateSite({ siteId: site.id, data: formData });
+                }
               }
-            }
-          }}
-          className="space-y-4 max-w-[460px]"
-        >
-          <div className="space-y-2">
-            <Label htmlFor="name">
-              Name <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="name"
-              placeholder="Site name"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, name: e.target.value }))
-              }
-              required
-            />
-          </div>
+            }}
+            className="space-y-4 max-w-[460px]"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="name">
+                Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="name"
+                placeholder="Site name"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                }
+                required
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="location">
-              Location <span className="text-red-500">*</span>
-            </Label>
-            <LocationSearch
-              value={formData.address}
-              onChange={(locationData) => {
-                setFormData((prev) => ({
-                  ...prev,
-                  address: {
-                    address: locationData.address || "",
-                    city: locationData.city || "",
-                    state: locationData.state || "",
-                    country: locationData.country || "",
-                    postalCode: locationData.postalCode || "",
-                    placeId: locationData.placeId,
-                    latitude: locationData.latitude,
-                    longitude: locationData.longitude,
-                  },
-                }));
-              }}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">
+                Location <span className="text-red-500">*</span>
+              </Label>
+              <LocationSearch
+                value={formData.address}
+                onChange={(locationData) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    address: {
+                      address: locationData.address || "",
+                      city: locationData.city || "",
+                      state: locationData.state || "",
+                      country: locationData.country || "",
+                      postalCode: locationData.postalCode || "",
+                      placeId: locationData.placeId,
+                      latitude: locationData.latitude,
+                      longitude: locationData.longitude,
+                    },
+                  }));
+                }}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Site description"
-              value={formData.description ?? ""}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-            />
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={isCreating || isUpdating}>
-              {submitButtonLabel}
-            </Button>
-          </DialogFooter>
-        </form>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Site description"
+                value={formData.description ?? ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={isCreating || isUpdating} onClick={(e) => {
+                e.stopPropagation();
+              }}>
+                {submitButtonLabel}
+              </Button>
+            </DialogFooter>
+          </form>
+        </PropagationStopper>
       </DialogContent>
     </Dialog>
   );

@@ -55,7 +55,11 @@ export default function SiteDeleteDialog(
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel
+                    onClick={(e) => {
+                        e.stopPropagation();
+                    }}
+                >Cancel</AlertDialogCancel>
                 <AlertDialogAction disabled={!canDeleteOrgSites} onClick={(e) => {
                     e.stopPropagation();
                     deleteSite(site.id);

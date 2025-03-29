@@ -117,16 +117,12 @@ export default Router()
 
     const conditions = [isNull(projects.siteId)];
 
-    console.log("orgId", orgId);
-    console.log("req.dbUser!.id", req.dbUser!.id);
-
     if (orgId && req.dbUser!.id) {
       const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
         req.dbUser!.id,
         orgId
       );
 
-      console.log("orgProjectsIds", orgProjectsIds);
       conditions.push(inArray(projects.id, orgProjectsIds));
     } else if (req.dbUser!.id) {
       conditions.push(eq(projects.userId, req.dbUser!.id));

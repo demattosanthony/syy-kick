@@ -8,6 +8,7 @@ import { sites } from "./sites.schema";
 import { documents, projects } from "../../config/schema";
 import { slugify } from "../../utils";
 import s3 from "../../config/s3";
+import { accessLogs } from "../../config/schema";
 
 export const sitesOps = {
   getAllSites: async (params: {

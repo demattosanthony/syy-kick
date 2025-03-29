@@ -344,8 +344,6 @@ async function getPaginatedRecentProjects(params: {
     .limit(limit)
     .offset(offset);
 
-  console.log("projs", projs);
-
   return {
     data: projs.map(p => {
       const site = p.site ? formatSites([p.site]) : null;

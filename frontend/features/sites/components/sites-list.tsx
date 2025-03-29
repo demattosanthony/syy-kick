@@ -11,15 +11,12 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Trash } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Calendar, Clock, MapPin } from "lucide-react";
 import { usePermissions } from "@/features/permissions/context";
-import { SiteDeleteDialog, SiteMutationDialog } from ".";
+import { SiteDropdownActions } from ".";
 
 const SitesList = () => {
   const searchParams = useSearchParams();
@@ -28,7 +25,7 @@ const SitesList = () => {
     [searchParams]
   );
 
-  const { canUpdateOrgSites } = usePermissions();
+  const { canUpdateOrgSites, canDeleteOrgSites } = usePermissions();
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -70,15 +67,17 @@ const SitesList = () => {
           <p className="text-muted-foreground">No sites found</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {sites.map((site) => (
-            <SiteItem key={site.id} site={site} canUpdate={canUpdateOrgSites} />
+            <Link href={`/projects?siteId=${site.id}`} key={site.id}>
+              <SiteItem site={site} canUpdate={canUpdateOrgSites} canDelete={canDeleteOrgSites} />
+            </Link>
           ))}
 
-          <div ref={scrollRef} className="h-10">
+          <div ref={scrollRef} className="h-10 col-span-1 md:col-span-2">
             {(isFetchingNextPage || isLoading) && (
-              <div className="space-y-4">
-                {Array.from({ length: 5 }).map((_, i) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
                   <SitesSkeleton key={i} />
                 ))}
               </div>
@@ -106,11 +105,8 @@ function SitesSkeleton() {
   );
 }
 
-function SiteItem({ site, canUpdate }: { site: Site, canUpdate: boolean }) {
+function SiteItem({ site, canUpdate, canDelete }: { site: Site, canUpdate: boolean, canDelete: boolean }) {
   const { name, description, address, createdAt, updatedAt } = site;
-
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
   const formattedAddress = useMemo(() => `${address.address}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`, [address]);
 
   const createdDate = new Date(createdAt);
@@ -146,85 +142,45 @@ function SiteItem({ site, canUpdate }: { site: Site, canUpdate: boolean }) {
   }, [updatedDate]);
 
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-md">
-      <CardHeader className="pb-2">
+    <Card className="overflow-hidden transition-all hover:shadow-md p-2 h-[180px]">
+      <CardHeader className="py-2">
         <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-xl font-bold">{name}</CardTitle>
+          <div className="max-w-[80%]">
+            <CardTitle className="text-xl font-bold truncate">{name}</CardTitle>
             {description && (
-              <CardDescription className="mt-1 line-clamp-2">
+              <CardDescription className="mt-1 line-clamp-1">
                 {description}
               </CardDescription>
             )}
           </div>
-          <Badge variant="outline" className="bg-primary/10">
-            Site
-          </Badge>
+          <SiteDropdownActions
+            site={site}
+            canUpdateOrgSites={canUpdate}
+            canDeleteOrgSites={canDelete}
+          />
         </div>
       </CardHeader>
-      <CardContent className="pb-2">
+      <CardContent>
         <div className="space-y-3">
           <div className="flex items-start gap-2">
             <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-sm">{formattedAddress}</span>
+            <span className="text-sm line-clamp-2">{formattedAddress}</span>
           </div>
 
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              <span>Created {createdTimeAgo}</span>
+            <div className="flex items-center gap-1 truncate">
+              <Calendar className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Created {createdTimeAgo}</span>
             </div>
             {updatedAt && (
-              <div className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
-                <span>Updated {updatedTimeAgo}</span>
+              <div className="flex items-center gap-1 truncate">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Updated {updatedTimeAgo}</span>
               </div>
             )}
           </div>
         </div>
       </CardContent>
-      <CardFooter className="pt-2">
-        <div className="flex w-full gap-2">
-          <Link href={`/projects?siteId=${site.id}`}>
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-40"
-              onClick={() => { }}
-            >
-              View Details
-            </Button>
-          </Link>
-          <SiteMutationDialog
-            trigger={
-              <Button
-                disabled={!canUpdate}
-                variant="default"
-                size="lg"
-                className="w-40"
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                Edit Site
-              </Button>
-            }
-            mode="update"
-            site={site}
-          />
-        </div>
-        {/* delete icon button */}
-        <Button variant="destructive" size="icon" onClick={() => {
-          setShowDeleteDialog(true);
-        }}>
-          <Trash className="h-4 w-4" />
-        </Button>
-        <SiteDeleteDialog
-          showDeleteDialog={showDeleteDialog}
-          setShowDeleteDialog={setShowDeleteDialog}
-          site={site}
-        />
-      </CardFooter>
     </Card>
   );
 }
