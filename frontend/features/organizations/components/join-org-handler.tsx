@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import Syyclops3dEye from "../../chat/messages/components/syy-eye";
 import { useAuth } from "@/features/auth/hooks";
 import Image from "next/image";
 
@@ -147,7 +146,7 @@ const JoinOrgHandler = ({
         />
       ) : (
         <div className="mb-4">
-          <Syyclops3dEye size={95} animate={false} />
+          <Image src={"/logo512.png"} width={65} height={65} alt="" />
         </div>
       )}
 

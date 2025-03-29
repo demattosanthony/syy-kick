@@ -1,18 +1,18 @@
 import { Router, Request, Response } from "express";
 import { checkTokens, DbUser, sendAuthCookies } from "../createAuthToken";
 import db from "../config/db";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, name, or } from "drizzle-orm";
 import myPassport, { authenticateSaml } from "../config/passport";
 import {
   memberRoles,
   organizationInvites,
   organizations,
   roles,
+  sites,
   users,
 } from "../config/schema";
 import s3 from "../config/s3";
 import { CONFIG } from "../config/constants";
-import { PermissionManager } from "./permissions/permissions.tools";
 import PermissionsFactory from "./permissions/permissions.factory";
 import { Permissions } from "./permissions/permissions.types";
 
@@ -31,9 +31,59 @@ const getUserWithOrgs = async (userId: string) => {
     with: { organization: true, role: true },
   });
 
+  const sitesList = await db.query.sites.findMany({
+    where: or(
+      inArray(
+        sites.organizationId,
+        organizations.map((o) => o.organizationId)
+      ),
+      eq(sites.userId, userId)
+    ),
+    with: {
+      projects: true,
+    },
+  });
+
   user.organizations = organizations.map((o) =>
-    addLogoUrl({ ...o.organization, role: o.role })
+    addLogoUrl({
+      ...o.organization,
+      role: o.role,
+      type: "organization",
+      slug: o.organization.slug,
+      sites: sitesList
+        .filter((s) => s.organizationId === o.organizationId)
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          slug: s.slug,
+          projects: s.projects.map((p) => ({
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+          })),
+        })),
+    })
   );
+
+  const personalSites = sitesList.filter((s) => !s.organizationId);
+
+  user.organizations.push({
+    id: user.id,
+    name: "Personal",
+    logo: user.profilePicture,
+    type: "personal",
+    slug: user.username,
+    sites: personalSites.map((s) => ({
+      id: s.id,
+      name: s.name,
+      slug: s.slug,
+      projects: s.projects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+      })),
+    })),
+  });
 
   return user;
 };

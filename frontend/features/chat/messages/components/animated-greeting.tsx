@@ -11,14 +11,15 @@ const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
   const [, setIsAnimated] = useAtom(animatedAtom);
 
   const getGreeting = () => {
-    if (!name) return "Welcome to Yo";
+    if (!name) return "Hi, I'm Syykick";
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
     if (hour < 17) return "Good Afternoon";
     return "Good Evening";
   };
 
-  const greetingText = name ? `${getGreeting()}, ${name}` : getGreeting();
+  const greeting = getGreeting();
+  const greetingText = name ? `${greeting}, ${name}` : greeting;
   const assistText = "How can I help you today?";
 
   useEffect(() => {

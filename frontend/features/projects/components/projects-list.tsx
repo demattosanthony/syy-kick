@@ -3,12 +3,15 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Project } from "@/types/project";
 import { getRelativeTimeString } from "@/lib/utils";
 import { FolderClosed, FolderOpen } from "lucide-react";
 import { useInfiniteProjectsQuery } from "../api";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { SortOption } from "../types";
 
 const ProjectsList = ({
   initialProjects,
@@ -26,19 +29,29 @@ const ProjectsList = ({
 }) => {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
+  const siteId = searchParams.get("siteId") || "";
+  const sort = searchParams.get("sort") as SortOption;
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Use initial projects for first render
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError,
+    error } =
     useInfiniteProjectsQuery({
       search: search,
+      siteId: siteId,
       limit: 10,
+      sort: sort,
       initialData: {
         pages: [initialProjects],
         pageParams: [1],
       },
     });
 
+  useEffect(() => {
+    if (isError && error) {
+      toast.error(error.message);
+    }
+  }, [error, isError]);
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -77,33 +90,41 @@ const ProjectsList = ({
   }, [data?.pages]);
 
   return (
-    <ScrollArea className="h-[calc(100vh-175px)] px-2">
-      {uniqueProjects.length === 0 && !isLoading ? (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-muted-foreground">No projects found</p>
-        </div>
-      ) : (
-        <>
-          {uniqueProjects.map((project) => (
-            <ProjectItem key={project.id} project={project} />
-          ))}
-
-          <div ref={scrollRef} className="h-10">
-            {(isFetchingNextPage || isLoading) && (
-              <div className="space-y-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <ProjectSkeleton key={i} />
-                ))}
-              </div>
-            )}
+    <div className="flex flex-col w-full">
+      <ScrollArea className="h-[calc(100vh-350px)] px-2">
+        {uniqueProjects.length === 0 && !isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-muted-foreground">No projects found</p>
           </div>
-        </>
-      )}
-    </ScrollArea>
+        ) : (
+          <>
+            {uniqueProjects.map((project) => (
+              <ProjectItem key={project.id} project={project} />
+            ))}
+
+            <div ref={scrollRef} className="h-10">
+              {(isFetchingNextPage || isLoading) && (
+                <div className="space-y-4">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <ProjectSkeleton key={i} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </ScrollArea>
+    </div>
   );
 };
 
 function ProjectItem({ project }: { project: Project }) {
+  const [relativeTime, setRelativeTime] = useState("");
+
+  useEffect(() => {
+    setRelativeTime(getRelativeTimeString(project.updatedAt));
+  }, [project.updatedAt]);
+
   return (
     <Link href={`/projects/${project.id}`} prefetch>
       <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full group">
@@ -114,10 +135,15 @@ function ProjectItem({ project }: { project: Project }) {
           </div>
 
           <div className="flex-1 min-w-0">
-            <p className="text-xl font-medium">{project.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xl font-medium">{project.name}</p>
+              {project?.projectNumber && (
+                <Badge variant={"secondary"}>{project?.projectNumber}</Badge>
+              )}
+            </div>
 
             <p className="text-xs text-muted-foreground">
-              Updated {getRelativeTimeString(project.updatedAt)}
+              Updated {relativeTime}
             </p>
           </div>
         </div>

@@ -1,7 +1,10 @@
+import { Site } from "./user";
+
 export type Workspace = {
   id: string;
   name: string;
   type: "personal" | "organization";
+  slug: string;
   logo?: string;
   subscriptionPlan?: string;
   subscriptionStatus?:
@@ -12,4 +15,5 @@ export type Workspace = {
     | "past_due"
     | "trialing"
     | "unpaid";
+  sites: Site[];
 };

@@ -8,6 +8,7 @@ import {
   TransferableRolesPermissions,
   UpdateOrgMemberRoleRequest,
 } from "@/features/permissions/types";
+import { MutationSiteData, Site } from "@/features/sites/types/sites";
 import { Workflow } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
@@ -15,6 +16,7 @@ import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
 import { FileUploadMixin } from "./file-upload-mixin";
 import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
+import { SortOption } from "@/features/projects/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -546,6 +548,8 @@ class ProjectsApi extends ApiRequest {
   private fileUploadMixin = new FileUploadMixin();
 
   async createProject(data: {
+    siteId: string;
+    organizationId?: string | null;
     name: string;
     description?: string;
     address?: string;
@@ -576,6 +580,8 @@ class ProjectsApi extends ApiRequest {
     search?: string;
     page?: number;
     limit?: number;
+    siteId?: string;
+    sort?: SortOption;
   }): Promise<{
     data: Project[];
     pagination: {
@@ -587,6 +593,10 @@ class ProjectsApi extends ApiRequest {
     };
   }> {
     const queryParams = new URLSearchParams();
+
+    if (options?.siteId) {
+      queryParams.append("siteId", options.siteId);
+    }
 
     if (options?.search) {
       queryParams.append("search", options.search);
@@ -600,7 +610,15 @@ class ProjectsApi extends ApiRequest {
       queryParams.append("limit", options.limit.toString());
     }
 
-    return await this.request(`/projects?${queryParams.toString()}`);
+    if (options?.sort) {
+      queryParams.append("sort", options.sort);
+    }
+
+    try {
+      return await this.request(`/projects?${queryParams.toString()}`);
+    } catch (error) {
+      throw error;
+    }
   }
 
   async deleteProject(projectId: string): Promise<{ success: boolean }> {
@@ -699,6 +717,15 @@ class ProjectsApi extends ApiRequest {
 
     // Make the actual API request with the prepared data
     return this.request(`/projects/${projectId}/documents`, "POST", payload);
+  }
+
+  // Temporary
+  async getUnlinkedProjects() {
+    try {
+      return await this.request<Project[]>(`/unlinked-projects`, "GET");
+    } catch (error) {
+      throw error;
+    }
   }
 }
 
@@ -807,6 +834,97 @@ class WorkflowsApi extends ApiRequest {
 
   async getWorkflow(id: string): Promise<Workflow> {
     return await this.request(`/workflows/${id}`);
+  }
+}
+
+class SitesApi extends ApiRequest {
+  async listSites(options?: {
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    data: Site[];
+    pagination: {
+      page: number;
+      limit: number;
+      totalCount: number;
+      totalPages: number;
+      hasMore: boolean;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+
+    if (options?.search) {
+      queryParams.append("search", options.search);
+    }
+
+    if (options?.page !== undefined) {
+      queryParams.append("page", options.page.toString());
+    }
+
+    if (options?.limit !== undefined) {
+      queryParams.append("limit", options.limit.toString());
+    }
+
+    return await this.request(`/sites?${queryParams.toString()}`);
+  }
+
+  async createSite(data: MutationSiteData): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>("/sites", "POST", data);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getSite(siteId: string): Promise<Site> {
+    try {
+      return await this.request<Site>(`/sites/${siteId}`);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateSite(
+    siteId: string,
+    data: MutationSiteData
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/sites/${siteId}`,
+        "PUT",
+        data
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteSite(siteId: string): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/sites/${siteId}`,
+        "DELETE"
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Temporary
+  async linkProjects(
+    siteId: string,
+    data: { projectsIds: string[] }
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/sites/${siteId}/link-projects`,
+        "PUT",
+        data
+      );
+    } catch (error) {
+      throw error;
+    }
   }
 }
 
@@ -933,6 +1051,7 @@ class ApiClient {
   projects: ProjectsApi;
   workflows: WorkflowsApi;
   permissions: PermissionsApi;
+  sites: SitesApi;
   knowledgeBases: KnowledgeBasesApi;
 
   constructor(baseUrl: string) {
@@ -946,6 +1065,7 @@ class ApiClient {
     this.projects = new ProjectsApi(baseUrl);
     this.workflows = new WorkflowsApi(baseUrl);
     this.permissions = new PermissionsApi(baseUrl);
+    this.sites = new SitesApi(baseUrl);
     this.knowledgeBases = new KnowledgeBasesApi(baseUrl);
   }
 }

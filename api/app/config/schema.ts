@@ -14,6 +14,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { customType } from "drizzle-orm/pg-core";
+import { sites } from "../features/sites/sites.schema";
 
 const MESSAGE_ROLES = ["system", "user", "assistant", "tool"] as const;
 const TOOL_CALL_STATUS = ["pending", "completed", "failed"] as const;
@@ -38,6 +39,8 @@ export const bytea = customType<{
     return "bytea";
   },
 });
+
+export { sites, sitesRelations } from "../features/sites/sites.schema";
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -102,6 +105,7 @@ export const users = pgTable("users", {
     .default(sql`uuid_generate_v4()`),
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
+  username: varchar("username", { length: 255 }),
   googleId: varchar("google_id", { length: 255 }).unique(),
   microsoftId: varchar("microsoft_id", { length: 255 }).unique(),
   identityProvider: text("identity_provider", {
@@ -126,6 +130,7 @@ export const projects = pgTable("projects", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
+  slug: varchar("slug", { length: 255 }),
   projectNumber: varchar("project_number", { length: 255 }),
   visibility: text("visibility", { enum: ["private", "public"] })
     .default("private")
@@ -139,6 +144,7 @@ export const projects = pgTable("projects", {
   postalCode: varchar("postal_code", { length: 20 }),
   latitude: text("latitude"),
   longitude: text("longitude"),
+  siteId: uuid("site_id").references(() => sites.id, { onDelete: "cascade" }),
   organizationId: uuid("organization_id").references(() => organizations.id, {
     onDelete: "cascade",
   }),
@@ -411,6 +417,33 @@ export const memberRoles = pgTable("member_roles", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const accessLogs = pgTable("access_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  organizationId: uuid("organization_id").references(() => organizations.id, {
+    onDelete: "cascade",
+  }),
+  projectId: uuid("project_id").references(() => projects.id, {
+    onDelete: "cascade",
+  }),
+  documentId: uuid("document_id").references(() => documents.id, {
+    onDelete: "cascade",
+  }),
+  actionId: uuid("action_id")
+    .references(() => actions.id, { onDelete: "cascade" })
+    .notNull(),
+  status: text("status", { enum: ["authorized", "unauthorized"] })
+    .notNull()
+    .default("authorized"),
+  resourceId: uuid("resource_id")
+    .references(() => resources.id, { onDelete: "cascade" })
+    .notNull(),
+  siteId: uuid("site_id").references(() => sites.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 /** ---- End Permissions ---- */
 
 // Relations
@@ -494,6 +527,7 @@ export const organizationsRelations = relations(
     members: many(organizationMembers),
     threads: many(threads),
     samlConfig: one(samlConfigs),
+    sites: many(sites),
     knowledgeBases: many(knowledgeBases),
   })
 );
@@ -545,6 +579,10 @@ export const projectsRelations = relations(projects, ({ one }) => ({
   user: one(users, {
     fields: [projects.userId],
     references: [users.id],
+  }),
+  site: one(sites, {
+    fields: [projects.siteId],
+    references: [sites.id],
   }),
 }));
 
@@ -606,6 +644,37 @@ export const memberRolesRelations = relations(memberRoles, ({ one, many }) => ({
     references: [roles.id],
   }),
   permissions: many(permissions),
+}));
+
+export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [accessLogs.userId],
+    references: [users.id],
+  }),
+  organization: one(organizations, {
+    fields: [accessLogs.organizationId],
+    references: [organizations.id],
+  }),
+  project: one(projects, {
+    fields: [accessLogs.projectId],
+    references: [projects.id],
+  }),
+  document: one(documents, {
+    fields: [accessLogs.documentId],
+    references: [documents.id],
+  }),
+  action: one(actions, {
+    fields: [accessLogs.actionId],
+    references: [actions.id],
+  }),
+  resource: one(resources, {
+    fields: [accessLogs.resourceId],
+    references: [resources.id],
+  }),
+  site: one(sites, {
+    fields: [accessLogs.siteId],
+    references: [sites.id],
+  }),
 }));
 
 export type MessageAttachment = {
