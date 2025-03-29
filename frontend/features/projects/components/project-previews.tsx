@@ -7,6 +7,7 @@ import CreateProjectDialog from "./create-project-dialog";
 import { usePermissions } from "@/features/permissions/context";
 import Image from "next/image";
 import Link from "next/link";
+import { useWorkspace } from "@/components/sidebar/workspace-context";
 
 // Add this style tag for the pin point shape
 const PinStyles = () => (
@@ -52,6 +53,7 @@ const PinStyles = () => (
 );
 const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
   const { canCreateOrgProjects } = usePermissions();
+  const { activeWorkspace } = useWorkspace();
 
   return (
     <div className="w-full max-w-[950px] px-6 mx-auto">
@@ -79,6 +81,11 @@ const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
               Get started by creating a project to organize your work
             </p>
             <CreateProjectDialog
+              organizationId={
+                activeWorkspace?.type === "organization"
+                  ? activeWorkspace.id
+                  : undefined
+              }
               trigger={
                 <button className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium">
                   New Project
@@ -101,7 +108,7 @@ const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
           ))}
 
           {/* Add "Create Project" card if there are fewer than 6 projects */}
-          {projects.length < 6 && canCreateOrgProjects && <AddProjectCard />}
+          {projects.length < 6 && canCreateOrgProjects && <AddProjectCard organizationId={activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined} />}
         </div>
       )}
     </div>
@@ -118,10 +125,10 @@ function ProjectCard({ project }: ProjectCardProps) {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
     // Default to a generic location if coordinates aren't available
-    const hasLocation = project.latitude && project.longitude;
+    const hasLocation = project.address;
     // Default to a view of ocean water if coordinates aren't available
-    const lat = hasLocation ? project.latitude : "28.4595";
-    const lng = hasLocation ? project.longitude : "-80.5327";
+    const lat = hasLocation ? project.site?.address?.latitude : "28.4595";
+    const lng = hasLocation ? project.site?.address?.longitude : "-80.5327";
 
     return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=17&size=400x200&maptype=satellite&key=${apiKey}`;
   }, [project]);
@@ -173,11 +180,11 @@ function ProjectCard({ project }: ProjectCardProps) {
         <h3 className="font-medium text-sm line-clamp-1">{project.name}</h3>
         <div className="flex items-center justify-between mt-1">
           <p className="text-xs text-muted-foreground">
-            {project.address
-              ? project.address +
-                (project.city ? `, ${project.city}` : "") +
-                (project.state ? `, ${project.state}` : "") +
-                (project.postalCode ? `, ${project.postalCode}` : "")
+            {project.site?.address
+              ? project.site?.address?.address +
+              (project.site?.address?.city ? `, ${project.site?.address?.city}` : "") +
+              (project.site?.address?.state ? `, ${project.site?.address?.state}` : "") +
+              (project.site?.address?.postalCode ? `, ${project.site?.address?.postalCode}` : "")
               : "No location"}
           </p>
         </div>
@@ -186,7 +193,7 @@ function ProjectCard({ project }: ProjectCardProps) {
   );
 }
 
-function AddProjectCard() {
+function AddProjectCard({ organizationId }: { organizationId: string | undefined }) {
   return (
     <motion.div
       className="bg-card text-card-foreground rounded-lg shadow-sm border border-border overflow-hidden cursor-pointer h-full flex flex-col items-center justify-center"
@@ -198,6 +205,7 @@ function AddProjectCard() {
       transition={{ duration: 0.2, ease: "easeOut" }}
     >
       <CreateProjectDialog
+        organizationId={organizationId}
         trigger={
           <div className="p-6 flex flex-col items-center text-center">
             <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-3">

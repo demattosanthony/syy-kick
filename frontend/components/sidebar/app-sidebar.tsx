@@ -20,7 +20,6 @@ import { User } from "@/types/user";
 import { WorkSpaceSwitcher } from "./workspace-switcher";
 import { ThreadsList } from "./sidebar-threads-list";
 import { ThreadsLink } from "./threads-link";
-import { SidebarProjectsList } from "./sidebar-projects-list";
 import { SidebarButton } from "./sidebar-button";
 import { DropdownMenuGroup } from "../ui/dropdown-menu";
 import { PricingDialog } from "../PricingDialog";
@@ -29,15 +28,18 @@ import { Button } from "../ui/button";
 import {
   ArrowLeftToLine,
   ArrowRightToLine,
-  FolderClosed,
-  FolderOpen,
+  MapPinIcon,
   Plus,
   Workflow,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { CreateProjectDialog } from "@/features/projects/components";
 import { NewThreadButton } from "./new-thread-button";
 import { usePermissions } from "@/features/permissions/context";
+import SiteDialog from "@/features/sites/components/site-mutation-dialog";
+import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
+import useGetUnlinkedProjectsQuery from "@/features/projects/api/get-unlinked-projects";
+import LinkProjectDialog from "@/features/projects/components/link-projects-dialog";
+import { SidebarProjectsList } from "./sidebar-projects-list";
 
 export function AppSidebar({
   user,
@@ -49,7 +51,12 @@ export function AppSidebar({
   const [isPinned, setIsPinned] = React.useState(true);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-  const { canCreateOrgProjects } = usePermissions();
+  const { canCreateOrgSites, canUpdateOrgSites } = usePermissions();
+  const [showCreateSiteDialog, setShowCreateSiteDialog] = React.useState(false);
+
+  const {
+    data: unlinkedProjects, // Projects with no site associated
+  } = useGetUnlinkedProjectsQuery();
 
   // Keep pin state in sync with sidebar state
   React.useEffect(() => {
@@ -86,8 +93,11 @@ export function AppSidebar({
     >
       <SidebarHeader>
         <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between">
-          <WorkSpaceSwitcher onDropdownOpenChange={setIsPopoverOpen} />
-
+          {isMobile ? (
+            <MobileWorkspaceSwitcher />
+          ) : (
+            <WorkSpaceSwitcher state={state} />
+          )}
           {state === "expanded" && (
             <div className="flex items-center">
               <Tooltip>
@@ -122,26 +132,26 @@ export function AppSidebar({
                   activeWorkspace?.type === "personal" &&
                   user.subscriptionStatus !== "active"
                 ) && (
-                  <SidebarButton
-                    href="/projects"
-                    icon={FolderClosed}
-                    hoverIcon={FolderOpen}
-                    label="Projects"
-                    actionTrigger={
-                      <CreateProjectDialog
-                        trigger={
-                          <Button
-                            disabled={!canCreateOrgProjects}
-                            variant="ghost"
-                            className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
-                          >
-                            <Plus className="h-6 w-6" />
-                          </Button>
-                        }
-                      />
-                    }
-                  />
-                )}
+                    <SidebarButton
+                      href="/sites"
+                      icon={MapPinIcon}
+                      hoverIcon={MapPinIcon}
+                      label="Sites"
+                      actionTrigger={
+                        <Button
+                          disabled={!canCreateOrgSites}
+                          variant="ghost"
+                          className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowCreateSiteDialog(true);
+                          }}
+                        >
+                          <Plus className="h-6 w-6" />
+                        </Button>
+                      }
+                    />
+                  )}
               </SidebarMenuItem>
 
               {activeWorkspace?.type === "organization" && (
@@ -181,10 +191,21 @@ export function AppSidebar({
               </DropdownMenuGroup>
             )}
 
+          {unlinkedProjects &&
+            unlinkedProjects.length > 0 &&
+            canUpdateOrgSites && (
+              <LinkProjectDialog unlinkedProjects={unlinkedProjects} />
+            )}
           <NavUser user={user} onDropdownOpenChange={setIsPopoverOpen} />
         </SidebarMenu>
       </SidebarFooter>
       <SidebarRail />
+      <SiteDialog
+        organizationId={activeWorkspace?.id}
+        mode="create"
+        showDialog={showCreateSiteDialog}
+        setShowDialog={setShowCreateSiteDialog}
+      />
     </Sidebar>
   );
 }

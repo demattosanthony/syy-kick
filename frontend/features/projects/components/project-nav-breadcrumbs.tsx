@@ -82,7 +82,7 @@ const ProjectNavBreadcrumbs = ({
     <Breadcrumb className="w-full">
       <BreadcrumbList className="flex items-center w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
         {/* First item: "Projects" */}
-        {renderBreadcrumbItem("Projects", true, "/projects")}
+        {renderBreadcrumbItem("Projects", true, "/projects?siteId=" + project?.siteId)}
         {renderSeparator()}
 
         {/* Project name */}

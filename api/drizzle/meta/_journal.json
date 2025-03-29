@@ -246,6 +246,20 @@
       "when": 1742335735544,
       "tag": "0034_closed_starbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1742735215713,
+      "tag": "0035_supreme_aqueduct",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1743248125036,
+      "tag": "0036_wandering_scrambler",
+      "breakpoints": true
     }
   ]
 }

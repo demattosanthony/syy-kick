@@ -47,11 +47,21 @@ export const WorkspaceProvider = ({
   // Set up workspaces and ensure active workspace is valid
   React.useEffect(() => {
     if (user) {
+      const personalOrg = user.organizations.find(
+        (org) => org.type === "personal"
+      );
+
+      if (!personalOrg) {
+        throw new Error("User must have a personal organization");
+      }
+
       const personalWorkspace: Workspace = {
-        id: user.id,
-        name: "Personal",
-        logo: user.profilePicture,
+        id: personalOrg.id,
+        name: personalOrg.name,
+        slug: personalOrg.slug,
         type: "personal",
+        logo: personalOrg.logo,
+        sites: personalOrg.sites,
       };
 
       const organizationWorkspaces: Workspace[] = (
@@ -59,13 +69,14 @@ export const WorkspaceProvider = ({
       ).map((organization) => ({
         id: organization.id,
         name: organization.name,
-        type: "organization" as const,
+        slug: organization.slug,
+        type: organization.type,
         logo: organization.logo,
         subscriptionStatus: organization.subscriptionStatus,
+        sites: organization.sites,
       }));
 
-      const allWorkspaces = [personalWorkspace, ...organizationWorkspaces];
-      setWorkspaces(allWorkspaces);
+      setWorkspaces(organizationWorkspaces);
 
       // Determine the default workspace: first organization or personal if none exist
       const defaultWorkspace =
@@ -76,7 +87,7 @@ export const WorkspaceProvider = ({
       // Update active workspace with fresh data if it exists, otherwise set the default
       // Need to do this because logo is a presigned URL that expires
       if (activeWorkspace) {
-        const updatedWorkspace = allWorkspaces.find(
+        const updatedWorkspace = organizationWorkspaces.find(
           (w) => w.id === activeWorkspace.id
         );
         if (updatedWorkspace) {

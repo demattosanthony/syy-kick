@@ -19,6 +19,7 @@ export namespace Permissions {
     ORGANIZATION_INVITATIONS = "org_invitations",
     ORGANIZATION_MEMBERS = "org_members",
     ORGANIZATION_SEATS = "org_seats",
+    ORGANIZATION_SITES = "org_sites",
     ORGANIZATION_PROJECTS = "org_projects",
     ORGANIZATION_PROJECT_DOCS = "org_project_docs",
     ORGANIZATION_PROJECT_INVITATIONS = "org_project_invitations",
@@ -28,6 +29,11 @@ export namespace Permissions {
   export enum Level {
     ORGANIZATION = "organization",
     PROJECT = "project",
+  }
+
+  export enum Status {
+    AUTHORIZED = "authorized",
+    UNAUTHORIZED = "unauthorized",
   }
 }
 

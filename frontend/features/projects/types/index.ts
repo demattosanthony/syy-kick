@@ -1,0 +1,1 @@
+export type SortOption = "recent" | "name-asc" | "name-desc" | "created-asc" | "created-desc";

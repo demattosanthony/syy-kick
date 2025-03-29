@@ -24,6 +24,10 @@ type PermissionsContextType = {
   canCreateOrgProjectDocs: boolean;
   canUpdateOrgProjectDocs: boolean;
   canDeleteOrgProjectDocs: boolean;
+  canCreateOrgSites: boolean;
+  canUpdateOrgSites: boolean;
+  canDeleteOrgSites: boolean;
+  canReadOrgSites: boolean;
   isLoading: boolean;
 };
 
@@ -67,9 +71,17 @@ export const PermissionsProvider = ({
     canCreateOrgProjectDocs,
     canUpdateOrgProjectDocs,
     canDeleteOrgProjectDocs,
+    canCreateOrgSites,
+    canUpdateOrgSites,
+    canDeleteOrgSites,
+    canReadOrgSites,
   ] = useMemo(() => {
     if (userId === orgId) {
       return [
+        true,
+        true,
+        true,
+        true,
         true,
         true,
         true,
@@ -95,6 +107,10 @@ export const PermissionsProvider = ({
 
     if (!userPermissions) {
       return [
+        false,
+        false,
+        false,
+        false,
         false,
         false,
         false,
@@ -198,6 +214,22 @@ export const PermissionsProvider = ({
         Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
         Permissions.Actions.DELETE
       ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_SITES,
+        Permissions.Actions.CREATE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_SITES,
+        Permissions.Actions.UPDATE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_SITES,
+        Permissions.Actions.DELETE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_SITES,
+        Permissions.Actions.READ
+      ),
     ];
   }, [userPermissions, userId, orgId]);
 
@@ -224,6 +256,10 @@ export const PermissionsProvider = ({
         canCreateOrgProjectDocs,
         canUpdateOrgProjectDocs,
         canDeleteOrgProjectDocs,
+        canCreateOrgSites,
+        canUpdateOrgSites,
+        canDeleteOrgSites,
+        canReadOrgSites,
         isLoading,
       }}
     >
@@ -256,6 +292,10 @@ export const usePermissions = () => {
       canCreateOrgProjectDocs: false,
       canUpdateOrgProjectDocs: false,
       canDeleteOrgProjectDocs: false,
+      canCreateOrgSites: false,
+      canUpdateOrgSites: false,
+      canDeleteOrgSites: false,
+      canReadOrgSites: false,
       isLoading: true,
     };
   }

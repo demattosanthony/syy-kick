@@ -6,6 +6,7 @@ const {
     ORGANIZATION_INVITATIONS,
     ORGANIZATION_MEMBERS,
     ORGANIZATION_SEATS,
+    ORGANIZATION_SITES,
     ORGANIZATION_PROJECTS,
     ORGANIZATION_PROJECT_DOCS,
     ORGANIZATION_PROJECT_INVITATIONS,
@@ -31,6 +32,7 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_SEATS]: [CREATE, READ, UPDATE, DELETE],
+      [ORGANIZATION_SITES]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECTS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_DOCS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
@@ -41,6 +43,7 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_SEATS]: [READ],
+      [ORGANIZATION_SITES]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECTS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_DOCS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
@@ -51,6 +54,7 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [], // No access
       [ORGANIZATION_MEMBERS]: [], // No access
       [ORGANIZATION_SEATS]: [], // No access
+      [ORGANIZATION_SITES]: [READ], // Config
       [ORGANIZATION_PROJECTS]: [READ], // Config
       [ORGANIZATION_PROJECT_DOCS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
@@ -61,6 +65,7 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [], // No access
       [ORGANIZATION_MEMBERS]: [], // No access
       [ORGANIZATION_SEATS]: [], // No access
+      [ORGANIZATION_SITES]: [READ],
       [ORGANIZATION_PROJECTS]: [READ], // Config
       [ORGANIZATION_PROJECT_DOCS]: [READ], // Config
       [ORGANIZATION_PROJECT_INVITATIONS]: [], // Config
@@ -94,6 +99,12 @@ export default class Constants {
         [UPDATE]: { default: true, configurable: false },
         [DELETE]: { default: true, configurable: false },
       },
+      [ORGANIZATION_SITES]: {
+        [CREATE]: { default: true, configurable: false },
+        [READ]: { default: true, configurable: false },
+        [UPDATE]: { default: true, configurable: false },
+        [DELETE]: { default: true, configurable: false },
+      },
       [ORGANIZATION_SEATS]: {
         [CREATE]: { default: true, configurable: false },
         [READ]: { default: true, configurable: false },
@@ -150,6 +161,12 @@ export default class Constants {
         [UPDATE]: { default: false, configurable: false },
         [DELETE]: { default: false, configurable: false },
       },
+      [ORGANIZATION_SITES]: {
+        [CREATE]: { default: true, configurable: false },
+        [READ]: { default: true, configurable: false },
+        [UPDATE]: { default: true, configurable: false },
+        [DELETE]: { default: true, configurable: false },
+      },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: true, configurable: false },
         [READ]: { default: true, configurable: false },
@@ -199,6 +216,12 @@ export default class Constants {
         [READ]: { default: false, configurable: false },
         [UPDATE]: { default: false, configurable: false },
         [DELETE]: { default: false, configurable: false },
+      },
+      [ORGANIZATION_SITES]: {
+        [CREATE]: { default: false, configurable: true },
+        [READ]: { default: true, configurable: false },
+        [UPDATE]: { default: false, configurable: true },
+        [DELETE]: { default: false, configurable: true },
       },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: false, configurable: true },
@@ -247,6 +270,12 @@ export default class Constants {
       [ORGANIZATION_SEATS]: {
         [CREATE]: { default: false, configurable: false },
         [READ]: { default: false, configurable: false },
+        [UPDATE]: { default: false, configurable: false },
+        [DELETE]: { default: false, configurable: false },
+      },
+      [ORGANIZATION_SITES]: {
+        [CREATE]: { default: false, configurable: false },
+        [READ]: { default: true, configurable: false },
         [UPDATE]: { default: false, configurable: false },
         [DELETE]: { default: false, configurable: false },
       },
@@ -289,6 +318,10 @@ export default class Constants {
     ORGANIZATION_PROJECT_DOCS,
     ORGANIZATION_PROJECT_INVITATIONS,
     ORGANIZATION_PROJECT_MEMBERS,
+  ];
+
+  static OrganizationSitesResources: Permissions.Resources[] = [
+    ORGANIZATION_SITES,
   ];
 
   static RoleHierarchy: Permissions.Roles[] = [
