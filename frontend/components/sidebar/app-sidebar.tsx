@@ -39,6 +39,7 @@ import SiteDialog from "@/features/sites/components/site-mutation-dialog";
 import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
 import useGetUnlinkedProjectsQuery from "@/features/projects/api/get-unlinked-projects";
 import LinkProjectDialog from "@/features/projects/components/link-projects-dialog";
+import { SidebarProjectsList } from "./sidebar-projects-list";
 
 export function AppSidebar({
   user,
@@ -167,9 +168,9 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* {(state === "expanded" || isMobile) && (
+        {(state === "expanded" || isMobile) && (
           <SidebarProjectsList user={user} />
-        )} */}
+        )}
 
         {(state === "expanded" || isMobile) && <ThreadsList user={user} />}
       </SidebarContent>

@@ -125,13 +125,15 @@ function ProjectCard({ project }: ProjectCardProps) {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
     // Default to a generic location if coordinates aren't available
-    const hasLocation = project.latitude && project.longitude;
+    const hasLocation = project.address;
     // Default to a view of ocean water if coordinates aren't available
-    const lat = hasLocation ? project.latitude : "28.4595";
-    const lng = hasLocation ? project.longitude : "-80.5327";
+    const lat = hasLocation ? project.site?.address?.latitude : "28.4595";
+    const lng = hasLocation ? project.site?.address?.longitude : "-80.5327";
 
     return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=17&size=400x200&maptype=satellite&key=${apiKey}`;
   }, [project]);
+
+  console.log(JSON.stringify(project, null, 2));
 
   return (
     <motion.div
@@ -180,11 +182,11 @@ function ProjectCard({ project }: ProjectCardProps) {
         <h3 className="font-medium text-sm line-clamp-1">{project.name}</h3>
         <div className="flex items-center justify-between mt-1">
           <p className="text-xs text-muted-foreground">
-            {project.address
-              ? project.address +
-              (project.city ? `, ${project.city}` : "") +
-              (project.state ? `, ${project.state}` : "") +
-              (project.postalCode ? `, ${project.postalCode}` : "")
+            {project.site?.address
+              ? project.site?.address?.address +
+              (project.site?.address?.city ? `, ${project.site?.address?.city}` : "") +
+              (project.site?.address?.state ? `, ${project.site?.address?.state}` : "") +
+              (project.site?.address?.postalCode ? `, ${project.site?.address?.postalCode}` : "")
               : "No location"}
           </p>
         </div>

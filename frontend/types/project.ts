@@ -1,3 +1,4 @@
+import { Site } from "@/features/sites/types/sites";
 import { Organization, User } from "./user";
 
 export interface Project {
@@ -23,6 +24,7 @@ export interface Project {
   postalCode?: string;
   latitude?: string;
   longitude?: string;
+  site?: Site;
 }
 
 interface DocumentProcessingJob {

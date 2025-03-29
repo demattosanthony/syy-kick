@@ -20,6 +20,7 @@ import {
   documents,
   organizations,
   projects,
+  sites,
 } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
@@ -32,6 +33,7 @@ import { Permissions } from "./permissions/permissions.types";
 import { PermissionManager } from "./permissions/permissions.tools";
 import PermissionsFactory from "./permissions/permissions.factory";
 import PermissionsMiddlewares from "./permissions/permissions.middlewares";
+import { formatSites } from "./sites/sites.utils";
 
 const schemas = {
   createProject: z
@@ -185,16 +187,16 @@ async function listProjects(params: {
   if (!params.organizationId && !params.userId) {
     throw new Error("Either organizationId or userId must be provided");
   }
-  if (!params.siteId) {
-    throw new Error("Please select a site");
-  }
+  // if (!params.siteId) {
+  //   throw new Error("Please select a site");
+  // }
 
   // Pagination
   const page = params.page || 1;
   const limit = params.limit || 10;
   const offset = (page - 1) * limit;
 
-  const conditions = [eq(projects.siteId, params.siteId)];
+  const conditions = [];
 
   if (params.organizationId && params.userId) {
     const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
@@ -204,6 +206,10 @@ async function listProjects(params: {
     conditions.push(inArray(projects.id, orgProjectsIds));
   } else if (params.userId) {
     conditions.push(eq(projects.userId, params.userId));
+  }
+
+  if (params.siteId) {
+    conditions.push(eq(projects.siteId, params.siteId));
   }
 
   if (params.search) {
@@ -218,9 +224,6 @@ async function listProjects(params: {
 
   if (params.sort === "recent" && params.userId) {
     return await getPaginatedRecentProjects({
-      siteId: params.siteId,
-      organizationId: params.organizationId,
-      userId: params.userId,
       page: params.page,
       limit: params.limit,
       conditions,
@@ -261,10 +264,24 @@ async function listProjects(params: {
     orderBy,
     limit,
     offset,
+    with: {
+      site: true
+    }
   });
 
   return {
-    data: projs,
+    data: projs.map(p => {
+      const site = p.site ? formatSites([p.site]) : null;
+
+      if (!site) {
+        return p;
+      }
+
+      return {
+        ...p,
+        site: site[0]
+      };
+    }),
     pagination: {
       page,
       limit,
@@ -276,10 +293,7 @@ async function listProjects(params: {
 }
 
 async function getPaginatedRecentProjects(params: {
-  siteId: string;
-  organizationId?: string;
   conditions?: Array<SQL>;
-  userId?: string;
   page?: number;
   limit?: number;
 }) {
@@ -319,11 +333,13 @@ async function getPaginatedRecentProjects(params: {
       createdAt: projects.createdAt,
       updatedAt: projects.updatedAt,
       lastAccess: sql`MAX(${accessLogs.createdAt})`.as("lastAccess"),
+      site: sites
     })
     .from(projects)
     .leftJoin(accessLogs, eq(accessLogs.projectId, projects.id))
+    .leftJoin(sites, eq(sites.id, projects.siteId))
     .where(and(...params.conditions ?? []))
-    .groupBy(projects.id)
+    .groupBy(projects.id, sites.id)
     .orderBy(sql`MAX(${accessLogs.createdAt}) DESC NULLS LAST`)
     .limit(limit)
     .offset(offset);
@@ -331,7 +347,18 @@ async function getPaginatedRecentProjects(params: {
   console.log("projs", projs);
 
   return {
-    data: projs,
+    data: projs.map(p => {
+      const site = p.site ? formatSites([p.site]) : null;
+
+      if (!site) {
+        return p;
+      }
+
+      return {
+        ...p,
+        site: site[0]
+      };
+    }),
     pagination: {
       page,
       limit,
