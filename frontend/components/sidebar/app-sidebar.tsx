@@ -28,8 +28,7 @@ import { Button } from "../ui/button";
 import {
   ArrowLeftToLine,
   ArrowRightToLine,
-  FolderClosed,
-  FolderOpen,
+  MapPinIcon,
   Plus,
   Workflow,
 } from "lucide-react";
@@ -92,7 +91,11 @@ export function AppSidebar({
     >
       <SidebarHeader>
         <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between">
-          {isMobile ? <MobileWorkspaceSwitcher /> : <WorkSpaceSwitcher state={state} />}
+          {isMobile ? (
+            <MobileWorkspaceSwitcher />
+          ) : (
+            <WorkSpaceSwitcher state={state} />
+          )}
           {state === "expanded" && (
             <div className="flex items-center">
               <Tooltip>
@@ -127,27 +130,27 @@ export function AppSidebar({
                   activeWorkspace?.type === "personal" &&
                   user.subscriptionStatus !== "active"
                 ) && (
-                    <SidebarButton
-                      href="/sites"
-                      icon={FolderClosed}
-                      hoverIcon={FolderOpen}
-                      label="Sites"
-                      actionTrigger={
-                        <SiteDialog
-                          trigger={
-                            <Button
-                              disabled={!canCreateOrgSites}
-                              variant="ghost"
-                              className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
-                            >
-                              <Plus className="h-6 w-6" />
-                            </Button>
-                          }
-                          mode="create"
-                        />
-                      }
-                    />
-                  )}
+                  <SidebarButton
+                    href="/sites"
+                    icon={MapPinIcon}
+                    hoverIcon={MapPinIcon}
+                    label="Sites"
+                    actionTrigger={
+                      <SiteDialog
+                        trigger={
+                          <Button
+                            disabled={!canCreateOrgSites}
+                            variant="ghost"
+                            className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                          >
+                            <Plus className="h-6 w-6" />
+                          </Button>
+                        }
+                        mode="create"
+                      />
+                    }
+                  />
+                )}
               </SidebarMenuItem>
 
               {activeWorkspace?.type === "organization" && (
@@ -187,9 +190,11 @@ export function AppSidebar({
               </DropdownMenuGroup>
             )}
 
-          {unlinkedProjects && unlinkedProjects.length > 0 && canUpdateOrgSites && (
-            <LinkProjectDialog unlinkedProjects={unlinkedProjects} />
-          )}
+          {unlinkedProjects &&
+            unlinkedProjects.length > 0 &&
+            canUpdateOrgSites && (
+              <LinkProjectDialog unlinkedProjects={unlinkedProjects} />
+            )}
           <NavUser user={user} onDropdownOpenChange={setIsPopoverOpen} />
         </SidebarMenu>
       </SidebarFooter>
