@@ -28,6 +28,7 @@ import { Button } from "../ui/button";
 import {
   ArrowLeftToLine,
   ArrowRightToLine,
+  BookOpen,
   MapPinIcon,
   Plus,
   Workflow,
@@ -126,10 +127,6 @@ export function AppSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <ThreadsLink />
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
                 {!(
                   activeWorkspace?.type === "personal" &&
                   user.subscriptionStatus !== "active"
@@ -187,6 +184,10 @@ export function AppSidebar({
                     />
                   }
                 />
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <ThreadsLink />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

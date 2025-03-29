@@ -7,11 +7,19 @@ import { CreateProjectDialog } from "@/features/projects/components";
 import api from "@/lib/api";
 import { SiteHeader } from "@/features/sites/components";
 import ProjectsFilters from "@/features/projects/components/projects-filters";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import Link from "next/link";
+import { Slash } from "lucide-react";
 
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string, siteId?: string }>;
+  searchParams: Promise<{ search?: string; siteId?: string }>;
 }) {
   // Get search parameter from URL
   const resolvedSearchParams = await searchParams;
@@ -23,7 +31,7 @@ export default async function ProjectsPage({
       search,
       page: 1,
       limit: 10,
-      siteId: resolvedSearchParams.siteId
+      siteId: resolvedSearchParams.siteId,
     })
     .catch(() => ({
       data: [],
@@ -36,13 +44,36 @@ export default async function ProjectsPage({
       },
     }));
 
-  const siteData = resolvedSearchParams.siteId ? await api.sites.getSite(resolvedSearchParams.siteId) : null;
+  const siteData = resolvedSearchParams.siteId
+    ? await api.sites.getSite(resolvedSearchParams.siteId)
+    : null;
 
   return (
     <main className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">
-      {siteData && <SiteHeader
-        site={siteData}
-      />}
+      {siteData && (
+        <>
+          <Breadcrumb className="absolute top-4 left-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <Link
+                  href="/sites"
+                  className="hover:text-blue-500 hover:underline"
+                >
+                  Sites
+                </Link>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator>
+                <Slash className="w-4 h-4" />
+              </BreadcrumbSeparator>
+              <BreadcrumbItem>
+                <span className="font-bold">{siteData.name}</span>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          <SiteHeader site={siteData} />
+        </>
+      )}
+
       <div className="flex items-center justify-between mb-6 mt-6">
         <h1 className="text-2xl font-bold ">Projects</h1>
 
@@ -57,7 +88,7 @@ export default async function ProjectsPage({
       <div className="flex items-center justify-between mb-6 mt-6 gap-2">
         <SearchBar initialSearch={search} className="flex-1" />
         <ProjectsFilters />
-        </div>
+      </div>
       <ProjectsList initialProjects={projectsData} />
     </main>
   );

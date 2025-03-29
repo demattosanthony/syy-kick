@@ -29,10 +29,12 @@ const ProjectNavBreadcrumbs = ({
 }) => {
   const params = useParams();
   const pathArray = (params.path as string[]) || [];
-  const totalItems = 2 + pathArray.length; // "Projects" + project name + path segments
+  const totalItems = 3 + pathArray.length; // "Projects" + project name + path segments
+
+  const firstBreadcrumb = project.site?.name ? project.site.name : "Projects";
 
   // Calculate how many items to show from the path
-  const itemsToShow = Math.min(maxItems - 2, pathArray.length); // Reserve 2 for "Projects" and project name
+  const itemsToShow = Math.min(maxItems - 3, pathArray.length); // Reserve 2 for "Projects" and project name
   const showEllipsis = totalItems > maxItems && pathArray.length > itemsToShow;
   const visiblePathArray = showEllipsis
     ? pathArray.slice(-itemsToShow) // Take the last `itemsToShow` items
@@ -81,8 +83,13 @@ const ProjectNavBreadcrumbs = ({
   return (
     <Breadcrumb className="w-full">
       <BreadcrumbList className="flex items-center w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
-        {/* First item: "Projects" */}
-        {renderBreadcrumbItem("Projects", true, "/projects?siteId=" + project?.siteId)}
+        {renderBreadcrumbItem("Sites", true, "/sites")}
+        {renderSeparator()}
+        {renderBreadcrumbItem(
+          firstBreadcrumb,
+          true,
+          "/projects?siteId=" + project?.siteId
+        )}
         {renderSeparator()}
 
         {/* Project name */}
