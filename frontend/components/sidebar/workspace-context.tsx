@@ -23,24 +23,8 @@ export const WorkspaceProvider = ({
   children: React.ReactNode;
   initialWorkspace?: Workspace | null;
 }) => {
-  // Check jotai's storage key for existing workspace
   const [activeWorkspace, setActiveWorkspaceState] =
-    React.useState<Workspace | null>(() => {
-      if (typeof window !== "undefined") {
-        const stored = localStorage.getItem("activeWorkspace");
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored);
-            // Clean up jotai storage
-            localStorage.removeItem("activeWorkspace");
-            return parsed;
-          } catch {
-            return initialWorkspace || null;
-          }
-        }
-      }
-      return initialWorkspace || null;
-    });
+    React.useState<Workspace | null>(initialWorkspace || null);
   const { data: user } = useMeQuery();
   const [workspaces, setWorkspaces] = React.useState<Workspace[]>([]);
 
@@ -83,7 +67,13 @@ export const WorkspaceProvider = ({
       const allWorkspaces = [personalWorkspace, ...organizationWorkspaces];
       setWorkspaces(allWorkspaces);
 
-      // Update active workspace with fresh data if it exists, otherwise set to personal
+      // Determine the default workspace: first organization or personal if none exist
+      const defaultWorkspace =
+        organizationWorkspaces.length > 0
+          ? organizationWorkspaces[0]
+          : personalWorkspace;
+
+      // Update active workspace with fresh data if it exists, otherwise set the default
       // Need to do this because logo is a presigned URL that expires
       if (activeWorkspace) {
         const updatedWorkspace = allWorkspaces.find(
@@ -92,10 +82,12 @@ export const WorkspaceProvider = ({
         if (updatedWorkspace) {
           setActiveWorkspace(updatedWorkspace);
         } else {
-          setActiveWorkspace(personalWorkspace);
+          // If the stored workspace is invalid, set the default
+          setActiveWorkspace(defaultWorkspace);
         }
       } else {
-        setActiveWorkspace(personalWorkspace);
+        // If no workspace was stored, set the default
+        setActiveWorkspace(defaultWorkspace);
       }
     }
   }, [user]); // Depend on user data
