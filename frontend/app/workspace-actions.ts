@@ -10,7 +10,7 @@ export async function setActiveWorkspaceCookie(workspace: Workspace) {
     maxAge: 2147483647,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax", // Change from "none" to "lax"
-    domain: process.env.NODE_ENV === "production" ? ".syyclops.com" : undefined,
+    domain: process.env.NODE_ENV === "production" ? ".syykick.com" : undefined,
   });
 }
 

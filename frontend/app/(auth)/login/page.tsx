@@ -6,7 +6,6 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
 import { useAuth } from "@/features/auth/hooks";
 
 export default function LoginPage() {
@@ -68,11 +67,11 @@ export default function LoginPage() {
         {/** Title and description */}
         <div className="flex flex-col items-center w-[400px] gap-2">
           <div className="mb-4">
-            <Syyclops3dEye size={95} animate={false} />
+            <Image src={"/logo512.png"} width={65} height={65} alt="" />
           </div>
 
           <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">
-            Yo! Let&apos;s get started
+            Let&apos;s get started!
           </h3>
           {/* <p className="text-base text-muted-foreground text-center">
             What's up?

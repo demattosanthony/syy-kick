@@ -18,7 +18,6 @@ import { orgInvitation } from "../../../emails/permissions";
 import { randomBytes } from "crypto";
 import s3 from "../../config/s3";
 import { PermissionManager } from "./permissions.tools";
-import Constants from "./permissions.constants";
 
 export const permissionsOps = {
   /** ---- Get Roles */
