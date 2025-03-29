@@ -381,6 +381,7 @@ async function getProject(projectId: string) {
         },
       },
       user: true,
+      site: true,
     },
   });
 
