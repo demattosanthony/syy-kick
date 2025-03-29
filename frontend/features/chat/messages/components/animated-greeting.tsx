@@ -1,5 +1,4 @@
 import { atom, useAtom } from "jotai";
-import Image from "next/image";
 import { useEffect } from "react";
 
 interface AnimatedGreetingProps {
@@ -19,7 +18,8 @@ const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
     return "Good Evening";
   };
 
-  const greetingText = name ? `${getGreeting()}, ${name}` : getGreeting();
+  const greeting = getGreeting();
+  const greetingText = name ? `${greeting}, ${name}` : greeting;
   const assistText = "How can I help you today?";
 
   useEffect(() => {
