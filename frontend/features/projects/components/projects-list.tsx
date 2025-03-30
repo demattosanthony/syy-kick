@@ -34,18 +34,24 @@ const ProjectsList = ({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Use initial projects for first render
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError,
-    error } =
-    useInfiniteProjectsQuery({
-      search: search,
-      siteId: siteId,
-      limit: 10,
-      sort: sort,
-      initialData: {
-        pages: [initialProjects],
-        pageParams: [1],
-      },
-    });
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+  } = useInfiniteProjectsQuery({
+    search: search,
+    siteId: siteId,
+    limit: 10,
+    sort: sort,
+    initialData: {
+      pages: [initialProjects],
+      pageParams: [1],
+    },
+  });
 
   useEffect(() => {
     if (isError && error) {
@@ -126,7 +132,7 @@ function ProjectItem({ project }: { project: Project }) {
   }, [project.updatedAt]);
 
   return (
-    <Link href={`/projects/${project.id}`} prefetch>
+    <Link href={`/projects/${project.id}`} prefetch={false}>
       <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full group">
         <div className="flex items-center gap-4 min-w-0">
           <div className="text-muted-foreground relative">
