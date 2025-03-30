@@ -23,6 +23,7 @@ export default function Page() {
 
   return (
     <ProjectFileLayout
+      contentSource="project"
       projectId={projectId}
       pathArray={decodedPathArray}
       rightContent={rightContent}
