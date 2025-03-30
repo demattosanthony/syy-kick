@@ -57,7 +57,6 @@ export default function HomeContent({
     try {
       // Create thread in background
       const { id: threadId } = await api.threads.createThread();
-      router.prefetch(`/threads/${threadId}?new=true`);
       router.push(`/threads/${threadId}?new=true`);
     } catch (error: unknown) {
       if (error instanceof Error && error.message === "subscription_required") {
