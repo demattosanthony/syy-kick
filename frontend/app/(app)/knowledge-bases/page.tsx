@@ -15,7 +15,16 @@ export default async function KnowledgeBasesPage({
   const resolvedSearchParams = await searchParams;
   const search = resolvedSearchParams.search || "";
 
-  const kbs = await api.knowledgeBases.listKnowledgeBases();
+  const kbs = await api.knowledgeBases.listKnowledgeBases().catch(() => ({
+    data: [],
+    pagination: {
+      page: 1,
+      pageSize: 10,
+      totalCount: 0,
+      totalPages: 0,
+      hasMore: false,
+    },
+  }));
 
   return (
     <main className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">

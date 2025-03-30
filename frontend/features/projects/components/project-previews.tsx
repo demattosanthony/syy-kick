@@ -100,7 +100,7 @@ const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
             <Link
               key={project.id}
               href={`/projects/${project.id}`}
-              prefetch={true}
+              prefetch={false}
               className="block"
             >
               <ProjectCard project={project} />
@@ -108,7 +108,15 @@ const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
           ))}
 
           {/* Add "Create Project" card if there are fewer than 6 projects */}
-          {projects.length < 6 && canCreateOrgProjects && <AddProjectCard organizationId={activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined} />}
+          {projects.length < 6 && canCreateOrgProjects && (
+            <AddProjectCard
+              organizationId={
+                activeWorkspace?.type === "organization"
+                  ? activeWorkspace.id
+                  : undefined
+              }
+            />
+          )}
         </div>
       )}
     </div>
@@ -182,9 +190,15 @@ function ProjectCard({ project }: ProjectCardProps) {
           <p className="text-xs text-muted-foreground">
             {project.site?.address
               ? project.site?.address?.address +
-              (project.site?.address?.city ? `, ${project.site?.address?.city}` : "") +
-              (project.site?.address?.state ? `, ${project.site?.address?.state}` : "") +
-              (project.site?.address?.postalCode ? `, ${project.site?.address?.postalCode}` : "")
+                (project.site?.address?.city
+                  ? `, ${project.site?.address?.city}`
+                  : "") +
+                (project.site?.address?.state
+                  ? `, ${project.site?.address?.state}`
+                  : "") +
+                (project.site?.address?.postalCode
+                  ? `, ${project.site?.address?.postalCode}`
+                  : "")
               : "No location"}
           </p>
         </div>
@@ -193,7 +207,11 @@ function ProjectCard({ project }: ProjectCardProps) {
   );
 }
 
-function AddProjectCard({ organizationId }: { organizationId: string | undefined }) {
+function AddProjectCard({
+  organizationId,
+}: {
+  organizationId: string | undefined;
+}) {
   return (
     <motion.div
       className="bg-card text-card-foreground rounded-lg shadow-sm border border-border overflow-hidden cursor-pointer h-full flex flex-col items-center justify-center"

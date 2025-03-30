@@ -96,7 +96,7 @@ function ThreadItem({
   if (!lastMessage || !lastMessage.text) return null;
 
   return (
-    <Link href={`/threads/${thread.id}`} prefetch>
+    <Link href={`/threads/${thread.id}`} prefetch={false}>
       <div
         className={`hover:bg-accent ${
           compact ? "p-2" : "p-4"

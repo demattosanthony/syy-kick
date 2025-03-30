@@ -145,7 +145,7 @@ function KnowledgeBaseItem({
 
   return (
     <>
-      <Link href={`/knowledge-bases/${knowledgeBase.id}`} prefetch>
+      <Link href={`/knowledge-bases/${knowledgeBase.id}`} prefetch={false}>
         <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full group">
           <div className="flex items-center gap-4 min-w-0">
             <div className="text-muted-foreground relative">

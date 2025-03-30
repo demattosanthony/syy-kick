@@ -53,7 +53,7 @@ export const SidebarItem = ({
         <div className="w-full flex justify-between items-center">
           <Link
             href={href}
-            prefetch
+            prefetch={false}
             onClick={() => isMobile && toggleSidebar()}
             className="text-ellipsis overflow-hidden whitespace-nowrap flex-1"
           >
