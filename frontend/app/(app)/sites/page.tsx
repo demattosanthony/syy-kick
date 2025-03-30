@@ -25,6 +25,7 @@ export default function SitesPage() {
     () => searchParams.get("search") || "",
     [searchParams]
   );
+  const [hoveredSiteId, setHoveredSiteId] = useState<string | null>(null);
 
   // Fetching data for both Map and List
   // NOTE: Using infinite query here is NOT ideal for the map which needs all data.
@@ -62,24 +63,19 @@ export default function SitesPage() {
   return (
     <main className="flex-1 w-full mx-auto h-full">
       <div className="flex flex-col lg:flex-row lg:gap-0 h-full">
-        {/* Add gap for larger screens */}
-
         {/* Left Column: Map */}
-        {/* Takes full width below lg, half width on lg screens+ */}
-        {/* Added relative positioning and min-height for map */}
-        {/* Changed breakpoint from md: to lg: */}
         <div className="w-full lg:w-1/2 lg:mb-0 relative lg:h-full flex justify-center items-center rounded-xl p-0">
-          {/* Adjust height as needed */}
           <div className="h-full w-full rounded-xl overflow-hidden relative">
-            <SitesMap sites={allSites} isLoading={isLoading} />
+            <SitesMap
+              sites={allSites}
+              isLoading={isLoading}
+              hoveredSiteId={hoveredSiteId}
+            />
           </div>
         </div>
 
         {/* Right Column: Header, Search, List */}
-        {/* Takes full width below lg, half width on lg screens+ */}
-        {/* Changed breakpoint from md: to lg: */}
         <div className="w-full lg:w-1/2 flex flex-col gap-6 py-8 px-8">
-          {/* Add gap between items in this column */}
           {/* Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Sites</h1>
@@ -93,10 +89,10 @@ export default function SitesPage() {
           {/* Search Bar */}
           <SearchBar />
           {/* Sites List */}
-          {/* Removed fixed height, let it grow naturally */}
-          <SitesList />
+          <SitesList onSiteHover={setHoveredSiteId} />
         </div>
       </div>
+
       {/* Dialog remains outside the main layout flex container */}
       <SiteMutationDialog
         organizationId={
