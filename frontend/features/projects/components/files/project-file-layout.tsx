@@ -5,12 +5,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ReactNode } from "react";
 
 interface ProjectFileLayoutProps {
-  projectId: string;
+  contentSource: "project" | "knowledge-base";
+  knowledgeBaseId?: string;
+  projectId?: string;
   pathArray: string[];
   rightContent: ReactNode;
 }
 
 const ProjectFileLayout = ({
+  contentSource,
+  knowledgeBaseId,
   projectId,
   pathArray,
   rightContent,
@@ -22,8 +26,11 @@ const ProjectFileLayout = ({
         <Card className="w-80 h-full flex flex-col">
           <CardContent className="p-2 px-0 overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
             <ProjectFileExplorer
-              projectId={projectId}
-              contentSource="project"
+              projectId={contentSource === "project" ? projectId : undefined}
+              knowledgeBaseId={
+                contentSource === "knowledge-base" ? knowledgeBaseId : undefined
+              }
+              contentSource={contentSource}
               variant="compact"
               initialOpenPathChain={pathArray}
             />

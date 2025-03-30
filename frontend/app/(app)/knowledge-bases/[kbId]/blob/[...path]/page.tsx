@@ -4,12 +4,13 @@ import ProjectFileLayout from "@/features/projects/components/files/project-file
 import ProjectFileViewer from "@/features/projects/components/files/project-file-viewer";
 import { Card, CardContent } from "@/components/ui/card";
 import { useDecodedPathParams } from "@/features/projects/hooks/use-decoded-path-param";
-import { useProjectDocQuery } from "@/features/projects/api";
+import { useKnowledgeBaseDocument } from "@/features/knowledge-bases/api/get-knowledge-base-doc";
 
 export default function Page() {
-  const { projectId, decodedPathArray, currentPath } = useDecodedPathParams();
+  const { knowledgeBaseId, decodedPathArray, currentPath } =
+    useDecodedPathParams();
 
-  const { data: doc } = useProjectDocQuery(projectId, currentPath);
+  const { data: doc } = useKnowledgeBaseDocument(knowledgeBaseId, currentPath);
 
   const rightContent = (
     <Card className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
@@ -21,8 +22,8 @@ export default function Page() {
 
   return (
     <ProjectFileLayout
-      contentSource="project"
-      projectId={projectId}
+      contentSource="knowledge-base"
+      knowledgeBaseId={knowledgeBaseId}
       pathArray={decodedPathArray}
       rightContent={rightContent}
     />

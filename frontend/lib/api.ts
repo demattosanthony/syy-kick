@@ -1035,6 +1035,18 @@ export class KnowledgeBasesApi extends ApiRequest {
       "DELETE"
     );
   }
+
+  async getDocument(
+    knowledgeBaseId: string,
+    path: string
+  ): Promise<DocumentContent> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("path", path);
+
+    return await this.request(
+      `/knowledge-bases/${knowledgeBaseId}/document?${queryParams.toString()}`
+    );
+  }
 }
 
 /**

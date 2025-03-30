@@ -53,6 +53,14 @@ export default Router()
     handlers.uploadDocs
   )
   .get(
+    "/:knowledgeBaseId/document",
+    PermissionsMiddlewares.knowledgeBases(
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
+      Permissions.Actions.READ
+    ),
+    handlers.getDocument
+  )
+  .get(
     "/:knowledgeBaseId/documents",
     PermissionsMiddlewares.knowledgeBases(
       Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,

@@ -539,9 +539,6 @@ function FileExplorerItem({
 
   // Handle clicking the row
   const handleRowClick = () => {
-    // Don't allow navigation for knowledge bases right now
-    if (contentSource === "knowledge-base") return;
-
     // "compact" mode might not want to navigate, so we allow onFileSelect
     if (variant === "compact" && onFileSelect) {
       if (item.type === "folder") {
@@ -622,13 +619,7 @@ function FileExplorerItem({
               )}
             </span>
           )}
-          <span
-            className={cn(
-              "text-sm truncate min-w-0 max-w-[calc(100vw*0.55)] md:max-w-[calc(100vw*0.30)]",
-              contentSource === "project" &&
-                "hover:underline hover:text-blue-500"
-            )}
-          >
+          <span className="text-sm hover:underline hover:text-blue-500 truncate min-w-0 max-w-[calc(100vw*0.55)] md:max-w-[calc(100vw*0.30)]">
             {item.name}
           </span>
 

@@ -106,3 +106,25 @@ export const deleteDocs = async (req: Request, res: Response) => {
 
   res.json({ success: true });
 };
+
+export const getDocument = async (req: Request, res: Response) => {
+  try {
+    const { knowledgeBaseId } = req.params;
+    const { path } = req.query;
+
+    if (!path) {
+      res.status(400).json({ error: "Path parameter is required" });
+      return;
+    }
+
+    const document = await ops.getKnowledgeBaseDoc(
+      knowledgeBaseId,
+      decodeURIComponent(path as string)
+    );
+
+    res.json(document);
+  } catch (error: any) {
+    console.error("Error getting document:", error);
+    res.status(500).json({ error: error.message || "Failed to get document" });
+  }
+};

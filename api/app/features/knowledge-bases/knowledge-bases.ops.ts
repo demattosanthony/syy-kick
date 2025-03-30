@@ -514,3 +514,48 @@ export async function searchKnowledgeBaseDocuments(params: {
     throw error;
   }
 }
+
+/**
+ * Gets the content and metadata for a document in a knowledge base
+ * @param knowledgeBaseId The ID of the knowledge base containing the document
+ * @param path The full path to the document within the knowledge base
+ * @returns The document metadata including file content or S3 URL if it's a file
+ * @throws Error if file not found or if path points to a folder
+ */
+export async function getKnowledgeBaseDoc(
+  knowledgeBaseId: string,
+  path: string
+) {
+  await getKnowledgeBaseOrThrow(knowledgeBaseId);
+
+  const document = await db.query.documents.findFirst({
+    where: and(
+      eq(documents.knowledgeBaseId, knowledgeBaseId),
+      eq(documents.path, path)
+    ),
+  });
+
+  if (!document) {
+    console.log(`Document not found at path: ${path}`);
+    throw new Error("File not found");
+  }
+
+  if (document.type === "folder") {
+    throw new Error("Cannot get content of a folder");
+  }
+
+  // If document has a fileKey, generate a presigned URL for S3 access
+  if (document.fileKey) {
+    const url = s3.presign(document.fileKey, {
+      expiresIn: 60 * 60, // 1 hour
+      method: "GET",
+    });
+
+    return {
+      ...document,
+      url,
+    };
+  }
+
+  return document;
+}
