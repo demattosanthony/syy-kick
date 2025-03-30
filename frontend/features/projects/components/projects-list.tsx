@@ -30,7 +30,7 @@ const ProjectsList = ({
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const siteId = searchParams.get("siteId") || "";
-  const sort = searchParams.get("sort") as SortOption;
+  const sort = (searchParams.get("sort") as SortOption) || "created-desc";
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Use initial projects for first render
@@ -97,7 +97,7 @@ const ProjectsList = ({
 
   return (
     <div className="flex flex-col w-full">
-      <ScrollArea className="h-[calc(100vh-350px)] px-2">
+      <ScrollArea className="h-[calc(100vh-205px)] px-2">
         {uniqueProjects.length === 0 && !isLoading ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-muted-foreground">No projects found</p>
