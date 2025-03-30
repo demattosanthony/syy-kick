@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 // API and data fetching imports
 import { ApiError } from "@/lib/api";
 import { useCreateKnowledgeBase } from "../api";
+import { usePermissions } from "@/features/permissions/context";
 
 interface CreateKnowledgeBaseDialogProps {
   trigger: React.ReactNode;
@@ -38,6 +39,8 @@ const CreateKnowledgeBaseDialog = ({
     name: "",
     description: "",
   });
+
+  const { canCreateOrgKnowledgeBases } = usePermissions();
 
   const createKnowledgeBaseMutation = useCreateKnowledgeBase();
 
@@ -82,7 +85,9 @@ const CreateKnowledgeBaseDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogTrigger asChild disabled={!canCreateOrgKnowledgeBases}>
+        {trigger}
+      </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Create a new Knowledge Base</DialogTitle>
