@@ -432,7 +432,7 @@ export default class PermissionsMiddlewares {
         return;
       }
 
-      // User is an organization admin or manager, skip permission check
+      // Everyone has access to the knowledge base in the organization, skip permission check
       if (
         [
           Permissions.Roles.ORGANIZATION_ADMIN,

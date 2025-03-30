@@ -18,7 +18,7 @@ import {
 } from "../../config/schema";
 import db from "../../config/db";
 import { schemas } from "./knowledge-bases.schemas";
-import { getKnowledgeBaseOrThrow } from "./knowledge-bases.utils";
+import { getKnowledgeBaseOrThrow, normalizePath } from "./knowledge-bases.utils";
 import s3 from "../../config/s3";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../../config/unstructured";
 import { queue } from "../../doc-job-queue";
@@ -277,18 +277,6 @@ async function ensureParentFolderExists(
   }
 
   return parent.id;
-}
-
-/**
- * Normalizes a path:
- * - Trims leading/trailing slashes
- * - Replaces multiple slashes with a single slash
- */
-function normalizePath(input: string) {
-  // Remove leading/trailing slashes
-  const trimmed = input.replace(/^\/+|\/+$/g, "");
-  // Replace multiple consecutive slashes with single
-  return trimmed.replace(/\/{2,}/g, "/");
 }
 
 export async function getDocs(knowledgeBaseId: string, path: string = "") {
