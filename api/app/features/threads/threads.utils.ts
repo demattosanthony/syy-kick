@@ -431,9 +431,6 @@ Returns:
           }),
     }),
     execute: async ({ query, knowledgeBaseId }) => {
-      // TODO: Add permission checks if necessary in the future.
-      // For now, assuming access based on organization membership.
-
       const targetKnowledgeBaseId: string = knowledgeBase
         ? knowledgeBase.id
         : (knowledgeBaseId as string);

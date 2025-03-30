@@ -12,7 +12,14 @@ export default Router()
     ),
     handlers.createKnowledgeBase
   )
-  .get("/", handlers.listKnowledgeBases)
+  .get(
+    "/",
+    PermissionsMiddlewares.knowledgeBases(
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
+      Permissions.Actions.READ
+    ),
+    handlers.listKnowledgeBases
+  )
   .get(
     "/:knowledgeBaseId",
     PermissionsMiddlewares.knowledgeBases(

@@ -2,7 +2,7 @@
 
 import { Check, MenuIcon, Plus, Share, Slash } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { messagesAtom } from "@/atoms/chat";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -22,18 +22,19 @@ import {
 import { toast } from "sonner";
 import React from "react";
 import api from "@/lib/api";
-import { Thread } from "@/types/chat";
+import { useThreadQuery } from "../api";
 
-interface ThreadHeaderProps {
-  thread: Thread;
-}
-
-export default function ThreadHeader({ thread }: ThreadHeaderProps) {
+export default function ThreadHeader() {
+  const params = useParams();
   const router = useRouter();
   const [shareLinkCopied, setShareLinkCopied] = React.useState(false);
   const { toggleSidebar } = useSidebar();
 
+  const threadId = params.threadId as string;
+
   const [, setMessages] = useAtom(messagesAtom);
+
+  const { data: thread } = useThreadQuery(threadId, false);
 
   const handleCopyShareLink = async () => {
     if (!thread) return;
@@ -96,7 +97,7 @@ export default function ThreadHeader({ thread }: ThreadHeaderProps) {
                     <Slash />
                   </BreadcrumbSeparator>
                   <BreadcrumbItem>
-                    <span className="font-bold">{thread.title}</span>
+                    <span className="font-bold">{thread?.title}</span>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
