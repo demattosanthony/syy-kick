@@ -3,12 +3,12 @@ import db from "../app/config/db";
 import {
   documents,
   knowledgeBases,
-  organizationMembers,
+  memberRoles,
   projects,
+  roles,
   threads,
 } from "../app/config/schema";
 import { Permissions } from "../app/features/permissions/permissions.types";
-import { PermissionManager } from "../app/features/permissions/permissions.tools";
 
 async function convertProjectToKnowledgeBase(
   projectId: string,
@@ -31,23 +31,30 @@ async function convertProjectToKnowledgeBase(
 
     // If there was no user stored with project creation, then use organization admin
     if (!createdBy) {
-      const orgMembers = await db.query.organizationMembers.findMany({
-        where: eq(organizationMembers.organizationId, project.organizationId!),
-      });
+      console.log(
+        "No user found for project, checking organization members..."
+      );
+      try {
+        // Get organization admin
+        const orgAdmins = await db
+          .select({
+            userId: memberRoles.userId,
+          })
+          .from(memberRoles)
+          .innerJoin(roles, eq(memberRoles.roleId, roles.id))
+          .where(
+            and(
+              eq(memberRoles.organizationId, project.organizationId!),
+              eq(roles.name, Permissions.Roles.ORGANIZATION_ADMIN)
+            )
+          )
+          .limit(1);
 
-      for (const member of orgMembers) {
-        const memberRole = await PermissionManager.getUserOrganisationRole(
-          member.userId,
-          project.organizationId!
-        );
-
-        if (
-          memberRole &&
-          memberRole.role.name === Permissions.Roles.ORGANIZATION_ADMIN
-        ) {
-          createdBy = member.userId;
-          break;
+        if (orgAdmins.length > 0) {
+          createdBy = orgAdmins[0].userId;
         }
+      } catch (error) {
+        console.error("Error while checking organization members:", error);
       }
     }
 
