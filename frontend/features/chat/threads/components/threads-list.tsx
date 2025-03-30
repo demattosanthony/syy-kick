@@ -147,7 +147,7 @@ function ThreadItem({
   );
 }
 
-function ThreadSkeleton({ compact = false }: { compact?: boolean }) {
+export function ThreadSkeleton({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`${compact ? "p-2" : "p-4"}`}>
       <div className="flex items-start gap-4">

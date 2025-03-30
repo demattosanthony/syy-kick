@@ -37,7 +37,6 @@ const ProjectChatInput = ({
         type === "project" ? projectId : undefined,
         type === "knowledge-base" ? knowledgeBaseId : undefined
       );
-      router.prefetch(`/threads/${threadId}?new=true`);
       router.push(`/threads/${threadId}?new=true`);
     } catch (error: unknown) {
       console.error("Failed to create thread:", error);
