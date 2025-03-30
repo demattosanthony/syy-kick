@@ -50,7 +50,7 @@ const ProjectChatInput = ({
       setInput={setInitalInput}
       handleInputChange={handleInputChange}
       onSubmit={handleSubmit}
-      showContextSelector={true}
+      showContextSelector={projectId ? true : false}
       projectId={projectId}
     />
   );
