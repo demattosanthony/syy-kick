@@ -431,6 +431,12 @@ export const accessLogs = pgTable("access_logs", {
   documentId: uuid("document_id").references(() => documents.id, {
     onDelete: "cascade",
   }),
+  knowledgeBaseId: uuid("knowledge_base_id").references(
+    () => knowledgeBases.id,
+    {
+      onDelete: "cascade",
+    }
+  ),
   actionId: uuid("action_id")
     .references(() => actions.id, { onDelete: "cascade" })
     .notNull(),
@@ -674,6 +680,10 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
   site: one(sites, {
     fields: [accessLogs.siteId],
     references: [sites.id],
+  }),
+  knowledgeBase: one(knowledgeBases, {
+    fields: [accessLogs.knowledgeBaseId],
+    references: [knowledgeBases.id],
   }),
 }));
 

@@ -706,6 +706,7 @@ export class PermissionManager {
       projectId?: string;
       documentId?: string;
       siteId?: string;
+      knowledgeBaseId?: string;
     }
   ) {
     const actionId = await PermissionManager.getActionId(action);
@@ -723,6 +724,7 @@ export class PermissionManager {
       actionId,
       resourceId,
       siteId: identifiers.siteId,
+      knowledgeBaseId: identifiers.knowledgeBaseId,
       status,
     });
   }
@@ -738,16 +740,23 @@ export class PermissionManager {
    * console.log(mostRecentAccessedProjects);
    * // ["project-id-1", "project-id-2"]
    **/
-  static async getMostRecentAccessedProjects(userId: string, organizationId?: string): Promise<string[]> {
-    const resourceId = await PermissionManager.getResourseId(Permissions.Resources.ORGANIZATION_PROJECTS);
-    const actionId = await PermissionManager.getActionId(Permissions.Actions.READ);
+  static async getMostRecentAccessedProjects(
+    userId: string,
+    organizationId?: string
+  ): Promise<string[]> {
+    const resourceId = await PermissionManager.getResourseId(
+      Permissions.Resources.ORGANIZATION_PROJECTS
+    );
+    const actionId = await PermissionManager.getActionId(
+      Permissions.Actions.READ
+    );
 
     const conditions = [
       isNull(accessLogs.siteId),
       isNull(accessLogs.documentId),
       eq(accessLogs.resourceId, resourceId as string),
       eq(accessLogs.actionId, actionId as string),
-      eq(accessLogs.userId, userId)
+      eq(accessLogs.userId, userId),
     ];
 
     if (organizationId) {

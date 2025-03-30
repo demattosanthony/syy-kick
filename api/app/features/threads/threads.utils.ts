@@ -405,16 +405,16 @@ const createKnowledgeBaseSearchTool = (
   knowledgeBase?: KnowledgeBase
 ) =>
   tool({
-    description: `Search information within a specific knowledge base. ${
+    description: `${
       knowledgeBase
-        ? `The current knowledge this will search over is the "${knowledgeBase.name}" knowledge base.`
-        : ""
+        ? `This tool allows the assistant to retrieve information from the "${knowledgeBase.name}" knowledge base.`
+        : `This tool allows the assistant to retrieve information from a Knowledge Base.`
     }
+A knowledge base is a structured collection of curated information that organizations create to preserve valuable expertise and reference materials. It serves as a searchable repository that Syykick can access to provide you with accurate, domain-specific answers to your questions.
 
 Usage:
     1. Use when you need information stored within a designated knowledge base.
     2. Provide a clear, specific query and the ID of the knowledge base to search.
-    3. Best for finding information, procedures, or answers contained in curated knowledge collections.
 
 Returns:
     - Relevant document excerpts with context
@@ -1073,15 +1073,16 @@ ${
     ? `<current_knowledge_base>
 The assistant is currently focused on the "${knowledgeBase.name}". This knowledge base contains specific information that the user is interested in exploring. The assistant should prioritize searching and referencing this knowledge base when responding to user queries.
 </current_knowledge_base>`
-    : `The assistant has access to the following knowledge bases:
+    : knowledgeBases?.length
+    ? `The assistant has access to the following knowledge bases:
 <knowledge_bases>
 ${knowledgeBasesString}
 </knowledge_bases>`
+    : ""
 }
 
 The assistant never tells the user of a knowledge base id. This would confuse the user. The assisant just uses the name when chatting with the user.
 </knowledge_bases_information>
-
 
 <tool_usage_guidance>
 The assistant has access to two different search tools and must carefully choose the correct one:

@@ -377,4 +377,126 @@ export default class PermissionsMiddlewares {
       next();
     };
   }
+
+  static knowledgeBases(
+    resource: Permissions.Resources,
+    action: Permissions.Actions
+  ): (req: Request, res: Response, next: NextFunction) => Promise<void> {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      if (!req.dbUser) {
+        res.status(403).json({ error: "Please login to your account." });
+        return;
+      }
+
+      const orgId = getOrgIdOrUnedfined(req.workspace);
+      const { id: userId } = req.dbUser;
+      const { knowledgeBaseId } = req.params;
+
+      // Check if user is a member of an organization
+      if (!orgId) {
+        res.status(403).json({ error: "Please select an organization." });
+        return;
+      }
+
+      const resourceId = await PermissionManager.getResourseId(resource);
+
+      if (!resourceId) {
+        res.status(403).json({ error: "Resource not found." });
+        return;
+      }
+
+      let orgRole = await PermissionManager.getUserOrganisationRole(
+        userId,
+        orgId
+      );
+
+      if (!orgRole) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.UNAUTHORIZED,
+          {
+            knowledgeBaseId,
+          }
+        );
+        res
+          .status(403)
+          .json({ error: "You don't have access to this resource." });
+        return;
+      }
+
+      // If it's not a knowledge base resource, the middleware used is not the right one
+      if (!Constants.OrganizationKnowledgeBaseResources.includes(resource)) {
+        res.status(403).json({ error: "Resource not found." });
+        return;
+      }
+
+      // User is an organization admin or manager, skip permission check
+      if (
+        [
+          Permissions.Roles.ORGANIZATION_ADMIN,
+          Permissions.Roles.ORGANIZATION_MANAGER,
+        ].includes(orgRole.role.name as Permissions.Roles)
+      ) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.AUTHORIZED,
+          {
+            knowledgeBaseId,
+          }
+        );
+        next();
+        return;
+      }
+
+      // knowledgeBaseId not provided, required for a knowledge base resource if the action is not create
+      if (
+        !knowledgeBaseId &&
+        resource === Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES &&
+        action !== Permissions.Actions.CREATE
+      ) {
+        res.status(403).json({ error: "Knowledge base not found." });
+        return;
+      }
+
+      const hasAccess = await PermissionManager.userHasAccessToRessource(
+        orgRole,
+        orgId,
+        resourceId,
+        action,
+        knowledgeBaseId
+      );
+
+      if (!hasAccess) {
+        await PermissionManager.logAccess(
+          userId,
+          action,
+          resource,
+          Permissions.Status.UNAUTHORIZED,
+          {
+            knowledgeBaseId,
+          }
+        );
+        res
+          .status(403)
+          .json({ error: "You don't have access to this resource." });
+        return;
+      }
+
+      await PermissionManager.logAccess(
+        userId,
+        action,
+        resource,
+        Permissions.Status.AUTHORIZED,
+        {
+          knowledgeBaseId,
+        }
+      );
+
+      next();
+    };
+  }
 }

@@ -13,7 +13,7 @@ import {
 import s3 from "../config/s3";
 import { DbUser } from "../createAuthToken";
 import stripe from "../config/stripe";
-import { auth, isOrgOwner, permissions } from "../middleware";
+import { auth } from "../middleware";
 import { Permissions } from "./permissions/permissions.types";
 import PermissionsFactory from "./permissions/permissions.factory";
 import { PermissionManager } from "./permissions/permissions.tools";

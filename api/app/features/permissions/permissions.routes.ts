@@ -1,7 +1,7 @@
 import { Request, Response, Router } from "express";
 import { permissionsOps } from "./permissions.ops";
-import { permissions } from "../../middleware";
 import { Permissions } from "./permissions.types";
+import PermissionsMiddlewares from "./permissions.middlewares";
 
 export default Router()
   .get("/roles", async (req: Request, res: Response) => {
@@ -9,7 +9,7 @@ export default Router()
   })
   .post(
     "/organizations/:orgId/invitations",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_INVITATIONS,
       Permissions.Actions.CREATE
     ),
@@ -17,7 +17,7 @@ export default Router()
   )
   .get(
     "/organizations/:orgId/invitations",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_INVITATIONS,
       Permissions.Actions.READ
     ),
@@ -25,7 +25,7 @@ export default Router()
   )
   .delete(
     "/organizations/:orgId/invitations",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_INVITATIONS,
       Permissions.Actions.DELETE
     ),
@@ -33,7 +33,7 @@ export default Router()
   )
   .get(
     "/organizations/:orgId/transferable-projects",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_PROJECTS,
       Permissions.Actions.READ
     ),
@@ -41,7 +41,7 @@ export default Router()
   )
   .put(
     "/organizations/:orgId/members/:memberId",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_MEMBERS,
       Permissions.Actions.UPDATE
     ),
@@ -49,7 +49,7 @@ export default Router()
   )
   .delete(
     "/organizations/:orgId/members",
-    permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_MEMBERS,
       Permissions.Actions.DELETE
     ),

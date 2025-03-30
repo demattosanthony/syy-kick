@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { Permissions } from "../permissions/permissions.types";
 import * as handlers from "./knowledge-bases.handlers";
-import { permissions } from "../../middleware";
+import PermissionsMiddlewares from "../permissions/permissions.middlewares";
 
 export default Router()
   .post(
     "/",
-    permissions(
+    PermissionsMiddlewares.knowledgeBases(
       Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.CREATE
     ),
@@ -15,7 +15,7 @@ export default Router()
   .get("/", handlers.listKnowledgeBases)
   .get(
     "/:knowledgeBaseId",
-    permissions(
+    PermissionsMiddlewares.knowledgeBases(
       Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.READ
     ),
@@ -23,7 +23,7 @@ export default Router()
   )
   .patch(
     "/:knowledgeBaseId",
-    permissions(
+    PermissionsMiddlewares.knowledgeBases(
       Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.UPDATE
     ),
@@ -31,7 +31,7 @@ export default Router()
   )
   .delete(
     "/:knowledgeBaseId",
-    permissions(
+    PermissionsMiddlewares.knowledgeBases(
       Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.DELETE
     ),
@@ -39,7 +39,7 @@ export default Router()
   )
   .post(
     "/:knowledgeBaseId/documents",
-    permissions(
+    PermissionsMiddlewares.knowledgeBases(
       Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.CREATE
     ),
@@ -47,7 +47,7 @@ export default Router()
   )
   .get(
     "/:knowledgeBaseId/documents",
-    permissions(
+    PermissionsMiddlewares.knowledgeBases(
       Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.READ
     ),
@@ -55,7 +55,7 @@ export default Router()
   )
   .delete(
     "/:knowledgeBaseId/documents",
-    permissions(
+    PermissionsMiddlewares.knowledgeBases(
       Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
       Permissions.Actions.DELETE
     ),

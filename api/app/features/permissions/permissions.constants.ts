@@ -382,6 +382,11 @@ export default class Constants {
     ORGANIZATION_SITES,
   ];
 
+  static OrganizationKnowledgeBaseResources: Permissions.Resources[] = [
+    ORGANIZATION_KNOWLEDGE_BASES,
+    ORGANIZATION_KNOWLEDGE_BASES_DOCS,
+  ];
+
   static RoleHierarchy: Permissions.Roles[] = [
     SUPER_ADMIN,
     ORGANIZATION_ADMIN,

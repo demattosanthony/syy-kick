@@ -267,6 +267,13 @@
       "when": 1743279133807,
       "tag": "0037_stale_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1743306490411,
+      "tag": "0038_luxuriant_hellfire_club",
+      "breakpoints": true
     }
   ]
 }
