@@ -1,5 +1,5 @@
 // External dependencies
-import { generateText, streamText } from "ai";
+import { streamText } from "ai";
 import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { Request, Response } from "express";
 import { z } from "zod";
@@ -14,10 +14,11 @@ import {
 } from "../../config/schema";
 
 // Internal features
-import { embeddingModel, MODELS } from "../models";
+import { embeddingModel } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
+  createKnowledgeBaseSearchTool,
   createProjectSearchTool,
   createWebSearchTool,
   dbMessagesToInferenceMessages,
@@ -25,12 +26,15 @@ import {
   maybeGenerateTitle,
   processThreadMessages,
 } from "./threads.utils";
+import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
+import { getOrgIdOrUnedfined } from "../../utils";
 
 const threadsOps = {
   async createThread(
     userId: string,
     organizationId?: string,
-    projectId?: string
+    projectId?: string,
+    knowledgeBaseId?: string
   ) {
     if (!userId) throw new Error("User ID is required");
     const id = crypto.randomUUID();
@@ -40,6 +44,7 @@ const threadsOps = {
       userId,
       organizationId: organizationId || null,
       projectId: projectId || null,
+      knowledgeBaseId: knowledgeBaseId || null,
       createdAt: now,
       updatedAt: now,
     });
@@ -117,6 +122,7 @@ const threadsOps = {
         },
         project: true,
         organization: true,
+        knowledgeBase: true,
       },
     });
     if (!thread) return null;
@@ -124,6 +130,7 @@ const threadsOps = {
     // Cast the thread to match ThreadWithMessages type
     const typedThread: ThreadWithMessages = {
       ...thread,
+      knowledgeBase: thread.knowledgeBase || undefined,
       messages: thread.messages.map((msg) => ({
         ...msg,
         attachments: (msg.attachments || []).map((att) => ({
@@ -170,7 +177,8 @@ const threadsOps = {
     page: number,
     search: string,
     organizationId?: string,
-    projectId?: string
+    projectId?: string,
+    knowledgeBaseId?: string
   ) {
     const LIMIT = 10;
     const offset = (page - 1) * LIMIT;
@@ -186,6 +194,11 @@ const threadsOps = {
     // Add project filtering if projectId is provided
     if (projectId) {
       conditions.push(eq(threads.projectId, projectId));
+    }
+
+    // Add knowledge base filtering if knowledgeBaseId is provided
+    if (knowledgeBaseId) {
+      conditions.push(eq(threads.knowledgeBaseId, knowledgeBaseId));
     }
 
     let baseQuery;
@@ -309,12 +322,22 @@ const threadsOps = {
       // 4) Determine appropriate model
       const modelConfig = await getModelConfig(model);
 
+      // Find knowledge bases the user or org has
+      const knowledgeBases = await listKnowledgeBases(
+        req.dbUser!.id,
+        getOrgIdOrUnedfined(req.workspace),
+        1,
+        999
+      );
+
       // 6) Prepare messages for inference
       const inferenceMsgs = await dbMessagesToInferenceMessages(
         rawMessages,
         modelConfig,
         thread.project,
-        instructions && instructions.length > 0 ? instructions : undefined
+        instructions && instructions.length > 0 ? instructions : undefined,
+        thread.knowledgeBase,
+        knowledgeBases.data
       );
 
       // console.log("Inference messages:", inferenceMsgs);
@@ -325,11 +348,17 @@ const threadsOps = {
       // 7) Create tools for the assistant if project ID exists
       let tools = {
         web_search: createWebSearchTool(),
-        search_projects_information: createProjectSearchTool(
+        ...(thread.knowledgeBase === undefined && {
+          search_projects_information: createProjectSearchTool(
+            modelConfig,
+            req.workspace!,
+            req.dbUser!,
+            thread.projectId || undefined
+          ),
+        }),
+        search_knowledge_base: createKnowledgeBaseSearchTool(
           modelConfig,
-          req.workspace!,
-          req.dbUser!,
-          thread.projectId || undefined
+          thread.knowledgeBase
         ),
       };
 
@@ -424,14 +453,15 @@ const threadsOps = {
                 (r) => r.toolCallId === toolCall.toolCallId
               );
 
-              if (
-                result &&
-                ((toolCall.toolName as string) ===
-                  "search_project_information" ||
-                  (toolCall.toolName as string) === "search_documents" ||
-                  (toolCall.toolName as string) ===
-                    "search_projects_information")
-              ) {
+              // Define the tool names that need this unique storage handling
+              const projectSearchToolNames = [
+                "search_project_information",
+                "search_documents",
+                "search_knowledge_base",
+              ];
+              const toolName = toolCall.toolName as string;
+
+              if (result && projectSearchToolNames.includes(toolName)) {
                 console.log("Project search tool result:", toolCall);
                 await db
                   .update(toolCallsTable)

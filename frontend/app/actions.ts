@@ -3,8 +3,7 @@
 import { ApiError } from "@/lib/api";
 import { cookies } from "next/headers";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 /**
  * Server-side fetch with cookies for use in Server Actions

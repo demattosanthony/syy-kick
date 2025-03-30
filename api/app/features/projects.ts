@@ -4,56 +4,47 @@ import {
   and,
   asc,
   cosineDistance,
+  desc,
   eq,
   ilike,
   inArray,
   isNull,
   like,
   or,
+  SQL,
   sql,
 } from "drizzle-orm";
 import {
+  accessLogs,
   documentEmbeddings,
   documents,
-  memberRoles,
   organizations,
   projects,
-  users,
+  sites,
 } from "../config/schema";
 import { Router, Request, Response } from "express";
 import s3 from "../config/s3";
 import { smallOpenaiEmbeddingModel } from "./models";
 import { queue } from "../doc-job-queue";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../config/unstructured";
-import { getOrgIdOrUnedfined } from "../utils";
-import { permissions, Workspace } from "../middleware";
+import { getOrgIdOrUnedfined, slugify } from "../utils";
+import { Workspace } from "../middleware";
 import { Permissions } from "./permissions/permissions.types";
 import { PermissionManager } from "./permissions/permissions.tools";
-import { permissionsOps } from "./permissions/permissions.ops";
-import Constants from "./permissions/permissions.constants";
 import PermissionsFactory from "./permissions/permissions.factory";
+import PermissionsMiddlewares from "./permissions/permissions.middlewares";
+import { formatSites } from "./sites/sites.utils";
 
 const schemas = {
-  createProject: z
-    .object({
-      name: z.string().min(1).max(255),
-      description: z.string().max(255).optional(),
-      project_number: z.string().optional(),
-      organizationId: z.string().uuid().optional(),
-      userId: z.string().uuid().optional(),
-      estimated_start_date: z.string().datetime().optional(),
-      estimated_end_date: z.string().datetime().optional(),
-      address: z.string().max(500).optional(),
-      city: z.string().max(100).optional(),
-      state: z.string().max(100).optional(),
-      country: z.string().max(100).optional(),
-      postalCode: z.string().max(20).optional(),
-      latitude: z.string().optional(),
-      longitude: z.string().optional(),
-    })
-    .refine((data) => data.organizationId || data.userId, {
-      message: "Either organizationId or userId must be provided",
-    }),
+  createProject: z.object({
+    name: z.string().min(1).max(255),
+    description: z.string().max(255).optional(),
+    project_number: z.string().optional(),
+    organizationId: z.string().uuid().optional(),
+    estimated_start_date: z.string().datetime().optional(),
+    estimated_end_date: z.string().datetime().optional(),
+    siteId: z.string().uuid(),
+  }),
 
   updateProject: z.object({
     name: z.string().min(1).max(255).optional(),
@@ -62,13 +53,7 @@ const schemas = {
     estimated_start_date: z.string().datetime().optional(),
     estimated_end_date: z.string().datetime().optional(),
     organizationId: z.string().optional(),
-    address: z.string().max(500).optional().nullable(),
-    city: z.string().max(100).optional().nullable(),
-    state: z.string().max(100).optional().nullable(),
-    country: z.string().max(100).optional().nullable(),
-    postalCode: z.string().max(20).optional().nullable(),
-    latitude: z.string().optional().nullable(),
-    longitude: z.string().optional().nullable(),
+    siteId: z.string().uuid(),
   }),
 
   docsUpload: z.object({
@@ -132,6 +117,7 @@ async function createProject(
       .insert(projects)
       .values({
         name: data.name,
+        slug: slugify(data.name),
         description: data.description,
         projectNumber: data.project_number,
         estimatedStartDate: data.estimated_start_date
@@ -141,15 +127,9 @@ async function createProject(
           ? new Date(data.estimated_end_date)
           : null,
         organizationId: data.organizationId,
-        userId: data.userId,
+        userId: userId,
         visibility: "private",
-        address: data.address,
-        city: data.city,
-        state: data.state,
-        country: data.country,
-        postalCode: data.postalCode,
-        latitude: data.latitude,
-        longitude: data.longitude,
+        siteId: data.siteId,
       })
       .returning()
       .then((res) => res[0]);
@@ -192,18 +172,35 @@ async function deleteProject(projectId: string) {
   await db.delete(projects).where(eq(projects.id, projectId));
 }
 
+type SortOption =
+  | "recent"
+  | "name-asc"
+  | "name-desc"
+  | "created-asc"
+  | "created-desc";
+
 async function listProjects(params: {
+  siteId: string;
   organizationId?: string;
   userId?: string;
   search?: string;
   page?: number;
   limit?: number;
+  sort?: SortOption;
 }) {
   if (!params.organizationId && !params.userId) {
     throw new Error("Either organizationId or userId must be provided");
   }
+  // if (!params.siteId) {
+  //   throw new Error("Please select a site");
+  // }
 
-  let conditions = [];
+  // Pagination
+  const page = params.page || 1;
+  const limit = params.limit || 10;
+  const offset = (page - 1) * limit;
+
+  const conditions = [];
 
   if (params.organizationId && params.userId) {
     const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
@@ -215,33 +212,155 @@ async function listProjects(params: {
     conditions.push(eq(projects.userId, params.userId));
   }
 
-  if (params.search) {
-    conditions.push(ilike(projects.name, `%${params.search}%`));
+  if (params.siteId) {
+    conditions.push(eq(projects.siteId, params.siteId));
   }
 
-  // Set default pagination values
-  const page = params.page || 1;
-  const limit = params.limit || 10;
-  const offset = (page - 1) * limit;
+  if (params.search) {
+    conditions.push(
+      sql`(
+        ${ilike(projects.name, `%${params.search}%`)} 
+        OR 
+        ${ilike(projects.projectNumber, `%${params.search}%`)}
+      )`
+    );
+  }
 
-  // Get total count for pagination metadata
+  if (params.sort === "recent" && params.userId) {
+    return await getPaginatedRecentProjects({
+      page: params.page,
+      limit: params.limit,
+      conditions,
+    });
+  }
+
+  let orderBy: Array<SQL> = [];
+  if (params.sort) {
+    switch (params.sort) {
+      case "name-asc":
+        orderBy = [asc(projects.name)];
+        break;
+      case "name-desc":
+        orderBy = [desc(projects.name)];
+        break;
+      case "created-asc":
+        orderBy = [asc(projects.createdAt)];
+        break;
+      case "created-desc":
+        orderBy = [desc(projects.createdAt)];
+        break;
+      case "recent": // fallback
+        orderBy = [desc(projects.createdAt)];
+        break;
+      default:
+        break;
+    }
+  }
+
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(projects)
     .where(and(...conditions));
-
   const totalCount = countResult[0]?.count || 0;
 
-  // Get paginated projects
   const projs = await db.query.projects.findMany({
     where: and(...conditions),
-    orderBy: (projects, { desc }) => [desc(projects.createdAt)],
-    limit: limit,
-    offset: offset,
+    orderBy,
+    limit,
+    offset,
+    with: {
+      site: true,
+    },
   });
 
   return {
-    data: projs,
+    data: projs.map((p) => {
+      const site = p.site ? formatSites([p.site]) : null;
+
+      if (!site) {
+        return p;
+      }
+
+      return {
+        ...p,
+        site: site[0],
+      };
+    }),
+    pagination: {
+      page,
+      limit,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      hasMore: page * limit < totalCount,
+    },
+  };
+}
+
+async function getPaginatedRecentProjects(params: {
+  conditions?: Array<SQL>;
+  page?: number;
+  limit?: number;
+}) {
+  const page = params.page || 1;
+  const limit = params.limit || 10;
+  const offset = (page - 1) * limit;
+
+  const [totalCountResult] = await db
+    .select({
+      totalCount: sql<number>`COUNT(DISTINCT ${projects.id})`,
+    })
+    .from(projects)
+    .leftJoin(accessLogs, eq(accessLogs.projectId, projects.id))
+    .where(and(...(params.conditions ?? [])));
+  const totalCount = totalCountResult?.totalCount ?? 0;
+
+  const projs = await db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      description: projects.description,
+      slug: projects.slug,
+      projectNumber: projects.projectNumber,
+      visibility: projects.visibility,
+      estimatedStartDate: projects.estimatedStartDate,
+      estimatedEndDate: projects.estimatedEndDate,
+      address: projects.address,
+      city: projects.city,
+      state: projects.state,
+      country: projects.country,
+      postalCode: projects.postalCode,
+      latitude: projects.latitude,
+      longitude: projects.longitude,
+      siteId: projects.siteId,
+      organizationId: projects.organizationId,
+      userId: projects.userId,
+      createdAt: projects.createdAt,
+      updatedAt: projects.updatedAt,
+      lastAccess: sql`MAX(${accessLogs.createdAt})`.as("lastAccess"),
+      site: sites,
+    })
+    .from(projects)
+    .leftJoin(accessLogs, eq(accessLogs.projectId, projects.id))
+    .leftJoin(sites, eq(sites.id, projects.siteId))
+    .where(and(...(params.conditions ?? [])))
+    .groupBy(projects.id, sites.id)
+    .orderBy(sql`MAX(${accessLogs.createdAt}) DESC NULLS LAST`)
+    .limit(limit)
+    .offset(offset);
+
+  return {
+    data: projs.map((p) => {
+      const site = p.site ? formatSites([p.site]) : null;
+
+      if (!site) {
+        return p;
+      }
+
+      return {
+        ...p,
+        site: site[0],
+      };
+    }),
     pagination: {
       page,
       limit,
@@ -262,6 +381,7 @@ async function getProject(projectId: string) {
         },
       },
       user: true,
+      site: true,
     },
   });
 
@@ -421,6 +541,7 @@ async function updateProject(
     .update(projects)
     .set({
       name: data.name || project.name,
+      slug: data.name ? slugify(data.name) : project.slug,
       description: data.description ?? project.description,
       projectNumber: data.project_number ?? project.projectNumber,
       estimatedStartDate: data.estimated_start_date
@@ -429,15 +550,7 @@ async function updateProject(
       estimatedEndDate: data.estimated_end_date
         ? new Date(data.estimated_end_date)
         : null,
-      address: data.address !== undefined ? data.address : project.address,
-      city: data.city !== undefined ? data.city : project.city,
-      state: data.state !== undefined ? data.state : project.state,
-      country: data.country !== undefined ? data.country : project.country,
-      postalCode:
-        data.postalCode !== undefined ? data.postalCode : project.postalCode,
-      latitude: data.latitude !== undefined ? data.latitude : project.latitude,
-      longitude:
-        data.longitude !== undefined ? data.longitude : project.longitude,
+      siteId: data.siteId || project.siteId,
     })
     .where(eq(projects.id, projectId))
     .returning()
@@ -774,12 +887,17 @@ const handlers = {
     const orgId = getOrgIdOrUnedfined(req.workspace);
     const data = {
       ...req.body,
-      userId: orgId ? undefined : req.dbUser?.id,
-      organizationId: orgId,
+      userId: !req.body.organizationId ? req.dbUser?.id : undefined,
+      organizationId: req.body.organizationId ? orgId : undefined,
     };
 
     if (!req.dbUser?.id) {
       res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    if (!req.body.siteId) {
+      res.status(400).json({ error: "Please select a site" });
       return;
     }
 
@@ -790,16 +908,23 @@ const handlers = {
   },
 
   listProjects: async (req: Request, res: Response) => {
-    const { search, page, limit } = req.query;
+    const { search, page, limit, siteId, sort } = req.query;
+
     const orgId = getOrgIdOrUnedfined(req.workspace);
-    const projectsList = await listProjects({
-      organizationId: orgId,
-      userId: req.dbUser?.id,
-      search: search as string,
-      page: page ? parseInt(page as string, 10) : undefined,
-      limit: limit ? parseInt(limit as string, 10) : undefined,
-    });
-    res.json(projectsList);
+    try {
+      const projectsList = await listProjects({
+        siteId: siteId as string,
+        organizationId: orgId,
+        userId: req.dbUser?.id,
+        search: search as string,
+        page: page ? parseInt(page as string, 10) : undefined,
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+        sort: sort as SortOption,
+      });
+      res.json(projectsList);
+    } catch (error: any) {
+      res.status(error.code || 500).json({ error: error.message });
+    }
   },
 
   getProject: async (req: Request, res: Response) => {
@@ -887,7 +1012,7 @@ const handlers = {
 export default Router()
   .post(
     "/",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECTS,
       Permissions.Actions.CREATE
     ),
@@ -896,7 +1021,7 @@ export default Router()
   .get("/", handlers.listProjects)
   .post(
     "/:projectId/documents",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
       Permissions.Actions.CREATE
     ),
@@ -904,7 +1029,7 @@ export default Router()
   )
   .get(
     "/:projectId/documents",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
       Permissions.Actions.READ
     ),
@@ -912,7 +1037,7 @@ export default Router()
   )
   .delete(
     "/:projectId/documents",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
       Permissions.Actions.DELETE
     ),
@@ -920,7 +1045,7 @@ export default Router()
   )
   .patch(
     "/:projectId",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECTS,
       Permissions.Actions.UPDATE
     ),
@@ -928,7 +1053,7 @@ export default Router()
   )
   .get(
     "/:projectId",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECTS,
       Permissions.Actions.READ
     ),
@@ -936,7 +1061,7 @@ export default Router()
   )
   .delete(
     "/:projectId",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECTS,
       Permissions.Actions.DELETE
     ),
@@ -944,7 +1069,7 @@ export default Router()
   )
   .get(
     "/:projectId/document",
-    permissions(
+    PermissionsMiddlewares.projects(
       Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
       Permissions.Actions.READ
     ),

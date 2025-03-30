@@ -11,6 +11,7 @@ export function useUpdateProjectMutation() {
     }: {
       projectId: string;
       data: {
+        siteId: string;
         name?: string;
         description?: string;
         project_number?: string;

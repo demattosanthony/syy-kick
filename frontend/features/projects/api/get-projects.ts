@@ -2,12 +2,16 @@ import { useWorkspace } from "@/components/sidebar/workspace-context";
 import api from "@/lib/api";
 import { Project } from "@/types/project";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { SortOption } from "../types";
 
 export function useInfiniteProjectsQuery({
+  siteId,
   search,
   limit = 10,
   initialData,
+  sort,
 }: {
+  siteId?: string;
   search?: string;
   limit?: number;
   initialData?: {
@@ -23,16 +27,19 @@ export function useInfiniteProjectsQuery({
     }[];
     pageParams: number[];
   };
+  sort?: SortOption;
 } = {}) {
   const { activeWorkspace } = useWorkspace();
 
   return useInfiniteQuery({
-    queryKey: ["infiniteProjects", search, limit, activeWorkspace?.id],
+    queryKey: ["infiniteProjects", siteId, search, limit, activeWorkspace?.id, sort],
     queryFn: async ({ pageParam = 1 }) => {
       const response = await api.projects.listProjects({
+        siteId,
         search,
         page: pageParam,
         limit,
+        sort,
       });
       return response;
     },
@@ -50,13 +57,14 @@ export function useInfiniteProjectsQuery({
 export function useProjectsQuery({
   search,
   limit,
-}: { search?: string; limit?: number } = {}) {
+  sort,
+}: { search?: string; limit?: number; sort?: SortOption } = {}) {
   const { activeWorkspace } = useWorkspace();
 
   return useQuery({
-    queryKey: ["projects", search, activeWorkspace?.id, limit],
+    queryKey: ["projects", search, activeWorkspace?.id, limit, sort],
     queryFn: async () => {
-      const response = await api.projects.listProjects({ search, limit });
+      const response = await api.projects.listProjects({ search, limit, sort });
       return response.data;
     },
   });

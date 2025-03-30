@@ -100,7 +100,7 @@ export default function HomeContent({
 
           <div className="max-w-5xl w-full flex flex-col items-center">
             {user ? (
-              <div className="mt-6">
+              <div className="mt-6 w-full">
                 <ProjectPreviews projects={recentProjects || []} />
               </div>
             ) : (

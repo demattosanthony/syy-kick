@@ -1,6 +1,6 @@
 import { File, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import React, { useCallback } from "react";
+import React from "react";
 import { ToolInvocation } from "ai";
 import {
   Sheet,
@@ -20,6 +20,7 @@ const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
     case "search_project_information":
     case "search_documents":
     case "search_projects_information":
+    case "search_knowledge_base":
       return <SearchDocumentsTool tool={tool} />;
     case "web_search":
       return <WebSearchTool tool={tool} />;
@@ -31,17 +32,22 @@ const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
 const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
   const [open, setOpen] = React.useState(false);
   const hasResults = tool.state === "result" && tool.result;
-  const resultCount = hasResults ? tool.result.dataForFrontend.length : 0;
+  const resultCount =
+    hasResults && tool.result?.dataForFrontend
+      ? tool.result.dataForFrontend.length
+      : 0;
 
   // Show loading state
   if (tool.state === "partial-call" || tool.state === "call") {
+    let loadingText = "Searching project information...";
+
+    if (tool.toolName === "search_knowledge_base") {
+      loadingText = "Searching knowledge base...";
+    }
+
     return (
       <div className="">
-        <Loader
-          variant="text-shimmer"
-          text="Searching project information..."
-          size="lg"
-        />
+        <Loader variant="text-shimmer" text={loadingText} size="lg" />
       </div>
     );
   }
@@ -102,7 +108,7 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
           <SheetDescription>Results for "{tool.args?.query}"</SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto mt-4">
-          {tool.result.dataForFrontend.map(
+          {tool.result.dataForFrontend?.map(
             (
               result: {
                 path: string;
@@ -117,12 +123,13 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
                 key={`result-${idx}`}
                 className="flex flex-col gap-3 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
                 onClick={() => {
-                  window.open(
-                    `/projects/${result.projectId}/blob/${result.path}${
-                      result.page ? `?page=${result.page}` : ""
-                    }`,
-                    "_blank"
-                  );
+                  if (result.projectId && result.path)
+                    window.open(
+                      `/projects/${result.projectId}/blob/${result.path}${
+                        result.page ? `?page=${result.page}` : ""
+                      }`,
+                      "_blank"
+                    );
                 }}
               >
                 <div className="flex items-center gap-3">

@@ -7,13 +7,28 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Project } from "@/types/project";
 import { ProjectAddFileButton } from "@/features/projects/components";
-import { useMeQuery } from "@/features/user/api";
 import { usePermissions } from "@/features/permissions/context";
+import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
 
-const ProjectHeader = ({ project }: { project: Project }) => {
-  const { canUpdateOrgProjects, canCreateOrgProjectDocs } = usePermissions();
+interface ProjectHeaderProps {
+  type: "project" | "knowledge-base";
+  project?: Project;
+  knowledgeBase?: KnowledgeBase;
+}
 
-  // Use nullish coalescing for a simple fallback
+const ProjectHeader = ({
+  project,
+  type,
+  knowledgeBase,
+}: ProjectHeaderProps) => {
+  const {
+    canUpdateOrgProjects,
+    canCreateOrgProjectDocs,
+    canUpdateOrgKnowledgeBases,
+    canCreateOrgKnowledgeBaseDocs,
+  } = usePermissions();
+
+  const name = project?.name ?? knowledgeBase?.name ?? "";
   const logo = project?.organization?.logoUrl ?? project?.user?.profilePicture;
 
   return (
@@ -23,17 +38,17 @@ const ProjectHeader = ({ project }: { project: Project }) => {
           <div className="flex gap-4 flex-1 items-center">
             <Avatar className="h-8 w-8">
               <AvatarImage src={logo} />
-              <AvatarFallback>{project?.name[0]}</AvatarFallback>
+              <AvatarFallback>{name[0]}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2 ">
-                <h2 className="text-2xl font-bold">{project?.name}</h2>
-                {project?.projectNumber && (
+                <h2 className="text-2xl font-bold">{name}</h2>
+                {type === "project" && project?.projectNumber && (
                   <Badge variant={"secondary"}>{project?.projectNumber}</Badge>
                 )}
               </div>
 
-              {project?.address && (
+              {type === "project" && project?.address && (
                 <span className="text-sm text-muted-foreground">
                   {project.address}
                   {project.city ? `, ${project.city}` : ""}
@@ -41,19 +56,42 @@ const ProjectHeader = ({ project }: { project: Project }) => {
                   {project.postalCode ? `, ${project.postalCode}` : ""}
                 </span>
               )}
+
+              {type === "knowledge-base" && knowledgeBase?.description && (
+                <span className="text-sm text-muted-foreground">
+                  {knowledgeBase.description}
+                </span>
+              )}
             </div>
           </div>
+
           <div className="flex gap-2">
-            {canCreateOrgProjectDocs && (
-              <ProjectAddFileButton projectId={project.id} />
+            {((type === "project" && canCreateOrgProjectDocs) ||
+              (type === "knowledge-base" && canCreateOrgKnowledgeBaseDocs)) && (
+              <ProjectAddFileButton
+                projectId={project?.id}
+                contentSource={type}
+                knowledgeBaseId={knowledgeBase?.id}
+              />
             )}
-            {canUpdateOrgProjects && (
-              <Link href={`/projects/${project.id}/settings`} prefetch={false}>
+
+            {type === "project" && project && canUpdateOrgProjects && (
+              <Link href={`/projects/${project.id}/settings`}>
                 <Button variant={"ghost"} size={"icon"}>
                   <Settings className="w-4 h-4" />
                 </Button>
               </Link>
             )}
+
+            {type === "knowledge-base" &&
+              knowledgeBase &&
+              canUpdateOrgKnowledgeBases && (
+                <Link href={`/knowledge-bases/${knowledgeBase.id}/settings`}>
+                  <Button variant={"ghost"} size={"icon"}>
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </Link>
+              )}
           </div>
         </div>
       </div>

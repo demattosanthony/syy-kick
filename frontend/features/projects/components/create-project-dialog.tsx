@@ -18,78 +18,64 @@ import {
 } from "@/components/ui/dialog";
 
 // Custom component imports
-import ProjectFormFields from "./project-form-fields";
+import ProjectFormFields, { ProjectFormData } from "./project-form-fields";
 
 // API and data fetching imports
 import { ApiError } from "@/lib/api";
 import { useCreateProjectMutation } from "../api";
 
+// Permissions
+import { usePermissions } from "@/features/permissions/context";
+
 interface CreateProjectDialogProps {
   trigger: React.ReactNode;
+  organizationId?: string;
+  siteId?: string | null;
 }
 
-const CreateProjectDialog = ({ trigger }: CreateProjectDialogProps) => {
+const CreateProjectDialog = ({ trigger, organizationId, siteId }: CreateProjectDialogProps) => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ProjectFormData>({
+    siteId: "",
+    organizationId,
     name: "",
     description: "",
     projectNumber: "",
     estimatedStartDate: "",
     estimatedEndDate: "",
-    location: {
-      address: "",
-      city: "",
-      state: "",
-      country: "",
-      postalCode: "",
-      latitude: "",
-      longitude: "",
-    },
   });
 
   const createProjectMutation = useCreateProjectMutation();
+  const { canCreateOrgProjects } = usePermissions();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate location is provided
-    if (!formData.location.address) {
-      toast.error("Location is required");
+    if (!siteId) {
+      toast.error("Please select a site");
       return;
     }
 
     try {
       const project = await createProjectMutation.mutateAsync({
+        siteId,
+        organizationId,
         name: formData.name,
         description: formData.description,
         project_number: formData.projectNumber,
         estimated_start_date: formData.estimatedStartDate || undefined,
         estimated_end_date: formData.estimatedEndDate || undefined,
-        address: formData.location.address,
-        city: formData.location.city,
-        state: formData.location.state,
-        country: formData.location.country,
-        postalCode: formData.location.postalCode,
-        latitude: formData.location.latitude,
-        longitude: formData.location.longitude,
       });
 
       setFormData({
+        siteId: "",
+        organizationId,
         name: "",
         description: "",
         projectNumber: "",
         estimatedStartDate: "",
         estimatedEndDate: "",
-        location: {
-          address: "",
-          city: "",
-          state: "",
-          country: "",
-          postalCode: "",
-          latitude: "",
-          longitude: "",
-        },
       });
       setOpen(false);
       router.push(`/projects/${project.id}`);
@@ -107,7 +93,9 @@ const CreateProjectDialog = ({ trigger }: CreateProjectDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogTrigger asChild disabled={!canCreateOrgProjects}>
+        {trigger}
+      </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Create a new Project</DialogTitle>
@@ -121,6 +109,7 @@ const CreateProjectDialog = ({ trigger }: CreateProjectDialogProps) => {
             submitButtonText={
               createProjectMutation.isPending ? "Creating..." : "Create Project"
             }
+            showSiteSelector={siteId ? false : true}
           />
         </form>
       </DialogContent>

@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, not } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import db from "../../config/db";
 import {
   organizationInvites,

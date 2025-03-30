@@ -18,9 +18,14 @@ const router = Router();
 router.post(
   "/",
   handle(async (req) => {
-    const { projectId } = createThreadSchema.parse(req.body);
+    const { projectId, knowledgeBaseId } = createThreadSchema.parse(req.body);
     const orgId = getOrgIdOrUnedfined(req.workspace);
-    return threadsOps.createThread(req.dbUser!.id, orgId, projectId);
+    return threadsOps.createThread(
+      req.dbUser!.id,
+      orgId,
+      projectId,
+      knowledgeBaseId
+    );
   })
 );
 
@@ -28,14 +33,17 @@ router.post(
 router.get(
   "/",
   handle(async (req) => {
-    const { page, search, projectId } = getThreadsSchema.parse(req.query);
+    const { page, search, projectId, knowledgeBaseId } = getThreadsSchema.parse(
+      req.query
+    );
     const orgId = getOrgIdOrUnedfined(req.workspace);
     return threadsOps.listThreads(
       req.dbUser!.id,
       parseInt(page || "1", 10),
       (search || "").trim(),
       orgId,
-      projectId
+      projectId,
+      knowledgeBaseId
     );
   })
 );

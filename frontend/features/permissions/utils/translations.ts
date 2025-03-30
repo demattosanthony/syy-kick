@@ -39,6 +39,7 @@ export const editRoleTranslations: Record<string, string> = Object.freeze({
   [Permissions.Resources.ORGANIZATION_INVITATIONS]: "Organization Invitations",
   [Permissions.Resources.ORGANIZATION_MEMBERS]: "Organization Members",
   [Permissions.Resources.ORGANIZATION_SEATS]: "Organization Seats",
+  [Permissions.Resources.ORGANIZATION_SITES]: "Organization Sites",
   [Permissions.Resources.ORGANIZATION_PROJECTS]: "Organization Projects",
   [Permissions.Resources.ORGANIZATION_PROJECT_DOCS]:
     "Organization Project Docs",
@@ -46,6 +47,10 @@ export const editRoleTranslations: Record<string, string> = Object.freeze({
     "Organization Project Invitations",
   [Permissions.Resources.ORGANIZATION_PROJECT_MEMBERS]:
     "Organization Project Members",
+  [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES]:
+    "Organization Knowledge Bases",
+  [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS]:
+    "Organization Knowledge Bases Docs",
 });
 
 export const editRoleActions: Record<string, string> = Object.freeze({

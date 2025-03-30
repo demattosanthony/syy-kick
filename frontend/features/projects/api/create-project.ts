@@ -6,6 +6,8 @@ export function useCreateProjectMutation() {
 
   return useMutation({
     mutationFn: (data: {
+      organizationId?: string;
+      siteId: string;
       name: string;
       description: string;
       address?: string;
@@ -22,6 +24,7 @@ export function useCreateProjectMutation() {
       api.projects.createProject(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["me"] });
     },
   });
 }

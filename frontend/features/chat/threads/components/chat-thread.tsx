@@ -223,7 +223,8 @@ export default function ThreadPage({
           width: selectedArtifact ? `${splitPosition}%` : "100%",
         }}
       >
-        <ThreadHeader />
+        {thread && <ThreadHeader />}
+
         <div className="flex-1">
           <ChatMessagesList
             messages={messages}
