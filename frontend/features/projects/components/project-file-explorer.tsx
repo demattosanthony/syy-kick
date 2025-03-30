@@ -32,9 +32,16 @@ import {
 } from "../api";
 import { usePermissions } from "@/features/permissions/context";
 import { Progress } from "@/components/ui/progress";
+import {
+  useKnowledgeBaseDocuments,
+  useUploadKnowledgeBaseFiles,
+} from "@/features/knowledge-bases/api";
+import { useDeleteKnowledgeBaseContentMutation } from "@/features/knowledge-bases/api/delete-docs";
 
 interface ProjectFileExplorerProps {
-  projectId: string;
+  projectId?: string;
+  knowledgeBaseId?: string;
+  contentSource: "project" | "knowledge-base";
   currentPath?: string;
   variant?: "compact" | "detailed";
   initialOpenPathChain?: string[];
@@ -43,15 +50,29 @@ interface ProjectFileExplorerProps {
 
 export default function ProjectFileExplorer({
   projectId,
+  knowledgeBaseId,
+  contentSource,
   currentPath,
   variant = "detailed",
   initialOpenPathChain,
   onFileSelect,
 }: ProjectFileExplorerProps) {
-  const { data: contents, isLoading } = useProjectDocsQuery(
-    projectId,
-    currentPath
-  );
+  const contentId = contentSource === "project" ? projectId : knowledgeBaseId;
+
+  // Ensure one ID is provided based on contentSource
+  if (!contentId) {
+    console.error(
+      `${
+        contentSource === "project" ? "projectId" : "knowledgeBaseId"
+      } is required`
+    );
+    return null;
+  }
+
+  const { data: contents, isLoading } =
+    contentSource === "project"
+      ? useProjectDocsQuery(contentId, currentPath)
+      : useKnowledgeBaseDocuments(contentId, currentPath);
 
   // -----------------------------
   // DRAG & DROP STATE
@@ -63,10 +84,24 @@ export default function ProjectFileExplorer({
   // UPLOAD DOCS
   // -----------------------------
   const {
-    mutateAsync: uploadFiles,
-    isPending,
-    progress,
+    mutateAsync: uploadProjectFiles,
+    isPending: isProjectUploading,
+    progress: projectUploadProgress,
   } = useUploadDocsMutation();
+
+  const {
+    mutateAsync: uploadKnowledgeBaseFiles,
+    isPending: isKnowledgeBaseUploading,
+    progress: knowledgeBaseUploadProgress,
+  } = useUploadKnowledgeBaseFiles();
+
+  // Then use the computed values for UI display
+  const isPending =
+    contentSource === "project" ? isProjectUploading : isKnowledgeBaseUploading;
+  const progress =
+    contentSource === "project"
+      ? projectUploadProgress
+      : knowledgeBaseUploadProgress;
 
   // -----------------------------
   // PROXIMITY DETECTION
@@ -206,7 +241,17 @@ export default function ProjectFileExplorer({
 
       if (!droppedFiles.length) return;
 
-      await uploadFiles({ projectId, files: droppedFiles });
+      if (contentSource === "project") {
+        await uploadProjectFiles({
+          projectId: contentId,
+          files: droppedFiles,
+        });
+      } else {
+        await uploadKnowledgeBaseFiles({
+          knowledgeBaseId: contentId,
+          files: droppedFiles,
+        });
+      }
       console.log("Files/folders uploaded successfully!");
     } catch (error) {
       console.error("Failed to upload files/folders:", error);
@@ -242,17 +287,17 @@ export default function ProjectFileExplorer({
     return (
       <div
         ref={explorerRef}
-        className="relative flex flex-col items-center justify-center py-12 px-4 text-center w-full max-w-full"
+        className="relative flex flex-col items-center justify-center py-12 px-4 text-center w-full max-w-full bg-background"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         {isDragging && (
           <div
-            className="absolute inset-0 flex items-center justify-center border-2 border-dashed rounded-lg z-10"
+            className="absolute inset-0 flex items-center justify-center border-2 border-dashed rounded-lg z-10 backdrop-blur-sm"
             style={{
               borderColor: "hsl(var(--drag-drop-border))",
-              backgroundColor: "hsl(var(--drag-drop-background) / 0.8)",
+              backgroundColor: "hsl(var(--drag-drop-background) / 0.9)",
             }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -365,7 +410,8 @@ export default function ProjectFileExplorer({
           <FileExplorerItem
             key={item.path}
             item={item}
-            projectId={projectId}
+            contentId={contentId}
+            contentSource={contentSource}
             variant={variant}
             initialOpenPathChain={initialOpenPathChain}
             onFileSelect={onFileSelect}
@@ -395,7 +441,8 @@ export default function ProjectFileExplorer({
 interface FileExplorerItemProps {
   item: DocumentContent;
   depth?: number;
-  projectId: string;
+  contentId: string;
+  contentSource: "project" | "knowledge-base";
   variant: "compact" | "detailed";
   initialOpenPathChain?: string[];
   onFileSelect?: (item: DocumentContent) => void;
@@ -404,7 +451,8 @@ interface FileExplorerItemProps {
 function FileExplorerItem({
   item,
   depth = 0,
-  projectId,
+  contentId,
+  contentSource,
   variant,
   initialOpenPathChain = [],
   onFileSelect,
@@ -425,13 +473,27 @@ function FileExplorerItem({
   const [isOpen, setIsOpen] = useState(shouldAutoOpen);
 
   // Only query child contents if folder is open (in compact mode)
-  const { data: childContents } = useProjectDocsQuery(
-    projectId,
-    variant === "compact" && item.type === "folder" && isOpen ? item.path : ""
-  );
+  const { data: childContents } =
+    contentSource === "project"
+      ? useProjectDocsQuery(
+          contentId,
+          variant === "compact" && item.type === "folder" && isOpen
+            ? item.path
+            : ""
+        )
+      : useKnowledgeBaseDocuments(
+          contentId,
+          variant === "compact" && item.type === "folder" && isOpen
+            ? item.path
+            : ""
+        );
 
-  const { canDeleteOrgProjectDocs } = usePermissions();
+  const { canDeleteOrgProjectDocs, canDeleteOrgKnowledgeBaseDocs } =
+    usePermissions();
+
   const deleteProjectContentMutation = useDeleteProjectContentMutation();
+  const deleteKnowledgeBaseContentMutation =
+    useDeleteKnowledgeBaseContentMutation();
 
   // Show an emoji for known file extensions
   const getFileIcon = (filename: string) => {
@@ -487,19 +549,31 @@ function FileExplorerItem({
       return;
     }
 
-    // If it's a folder, go to /tree
+    // If it's a folder, go to the appropriate tree path
     if (item.type === "folder") {
       if (variant === "compact") {
         setIsOpen(!isOpen);
       }
-      router.push(`/projects/${projectId}/tree/${item.path}`);
+
+      const basePath =
+        contentSource === "project"
+          ? `/projects/${contentId}/tree/`
+          : `/knowledge-bases/${contentId}/tree/`;
+
+      router.push(`${basePath}${item.path}`);
     } else {
-      // If it's a file, go to /blob
+      // If it's a file, go to the appropriate blob view
       const encodedPath = item.path
         .split("/")
         .map(encodeURIComponent)
         .join("/");
-      router.push(`/projects/${projectId}/blob/${encodedPath}`);
+
+      const basePath =
+        contentSource === "project"
+          ? `/projects/${contentId}/blob/`
+          : `/knowledge-bases/${contentId}/blob/`;
+
+      router.push(`${basePath}${encodedPath}`);
     }
   };
 
@@ -545,7 +619,7 @@ function FileExplorerItem({
               )}
             </span>
           )}
-          <span className="text-sm hover:underline hover:text-blue-500 truncate min-w-0 max-w-[calc(100vw*0.55)] md:max-w-[calc(100vw*0.25)]">
+          <span className="text-sm hover:underline hover:text-blue-500 truncate min-w-0 max-w-[calc(100vw*0.55)] md:max-w-[calc(100vw*0.30)]">
             {item.name}
           </span>
 
@@ -598,14 +672,25 @@ function FileExplorerItem({
                 <Button
                   variant="ghost"
                   className="w-full justify-start text-destructive hover:bg-destructive/10"
-                  disabled={!canDeleteOrgProjectDocs}
+                  disabled={
+                    contentSource === "project"
+                      ? !canDeleteOrgProjectDocs
+                      : !canDeleteOrgKnowledgeBaseDocs
+                  }
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    deleteProjectContentMutation.mutate({
-                      projectId,
-                      path: item.path,
-                    });
+                    if (contentSource === "project") {
+                      deleteProjectContentMutation.mutate({
+                        projectId: contentId,
+                        path: item.path,
+                      });
+                    } else {
+                      deleteKnowledgeBaseContentMutation.mutate({
+                        kbId: contentId,
+                        path: item.path,
+                      });
+                    }
                   }}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -628,7 +713,8 @@ function FileExplorerItem({
                 key={child.path}
                 item={child}
                 depth={depth + 1}
-                projectId={projectId}
+                contentId={contentId}
+                contentSource={contentSource}
                 variant={variant}
                 onFileSelect={onFileSelect}
                 initialOpenPathChain={

@@ -75,7 +75,8 @@ export function ContextSelector({
           <div className="flex-1 h-[500px]">
             <ScrollArea className="h-full w-full">
               <ProjectFileExplorer
-                projectId={projectId || ""}
+                projectId={projectId}
+                contentSource="project"
                 variant="compact"
                 onFileSelect={handleFileSelect}
               />

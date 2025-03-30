@@ -14,17 +14,24 @@ export default function ThreadsList({
   projectId,
   compact = false,
   initalThreads,
+  knowledgeBaseId,
 }: {
   projectId?: string;
   compact?: boolean;
   initalThreads?: Thread[];
+  knowledgeBaseId?: string;
 }) {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useThreadsQuery(search, projectId, initalThreads);
+    useThreadsQuery({
+      search,
+      projectId,
+      initalThreads,
+      knowledgeBaseId,
+    });
 
   useEffect(() => {
     const observer = new IntersectionObserver(

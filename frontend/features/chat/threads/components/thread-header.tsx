@@ -14,7 +14,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import Link from "next/link";
-import { useThreadQuery } from "@/features/chat/threads/api";
 import {
   Tooltip,
   TooltipContent,
@@ -23,6 +22,7 @@ import {
 import { toast } from "sonner";
 import React from "react";
 import api from "@/lib/api";
+import { useThreadQuery } from "../api";
 
 export default function ThreadHeader() {
   const params = useParams();
@@ -31,6 +31,7 @@ export default function ThreadHeader() {
   const { toggleSidebar } = useSidebar();
 
   const threadId = params.threadId as string;
+
   const [, setMessages] = useAtom(messagesAtom);
 
   const { data: thread } = useThreadQuery(threadId, false);
@@ -54,6 +55,18 @@ export default function ThreadHeader() {
     }
   };
 
+  // Determine parent entity and link
+  let parentName: string | undefined;
+  let parentLink: string | undefined;
+
+  if (thread?.project) {
+    parentName = thread.project.name;
+    parentLink = `/projects/${thread.project.id}`;
+  } else if (thread?.knowledgeBase) {
+    parentName = thread.knowledgeBase.name;
+    parentLink = `/knowledge-bases/${thread.knowledgeBase.id}`;
+  }
+
   return (
     <header
       className={cn(
@@ -69,22 +82,22 @@ export default function ThreadHeader() {
           </div>
 
           <div>
-            {thread?.project && (
+            {parentName && parentLink && (
               <Breadcrumb>
                 <BreadcrumbList>
                   <BreadcrumbItem>
                     <Link
-                      href={`/projects/${thread.project.id}`}
+                      href={parentLink}
                       className="hover:text-blue-500 hover:underline"
                     >
-                      {thread.project.name}
+                      {parentName}
                     </Link>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator>
                     <Slash />
                   </BreadcrumbSeparator>
                   <BreadcrumbItem>
-                    <span className="font-bold">{thread.title}</span>
+                    <span className="font-bold">{thread?.title}</span>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>

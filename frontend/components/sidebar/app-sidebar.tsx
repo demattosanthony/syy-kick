@@ -28,6 +28,7 @@ import { Button } from "../ui/button";
 import {
   ArrowLeftToLine,
   ArrowRightToLine,
+  BookOpen,
   MapPinIcon,
   Plus,
   Workflow,
@@ -40,6 +41,7 @@ import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
 import useGetUnlinkedProjectsQuery from "@/features/projects/api/get-unlinked-projects";
 import LinkProjectDialog from "@/features/projects/components/link-projects-dialog";
 import { SidebarProjectsList } from "./sidebar-projects-list";
+import CreateKnowledgeBaseDialog from "@/features/knowledge-bases/components/create-knowledge-base-dialog";
 
 export function AppSidebar({
   user,
@@ -51,7 +53,8 @@ export function AppSidebar({
   const [isPinned, setIsPinned] = React.useState(true);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-  const { canCreateOrgSites, canUpdateOrgSites } = usePermissions();
+  const { canCreateOrgSites, canUpdateOrgSites, canCreateOrgKnowledgeBases } =
+    usePermissions();
   const [showCreateSiteDialog, setShowCreateSiteDialog] = React.useState(false);
 
   const {
@@ -124,34 +127,30 @@ export function AppSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <ThreadsLink />
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
                 {!(
                   activeWorkspace?.type === "personal" &&
                   user.subscriptionStatus !== "active"
                 ) && (
-                    <SidebarButton
-                      href="/sites"
-                      icon={MapPinIcon}
-                      hoverIcon={MapPinIcon}
-                      label="Sites"
-                      actionTrigger={
-                        <Button
-                          disabled={!canCreateOrgSites}
-                          variant="ghost"
-                          className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowCreateSiteDialog(true);
-                          }}
-                        >
-                          <Plus className="h-6 w-6" />
-                        </Button>
-                      }
-                    />
-                  )}
+                  <SidebarButton
+                    href="/sites"
+                    icon={MapPinIcon}
+                    hoverIcon={MapPinIcon}
+                    label="Sites"
+                    actionTrigger={
+                      <Button
+                        disabled={!canCreateOrgSites}
+                        variant="ghost"
+                        className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowCreateSiteDialog(true);
+                        }}
+                      >
+                        <Plus className="h-6 w-6" />
+                      </Button>
+                    }
+                  />
+                )}
               </SidebarMenuItem>
 
               {activeWorkspace?.type === "organization" && (
@@ -164,6 +163,32 @@ export function AppSidebar({
                   />
                 </SidebarMenuItem>
               )}
+
+              <SidebarMenuItem>
+                <SidebarButton
+                  href="/knowledge-bases"
+                  label="Knowledge Bases"
+                  icon={BookOpen}
+                  hoverIcon={BookOpen}
+                  actionTrigger={
+                    <CreateKnowledgeBaseDialog
+                      trigger={
+                        <Button
+                          disabled={!canCreateOrgKnowledgeBases}
+                          variant="ghost"
+                          className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                        >
+                          <Plus className="h-6 w-6" />
+                        </Button>
+                      }
+                    />
+                  }
+                />
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <ThreadsLink />
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

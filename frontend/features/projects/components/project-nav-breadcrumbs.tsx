@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -10,29 +12,61 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Fragment } from "react";
 
-const ProjectNavBreadcrumbs = ({
-  project,
+interface BaseResource {
+  id: string;
+  name: string;
+  siteId?: string;
+  site?: {
+    name: string;
+  };
+}
+
+const ResourceNavBreadcrumbs = ({
+  resource,
+  contentType = "project",
   maxItems = 5, // Default max items to show
   maxLength = {
-    project: { sm: 200, default: 120 },
+    resource: { sm: 200, default: 120 },
     segment: { sm: 150, default: 100 },
     lastSegment: { sm: 200, default: 120 },
   },
 }: {
-  project: Project;
+  resource: BaseResource;
+  contentType: "project" | "knowledge-base";
   maxItems?: number;
   maxLength?: {
-    project: { sm: number; default: number };
+    resource: { sm: number; default: number };
     segment: { sm: number; default: number };
     lastSegment: { sm: number; default: number };
   };
 }) => {
   const params = useParams();
   const pathArray = (params.path as string[]) || [];
-  const totalItems = 2 + pathArray.length; // "Projects" + project name + path segments
+  const totalItems = 3 + pathArray.length; // "Root" + resource name + path segments
+
+  // Set up config based on resource type
+  const config = {
+    project: {
+      rootLabel: resource.site?.name ? resource.site.name : "Projects",
+      rootHref: "/projects?siteId=" + resource?.siteId,
+      parentLabel: "Sites",
+      parentHref: "/sites",
+      resourcesPath: "/projects",
+    },
+    "knowledge-base": {
+      rootLabel: "Knowledge Bases",
+      rootHref: "/knowledge-bases",
+      parentLabel: "Knowledge Bases",
+      parentHref: "/knowledge-bases",
+      resourcesPath: "/knowledge-bases",
+    },
+  };
+
+  const { rootLabel, rootHref, parentLabel, parentHref, resourcesPath } =
+    config[contentType];
 
   // Calculate how many items to show from the path
-  const itemsToShow = Math.min(maxItems - 2, pathArray.length); // Reserve 2 for "Projects" and project name
+  const itemsToShow = Math.min(maxItems - 3, pathArray.length); // Reserve 2 for root and resource name
   const showEllipsis = totalItems > maxItems && pathArray.length > itemsToShow;
   const visiblePathArray = showEllipsis
     ? pathArray.slice(-itemsToShow) // Take the last `itemsToShow` items
@@ -81,16 +115,21 @@ const ProjectNavBreadcrumbs = ({
   return (
     <Breadcrumb className="w-full">
       <BreadcrumbList className="flex items-center w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
-        {/* First item: "Projects" */}
-        {renderBreadcrumbItem("Projects", true, "/projects?siteId=" + project?.siteId)}
+        {renderBreadcrumbItem(parentLabel, true, parentHref)}
         {renderSeparator()}
+        {contentType === "project" && resource.site?.name && (
+          <>
+            {renderBreadcrumbItem(rootLabel, true, rootHref)}
+            {renderSeparator()}
+          </>
+        )}
 
-        {/* Project name */}
+        {/* Resource name */}
         {renderBreadcrumbItem(
-          project?.name,
+          resource?.name,
           true,
-          `/projects/${project.id}`,
-          maxLength.project
+          `${resourcesPath}/${resource.id}`,
+          maxLength.resource
         )}
 
         {/* Path segments with max limit */}
@@ -129,7 +168,7 @@ const ProjectNavBreadcrumbs = ({
                     : renderBreadcrumbItem(
                         decodedSegment,
                         true,
-                        `/projects/${project.id}/tree/${pathSoFar}`,
+                        `${resourcesPath}/${resource.id}/tree/${pathSoFar}`,
                         maxLength.segment
                       )}
                   {!isLastItem && renderSeparator()}
@@ -143,4 +182,34 @@ const ProjectNavBreadcrumbs = ({
   );
 };
 
+// For backward compatibility, export with the original name as well
+const ProjectNavBreadcrumbs = (props: {
+  project: Project;
+  maxItems?: number;
+  maxLength?: {
+    project: { sm: number; default: number };
+    segment: { sm: number; default: number };
+    lastSegment: { sm: number; default: number };
+  };
+}) => {
+  const { project, maxItems, maxLength } = props;
+  const renamedMaxLength = maxLength
+    ? {
+        resource: maxLength.project,
+        segment: maxLength.segment,
+        lastSegment: maxLength.lastSegment,
+      }
+    : undefined;
+
+  return (
+    <ResourceNavBreadcrumbs
+      resource={project}
+      contentType="project"
+      maxItems={maxItems}
+      maxLength={renamedMaxLength}
+    />
+  );
+};
+
 export default ProjectNavBreadcrumbs;
+export { ResourceNavBreadcrumbs };

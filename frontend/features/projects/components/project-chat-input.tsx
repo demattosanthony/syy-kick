@@ -7,7 +7,17 @@ import api from "@/lib/api";
 import { useWorkspace } from "@/components/sidebar/workspace-context";
 import { ChatInputForm } from "@/features/chat/messages/components";
 
-const ProjectChatInput = ({ projectId }: { projectId: string }) => {
+interface ProjectChatInputProps {
+  type: "project" | "knowledge-base";
+  projectId?: string;
+  knowledgeBaseId?: string;
+}
+
+const ProjectChatInput = ({
+  projectId,
+  type,
+  knowledgeBaseId,
+}: ProjectChatInputProps) => {
   const router = useRouter();
   const { activeWorkspace } = useWorkspace();
   const [initalInput, setInitalInput] = useAtom(initalInputAtom);
@@ -24,7 +34,8 @@ const ProjectChatInput = ({ projectId }: { projectId: string }) => {
         activeWorkspace?.type === "organization"
           ? activeWorkspace.id
           : undefined,
-        projectId
+        type === "project" ? projectId : undefined,
+        type === "knowledge-base" ? knowledgeBaseId : undefined
       );
       router.prefetch(`/threads/${threadId}?new=true`);
       router.push(`/threads/${threadId}?new=true`);
@@ -39,10 +50,10 @@ const ProjectChatInput = ({ projectId }: { projectId: string }) => {
       setInput={setInitalInput}
       handleInputChange={handleInputChange}
       onSubmit={handleSubmit}
-      showContextSelector={true}
+      showContextSelector={projectId ? true : false}
       projectId={projectId}
     />
   );
-}
+};
 
 export default ProjectChatInput;

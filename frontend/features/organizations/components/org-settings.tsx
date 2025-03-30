@@ -43,8 +43,6 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
 
   const { canReadOrgSeats, canDeleteOrg } = usePermissions();
 
-  const [copied, setCopied] = useState(false);
-
   if (!org) return null;
 
   return (

@@ -14,10 +14,11 @@ import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
+import { FileUploadMixin } from "./file-upload-mixin";
+import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
 import { SortOption } from "@/features/projects/types";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 /**
  * Custom ApiError class for error handling
@@ -74,8 +75,8 @@ async function clientFetch<T>(
     throw new ApiError(
       response.status,
       errorData?.message ||
-      errorData?.error ||
-      `Request failed with status ${response.status}`
+        errorData?.error ||
+        `Request failed with status ${response.status}`
     );
   }
 
@@ -466,12 +467,14 @@ class UploadApi extends ApiRequest {
 class ThreadApi extends ApiRequest {
   async createThread(
     organizationId?: string,
-    projectId?: string
+    projectId?: string,
+    knowledgeBaseId?: string
   ): Promise<{ id: string }> {
     try {
       return await this.request<{ id: string }>("/threads", "POST", {
         organizationId,
         projectId,
+        knowledgeBaseId,
       });
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 402) {
@@ -484,12 +487,14 @@ class ThreadApi extends ApiRequest {
   async getThreads(
     page: number = 1,
     search: string = "",
-    projectId?: string
+    projectId?: string,
+    knowledgeBaseId?: string
   ): Promise<Thread[]> {
     const queryParams = new URLSearchParams({
       page: page.toString(),
       search: search,
       ...(projectId && { projectId }),
+      ...(knowledgeBaseId && { knowledgeBaseId }),
     });
     const endpoint = `/threads?${queryParams.toString()}`;
 
@@ -540,6 +545,7 @@ class ThreadApi extends ApiRequest {
 class ProjectsApi extends ApiRequest {
   private readonly LARGE_FILE_THRESHOLD = 100 * 1024 * 1024; // 100MB
   private readonly CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks for large files
+  private fileUploadMixin = new FileUploadMixin();
 
   async createProject(data: {
     siteId: string;
@@ -564,7 +570,8 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -618,7 +625,8 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`,
       "DELETE"
     );
@@ -634,7 +642,8 @@ class ProjectsApi extends ApiRequest {
     }
 
     return await this.request(
-      `/projects/${projectId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -689,151 +698,6 @@ class ProjectsApi extends ApiRequest {
     );
   }
 
-  // ---------------------------------------------------
-  //         Utility: Calculate SHA-256 of a file
-  // ---------------------------------------------------
-  private async calculateSha256(file: File): Promise<string> {
-    // Use Web Crypto API for better performance than pure JS implementations
-    const buffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-
-    // Convert hash to hex string
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-  }
-
-  // ---------------------------------------------------
-  //   Utility: Generate folder + file entries
-  // ---------------------------------------------------
-  private async generateEntriesFromFileList(
-    files: File[],
-    projectId: string
-  ): Promise<
-    {
-      path: string;
-      type: "folder" | "file";
-      fileKey?: string;
-      mimeType?: string;
-      size?: number;
-      sha256?: string;
-    }[]
-  > {
-    const entries: {
-      path: string;
-      type: "folder" | "file";
-      fileKey?: string;
-      mimeType?: string;
-      size?: number;
-      sha256?: string;
-    }[] = [];
-
-    // We'll track which folders we've seen, so we don't duplicate folder entries
-    const seenFolders = new Set<string>();
-
-    for (const file of files) {
-      // webkitRelativePath includes the nested folder structure
-      // e.g. "myFolder/subfolder1/file.txt".
-      // If the user just selected files (no directories), it might just be the filename.
-      const filePath: string =
-        (file as File & { webkitRelativePath?: string }).webkitRelativePath ||
-        file.name;
-
-      // We want to push entries for each folder in that path too
-      // e.g. "myFolder" and "myFolder/subfolder1" as "folder" type
-      const parts = filePath.split("/").filter(Boolean); // remove empty segments
-      // Build subpaths step by step
-      for (let i = 0; i < parts.length - 1; i++) {
-        const folderPath = parts.slice(0, i + 1).join("/");
-        if (!seenFolders.has(folderPath)) {
-          seenFolders.add(folderPath);
-          entries.push({
-            path: folderPath,
-            type: "folder",
-          });
-        }
-      }
-
-      // The last part is the file name itself
-      const sha256 = await this.calculateSha256(file);
-      const fileKey = `projects/${projectId}/${sha256}`;
-
-      // Push the file entry
-      entries.push({
-        path: filePath,
-        type: "file",
-        fileKey,
-        mimeType: file.type || "application/octet-stream",
-        size: file.size,
-        sha256,
-      });
-    }
-
-    return entries;
-  }
-
-  private async uploadLargeFile(
-    file: File,
-    uploadUrl: string,
-    onProgress?: (loaded: number) => void
-  ): Promise<void> {
-    const chunks = Math.ceil(file.size / this.CHUNK_SIZE);
-
-    for (let i = 0; i < chunks; i++) {
-      const start = i * this.CHUNK_SIZE;
-      const end = Math.min(start + this.CHUNK_SIZE, file.size);
-      const chunk = file.slice(start, end);
-
-      const headers = {
-        "Content-Type": file.type || "application/octet-stream",
-        "Content-Range": `bytes ${start}-${end - 1}/${file.size}`,
-      };
-
-      // Implement retry logic for each chunk
-      let retries = 3;
-      while (retries > 0) {
-        try {
-          const response = await fetch(uploadUrl, {
-            method: "PUT",
-            headers,
-            body: chunk,
-          });
-
-          if (!response.ok)
-            throw new Error(`Upload failed with status ${response.status}`);
-          onProgress?.(end);
-          break;
-        } catch (error) {
-          retries--;
-          if (retries === 0) throw error;
-          await new Promise((resolve) =>
-            setTimeout(resolve, (3 - retries) * 1000)
-          );
-        }
-      }
-    }
-  }
-
-  private async uploadRegularFile(
-    file: File,
-    uploadUrl: string,
-    onProgress?: (loaded: number) => void
-  ): Promise<void> {
-    const response = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": file.type || "application/octet-stream",
-      },
-      body: file,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Upload failed with status ${response.status}`);
-    }
-
-    onProgress?.(file.size);
-  }
-
   public async uploadFiles(
     projectId: string,
     files: File[],
@@ -842,71 +706,23 @@ class ProjectsApi extends ApiRequest {
   ): Promise<{
     success: boolean;
   }> {
-    const entries = await this.generateEntriesFromFileList(files, projectId);
-    let uploadedBytes = 0;
-    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    // Use the mixin to prepare files and get entries
+    const payload = await this.fileUploadMixin.prepareFilesForUpload(
+      projectId,
+      "projects",
+      files,
+      basePath,
+      onProgress
+    );
 
-    for (const entry of entries) {
-      if (entry.type === "file" && entry.fileKey) {
-        const rawFile = files.find((f) => {
-          const relPath =
-            (f as File & { webkitRelativePath?: string }).webkitRelativePath ||
-            f.name;
-          return relPath === entry.path;
-        });
-
-        if (!rawFile) {
-          console.warn(
-            `No matching File object found for path: ${entry.path}, skipping.`
-          );
-          continue;
-        }
-
-        const { url: uploadUrl } = await api.uploads.getPresignedUrl(
-          rawFile.name,
-          rawFile.type,
-          rawFile.size,
-          entry.fileKey
-        );
-
-        try {
-          // Choose upload method based on file size
-          if (rawFile.size >= this.LARGE_FILE_THRESHOLD) {
-            await this.uploadLargeFile(rawFile, uploadUrl, (chunkLoaded) => {
-              const currentProgress =
-                ((uploadedBytes + chunkLoaded) / totalBytes) * 100;
-              onProgress?.(currentProgress);
-            });
-          } else {
-            await this.uploadRegularFile(rawFile, uploadUrl, (loaded) => {
-              const currentProgress =
-                ((uploadedBytes + loaded) / totalBytes) * 100;
-              onProgress?.(currentProgress);
-            });
-          }
-          uploadedBytes += rawFile.size;
-        } catch (error: unknown) {
-          throw new ApiError(
-            500,
-            `Failed to upload file ${entry.path}: ${error}`
-          );
-        }
-      }
-    }
-
-    const payload = { basePath, entries };
-    return this.request<{
-      success: boolean;
-    }>(`/projects/${projectId}/documents`, "POST", payload);
+    // Make the actual API request with the prepared data
+    return this.request(`/projects/${projectId}/documents`, "POST", payload);
   }
 
   // Temporary
   async getUnlinkedProjects() {
     try {
-      return await this.request<Project[]>(
-        `/unlinked-projects`,
-        "GET"
-      );
+      return await this.request<Project[]>(`/unlinked-projects`, "GET");
     } catch (error) {
       throw error;
     }
@@ -1113,6 +929,127 @@ class SitesApi extends ApiRequest {
 }
 
 /**
+ * Knowledge Bases API Module
+ */
+export class KnowledgeBasesApi extends ApiRequest {
+  private fileUploadMixin = new FileUploadMixin();
+
+  async createKnowledgeBase(data: {
+    name: string;
+    description?: string;
+  }): Promise<KnowledgeBase> {
+    return await this.request("/knowledge-bases", "POST", data);
+  }
+
+  async getKnowledgeBase(knowledgeBaseId: string): Promise<KnowledgeBase> {
+    return await this.request(`/knowledge-bases/${knowledgeBaseId}`);
+  }
+
+  async listKnowledgeBases(
+    page: number = 1,
+    pageSize: number = 10,
+    search?: string
+  ): Promise<{
+    data: KnowledgeBase[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalCount: number;
+      totalPages: number;
+      hasMore: boolean;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("page", page.toString());
+    queryParams.append("pageSize", pageSize.toString());
+    if (search) queryParams.append("search", search);
+
+    return await this.request(`/knowledge-bases?${queryParams.toString()}`);
+  }
+
+  async deleteKnowledgeBase(
+    knowledgeBaseId: string
+  ): Promise<{ success: boolean }> {
+    return await this.request(`/knowledge-bases/${knowledgeBaseId}`, "DELETE");
+  }
+
+  async updateKnowledgeBase(
+    knowledgeBaseId: string,
+    data: {
+      name?: string;
+      description?: string;
+    }
+  ): Promise<KnowledgeBase> {
+    return await this.request(
+      `/knowledge-bases/${knowledgeBaseId}`,
+      "PATCH",
+      data
+    );
+  }
+
+  async getDocuments(
+    knowledgeBaseId: string,
+    path?: string
+  ): Promise<DocumentContent[]> {
+    const queryParams = new URLSearchParams();
+    if (path) queryParams.append("path", path);
+    return await this.request(
+      `/knowledge-bases/${knowledgeBaseId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
+      }`
+    );
+  }
+
+  async uploadFiles(
+    knowledgeBaseId: string,
+    files: File[],
+    basePath: string = "",
+    onProgress?: (progress: number) => void
+  ): Promise<{ success: boolean }> {
+    // Use the mixin to prepare files and get entries
+    const payload = await this.fileUploadMixin.prepareFilesForUpload(
+      knowledgeBaseId,
+      "knowledge-bases",
+      files,
+      basePath,
+      onProgress
+    );
+
+    // Make the actual API request with the prepared data
+    return this.request(
+      `/knowledge-bases/${knowledgeBaseId}/documents`,
+      "POST",
+      payload
+    );
+  }
+
+  async deleteDocs(
+    knowledgeBaseId: string,
+    path: string
+  ): Promise<{ success: boolean }> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("path", path);
+
+    return await this.request(
+      `/knowledge-bases/${knowledgeBaseId}/documents?${queryParams.toString()}`,
+      "DELETE"
+    );
+  }
+
+  async getDocument(
+    knowledgeBaseId: string,
+    path: string
+  ): Promise<DocumentContent> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("path", path);
+
+    return await this.request(
+      `/knowledge-bases/${knowledgeBaseId}/document?${queryParams.toString()}`
+    );
+  }
+}
+
+/**
  *  Centralized ApiClient class that uses the modules
  */
 class ApiClient {
@@ -1127,6 +1064,7 @@ class ApiClient {
   workflows: WorkflowsApi;
   permissions: PermissionsApi;
   sites: SitesApi;
+  knowledgeBases: KnowledgeBasesApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -1140,6 +1078,7 @@ class ApiClient {
     this.workflows = new WorkflowsApi(baseUrl);
     this.permissions = new PermissionsApi(baseUrl);
     this.sites = new SitesApi(baseUrl);
+    this.knowledgeBases = new KnowledgeBasesApi(baseUrl);
   }
 }
 

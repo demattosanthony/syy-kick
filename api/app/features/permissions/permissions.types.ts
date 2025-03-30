@@ -24,6 +24,8 @@ export namespace Permissions {
     ORGANIZATION_PROJECT_DOCS = "org_project_docs",
     ORGANIZATION_PROJECT_INVITATIONS = "org_project_invitations",
     ORGANIZATION_PROJECT_MEMBERS = "org_project_members",
+    ORGANIZATION_KNOWLEDGE_BASES = "org_knowledge_bases",
+    ORGANIZATION_KNOWLEDGE_BASES_DOCS = "org_knowledge_bases_docs",
   }
 
   export enum Level {

@@ -1,3 +1,4 @@
+import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
 import { Project } from "./project";
 
 export enum MessageRole {
@@ -72,6 +73,8 @@ export interface Thread {
   projectId?: string;
   project?: Project;
   isPublic?: boolean;
+  knowledgeBaseId?: string;
+  knowledgeBase?: KnowledgeBase;
   messages: ChatMessage[];
 }
 

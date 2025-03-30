@@ -2,6 +2,7 @@ import { useParams } from "next/navigation";
 
 interface DecodedPathParams {
   projectId: string;
+  knowledgeBaseId: string;
   decodedPathArray: string[];
   currentPath: string;
 }
@@ -13,6 +14,7 @@ interface DecodedPathParams {
 export function useDecodedPathParams(): DecodedPathParams {
   const params = useParams();
   const projectId = params.projectId as string;
+  const knowledgeBaseId = params.kbId as string;
   const pathArray = (params.path as string[]) || [];
 
   // Decode each path segment individually
@@ -25,6 +27,7 @@ export function useDecodedPathParams(): DecodedPathParams {
 
   return {
     projectId,
+    knowledgeBaseId,
     decodedPathArray,
     currentPath,
   };

@@ -36,16 +36,15 @@ import PermissionsMiddlewares from "./permissions/permissions.middlewares";
 import { formatSites } from "./sites/sites.utils";
 
 const schemas = {
-  createProject: z
-    .object({
-      name: z.string().min(1).max(255),
-      description: z.string().max(255).optional(),
-      project_number: z.string().optional(),
-      organizationId: z.string().uuid().optional(),
-      estimated_start_date: z.string().datetime().optional(),
-      estimated_end_date: z.string().datetime().optional(),
-      siteId: z.string().uuid(),
-    }),
+  createProject: z.object({
+    name: z.string().min(1).max(255),
+    description: z.string().max(255).optional(),
+    project_number: z.string().optional(),
+    organizationId: z.string().uuid().optional(),
+    estimated_start_date: z.string().datetime().optional(),
+    estimated_end_date: z.string().datetime().optional(),
+    siteId: z.string().uuid(),
+  }),
 
   updateProject: z.object({
     name: z.string().min(1).max(255).optional(),
@@ -128,7 +127,7 @@ async function createProject(
           ? new Date(data.estimated_end_date)
           : null,
         organizationId: data.organizationId,
-        userId: !data.organizationId ? userId : undefined,
+        userId: userId,
         visibility: "private",
         siteId: data.siteId,
       })
@@ -173,7 +172,12 @@ async function deleteProject(projectId: string) {
   await db.delete(projects).where(eq(projects.id, projectId));
 }
 
-type SortOption = "recent" | "name-asc" | "name-desc" | "created-asc" | "created-desc";
+type SortOption =
+  | "recent"
+  | "name-asc"
+  | "name-desc"
+  | "created-asc"
+  | "created-desc";
 
 async function listProjects(params: {
   siteId: string;
@@ -265,12 +269,12 @@ async function listProjects(params: {
     limit,
     offset,
     with: {
-      site: true
-    }
+      site: true,
+    },
   });
 
   return {
-    data: projs.map(p => {
+    data: projs.map((p) => {
       const site = p.site ? formatSites([p.site]) : null;
 
       if (!site) {
@@ -279,7 +283,7 @@ async function listProjects(params: {
 
       return {
         ...p,
-        site: site[0]
+        site: site[0],
       };
     }),
     pagination: {
@@ -307,7 +311,7 @@ async function getPaginatedRecentProjects(params: {
     })
     .from(projects)
     .leftJoin(accessLogs, eq(accessLogs.projectId, projects.id))
-    .where(and(...params.conditions ?? []));
+    .where(and(...(params.conditions ?? [])));
   const totalCount = totalCountResult?.totalCount ?? 0;
 
   const projs = await db
@@ -333,19 +337,19 @@ async function getPaginatedRecentProjects(params: {
       createdAt: projects.createdAt,
       updatedAt: projects.updatedAt,
       lastAccess: sql`MAX(${accessLogs.createdAt})`.as("lastAccess"),
-      site: sites
+      site: sites,
     })
     .from(projects)
     .leftJoin(accessLogs, eq(accessLogs.projectId, projects.id))
     .leftJoin(sites, eq(sites.id, projects.siteId))
-    .where(and(...params.conditions ?? []))
+    .where(and(...(params.conditions ?? [])))
     .groupBy(projects.id, sites.id)
     .orderBy(sql`MAX(${accessLogs.createdAt}) DESC NULLS LAST`)
     .limit(limit)
     .offset(offset);
 
   return {
-    data: projs.map(p => {
+    data: projs.map((p) => {
       const site = p.site ? formatSites([p.site]) : null;
 
       if (!site) {
@@ -354,7 +358,7 @@ async function getPaginatedRecentProjects(params: {
 
       return {
         ...p,
-        site: site[0]
+        site: site[0],
       };
     }),
     pagination: {
@@ -377,6 +381,7 @@ async function getProject(projectId: string) {
         },
       },
       user: true,
+      site: true,
     },
   });
 
@@ -716,11 +721,11 @@ async function createFolderStructure(
         projectId,
         ...(entry.type === "file"
           ? {
-            fileKey: entry.fileKey,
-            size: entry.size,
-            mimeType: entry.mimeType,
-            fileHash: entry.sha256,
-          }
+              fileKey: entry.fileKey,
+              size: entry.size,
+              mimeType: entry.mimeType,
+              fileHash: entry.sha256,
+            }
           : {}),
       })
       .returning();
