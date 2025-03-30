@@ -251,3 +251,99 @@
 *:hover {
   scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
 }
+
+/* Custom styles for the map popup */
+.site-popup {
+  padding: 8px;
+  font-family: system-ui, sans-serif;
+}
+
+.site-popup h3 {
+  margin-top: 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.site-details {
+  margin-bottom: 12px;
+}
+
+.site-details p {
+  margin: 4px 0;
+  color: #555;
+  font-size: 14px;
+}
+
+.view-site-btn {
+  display: inline-block;
+  padding: 6px 12px;
+  background-color: #0070f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.view-site-btn:hover {
+  background-color: #0051cf;
+}
+
+/* Override mapboxgl popup styles for better appearance */
+.mapboxgl-popup-content {
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.mapboxgl-popup-close-button {
+  font-size: 18px;
+  color: #666;
+}
+
+/* Custom Mapbox popup styling */
+.shadcn-card-popup .mapboxgl-popup-content {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.shadcn-card-popup .mapboxgl-popup-tip {
+  border-top-color: white;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  margin-top: -1px;
+}
+
+/* For dark mode compatibility */
+.dark .shadcn-card-popup .mapboxgl-popup-tip {
+  border-top-color: hsl(var(--card));
+}
+
+a.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+
+#map-container {
+  height: 165px;
+  width: 100%;
+}
+
+#map {
+  position: relative;
+  height: inherit;
+  width: inherit;
+}
+
+.mapboxgl-ctrl.mapboxgl-ctrl-attrib.mapboxgl-compact {
+  display: none !important;
+}
+
+button.mapboxgl-ctrl-attrib-button {
+  display: none !important;
+}
+
+.mapboxgl-ctrl-attrib-inner {
+  display: none !important;
+}
