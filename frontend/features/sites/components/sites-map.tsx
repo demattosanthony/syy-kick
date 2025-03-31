@@ -5,260 +5,166 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Site } from "../types/sites";
 
-// Set Mapbox access token
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
 
 interface SitesMapProps {
-  sites: Site[] | undefined;
+  sites?: Site[];
   isLoading?: boolean;
   onSiteSelect?: (site: Site) => void;
-  hoveredSiteId?: string | null; // Add new prop for hover highlighting
+  hoveredSiteId?: string | null;
 }
 
 const SitesMap: React.FC<SitesMapProps> = ({
   sites = [],
   onSiteSelect,
   hoveredSiteId,
-  isLoading,
 }) => {
-  const mapContainer = useRef<HTMLDivElement | null>(null);
+  const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
+
+  // Keep track of marker references and active popup marker ID
   const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
-  const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({}); // Keep track of markers
+  const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
 
-  const lastHoveredIdRef = useRef<string | null>(null);
-
+  // --------------------------------------------------
+  // 1. Initialize map once
+  // --------------------------------------------------
   useEffect(() => {
-    // Initialize map only once and if token exists
-    if (map.current || !mapContainer.current || !mapboxgl.accessToken) return;
+    try {
+      if (!mapContainer.current || map.current || !mapboxgl.accessToken) return;
 
-    // Create map with default style
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: "mapbox://styles/mapbox/streets-v12",
-      center: [-98.5795, 39.8283], // Center of US
-      zoom: 3,
-    });
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [-98.5795, 39.8283],
+        zoom: 3,
+      });
 
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+      // Navigation control
+      map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-    // Add zoom change listener to switch map styles
-    map.current.on("zoom", () => {
-      if (!map.current) return;
-      const zoomLevel = map.current.getZoom();
-      const currentStyle = map.current?.getStyle()?.name;
+      // Switch style when zoom > 15
+      map.current.on("zoom", () => {
+        if (!map.current) return;
+        const zoomLevel = map.current.getZoom();
+        if (!map.current || !map.current.isStyleLoaded()) return;
 
-      // Switch to satellite when zoomed in (zoom level > 15)
-      if (zoomLevel > 15 && currentStyle !== "Mapbox Satellite") {
-        map.current.setStyle("mapbox://styles/mapbox/satellite-v9");
-      }
-      // Switch back to streets when zoomed out
-      else if (zoomLevel <= 15 && currentStyle !== "Mapbox Streets") {
-        map.current.setStyle("mapbox://styles/mapbox/streets-v12");
-      }
-    });
+        const styleName = map.current.getStyle()?.name;
 
-    // Close popup when clicking on the map
-    map.current.on("click", () => {
-      if (popupRef.current) {
-        popupRef.current.remove();
+        if (zoomLevel > 15 && styleName !== "Mapbox Satellite") {
+          map.current.setStyle("mapbox://styles/mapbox/satellite-v9");
+        } else if (zoomLevel <= 15 && styleName !== "Mapbox Streets") {
+          map.current.setStyle("mapbox://styles/mapbox/streets-v12");
+        }
+      });
+
+      // Close popups on map click
+      map.current.on("click", () => {
+        popupRef.current?.remove();
         popupRef.current = null;
         setActiveMarkerId(null);
-      }
-    });
+      });
+    } catch (error) {
+      console.error("Error initializing map:", error);
+    }
 
-    // Clean up on unmount
+    // Cleanup
     return () => {
       map.current?.remove();
       map.current = null;
     };
   }, []);
 
-  // Add markers when sites data changes
+  // --------------------------------------------------
+  // 2. Create/Update markers when sites or hoveredSiteId change
+  // --------------------------------------------------
   useEffect(() => {
-    if (!map.current || !sites?.length) return;
+    try {
+      if (!map.current || !sites.length) return;
 
-    // Clear existing markers
-    Object.values(markersRef.current).forEach((marker) => marker.remove());
-    markersRef.current = {}; // Reset markers reference
+      // Remove old markers
+      Object.values(markersRef.current).forEach((m) => m.remove());
+      markersRef.current = {};
 
-    // Create bounds to fit markers
-    const bounds = new mapboxgl.LngLatBounds();
-    let markerAdded = false;
+      const bounds = new mapboxgl.LngLatBounds();
+      let hasMarker = false;
 
-    sites.forEach((site) => {
-      const latitude = site.address?.latitude;
-      const longitude = site.address?.longitude;
+      // Helper to open a popup for a given site
+      const openPopupForSite = (site: Site) => {
+        if (!site.address?.latitude || !site.address?.longitude) return;
+        popupRef.current?.remove(); // remove any open popup
 
-      if (latitude != null && longitude != null) {
-        // Create standard marker with appropriate color based on hover state
-        const marker = new mapboxgl.Marker({
-          color: site.id === hoveredSiteId ? "#ff6f09" : "#000000",
+        popupRef.current = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          anchor: "bottom",
+          offset: [0, -10],
+          className: "shadcn-card-popup",
         })
-          .setLngLat([Number(longitude), Number(latitude)])
+          .setLngLat([+site.address.longitude, +site.address.latitude])
+          .setDOMContent(document.createElement("div")) // We'll render content in effect #3
           .addTo(map.current!);
 
-        // Store marker reference
-        markersRef.current[site.id] = marker;
+        setActiveMarkerId(`site-${site.id}`);
+      };
 
-        // Add click handler for popup
+      // Create markers
+      sites.forEach((site) => {
+        const lat = site.address?.latitude;
+        const lng = site.address?.longitude;
+        if (lat == null || lng == null) return;
+
+        const color = site.id === hoveredSiteId ? "#ff6f09" : "#000000";
+        const marker = new mapboxgl.Marker({ color })
+          .setLngLat([+lng, +lat])
+          .addTo(map.current!);
+
+        // Marker click
         marker.getElement().addEventListener("click", (e) => {
           e.stopPropagation();
-
-          // Remove existing popup
-          if (popupRef.current) {
-            popupRef.current.remove();
-          }
-
-          // Create popup container
-          const popupNode = document.createElement("div");
-          popupNode.className = "custom-popup";
-
-          // Open the popup
-          popupRef.current = new mapboxgl.Popup({
-            closeButton: false,
-            closeOnClick: false,
-            anchor: "bottom",
-            offset: [0, -10],
-            className: "shadcn-card-popup",
-          })
-            .setLngLat([Number(longitude), Number(latitude)])
-            .setDOMContent(popupNode)
-            .addTo(map.current!);
-
-          const markerId = `site-${site.id}`;
-          setActiveMarkerId(markerId);
-
-          // Add popup close event
-          popupRef.current.on("close", () => {
-            setActiveMarkerId(null);
-          });
+          openPopupForSite(site);
         });
 
-        // Extend bounds
-        bounds.extend([Number(longitude), Number(latitude)]);
-        markerAdded = true;
-      }
-    });
+        markersRef.current[site.id] = marker;
+        bounds.extend([+lng, +lat]);
+        hasMarker = true;
+      });
 
-    // Fit map to markers
-    if (markerAdded && !bounds.isEmpty()) {
-      map.current.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+      // Fit bounds
+      if (hasMarker && !bounds.isEmpty()) {
+        map.current.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+      }
+    } catch (error) {
+      console.error("Error creating markers:", error);
     }
   }, [sites, hoveredSiteId]);
 
-  // Remove all other hover-related effects and just keep one clean approach
+  // --------------------------------------------------
+  // 3. Render popup content whenever activeMarkerId changes
+  // --------------------------------------------------
   useEffect(() => {
-    if (!hoveredSiteId && !lastHoveredIdRef.current) return;
-    if (Object.keys(markersRef.current).length === 0) return;
+    try {
+      if (!activeMarkerId || !popupRef.current) return;
 
-    // If previous hovered marker exists, reset its color
-    if (
-      lastHoveredIdRef.current &&
-      markersRef.current[lastHoveredIdRef.current]
-    ) {
-      const oldMarker = markersRef.current[lastHoveredIdRef.current];
-      const lngLat = oldMarker.getLngLat();
-      oldMarker.remove();
-
-      // Recreate with default color
-      markersRef.current[lastHoveredIdRef.current] = new mapboxgl.Marker({
-        color: "#000000",
-      })
-        .setLngLat(lngLat)
-        .addTo(map.current!);
-
-      // Re-add click handler for the new marker
-      attachClickHandler(
-        markersRef.current[lastHoveredIdRef.current],
-        lastHoveredIdRef.current
-      );
-    }
-
-    // If new hovered marker exists, set its color to orange
-    if (hoveredSiteId && markersRef.current[hoveredSiteId]) {
-      const newMarker = markersRef.current[hoveredSiteId];
-      const lngLat = newMarker.getLngLat();
-      newMarker.remove();
-
-      // Recreate with highlight color
-      markersRef.current[hoveredSiteId] = new mapboxgl.Marker({
-        color: "#ff6f09",
-      })
-        .setLngLat(lngLat)
-        .addTo(map.current!);
-
-      // Re-add click handler for the new marker
-      attachClickHandler(markersRef.current[hoveredSiteId], hoveredSiteId);
-    }
-
-    // Update reference
-    lastHoveredIdRef.current = hoveredSiteId || null;
-  }, [hoveredSiteId]);
-
-  // Helper function to attach click handlers to markers
-  const attachClickHandler = (marker: mapboxgl.Marker, siteId: string) => {
-    marker.getElement().addEventListener("click", (e) => {
-      e.stopPropagation();
-
-      // Find the site
+      const siteId = activeMarkerId.replace("site-", "");
       const site = sites.find((s) => s.id === siteId);
-      if (!site || !site.address?.latitude || !site.address?.longitude) return;
+      if (!site) return;
 
-      // Remove existing popup
-      if (popupRef.current) {
-        popupRef.current.remove();
-      }
+      const container = document.querySelector(
+        ".shadcn-card-popup .mapboxgl-popup-content"
+      );
+      if (!container) return;
 
-      // Create popup container
-      const popupNode = document.createElement("div");
-      popupNode.className = "custom-popup";
+      // Clear container (in case)
+      container.innerHTML = "";
 
-      // Open the popup
-      popupRef.current = new mapboxgl.Popup({
-        closeButton: false,
-        closeOnClick: false,
-        anchor: "bottom",
-        offset: [0, -10],
-        className: "shadcn-card-popup",
-      })
-        .setLngLat([
-          Number(site.address.longitude),
-          Number(site.address.latitude),
-        ])
-        .setDOMContent(popupNode)
-        .addTo(map.current!);
-
-      const markerId = `site-${siteId}`;
-      setActiveMarkerId(markerId);
-
-      // Add popup close event
-      popupRef.current.on("close", () => {
-        setActiveMarkerId(null);
-      });
-    });
-  };
-
-  // Render custom popup content when a marker is active
-  useEffect(() => {
-    if (!activeMarkerId) return;
-
-    const popupContainer = document.querySelector(".custom-popup");
-    if (!popupContainer) return;
-
-    const siteId = activeMarkerId.replace("site-", "");
-    const site = sites.find((s) => s.id === siteId);
-
-    if (!site) return;
-
-    // Render our shadcn card in the popup container
-    const rootDiv = document.createElement("div");
-    rootDiv.className = "shadcn-card-container";
-    rootDiv.innerHTML = `
-      <div class="bg-card text-card-foreground rounded-lg border shadow-md w-64">
-        <a href="/projects?siteId=${siteId}" id="site-link-${siteId}" class="block cursor-pointer">
+      // Build the actual markup
+      const rootDiv = document.createElement("div");
+      rootDiv.className =
+        "bg-card text-card-foreground rounded-lg border shadow-md w-64";
+      rootDiv.innerHTML = `
+        <a href="/projects?siteId=${siteId}" class="block cursor-pointer">
           <div class="p-4 pb-2 flex flex-col space-y-1.5">
             <h3 class="text-lg font-semibold">${site.name}</h3>
           </div>
@@ -270,11 +176,11 @@ const SitesMap: React.FC<SitesMapProps> = ({
             }
             ${
               site.address?.city
-                ? `<p class="text-sm text-muted-foreground">${
-                    site.address.city
-                  }, ${site.address.state || ""} ${
+                ? `<p class="text-sm text-muted-foreground">
+                     ${site.address.city}, ${site.address.state || ""} ${
                     site.address.postalCode || ""
-                  }</p>`
+                  }
+                   </p>`
                 : ""
             }
           </div>
@@ -286,128 +192,40 @@ const SitesMap: React.FC<SitesMapProps> = ({
           ${
             onSiteSelect
               ? `<button id="view-btn-${siteId}" class="px-3 py-1 text-sm bg-primary text-primary-foreground rounded-md shadow-sm hover:bg-primary/90">
-              View Details
-            </button>`
+                  View Details
+                </button>`
               : ""
           }
         </div>
-      </div>
-    `;
+      `;
 
-    popupContainer.appendChild(rootDiv);
+      container.appendChild(rootDiv);
 
-    // Add event listeners to the buttons
-    const closeBtn = document.getElementById(`close-btn-${siteId}`);
-    if (closeBtn) {
-      closeBtn.addEventListener("click", (e) => {
-        e.stopPropagation(); // Ensure event doesn't bubble up
-        if (popupRef.current) {
-          popupRef.current.remove();
-          popupRef.current = null;
-        }
+      // Add events
+      const closeBtn = document.getElementById(`close-btn-${siteId}`);
+      closeBtn?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        popupRef.current?.remove();
+        popupRef.current = null;
+        setActiveMarkerId(null);
       });
-    }
 
-    const viewBtn = document.getElementById(`view-btn-${siteId}`);
-    if (viewBtn && onSiteSelect) {
-      viewBtn.addEventListener("click", (e) => {
-        e.stopPropagation(); // Ensure event doesn't bubble up
-        onSiteSelect(site);
-        if (popupRef.current) {
-          popupRef.current.remove();
-          popupRef.current = null;
-        }
-      });
-    }
-
-    const siteLink = document.getElementById(`site-link-${siteId}`);
-    if (siteLink) {
-      siteLink.addEventListener("click", (e) => {
-        e.stopPropagation(); // Prevent the popup from closing when clicking the site info
-      });
-    }
-
-    return () => {
-      // Cleanup
-      popupContainer.innerHTML = "";
-    };
-  }, [activeMarkerId, sites, onSiteSelect]);
-
-  // Helper function to update markers based on hover state
-  const updateHoveredMarker = (hoveredId: string | null | undefined) => {
-    Object.entries(markersRef.current).forEach(([siteId, marker]) => {
-      // We need to remove and recreate the marker with the new color
-      if (marker) {
-        const lngLat = marker.getLngLat();
-
-        // Remove old marker
-        marker.remove();
-
-        // Create new marker with appropriate color
-        const newMarker = new mapboxgl.Marker({
-          color: siteId === hoveredId ? "#ff6f09" : "#000000",
-        })
-          .setLngLat(lngLat)
-          .addTo(map.current!);
-
-        // Replace in our reference object
-        markersRef.current[siteId] = newMarker;
-
-        // Re-add click handler for popup
-        newMarker.getElement().addEventListener("click", (e) => {
+      const viewBtn = document.getElementById(`view-btn-${siteId}`);
+      if (viewBtn && onSiteSelect) {
+        viewBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-
-          // Remove existing popup
-          if (popupRef.current) {
-            popupRef.current.remove();
-          }
-
-          // Create popup container
-          const popupNode = document.createElement("div");
-          popupNode.className = "custom-popup";
-
-          // Get site coordinates
-          const site = sites.find((s) => s.id === siteId);
-          if (!site || !site.address?.latitude || !site.address?.longitude)
-            return;
-
-          // Open the popup
-          popupRef.current = new mapboxgl.Popup({
-            closeButton: false,
-            closeOnClick: false,
-            anchor: "bottom",
-            offset: [0, -10],
-            className: "shadcn-card-popup",
-          })
-            .setLngLat([
-              Number(site.address.longitude),
-              Number(site.address.latitude),
-            ])
-            .setDOMContent(popupNode)
-            .addTo(map.current!);
-
-          const markerId = `site-${siteId}`;
-          setActiveMarkerId(markerId);
-
-          // Add popup close event
-          popupRef.current.on("close", () => {
-            setActiveMarkerId(null);
-          });
+          onSiteSelect(site);
+          popupRef.current?.remove();
+          popupRef.current = null;
+          setActiveMarkerId(null);
         });
       }
-    });
-  };
+    } catch (error) {
+      console.error("Error rendering popup content:", error);
+    }
+  }, [activeMarkerId, sites, onSiteSelect]);
 
-  // Single effect to handle marker hover state
-  useEffect(() => {
-    if (Object.keys(markersRef.current).length === 0) return;
-
-    updateHoveredMarker(hoveredSiteId);
-  }, [hoveredSiteId]);
-
-  if (!mapboxgl.accessToken) {
-    return null;
-  }
+  if (!mapboxgl.accessToken) return null;
 
   return (
     <div
