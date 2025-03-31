@@ -2,7 +2,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import useInfiniteGetSitesQuery from "../api/get-sites";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Site } from "../types/sites";
@@ -18,7 +18,11 @@ import { Calendar, Clock, MapPin } from "lucide-react";
 import { usePermissions } from "@/features/permissions/context";
 import { SiteDropdownActions } from ".";
 
-const SitesList = () => {
+const SitesList = ({
+  onSiteHover,
+}: {
+  onSiteHover?: (siteId: string | null) => void;
+}) => {
   const searchParams = useSearchParams();
   const search = useMemo(
     () => searchParams.get("search") || "",
@@ -56,6 +60,15 @@ const SitesList = () => {
     return data?.pages.flatMap((page) => page.data);
   }, [data]);
 
+  // Function to handle mouse enter/leave
+  const handleMouseEnter = (siteId: string) => {
+    if (onSiteHover) onSiteHover(siteId);
+  };
+
+  const handleMouseLeave = () => {
+    if (onSiteHover) onSiteHover(null);
+  };
+
   if (!sites) {
     return null;
   }
@@ -69,11 +82,20 @@ const SitesList = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {sites.map((site) => (
-            <Link href={`/projects?siteId=${site.id}`} key={site.id}>
-              <SiteItem site={site} canUpdate={canUpdateOrgSites} canDelete={canDeleteOrgSites} />
-            </Link>
+            <div
+              key={site.id}
+              onMouseEnter={() => handleMouseEnter(site.id)}
+              onMouseLeave={handleMouseLeave}
+            >
+              <Link href={`/projects?siteId=${site.id}`}>
+                <SiteItem
+                  site={site}
+                  canUpdate={canUpdateOrgSites}
+                  canDelete={canDeleteOrgSites}
+                />
+              </Link>
+            </div>
           ))}
-
           <div ref={scrollRef} className="h-10 col-span-1 md:col-span-2">
             {(isFetchingNextPage || isLoading) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -105,9 +127,21 @@ function SitesSkeleton() {
   );
 }
 
-function SiteItem({ site, canUpdate, canDelete }: { site: Site, canUpdate: boolean, canDelete: boolean }) {
+function SiteItem({
+  site,
+  canUpdate,
+  canDelete,
+}: {
+  site: Site;
+  canUpdate: boolean;
+  canDelete: boolean;
+}) {
   const { name, description, address, createdAt, updatedAt } = site;
-  const formattedAddress = useMemo(() => `${address.address}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`, [address]);
+  const formattedAddress = useMemo(
+    () =>
+      `${address.address}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`,
+    [address]
+  );
 
   const createdDate = new Date(createdAt);
   const updatedDate = new Date(updatedAt);
