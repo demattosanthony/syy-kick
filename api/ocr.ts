@@ -4,7 +4,7 @@ const mistral = new Mistral({
   apiKey: process.env["MISTRAL_API_KEY"] ?? "",
 });
 
-const docPath = "/Users/anthonydemattos/Downloads/dunbar-mech-set.pdf";
+const docPath = "../workflows-dataset/equipment-serving/MechBinder.pdf";
 
 // Read file and create base64 url
 const file = await Bun.file(docPath).bytes();
@@ -24,7 +24,13 @@ async function run() {
   // Handle the result
   console.log(result);
 
+  let markdown = "";
+
   for (const item of result.pages) {
+    if (item.markdown) {
+      markdown += item.markdown + "\n\n";
+    }
+
     item.images.forEach(async (image, index) => {
       if (!image.imageBase64) {
         return;
@@ -64,6 +70,9 @@ async function run() {
       }
     });
   }
+
+  await Bun.write("./ocr-results/markdown.md", markdown);
+  console.log("Saved markdown file");
 }
 
 run();
