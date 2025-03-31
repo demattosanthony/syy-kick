@@ -32,7 +32,7 @@ export function SidebarButton({
     <div className="relative group/button">
       <Link
         href={href}
-        prefetch
+        prefetch={false}
         onMouseDown={() => isMobile && toggleSidebar()}
       >
         <Button
