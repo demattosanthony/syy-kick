@@ -129,7 +129,7 @@ const SitesMap: React.FC<SitesMapProps> = ({
 
       // Fit bounds
       if (hasMarker && !bounds.isEmpty()) {
-        map.current.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+        map.current.fitBounds(bounds, { padding: 150, maxZoom: 15 });
       }
     } catch (error) {
       console.error("Error creating markers:", error);
