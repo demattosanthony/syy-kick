@@ -109,39 +109,6 @@ const workflowHandlers = {
             }
 
             images.push(image.imageBase64);
-
-            // Extract base64 data, removing any prefix if present
-            //  let imageBase64 = image.imageBase64;
-            //  if (imageBase64.includes(",")) {
-            //    imageBase64 = imageBase64.split(",", 2)[1];
-            //  }
-
-            //  try {
-            //    // Decode base64 to binary data
-            //    const imageData = Buffer.from(imageBase64, "base64");
-
-            //    // Determine file extension based on image signature
-            //    let ext = "bin";
-            //    if (imageData[0] === 0xff && imageData[1] === 0xd8) {
-            //      ext = "jpeg";
-            //    } else if (
-            //      imageData[0] === 0x89 &&
-            //      imageData[1] === 0x50 &&
-            //      imageData[2] === 0x4e &&
-            //      imageData[3] === 0x47
-            //    ) {
-            //      ext = "png";
-            //    } else {
-            //      console.log(`❌ Image has unknown format for item ${index}`);
-            //    }
-
-            //    // Format filename and save
-            //    const imageFilename = "./ocr-results/" + image.id;
-            //    await Bun.write(imageFilename, imageData);
-            //    console.log(`Saved image: ${imageFilename}`);
-            //  } catch (error) {
-            //    console.error(`Failed to process image ${index}:`, error);
-            //  }
           });
         }
       }
