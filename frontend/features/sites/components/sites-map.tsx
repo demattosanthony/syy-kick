@@ -2,8 +2,8 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { Site } from "../types/sites";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
 
@@ -27,9 +27,7 @@ const SitesMap: React.FC<SitesMapProps> = ({
   const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
 
-  // --------------------------------------------------
   // 1. Initialize map once
-  // --------------------------------------------------
   useEffect(() => {
     try {
       if (!mapContainer.current || map.current || !mapboxgl.accessToken) return;
@@ -76,9 +74,7 @@ const SitesMap: React.FC<SitesMapProps> = ({
     };
   }, []);
 
-  // --------------------------------------------------
   // 2. Create/Update markers when sites or hoveredSiteId change
-  // --------------------------------------------------
   useEffect(() => {
     try {
       if (!map.current || !sites.length) return;
@@ -140,9 +136,7 @@ const SitesMap: React.FC<SitesMapProps> = ({
     }
   }, [sites, hoveredSiteId]);
 
-  // --------------------------------------------------
   // 3. Render popup content whenever activeMarkerId changes
-  // --------------------------------------------------
   useEffect(() => {
     try {
       if (!activeMarkerId || !popupRef.current) return;

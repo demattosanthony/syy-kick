@@ -2,7 +2,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import useInfiniteGetSitesQuery from "../api/get-sites";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Site } from "../types/sites";
@@ -62,12 +62,10 @@ const SitesList = ({
 
   // Function to handle mouse enter/leave
   const handleMouseEnter = (siteId: string) => {
-    console.log("Mouse enter:", siteId);
     if (onSiteHover) onSiteHover(siteId);
   };
 
   const handleMouseLeave = () => {
-    console.log("Mouse leave");
     if (onSiteHover) onSiteHover(null);
   };
 
