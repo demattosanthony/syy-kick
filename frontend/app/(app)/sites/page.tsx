@@ -65,7 +65,7 @@ export default function SitesPage() {
       <div className="flex flex-col lg:flex-row lg:gap-0 h-full">
         {/* Left Column: Map */}
         <div className="w-full lg:w-1/2 lg:mb-0 relative lg:h-full flex justify-center items-center rounded-xl p-0">
-          <div className="h-full w-full rounded-xl overflow-hidden relative">
+          <div className="h-full w-full relative">
             <SitesMap
               sites={allSites}
               isLoading={isLoading}

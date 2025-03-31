@@ -41,6 +41,9 @@ const SitesMap: React.FC<SitesMapProps> = ({
       zoom: 3,
     });
 
+    // Add navigation controls
+    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+
     // Add zoom change listener to switch map styles
     map.current.on("zoom", () => {
       if (!map.current) return;
@@ -72,8 +75,6 @@ const SitesMap: React.FC<SitesMapProps> = ({
       map.current = null;
     };
   }, []);
-
-  // ... existing code ...
 
   // Add markers when sites data changes
   useEffect(() => {
@@ -257,25 +258,27 @@ const SitesMap: React.FC<SitesMapProps> = ({
     rootDiv.className = "shadcn-card-container";
     rootDiv.innerHTML = `
       <div class="bg-card text-card-foreground rounded-lg border shadow-md w-64">
-        <div class="p-4 pb-2 flex flex-col space-y-1.5">
-          <h3 class="text-lg font-semibold">${site.name}</h3>
-        </div>
-        <div class="p-4 pt-0 pb-2">
-          ${
-            site.address?.address
-              ? `<p class="text-sm text-muted-foreground">${site.address.address}</p>`
-              : ""
-          }
-          ${
-            site.address?.city
-              ? `<p class="text-sm text-muted-foreground">${
-                  site.address.city
-                }, ${site.address.state || ""} ${
-                  site.address.postalCode || ""
-                }</p>`
-              : ""
-          }
-        </div>
+        <a href="/projects?siteId=${siteId}" id="site-link-${siteId}" class="block cursor-pointer">
+          <div class="p-4 pb-2 flex flex-col space-y-1.5">
+            <h3 class="text-lg font-semibold">${site.name}</h3>
+          </div>
+          <div class="p-4 pt-0 pb-2">
+            ${
+              site.address?.address
+                ? `<p class="text-sm text-muted-foreground">${site.address.address}</p>`
+                : ""
+            }
+            ${
+              site.address?.city
+                ? `<p class="text-sm text-muted-foreground">${
+                    site.address.city
+                  }, ${site.address.state || ""} ${
+                    site.address.postalCode || ""
+                  }</p>`
+                : ""
+            }
+          </div>
+        </a>
         <div class="p-4 pt-2 flex justify-between items-center">
           <button id="close-btn-${siteId}" class="px-3 py-1 text-sm border rounded-md shadow-sm hover:bg-accent">
             Close
@@ -296,7 +299,8 @@ const SitesMap: React.FC<SitesMapProps> = ({
     // Add event listeners to the buttons
     const closeBtn = document.getElementById(`close-btn-${siteId}`);
     if (closeBtn) {
-      closeBtn.addEventListener("click", () => {
+      closeBtn.addEventListener("click", (e) => {
+        e.stopPropagation(); // Ensure event doesn't bubble up
         if (popupRef.current) {
           popupRef.current.remove();
           popupRef.current = null;
@@ -306,12 +310,20 @@ const SitesMap: React.FC<SitesMapProps> = ({
 
     const viewBtn = document.getElementById(`view-btn-${siteId}`);
     if (viewBtn && onSiteSelect) {
-      viewBtn.addEventListener("click", () => {
+      viewBtn.addEventListener("click", (e) => {
+        e.stopPropagation(); // Ensure event doesn't bubble up
         onSiteSelect(site);
         if (popupRef.current) {
           popupRef.current.remove();
           popupRef.current = null;
         }
+      });
+    }
+
+    const siteLink = document.getElementById(`site-link-${siteId}`);
+    if (siteLink) {
+      siteLink.addEventListener("click", (e) => {
+        e.stopPropagation(); // Prevent the popup from closing when clicking the site info
       });
     }
 
