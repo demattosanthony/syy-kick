@@ -2,6 +2,7 @@ import { getWorkflowDefinition } from "./workflows.config";
 import { stepExecutorRegistry } from "./workflows.processors";
 import {
   FileData,
+  StepExecutorUtilities,
   StepInputData,
   StepOutputData,
   Workflow,
@@ -13,6 +14,7 @@ export class WorkflowRunner {
   private workflow: Workflow;
   private initialRequestInputs: Record<string, FileData>;
   private state: WorkflowState;
+  private utilities: StepExecutorUtilities;
 
   constructor(
     workflowId: string,
@@ -26,6 +28,9 @@ export class WorkflowRunner {
     this.workflow = definition;
     this.initialRequestInputs = initialRequestInputs;
     this.state = { workflowInput: {}, stepOutputs: {} };
+    this.utilities = {
+      getDataSourceValue: this.getDataSourceValue, // Use the bound method
+    };
   }
 
   private async processInitalInputs(): Promise<void> {
@@ -119,6 +124,7 @@ export class WorkflowRunner {
           inputs,
           step,
           workflow: this.workflow,
+          utils: this.utilities,
         });
 
         // Store the output

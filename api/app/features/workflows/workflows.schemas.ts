@@ -128,7 +128,7 @@ export type StepExecutorInput = {
   state: WorkflowState; // Full current workflow state
   workflow: Workflow; // The parent workflow definition
   //   progressCallback: ProgressCallback;
-  //   utils: StepExecutorUtilities; // Shared utilities
+  utils: StepExecutorUtilities; // Shared utilities
 };
 export type StepExecutorFunction = (
   input: StepExecutorInput
@@ -136,8 +136,6 @@ export type StepExecutorFunction = (
 
 // Utilities passed to executors
 export type StepExecutorUtilities = {
-  getFileData: (fileKey: string, mimeType?: string) => Promise<string>; // Fetch file content
+  //   getFileData: (fileKey: string, mimeType?: string) => Promise<string>; // Fetch file content
   getDataSourceValue: (state: WorkflowState, sourcePath: string) => any; // Resolve data paths
-  // Add LLM clients or other shared resources if needed
-  llmClients: any; // e.g., { openai: OpenAI, anthropic: Anthropic }
 };
