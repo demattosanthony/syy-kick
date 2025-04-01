@@ -1,56 +1,21 @@
-"use server";
+"use client";
 
+import { useThreadQuery } from "@/features/chat/threads/api";
 import { ChatThread } from "@/features/chat/threads/components";
 import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
-import api from "@/lib/api";
-import type { Metadata } from "next";
+import { useParams, useSearchParams } from "next/navigation";
 
-type Props = {
-  params: Promise<{ threadId: string }>;
-};
+export default function ThreadsPage() {
+  const params = useParams<{
+    threadId: string;
+  }>();
+  const searchParams = useSearchParams();
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { threadId } = await params;
-
-  const thread = await api.threads.getThread(threadId);
-  const lastMessage = thread.messages[thread.messages.length - 1];
-
-  if (!thread || !thread.title) {
-    return {
-      title: "Syykick",
-      description: "Syykick",
-      openGraph: {
-        title: "Syykick",
-        description: "Syykick",
-      },
-    };
-  }
-
-  return {
-    title: thread.title + " - Syykick",
-    description: lastMessage?.text.slice(0, 250),
-    openGraph: {
-      title: thread.title + " - Syykick",
-      description: lastMessage?.text.slice(0, 250),
-    },
-  };
-}
-
-export default async function ThreadsPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ threadId: string }>;
-  searchParams: Promise<{ new?: string }>;
-}) {
-  const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
-
-  const isNew = resolvedSearchParams.new === "true";
-  const threadId = resolvedParams.threadId;
+  const isNew = searchParams.get("new") === "true";
+  const threadId = params.threadId;
 
   // Only fetch the thread if it's not a new thread
-  const thread = isNew ? undefined : await api.threads.getThread(threadId);
+  const { data: thread, isLoading } = useThreadQuery(threadId, isNew);
 
   const initialMessages =
     isNew || !thread ? [] : mapThreadMessagesToMessages(thread);

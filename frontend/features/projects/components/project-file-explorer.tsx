@@ -549,23 +549,44 @@ function FileExplorerItem({
       return;
     }
 
-    // If it's a folder, go to the appropriate tree path
+    // In function FileExplorerItem, within handleRowClick:
     if (item.type === "folder") {
       if (variant === "compact") {
         setIsOpen(!isOpen);
       }
-
       const basePath =
         contentSource === "project"
           ? `/projects/${contentId}/tree/`
           : `/knowledge-bases/${contentId}/tree/`;
 
-      router.push(`${basePath}${item.path}`);
+      const safeEncodeSegment = (segment: string) => {
+        try {
+          // Try to decode first then re‑encode.
+          return encodeURIComponent(decodeURIComponent(segment));
+        } catch (error) {
+          console.warn("Failed to decode segment:", segment, error);
+          // Fallback: directly encode the raw segment.
+          return encodeURIComponent(segment);
+        }
+      };
+
+      const encodedPath = item.path.split("/").map(safeEncodeSegment).join("/");
+
+      router.push(`${basePath}${encodedPath}`);
     } else {
-      // If it's a file, go to the appropriate blob view
+      // For files, do the same safe decoding and encoding
+      const safeDecode = (segment: string) => {
+        try {
+          return decodeURIComponent(segment);
+        } catch (error) {
+          console.warn("Failed to decode segment:", segment, error);
+          return segment;
+        }
+      };
+
       const encodedPath = item.path
         .split("/")
-        .map(encodeURIComponent)
+        .map((segment) => encodeURIComponent(safeDecode(segment)))
         .join("/");
 
       const basePath =

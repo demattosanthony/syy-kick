@@ -1,30 +1,14 @@
-"use server";
+"use client";
 
-import api from "@/lib/api";
 import KnowledgeBasesList from "@/features/knowledge-bases/components/knowledge-bases-list";
 import { SearchBar } from "@/features/chat/threads/components";
 import CreateKnowledgeBaseDialog from "@/features/knowledge-bases/components/create-knowledge-base-dialog";
 import { Button } from "@/components/ui/button";
+import { useSearchParams } from "next/navigation";
 
-export default async function KnowledgeBasesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ search?: string }>;
-}) {
-  // Get search parameter from URL
-  const resolvedSearchParams = await searchParams;
-  const search = resolvedSearchParams.search || "";
-
-  const kbs = await api.knowledgeBases.listKnowledgeBases().catch(() => ({
-    data: [],
-    pagination: {
-      page: 1,
-      pageSize: 10,
-      totalCount: 0,
-      totalPages: 0,
-      hasMore: false,
-    },
-  }));
+export default function KnowledgeBasesPage() {
+  const searchParams = useSearchParams();
+  const search = searchParams.get("search") || "";
 
   return (
     <main className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">
@@ -37,7 +21,7 @@ export default async function KnowledgeBasesPage({
       </div>
 
       <SearchBar initialSearch={search} />
-      <KnowledgeBasesList initalData={kbs} />
+      <KnowledgeBasesList />
     </main>
   );
 }

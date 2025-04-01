@@ -29,20 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const KnowledgeBasesList = ({
-  initalData,
-}: {
-  initalData: {
-    data: KnowledgeBase[];
-    pagination: {
-      page: number;
-      pageSize: number;
-      totalCount: number;
-      totalPages: number;
-      hasMore: boolean;
-    };
-  };
-}) => {
+const KnowledgeBasesList = () => {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -52,10 +39,6 @@ const KnowledgeBasesList = ({
     useInfiniteKnowledgeBasesQuery({
       search,
       limit: 10,
-      initalData: {
-        pages: [initalData],
-        pageParams: [1],
-      },
     });
 
   // Flatten the pages into a single array of knowledge bases

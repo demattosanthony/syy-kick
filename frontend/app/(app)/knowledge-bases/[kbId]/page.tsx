@@ -1,20 +1,18 @@
-"use server";
+"use client";
 
+import { useKnowledgeBase } from "@/features/knowledge-bases/api";
 import {
   ProjectContent,
   ProjectFooter,
   ProjectLayout,
   ProjectSidebar,
 } from "@/features/projects/components";
-import api from "@/lib/api";
+import { useParams } from "next/navigation";
 
-export default async function ProjectPage({
-  params,
-}: {
-  params: Promise<{ kbId: string }>;
-}) {
-  const kbId = (await params).kbId;
-  const kb = await api.knowledgeBases.getKnowledgeBase(kbId).catch(() => null);
+export default function ProjectPage() {
+  const params = useParams<{ kbId: string }>();
+  const kbId = params.kbId;
+  const { data: kb } = useKnowledgeBase(kbId);
 
   if (!kb) {
     return null;
