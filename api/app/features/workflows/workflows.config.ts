@@ -268,25 +268,28 @@ Your final output should consist only of the CSV artifact and should not duplica
     description:
       "Creates HVAC equipment service area tables from mechanical drawings by extracting data from schedules and floorplans. Maps equipment IDs to service areas in a structured format for facility management.",
     maxSteps: 5,
-    modelName: "gemini-2.5-pro-exp",
-    prompt: `You are tasked with creating an 'Equipment Serving' list based on contract mechanical drawings. Your objective is to identify which areas HVAC equipment serves using the provided drawings. The mechanical drawings are attached as a PDF file.
+    modelName: "claude-3.7-sonnet",
+    prompt: `You are tasked with creating an 'Equipment Serving' list based on mechanical drawings. Your objective is to identify which areas the large mechanical equipment (like AHUs, DOAS, etc.) serves using the provided drawings, prioritizing mechanical schedules within the drawings as the primary source. Smaller units or equipment without listed service areas on the schedules should be ignored and not included in the final list.
+
+Most mechanical drawings have a dedicated schedules sheet. This sheet has multiple tables of equipment schedules, listing details like equipment IDs, types, and sometimes service areas. Your goal is to extract this information and create a table mapping each HVAC equipment ID to its corresponding service area(s).
 
 Follow these steps to complete the task:
 
-1. Extract information from the Mechanical Schedules:
-   - Identify all HVAC equipment listed in the schedules.
-   - Check if service areas are explicitly listed for each piece of equipment.
+1. Extract information from the Mechanical Schedules Sheet:
+   - Identify only large mechanical equipment (e.g., AHUs, DOAS) listed in the schedules.
+   - Check if service areas are explicitly listed for each piece of large mechanical equipment.
+   - Ignore smaller units with no listed service areas.
 
 2. Determine Service Areas:
    - Primary Source: Use the information from the mechanical schedules whenever available.
-   - Secondary Source: If service areas are not listed in the schedules, analyze the mechanical floorplans to trace equipment locations and ductwork paths.
+   - Secondary Source: If service areas are not listed in the schedules for large mechanical equipment, analyze the mechanical floorplans to trace equipment locations and ductwork paths (only if necessary).
 
 3. Create the HVAC Equipment Service Table:
-   - List each HVAC equipment ID.
+   - List each large mechanical equipment ID.
    - Assign the corresponding service area(s) to each equipment ID.
 
 4. Handle uncertainties and finalize the output:
-   - Ensure all equipment has an assigned area.
+   - Ensure all included large mechanical equipment has an assigned area.
    - If you're uncertain about any service area, flag it for user confirmation by adding "[NEEDS CONFIRMATION]" after the area description.
 
 5. Format your final output as follows:

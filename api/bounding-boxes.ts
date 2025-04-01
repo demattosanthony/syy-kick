@@ -3,7 +3,8 @@ import { MODELS } from "./app/features/models";
 import { z } from "zod";
 import { Jimp } from "jimp";
 
-const imagePath = "./ocr-results/good-tester.jpeg";
+const imagePath =
+  "../workflows-dataset/equipment-serving/MechBinder_schedules.png";
 
 // Read file and create base64 url
 const file = await Bun.file(imagePath).bytes();
@@ -11,7 +12,7 @@ const base64 = Buffer.from(file).toString("base64");
 
 // Example prompting – you may need to tweak the prompt to improve detection accuracy
 const { object } = await generateObject({
-  model: MODELS["claude-3.7-sonnet"].model,
+  model: MODELS["gemini-2.5-pro-exp"].model,
   temperature: 0,
   messages: [
     {
@@ -20,7 +21,7 @@ const { object } = await generateObject({
         {
           type: "image",
           image: base64,
-          mimeType: "image/jpeg",
+          mimeType: "image/png",
         },
         {
           type: "text",

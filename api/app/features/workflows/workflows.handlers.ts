@@ -158,7 +158,7 @@ const workflowHandlers = {
       //             results[i].object.isRelevant
       //           );
       //           // Note: Original logic adds images when they are NOT relevant
-      //           // Consider changing this condition if that wasn't intended
+      //           // Consider changing this condi  ion if that wasn't intended
       //           if (!results[i].object.isRelevant) {
       //             images.push(extractedImages[i]);
       //           }
@@ -170,20 +170,20 @@ const workflowHandlers = {
       const response = streamText({
         model: modelConfig.model,
         maxSteps: 10,
-        temperature: 0,
+        temperature: 0.4,
         messages: [
           {
             role: "user",
             content: [
-              {
-                type: "text" as const,
-                text: workflow.prompt,
-              },
               ...extractedImages.map((image) => ({
                 type: "image" as const,
                 mimeType: "image/jpeg",
                 image: image,
               })),
+              {
+                type: "text" as const,
+                text: workflow.prompt,
+              },
             ],
           },
         ],
