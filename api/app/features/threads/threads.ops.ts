@@ -223,7 +223,12 @@ const threadsOps = {
         .leftJoin(messages, eq(threads.id, messages.threadId))
         .where(and(...conditions))
         .groupBy(threads.id, threads.createdAt, threads.updatedAt)
-        .having(sql`MAX(${similarity}) > 0.5`)
+        .having(
+          and(
+            sql`COUNT(${messages.id}) > 0`, // Filter out empty threads
+            sql`MAX(${similarity}) > 0.5` // Keep existing similarity condition
+          )
+        )
         .orderBy(desc(sql`max_similarity`));
     } else {
       // no search
@@ -237,6 +242,7 @@ const threadsOps = {
         .leftJoin(messages, eq(threads.id, messages.threadId))
         .where(and(...conditions))
         .groupBy(threads.id, threads.createdAt, threads.updatedAt)
+        .having(sql`COUNT(${messages.id}) > 0`)
         .orderBy(desc(threads.createdAt));
     }
 
