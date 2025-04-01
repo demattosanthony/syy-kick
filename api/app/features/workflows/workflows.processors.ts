@@ -2,6 +2,7 @@ import { Attachment, generateObject } from "ai";
 import {
   FileData,
   LLMStepConfig,
+  ObjectDetectionStepConfig,
   PdfPageExtractStepConfig,
   StepExecutorFunction,
   StepExecutorInput,
@@ -10,6 +11,8 @@ import {
 import { MODELS } from "../models";
 import { PDFDocument } from "pdf-lib";
 import { getPdfPageAsImage } from "../../utils";
+import { z } from "zod";
+import { Jimp } from "jimp";
 
 export const executeLLMStep: StepExecutorFunction = async ({
   step,
@@ -31,6 +34,12 @@ export const executeLLMStep: StepExecutorFunction = async ({
     // Handle file data
     if (value && value.url && typeof value === "object") {
       files.push(value);
+    } else if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item && item.url && typeof item === "object") {
+          files.push(item);
+        }
+      }
     } else {
       // Replace all placeholders with the actual values
       populatedPrompt = populatedPrompt.replace(placeholder, String(value));
@@ -141,7 +150,7 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
   });
 
   // Write the image to a file
-  const imageFilePath = `./pdf-page-extraction-results/page_${pageNumber}.png`;
+  const imageFilePath = `./ocr-results/page_${pageNumber}.png`;
   await Bun.write(imageFilePath, Buffer.from(pageImage, "base64"));
 
   return {
@@ -150,6 +159,119 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
   };
 };
 
+export const executeObjectDetectionStep: StepExecutorFunction = async ({
+  step,
+  state,
+  inputs,
+  workflow,
+  utils,
+}: StepExecutorInput): Promise<StepOutputData> => {
+  const stepConfig = step.config as ObjectDetectionStepConfig["config"];
+  console.log(`[${step.id}] Starting Object Detection step execution`);
+
+  // 1. Resolve image FileData from state
+  const imageFileData = utils.getDataSourceValue(
+    state,
+    stepConfig.imageDataSource
+  ) as string | undefined;
+  const model = MODELS[stepConfig.model].model;
+  const prompt = stepConfig.promptTemplate;
+
+  // 2. Validate inputs
+  if (!imageFileData) {
+    throw new Error(
+      `Could not resolve valid image FileData (with url) at source '${stepConfig.imageDataSource}' for step ${step.id}.`
+    );
+  }
+
+  // 3. Run the object detection model
+  const { object } = await generateObject({
+    model,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            image: imageFileData!,
+            mimeType: "image/png",
+          },
+          {
+            type: "text",
+            text: prompt,
+          },
+        ],
+      },
+    ],
+    schema: z.object({
+      bounding_boxes: z.array(
+        z.object({
+          box_2d: z.array(z.number()).length(4),
+          label: z.string(),
+        })
+      ),
+    }),
+  });
+
+  console.log(object.bounding_boxes);
+
+  // Load the image
+  const image = await Jimp.read(Buffer.from(imageFileData, "base64"));
+  const { width, height } = image.bitmap;
+  let index = 0;
+
+  // Save all bounding boxes as separate images, base64 strings
+  let boundingBoxImages: FileData[] = [];
+
+  for (const box of object.bounding_boxes) {
+    const [y_min, x_min, y_max, x_max] = box.box_2d;
+    const label = box.label;
+
+    // Convert normalized [0..1000] → actual pixel coordinates
+    const x1 = Math.round((x_min / 1000) * width);
+    const y1 = Math.round((y_min / 1000) * height);
+    const x2 = Math.round((x_max / 1000) * width);
+    const y2 = Math.round((y_max / 1000) * height);
+
+    // Extract the bounding box as a new image
+    const boxWidth = x2 - x1;
+    const boxHeight = y2 - y1;
+
+    // Clone the original image and crop to the bounding box
+    const boxImage = image.clone().crop({
+      h: boxHeight,
+      w: boxWidth,
+      x: x1,
+      y: y1,
+    });
+
+    // Get base64 representation
+    const boxImageBuffer = await boxImage.getBuffer("image/jpeg");
+    const boxImageBase64 = boxImageBuffer.toString("base64");
+
+    boundingBoxImages.push({
+      url: boxImageBase64,
+      fileName: `box_${index}_${label}.jpeg`,
+      mimeType: "image/jpeg",
+    });
+
+    // Create a sanitized label for filename (replace spaces and special chars)
+    // const safeLabel = label.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+
+    // // Save the cropped image
+    // await boxImage
+    //   .write(`./ocr-results/box_${index}_${safeLabel}.jpeg`)
+    //   .then(() => console.log(`Saved bounding box ${index}: ${label}`))
+    //   .catch((err) => console.error(`Error saving box ${index}:`, err));
+    index += 1;
+  }
+
+  return {
+    screenshots: boundingBoxImages,
+  };
+};
+
 export const stepExecutorRegistry = new Map<string, StepExecutorFunction>();
 stepExecutorRegistry.set("llm", executeLLMStep);
 stepExecutorRegistry.set("pdf_page_extract", executePdfPageExtractionStep);
+stepExecutorRegistry.set("object_detection", executeObjectDetectionStep);

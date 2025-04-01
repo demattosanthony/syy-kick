@@ -78,12 +78,31 @@ export const PdfPageExtractStepSchema = BaseStepSchema.extend({
 });
 export type PdfPageExtractStepConfig = z.infer<typeof PdfPageExtractStepSchema>;
 
+// Schema for Built-in Object Detection Steps. Take in a image and outputs images detected from bounding boxes
+export const ObjectDetectionStepSchema = BaseStepSchema.extend({
+  type: z.literal("object_detection"),
+  config: z.object({
+    imageDataSource: z
+      .string()
+      .min(1)
+      .describe("Path to the FileData object (e.g., 'workflowInput.image')"),
+    model: z.string().min(1),
+    promptTemplate: z.string().min(1),
+    outputSchema: z
+      .instanceof(z.ZodType)
+      .describe("Zod schema instance for the expected JSON output"),
+  }),
+});
+export type ObjectDetectionStepConfig = z.infer<
+  typeof ObjectDetectionStepSchema
+>;
+
 // --- Union Schema for Any Step Type ---
 // This uses the 'type' field to determine which specific schema to apply.
 export const WorkflowStepSchemaUnion = z.discriminatedUnion("type", [
   LLMStepSchema,
   PdfPageExtractStepSchema,
-  // Add schemas for other step types here as they are created
+  ObjectDetectionStepSchema,
 ]);
 export type WorkflowStepConfig = z.infer<typeof WorkflowStepSchemaUnion>;
 
