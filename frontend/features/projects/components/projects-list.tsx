@@ -13,20 +13,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { SortOption } from "../types";
 
-const ProjectsList = ({
-  initialProjects,
-}: {
-  initialProjects: {
-    data: Project[];
-    pagination: {
-      page: number;
-      limit: number;
-      totalCount: number;
-      totalPages: number;
-      hasMore: boolean;
-    };
-  };
-}) => {
+const ProjectsList = () => {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const siteId = searchParams.get("siteId") || "";
@@ -47,10 +34,6 @@ const ProjectsList = ({
     siteId: siteId,
     limit: 10,
     sort: sort,
-    initialData: {
-      pages: [initialProjects],
-      pageParams: [1],
-    },
   });
 
   useEffect(() => {
