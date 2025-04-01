@@ -38,8 +38,6 @@ export const executeLLMStep: StepExecutorFunction = async ({
   state,
   inputs,
   workflow,
-  progressCallback,
-  utils,
 }: StepExecutorInput): Promise<StepOutputData> => {
   const stepConfig = step.config as LLMStepConfig["config"];
   const modelName = stepConfig.modelName || "claude-3.5-sonnet";
@@ -59,32 +57,45 @@ export const executeLLMStep: StepExecutorFunction = async ({
   const attachments: Attachment[] = files?.map((file) => ({
     url: file.url,
     contentType: file.mimeType,
+    name: file.fileName,
   }));
 
-  const { object } = await generateObject({
-    model: MODELS[modelName].model,
-    schema: stepConfig.outputSchema,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: stepConfig.promptTemplate,
-          },
-          attachments.map((attachment) => ({
-            type: attachment.contentType?.includes("image") ? "image" : "file",
-            [attachment.contentType?.includes("image") ? "image" : "file"]:
-              attachment.url,
-            mimeType: attachment.contentType,
-          })) as any,
-        ],
-      },
-    ],
-  });
+  console.log(`[${step.id}] Starting LLM step execution`);
+  console.log(`[${step.id}] modelName: ${modelName}`);
+  console.log(`[${step.id}] promptTemplate: ${stepConfig.promptTemplate}`);
+  console.log(`[${step.id}] attachments: ${attachments.length}`);
+  //   throw Error("Not implemented");
 
-  const validatedOutput = stepConfig.outputSchema.safeParse(object);
-  console.log(`[${step.id}] LLM step completed successfully`);
+  try {
+    const { object } = await generateObject({
+      model: MODELS[modelName].model,
+      schema: stepConfig.outputSchema,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: stepConfig.promptTemplate,
+            },
+            ...(attachments.map((attachment) => ({
+              type: "file",
+              data: attachment.url,
+              mimeType: attachment.contentType,
+            })) as any),
+          ],
+        },
+      ],
+    });
 
-  return validatedOutput;
+    // const validatedOutput = stepConfig.outputSchema.safeParse(object);
+    console.log(`[${step.id}] LLM step completed successfully`);
+    return object as any;
+  } catch (error) {
+    console.error(`[${step.id}] Error during LLM step execution:`, error);
+    throw error; // Re-throw the error after logging
+  }
 };
+
+export const stepExecutorRegistry = new Map<string, StepExecutorFunction>();
+stepExecutorRegistry.set("llm", executeLLMStep);

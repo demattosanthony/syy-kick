@@ -1,4 +1,5 @@
 import { getWorkflowDefinition } from "./workflows.config";
+import { stepExecutorRegistry } from "./workflows.processors";
 import {
   FileData,
   StepOutputData,
@@ -63,9 +64,37 @@ export class WorkflowRunner {
       // 1. Process inital inputs
       await this.processInitalInputs();
 
-      this.logState();
+      //   this.logState();
 
-      return {};
+      for (const step of this.workflow.steps) {
+        let output: StepOutputData;
+
+        const executor = stepExecutorRegistry.get(step.type);
+
+        if (!executor) {
+          throw new Error(
+            `No executor registered for step type '${step.type}' in step ${step.id}.`
+          );
+        }
+
+        output = await executor({
+          state: this.state,
+          step,
+          workflow: this.workflow,
+        });
+
+        // Store the output
+        this.state.stepOutputs[step.id] = output;
+        console.log(`Step ${step.id} completed`);
+      }
+
+      // Workflow complete
+      const finalOutput =
+        this.state.stepOutputs[
+          this.workflow.steps[this.workflow.steps.length - 1].id
+        ] || {};
+
+      return finalOutput;
     } catch (err) {
       throw err;
     }

@@ -16,3 +16,4 @@ const runner = new WorkflowRunner("equipment-serving-builder", {
 });
 
 const result = await runner.run();
+console.log(result);

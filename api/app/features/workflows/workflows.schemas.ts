@@ -130,11 +130,11 @@ export type ProgressCallback = (update: ProgressUpdate) => void;
 // Type for Step Executor function signature
 export type StepExecutorInput = {
   step: WorkflowStepConfig; // The specific config for this step
-  inputs: StepInputData; // Data prepared via inputMapping
+  inputs?: StepInputData; // Data prepared via inputMapping
   state: WorkflowState; // Full current workflow state
   workflow: Workflow; // The parent workflow definition
-  progressCallback: ProgressCallback;
-  utils: StepExecutorUtilities; // Shared utilities
+  //   progressCallback: ProgressCallback;
+  //   utils: StepExecutorUtilities; // Shared utilities
 };
 export type StepExecutorFunction = (
   input: StepExecutorInput
