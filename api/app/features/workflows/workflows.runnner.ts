@@ -2,17 +2,22 @@ import { getWorkflowDefinition } from "./workflows.config";
 import { stepExecutorRegistry } from "./workflows.processors";
 import {
   FileData,
+  StepInputData,
   StepOutputData,
   Workflow,
   WorkflowState,
+  WorkflowStepConfig,
 } from "./workflows.schemas";
 
 export class WorkflowRunner {
   private workflow: Workflow;
-  private initialRequestInputs: Record<string, any>;
+  private initialRequestInputs: Record<string, FileData>;
   private state: WorkflowState;
 
-  constructor(workflowId: string, initialRequestInputs: Record<string, any>) {
+  constructor(
+    workflowId: string,
+    initialRequestInputs: Record<string, FileData>
+  ) {
     const definition = getWorkflowDefinition(workflowId);
     if (!definition) {
       throw new Error(`Workflow definition not found for ID: ${workflowId}`);
@@ -34,17 +39,7 @@ export class WorkflowRunner {
       }
       if (!inputData) continue;
 
-      if (inputConfig.type === "file") {
-        const fileDataObject: FileData = {
-          fileName: inputData.name,
-          mimeType: inputData.contentType,
-          url: inputData.url,
-        };
-
-        this.state.workflowInput[inputConfig.id] = fileDataObject;
-      } else if (inputConfig.type === "text") {
-        this.state.workflowInput[inputConfig.id] = inputData;
-      }
+      this.state.workflowInput[inputConfig.id] = inputData;
     }
   }
 
@@ -56,6 +51,45 @@ export class WorkflowRunner {
       }
     }
     console.log(stateCopy);
+  }
+
+  private getDataSourceValue(state: WorkflowState, sourcePath: string) {
+    if (!sourcePath) return undefined;
+
+    const parts = sourcePath.split(".");
+    const sourceKey = parts[0]; // e.g., 'workflowInput' or '{step-id}'
+    const remainingPath = parts.slice(1); // e.g., ['file', 'url']
+
+    let currentValue: any;
+
+    if (sourceKey === "workflowInput") {
+      currentValue = state.workflowInput;
+    } else if (state.stepOutputs?.[sourceKey]) {
+      currentValue = state.stepOutputs[sourceKey];
+    }
+
+    // Traverse the remaining path
+    for (const key of remainingPath) {
+      currentValue = currentValue?.[key];
+      if (currentValue === undefined) break;
+    }
+
+    return currentValue;
+  }
+
+  private prepareStepInputs(step: WorkflowStepConfig): StepInputData {
+    const stepInputs: StepInputData = {};
+    const inputMapping = step.inputMapping;
+
+    if (!inputMapping) return {};
+
+    for (const inputKey in inputMapping) {
+      const sourcePath = inputMapping[inputKey];
+      const value = this.getDataSourceValue(this.state, sourcePath);
+      stepInputs[inputKey] = value;
+    }
+
+    return stepInputs;
   }
 
   // Main execution loop
@@ -77,8 +111,12 @@ export class WorkflowRunner {
           );
         }
 
+        // Prepare the inputs required by the executor
+        const inputs = this.prepareStepInputs(step);
+
         output = await executor({
           state: this.state,
+          inputs,
           step,
           workflow: this.workflow,
         });

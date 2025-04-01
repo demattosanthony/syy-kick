@@ -5,33 +5,8 @@ import {
   StepExecutorFunction,
   StepExecutorInput,
   StepOutputData,
-  WorkflowState,
 } from "./workflows.schemas";
 import { MODELS } from "../models";
-
-const getDataSourceValue = (state: WorkflowState, sourcePath: string): any => {
-  if (!sourcePath) return undefined;
-
-  const parts = sourcePath.split(".");
-  const sourceKey = parts[0]; // e.g., 'workflowInput' or '{step-id}'
-  const remainingPath = parts.slice(1); // e.g., ['file', 'url']
-
-  let currentValue: any;
-
-  if (sourceKey === "workflowInput") {
-    currentValue = state.workflowInput;
-  } else if (state.stepOutputs?.[sourceKey]) {
-    currentValue = state.stepOutputs[sourceKey];
-  }
-
-  // Traverse the remaining path
-  for (const key of remainingPath) {
-    currentValue = currentValue?.[key];
-    if (currentValue === undefined) break;
-  }
-
-  return currentValue;
-};
 
 export const executeLLMStep: StepExecutorFunction = async ({
   step,
@@ -42,15 +17,20 @@ export const executeLLMStep: StepExecutorFunction = async ({
   const stepConfig = step.config as LLMStepConfig["config"];
   const modelName = stepConfig.modelName || "claude-3.5-sonnet";
 
-  // Collect all input files
-  const inputMapping = stepConfig.inputMapping;
-  const sourcesPaths = Object.values(inputMapping || {});
-
+  // Populate the prompt template and get all the attachments
+  let populatedPrompt = stepConfig.promptTemplate;
   let files: FileData[] = [];
-  for (const sourcePath of sourcesPaths) {
-    const file = getDataSourceValue(state, sourcePath);
-    if (file) {
-      files.push(file);
+
+  for (const key in inputs) {
+    const placeholder = `{input.${key}}`;
+    const value = inputs[key];
+
+    // Handle file data
+    if (value && value.url && typeof value === "object") {
+      files.push(value);
+    } else {
+      // Replace all placeholders with the actual values
+      populatedPrompt = populatedPrompt.replace(placeholder, String(value));
     }
   }
 
@@ -61,10 +41,8 @@ export const executeLLMStep: StepExecutorFunction = async ({
   }));
 
   console.log(`[${step.id}] Starting LLM step execution`);
-  console.log(`[${step.id}] modelName: ${modelName}`);
-  console.log(`[${step.id}] promptTemplate: ${stepConfig.promptTemplate}`);
-  console.log(`[${step.id}] attachments: ${attachments.length}`);
-  //   throw Error("Not implemented");
+  console.log(`[${step.id}] Prompt:`, populatedPrompt);
+  console.log(`[${step.id}] Attachments Length:`, attachments.length);
 
   try {
     const { object } = await generateObject({
@@ -76,7 +54,7 @@ export const executeLLMStep: StepExecutorFunction = async ({
           content: [
             {
               type: "text",
-              text: stepConfig.promptTemplate,
+              text: populatedPrompt,
             },
             ...(attachments.map((attachment) => ({
               type: "file",
@@ -88,9 +66,10 @@ export const executeLLMStep: StepExecutorFunction = async ({
       ],
     });
 
-    // const validatedOutput = stepConfig.outputSchema.safeParse(object);
+    const validatedOutput = stepConfig.outputSchema.safeParse(object);
+
     console.log(`[${step.id}] LLM step completed successfully`);
-    return object as any;
+    return validatedOutput.data as StepOutputData;
   } catch (error) {
     console.error(`[${step.id}] Error during LLM step execution:`, error);
     throw error; // Re-throw the error after logging

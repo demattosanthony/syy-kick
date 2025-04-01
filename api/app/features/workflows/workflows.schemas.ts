@@ -47,12 +47,6 @@ export const LLMStepSchema = BaseStepSchema.extend({
     modelName: z.string().optional(),
     systemMessage: z.string().optional(),
     promptTemplate: z.string().min(1),
-    inputMapping: z
-      .record(z.string(), z.string())
-      .describe(
-        "Maps step's input keys (key) to data sources (value), e.g., 'workflowInput.fileId' or 'previousStepId.output.dataKey'"
-      )
-      .optional(),
     // We store the Zod schema definition itself for runtime use.
     // For pure validation *of the config*, we just check it's a Zod schema.
     // If you were loading from JSON, you might store a schema definition string/object instead.

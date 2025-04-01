@@ -9,8 +9,8 @@ const base64 = Buffer.from(file).toString("base64");
 
 const runner = new WorkflowRunner("equipment-serving-builder", {
   mechanicalDrawings: {
-    name: "MechBinder.pdf",
-    contentType: "application/pdf",
+    fileName: "MechBinder.pdf",
+    mimeType: "application/pdf",
     url: base64,
   },
 });

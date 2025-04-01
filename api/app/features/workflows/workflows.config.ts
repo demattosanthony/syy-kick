@@ -32,6 +32,9 @@ const workflowsV2: Workflow[] = [
         id: "find-schedules-page",
         type: "llm",
         title: "Find Mechanical Schedules Page",
+        inputMapping: {
+          file: "workflowInput.mechanicalDrawings",
+        },
         config: {
           modelName: "gemini-2.5-pro-exp",
           promptTemplate:
@@ -39,9 +42,22 @@ const workflowsV2: Workflow[] = [
           outputSchema: z.object({
             pageNumber: z.number(),
           }),
-          inputMapping: {
-            file: "workflowInput.mechanicalDrawings",
-          },
+        },
+      },
+      {
+        id: "double-check-work",
+        type: "llm",
+        title: "Double Check Your Work",
+        inputMapping: {
+          file: "workflowInput.mechanicalDrawings",
+          pageNumber: "find-schedules-page.pageNumber",
+        },
+        config: {
+          modelName: "gemini-2.5-pro-exp",
+          promptTemplate: `Double check that {input.pageNumber} is the correct page that has the mechanical schedules.`,
+          outputSchema: z.object({
+            isCorrect: z.boolean(),
+          }),
         },
       },
     ],
