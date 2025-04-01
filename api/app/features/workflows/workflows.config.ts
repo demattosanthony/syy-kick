@@ -1,3 +1,99 @@
+import { Workflow, WorkflowSchema } from "./workflows.schemas";
+import { z } from "zod";
+
+const workflowsV2: Workflow[] = [
+  {
+    id: "equipment-serving-builder",
+    title: "Equipment Serving List Builder",
+    description:
+      "Creates HVAC equipment service area tables from mechanical drawings by extracting data from schedules and floorplans. Maps equipment IDs to service areas in a structured format for facility management.",
+    authorizedOrganizationIds: [
+      "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+      "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+      "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
+    ],
+    inputs: [
+      {
+        id: "mechanicalDrawings",
+        type: "file",
+        title: "Mechanical Drawings PDF",
+        description: "Containing mechanical schedules and floorplans",
+        acceptedFileTypes: "application/pdf",
+        required: true,
+      },
+    ],
+    output: {
+      type: "text/csv",
+      title: "Equipment Serving List",
+      description: "View the generated equipment serving list",
+    },
+    steps: [
+      {
+        id: "find-schedules-page",
+        type: "llm",
+        title: "Find Mechanical Schedules Page",
+        config: {
+          modelName: "gemini-2.5-pro-exp",
+          promptTemplate:
+            "Find the page containing mechanical schedules in the provided PDF.",
+          outputSchema: z.object({
+            pageNumber: z.number(),
+          }),
+          inputMapping: {
+            file: "workflowInput.mechanicalDrawings",
+          },
+        },
+      },
+    ],
+  },
+];
+
+const workflowRegistry = new Map<string, Workflow>();
+workflowsV2.forEach((wf) => {
+  try {
+    WorkflowSchema.parse(wf); // Validate schema on load
+    workflowRegistry.set(wf.id, wf);
+  } catch (e) {
+    console.error(`Error validating workflow definition '${wf.id}':`, e);
+  }
+});
+
+// workflow runner
+// WorkflowRunner(workflow, { "mechanicalDrawings": file })
+
+export function getWorkflowDefinition(id: string): Workflow | undefined {
+  return workflowRegistry.get(id);
+}
+
+export function getAllWorkflowDefinitions(): Workflow[] {
+  return Array.from(workflowRegistry.values());
+}
+
+export function getAuthorizedWorkflowDefinitions(
+  organizationId: string
+): Workflow[] {
+  return Array.from(workflowRegistry.values()).filter(
+    (workflow) =>
+      !workflow.authorizedOrganizationIds ||
+      workflow.authorizedOrganizationIds.length === 0 ||
+      workflow.authorizedOrganizationIds.includes(organizationId)
+  );
+}
+
+export function isWorkflowAuthorized(
+  workflowId: string,
+  organizationId: string
+): boolean {
+  const workflow = getWorkflowDefinition(workflowId);
+  if (!workflow) return false;
+  if (
+    !workflow.authorizedOrganizationIds ||
+    workflow.authorizedOrganizationIds.length === 0
+  )
+    return true;
+  return workflow.authorizedOrganizationIds.includes(organizationId);
+}
+
 const workflows = [
   {
     id: "rfp-evaluator",
