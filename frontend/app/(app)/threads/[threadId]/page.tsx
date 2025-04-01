@@ -15,7 +15,7 @@ export default function ThreadsPage() {
   const threadId = params.threadId;
 
   // Only fetch the thread if it's not a new thread
-  const { data: thread, isLoading } = useThreadQuery(threadId, isNew);
+  const { data: thread } = useThreadQuery(threadId, isNew);
 
   const initialMessages =
     isNew || !thread ? [] : mapThreadMessagesToMessages(thread);
