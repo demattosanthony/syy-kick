@@ -29,7 +29,7 @@ export class WorkflowRunner {
     this.initialRequestInputs = initialRequestInputs;
     this.state = { workflowInput: {}, stepOutputs: {} };
     this.utilities = {
-      getDataSourceValue: this.getDataSourceValue, // Use the bound method
+      getDataSourceValue: this.getDataSourceValue,
     };
   }
 
@@ -102,8 +102,6 @@ export class WorkflowRunner {
     try {
       // 1. Process inital inputs
       await this.processInitalInputs();
-
-      //   this.logState();
 
       for (const step of this.workflow.steps) {
         let output: StepOutputData;

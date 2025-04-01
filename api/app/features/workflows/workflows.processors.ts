@@ -256,13 +256,13 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
     });
 
     // Create a sanitized label for filename (replace spaces and special chars)
-    // const safeLabel = label.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+    const safeLabel = label.replace(/[^a-z0-9]/gi, "_").toLowerCase();
 
-    // // Save the cropped image
-    // await boxImage
-    //   .write(`./ocr-results/box_${index}_${safeLabel}.jpeg`)
-    //   .then(() => console.log(`Saved bounding box ${index}: ${label}`))
-    //   .catch((err) => console.error(`Error saving box ${index}:`, err));
+    // Save the cropped image
+    await boxImage
+      .write(`./ocr-results/box_${index}_${safeLabel}.jpeg`)
+      .then(() => console.log(`Saved bounding box ${index}: ${label}`))
+      .catch((err) => console.error(`Error saving box ${index}:`, err));
     index += 1;
   }
 
