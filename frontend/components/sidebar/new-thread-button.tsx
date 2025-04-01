@@ -13,7 +13,7 @@ export function NewThreadButton() {
   return (
     <Link
       href={"/"}
-      prefetch={false}
+      prefetch={true}
       onMouseDown={() => isMobile && toggleSidebar()}
     >
       <Button

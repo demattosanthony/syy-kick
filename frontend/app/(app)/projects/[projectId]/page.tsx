@@ -1,20 +1,18 @@
-"use server";
+"use client";
 
+import { useProjectQuery } from "@/features/projects/api";
 import {
   ProjectContent,
   ProjectFooter,
   ProjectLayout,
   ProjectSidebar,
 } from "@/features/projects/components";
-import api from "@/lib/api";
+import { useParams } from "next/navigation";
 
-export default async function ProjectPage({
-  params,
-}: {
-  params: Promise<{ projectId: string }>;
-}) {
-  const pid = (await params).projectId;
-  const project = await api.projects.getProject(pid).catch(() => null);
+export default function ProjectPage() {
+  const params = useParams<{ projectId: string }>();
+  const pid = params.projectId;
+  const { data: project } = useProjectQuery(pid);
 
   if (!project) {
     return null;
