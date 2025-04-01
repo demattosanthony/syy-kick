@@ -19,15 +19,12 @@ import { useGetSiteQuery } from "@/features/sites/api";
 
 export default function ProjectsPage() {
   const searchParams = useSearchParams();
-  // Get search parameter from URL
   const search = searchParams.get("search") ?? "";
   const siteId = searchParams.get("siteId");
 
-  const { data: site } = siteId
-    ? useGetSiteQuery({ siteId: siteId })
-    : {
-        data: null,
-      };
+  const { data: site } = useGetSiteQuery({
+    siteId,
+  });
 
   return (
     <main className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">
