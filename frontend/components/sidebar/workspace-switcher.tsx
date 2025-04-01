@@ -105,12 +105,12 @@ export function WorkSpaceSwitcher({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-2 px-2 font-normal"
+          className="h-8 gap-2 px-2 font-normal max-w-[185px]"
         >
           <WorkspaceLogo workspace={activeWorkspace} />
           {state === "expanded" && (
             <>
-              <p className="text-sm">
+              <p className="text-sm truncate">
                 {activeWorkspace?.name || "Select Workspace"}
               </p>
               <ChevronDown className="h-4 w-4" />

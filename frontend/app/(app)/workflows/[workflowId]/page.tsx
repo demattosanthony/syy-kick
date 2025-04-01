@@ -1,17 +1,15 @@
-"use server";
+"use client";
 
+import { useWorkflowQuery } from "@/features/workflows/api";
 import { WorkflowPageContent } from "@/features/workflows/components";
-import api from "@/lib/api";
+import { useParams } from "next/navigation";
 
-export default async function WorkflowPage({
-  params,
-}: {
-  params: Promise<{ workflowId: string }>;
-}) {
-  const { workflowId } = await params;
-  const workflow = await api.workflows
-    .getWorkflow(workflowId)
-    .catch(() => undefined);
+export default function WorkflowPage() {
+  const { workflowId } = useParams<{
+    workflowId: string;
+  }>();
+
+  const { data: workflow } = useWorkflowQuery(workflowId);
 
   return <WorkflowPageContent workflowId={workflowId} workflow={workflow} />;
 }
