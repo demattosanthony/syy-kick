@@ -53,6 +53,7 @@
     "resend": "^4.1.2",
     "stripe": "^17.6.0",
     "tiktoken": "^1.0.20",
-    "unstructured-client": "^0.20.0"
+    "unstructured-client": "^0.20.0",
+    "winston": "^3.17.0"
   }
 }

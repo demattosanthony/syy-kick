@@ -33,7 +33,7 @@ import { ProgressUpdate } from "./app/features/workflows/workflows.schemas";
 // console.log(result.csvArtifact);
 
 const docPath =
-  "../workflows-dataset/window-door-gen/HALLCHRISTINALAYOUTPG7FLOORPRE313.pdf";
+  "../workflows-dataset/window-door-gen/20250318PacificStADUPermitSetProgress.pdf";
 
 // Read file and create base64 url
 const file = await Bun.file(docPath).bytes();
@@ -52,7 +52,7 @@ const runner = new WorkflowRunner(
   "window-door-schedule-gen",
   {
     "architectural-drawings": {
-      fileName: "HALLCHRISTINALAYOUTPG7FLOORPRE313.pdf",
+      fileName: "20250318PacificStADUPermitSetProgress.pdf",
       mimeType: "application/pdf",
       url: base64,
     },

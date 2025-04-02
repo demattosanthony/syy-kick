@@ -168,12 +168,12 @@ export class WorkflowRunner {
         // Store the output
         this.state.stepOutputs[step.id] = output;
 
-        if (this.debug) {
-          console.log(`State after step ${step.id}:`, {
-            workflowInput: Object.keys(this.state.workflowInput),
-            stepOutputs: Object.keys(this.state.stepOutputs),
-          });
-        }
+        // if (this.debug) {
+        //   console.log(`State after step ${step.id}:`, {
+        //     workflowInput: Object.keys(this.state.workflowInput),
+        //     stepOutputs: Object.keys(this.state.stepOutputs),
+        //   });
+        // }
       }
 
       // Workflow complete

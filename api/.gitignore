@@ -179,3 +179,4 @@ files/
 
 ocr-results/
 debug-images/
+*.log

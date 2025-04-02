@@ -14,6 +14,19 @@ import { PDFDocument } from "pdf-lib";
 import { getPdfPageAsImage } from "../../utils";
 import { z } from "zod";
 import { Jimp } from "jimp";
+import winston from "winston";
+
+const logger = winston.createLogger({
+  level: "debug",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: "workflow.log" }),
+    new winston.transports.Console(),
+  ],
+});
 
 export const executeLLMStep: StepExecutorFunction = async ({
   step,
@@ -21,7 +34,7 @@ export const executeLLMStep: StepExecutorFunction = async ({
   debug,
 }: StepExecutorInput): Promise<StepOutputData> => {
   if (debug) {
-    console.log(`[${step.id}] Inputs:`, inputs);
+    logger.debug(`[${step.id}]`);
   }
   const stepConfig = step.config as LLMStepConfig["config"];
   const modelName = stepConfig.modelName || "claude-3.5-sonnet";
@@ -47,8 +60,8 @@ export const executeLLMStep: StepExecutorFunction = async ({
   }));
 
   if (debug) {
-    console.log(`[${step.id}] Populated Prompt:`, populatedPrompt);
-    console.log(
+    logger.debug(`[${step.id}] Populated Prompt:`, populatedPrompt);
+    logger.debug(
       `[${step.id}] Attachments:`,
       attachments.map((a) => a.name)
     );
@@ -81,7 +94,7 @@ export const executeLLMStep: StepExecutorFunction = async ({
     }
 
     if (debug) {
-      console.log(`[${step.id}] Validated Output:`, validatedOutput.data);
+      logger.debug(`[${step.id}] Validated Output:`, validatedOutput.data);
     }
 
     return validatedOutput.data as StepOutputData;
@@ -100,7 +113,7 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
 }: StepExecutorInput): Promise<StepOutputData> => {
   const stepConfig = step.config as PdfPageExtractStepConfig["config"];
   if (debug) {
-    console.log(`[${step.id}] Inputs:`, {
+    logger.debug(`[${step.id}] Inputs:`, {
       pdfDataSource: stepConfig.pdfDataSource,
       pageNumberSource: stepConfig.pageNumberSource,
     });
@@ -135,7 +148,7 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
   }
 
   if (debug) {
-    console.log(
+    logger.debug(
       `[${
         step.id
       }] Extracting page ${pageNumber} from PDF with ${pdfDoc.getPageCount()} pages`
@@ -159,7 +172,7 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
     try {
       const imageFilePath = `./debug-images/${step.id}_page_${pageNumber}.png`;
       await Bun.write(imageFilePath, Buffer.from(pageImage, "base64"));
-      console.log(`[${step.id}] Saved image to ${imageFilePath}`);
+      logger.debug(`[${step.id}] Saved image to ${imageFilePath}`);
     } catch (writeError) {
       console.error(`[${step.id}] Failed to save image:`, writeError);
     }
@@ -176,7 +189,7 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
 }: StepExecutorInput): Promise<StepOutputData> => {
   const stepConfig = step.config as ObjectDetectionStepConfig["config"];
   if (debug) {
-    console.log(`[${step.id}] Inputs:`, {
+    logger.debug(`[${step.id}] Inputs:`, {
       imageDataSource: stepConfig.imageDataSource,
     });
   }
@@ -196,7 +209,7 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
   const prompt = stepConfig.promptTemplate;
 
   if (debug) {
-    console.log(`[${step.id}] Prompt:`, prompt);
+    logger.debug(`[${step.id}] Prompt:`, prompt);
   }
 
   // Run object detection
@@ -219,7 +232,10 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
   });
 
   if (debug) {
-    console.log(`[${step.id}] Detected Bounding Boxes:`, object.bounding_boxes);
+    logger.debug(
+      `[${step.id}] Detected Bounding Boxes:`,
+      object.bounding_boxes
+    );
   }
 
   // Process image
@@ -267,7 +283,7 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
         const safeLabel = label.replace(/[^a-z0-9]/gi, "_").toLowerCase();
         const imageFilePath = `./debug-images/${step.id}_box_${index}_${safeLabel}.jpeg`;
         await Bun.write(imageFilePath, Buffer.from(boxImageBase64, "base64"));
-        console.log(`[${step.id}] Saved box ${index} to ${imageFilePath}`);
+        logger.debug(`[${step.id}] Saved box ${index} to ${imageFilePath}`);
       } catch (writeError) {
         console.error(`[${step.id}] Failed to save box ${index}:`, writeError);
       }
@@ -287,7 +303,7 @@ export const documentOcrStep: StepExecutorFunction = async ({
 }: StepExecutorInput): Promise<StepOutputData> => {
   const stepConfig = step.config as DocumentOCRStepConfig["config"];
   if (debug) {
-    console.log(`[${step.id}] Inputs:`, {
+    logger.debug(`[${step.id}] Inputs:`, {
       imageDataSource: stepConfig.documentDataSource,
     });
   }
@@ -317,13 +333,13 @@ export const documentOcrStep: StepExecutorFunction = async ({
   let markdown = "";
   let images = [];
 
-  for (const item of result.pages) {
+  for (const [pageIndex, item] of result.pages.entries()) {
     if (item.markdown) {
       markdown += item.markdown + "\n\n";
     }
 
-    for (let index = 0; index < item.images.length; index++) {
-      const image = item.images[index];
+    for (let imageIndex = 0; imageIndex < item.images.length; imageIndex++) {
+      const image = item.images[imageIndex];
       if (!image.imageBase64) {
         continue;
       }
@@ -342,11 +358,11 @@ export const documentOcrStep: StepExecutorFunction = async ({
 
       if (debug) {
         try {
-          const imageFilePath = `./debug-images/${step.id}_image_${index}.jpeg`;
+          const imageFilePath = `./debug-images/${step.id}_page_${pageIndex}_image_${imageIndex}.jpeg`;
           await Bun.write(imageFilePath, Buffer.from(imageBase64, "base64"));
-          console.log(`Saved image: ${imageFilePath}`);
+          logger.debug(`Saved image: ${imageFilePath}`);
         } catch (error) {
-          console.error(`Failed to process image ${index}:`, error);
+          console.error(`Failed to process image ${imageIndex}:`, error);
         }
       }
     }
