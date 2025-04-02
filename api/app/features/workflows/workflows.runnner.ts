@@ -2,6 +2,8 @@ import { getWorkflowDefinition } from "./workflows.config";
 import { stepExecutorRegistry } from "./workflows.processors";
 import {
   FileData,
+  ProgressCallback,
+  ProgressUpdate,
   StepExecutorUtilities,
   StepInputData,
   StepOutputData,
@@ -15,10 +17,12 @@ export class WorkflowRunner {
   private initialRequestInputs: Record<string, FileData>;
   private state: WorkflowState;
   private utilities: StepExecutorUtilities;
+  private progressCallback: ProgressCallback;
 
   constructor(
     workflowId: string,
-    initialRequestInputs: Record<string, FileData>
+    initialRequestInputs: Record<string, FileData>,
+    progressCallback: ProgressCallback
   ) {
     const definition = getWorkflowDefinition(workflowId);
     if (!definition) {
@@ -27,6 +31,7 @@ export class WorkflowRunner {
 
     this.workflow = definition;
     this.initialRequestInputs = initialRequestInputs;
+    this.progressCallback = progressCallback;
     this.state = { workflowInput: {}, stepOutputs: {} };
     this.utilities = {
       getDataSourceValue: this.getDataSourceValue,
@@ -100,30 +105,61 @@ export class WorkflowRunner {
   // Main execution loop
   public async run(): Promise<StepOutputData> {
     try {
+      // Emit workflow_start event
+      this.progressCallback({
+        type: "workflow_start",
+        data: { workflowId: this.workflow.id, title: this.workflow.title },
+      });
+
       // 1. Process inital inputs
       await this.processInitalInputs();
 
       for (const step of this.workflow.steps) {
+        // Emit step_start event
+        this.progressCallback({
+          type: "step_start",
+          data: { stepId: step.id, title: step.title },
+        });
+
         let output: StepOutputData;
 
         const executor = stepExecutorRegistry.get(step.type);
 
         if (!executor) {
-          throw new Error(
-            `No executor registered for step type '${step.type}' in step ${step.id}.`
-          );
+          const errorMsg = `No executor registered for step type '${step.type}' in step ${step.id}.`;
+          this.progressCallback({
+            type: "step_error",
+            data: { stepId: step.id, error: errorMsg },
+          });
+          throw new Error(errorMsg);
         }
 
         // Prepare the inputs required by the executor
         const inputs = this.prepareStepInputs(step);
 
-        output = await executor({
-          state: this.state,
-          inputs,
-          step,
-          workflow: this.workflow,
-          utils: this.utilities,
-        });
+        try {
+          output = await executor({
+            state: this.state,
+            inputs,
+            step,
+            workflow: this.workflow,
+            utils: this.utilities,
+            progressCallback: this.progressCallback, // Pass to executor
+          });
+
+          // Emit step_complete event
+          this.progressCallback({
+            type: "step_complete",
+            data: { stepId: step.id },
+          });
+        } catch (stepError: any) {
+          // Emit step_error event
+          this.progressCallback({
+            type: "step_error",
+            data: { stepId: step.id, error: stepError.message },
+          });
+          throw stepError; // Re-throw to stop execution
+        }
 
         // Store the output
         this.state.stepOutputs[step.id] = output;
@@ -136,8 +172,18 @@ export class WorkflowRunner {
           this.workflow.steps[this.workflow.steps.length - 1].id
         ] || {};
 
+      // Emit workflow_complete event
+      this.progressCallback({
+        type: "workflow_complete",
+        data: { output: finalOutput },
+      });
+
       return finalOutput;
-    } catch (err) {
+    } catch (err: any) {
+      this.progressCallback({
+        type: "workflow_error",
+        data: { error: err.message },
+      });
       throw err;
     }
   }
