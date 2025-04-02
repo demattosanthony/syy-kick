@@ -41,6 +41,7 @@ export const equipmentServingListWorkflow: Workflow = {
     type: "text/csv",
     title: "Equipment Serving List",
     description: "View the generated equipment serving list",
+    outputKey: "csvArtifact",
   },
   steps: [
     {

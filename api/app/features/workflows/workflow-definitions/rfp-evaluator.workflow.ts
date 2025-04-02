@@ -20,6 +20,7 @@ export const rfpEvalWorkflow: Workflow = {
     type: "text/csv",
     title: "Evaluation Results",
     description: "View the evaluation results",
+    outputKey: "evaluation",
   },
   authorizedOrganizationIds: [
     "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",

@@ -25,6 +25,7 @@ export const basisOfDesignGenWorkflow: Workflow = {
     type: "text/markdown",
     title: "Basis of Design Document",
     description: "View the generated Basis of Design document",
+    outputKey: "basisOfDesignDocument",
   },
   steps: [
     {

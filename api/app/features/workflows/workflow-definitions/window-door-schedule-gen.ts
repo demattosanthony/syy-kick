@@ -25,6 +25,7 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
     type: "text/csv",
     title: "Window & Door Schedule",
     description: "View the generated window and door schedule",
+    outputKey: "csvArtifact",
   },
   steps: [
     {
@@ -53,7 +54,7 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
         images: "doc-ocr.images",
       },
       config: {
-        modelName: "gemini-2.5-pro-exp",
+        modelName: "gpt-4o",
         outputSchema: z.object({
           csvArtifact: z.string(),
         }),
@@ -77,9 +78,9 @@ Before providing your final output, work through the following steps inside <ext
 - Note any challenges you encounter and how you resolve them.
 - If any information is missing or unclear, explain what's missing and how you plan to address it (e.g., by prompting the user for clarification or making estimates based on similar elements).
 
-Your final output should be a CSV artifact containing both the window and door schedules. Use the following format for the artifact:
+Your final output should be a CSV text content containing both the window and door schedules. Use the following format for the CSV artifact:
 
-<antArtifact identifier="window-door-schedules" type="application/vnd.ant.code" language="csv" title="Window and Door Schedules">
+<example_artifact>
 WINDOW SCHEDULE
 Item,Height,Width,Area (sq ft)
 Window/Storefront A,7'0",10'0",70.00
@@ -95,7 +96,7 @@ Window/Storefront K,2'0",10'0",20.00
 DOOR SCHEDULE
 Item,Height,Width,Area (sq ft)
 Door Type A1,7'0",3'0",21.00
-</antArtifact>
+</example_artifact>
 
 Ensure that your CSV content includes both the window and door schedules, with a clear separation between them.
 

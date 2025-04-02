@@ -24,6 +24,7 @@ export const WorkflowOutputConfigSchema = z.object({
   type: z.enum(["text/csv", "text/markdown", "json", "file", "text"]),
   title: z.string(),
   description: z.string(),
+  outputKey: z.string(),
 });
 export type WorkflowOutputConfig = z.infer<typeof WorkflowOutputConfigSchema>;
 

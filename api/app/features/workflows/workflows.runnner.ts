@@ -176,16 +176,36 @@ export class WorkflowRunner {
         // }
       }
 
-      // Workflow complete
+      // Get the final output from the last step
       const finalOutput =
         this.state.stepOutputs[
           this.workflow.steps[this.workflow.steps.length - 1].id
         ] || {};
 
+      // Determine the workflow output based on the output key
+      let workflowOutput: any = finalOutput;
+      const keys = this.workflow.output.outputKey.split(".");
+      for (const key of keys) {
+        if (
+          workflowOutput &&
+          typeof workflowOutput === "object" &&
+          key in workflowOutput
+        ) {
+          workflowOutput = workflowOutput[key];
+        } else {
+          const errorMsg = `Output key '${this.workflow.output.outputKey}' not found in final output`;
+          this.progressCallback({
+            type: "workflow_error",
+            data: { error: errorMsg },
+          });
+          throw new Error(errorMsg);
+        }
+      }
+
       // Emit workflow_complete event
       this.progressCallback({
         type: "workflow_complete",
-        data: { output: finalOutput },
+        data: { output: workflowOutput },
       });
 
       return finalOutput;

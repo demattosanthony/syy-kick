@@ -33,7 +33,7 @@ import { ProgressUpdate } from "./app/features/workflows/workflows.schemas";
 // console.log(result.csvArtifact);
 
 const docPath =
-  "../workflows-dataset/window-door-gen/20250318PacificStADUPermitSetProgress.pdf";
+  "../workflows-dataset/window-door-gen/HALLCHRISTINALAYOUTPG7FLOORPRE313.pdf";
 
 // Read file and create base64 url
 const file = await Bun.file(docPath).bytes();
@@ -46,6 +46,10 @@ const processEvent = (update: ProgressUpdate) => {
   // Check the event
   // Convert to assitant message or tool messagge
   // save to messages table with tool calls
+
+  if (update.type === "workflow_complete") {
+    console.log(update.data.output);
+  }
 };
 
 const runner = new WorkflowRunner(
@@ -62,4 +66,3 @@ const runner = new WorkflowRunner(
 );
 
 const result = await runner.run();
-console.log(result.csvArtifact);

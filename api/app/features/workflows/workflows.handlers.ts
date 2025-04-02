@@ -139,10 +139,16 @@ const workflowHandlers = {
           }
 
           if (update.type === "workflow_complete") {
+            const escapedOutput = update.data.output
+              .replace(/\\/g, "\\\\") // escape backslashes
+              .replace(/"/g, '\\"') // escape quotes
+              .replace(/\n/g, "\\n"); // escape newlines
+
             res.write(
-              `0:"I have completed all the steps. Here is my final result:\\n\\n\\n ${JSON.stringify(
-                update.data.output.csvArtifact
-              )}"\n`
+              `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
+            );
+            res.write(
+              `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"application/vnd.ant.code\\" language=\\"csv\\" title=\\"Workflow Output\\">${escapedOutput}</antArtifact>"\n`
             );
           }
         },
