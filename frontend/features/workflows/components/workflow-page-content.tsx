@@ -12,7 +12,13 @@ import ErrorDisplay from "./workflow-error-display";
 import OutputDisplay from "./workflow-output-display";
 import FileUploadInput from "./workflow-file-input";
 import { Workflow } from "../workflows.types";
-import { ChatMessagesList } from "@/features/chat/messages/components";
+import {
+  ArtifactViewer,
+  ChatMessagesList,
+} from "@/features/chat/messages/components";
+import { selectedArtifactAtom } from "@/atoms/chat";
+import { useAtom } from "jotai";
+import { useResizeLayout } from "@/features/chat/threads/hooks";
 
 type ExtendedAttachment = Attachment & { file_key: string; inputId: string };
 
@@ -31,6 +37,10 @@ export default function WorkflowPageContent({
     message: string;
   } | null>(null);
   const hasAutoHiddenReasoning = useRef(false);
+
+  const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
+
+  const { splitPosition, handleMouseDown } = useResizeLayout();
 
   const { handleSubmit, messages, setInput, status, setMessages } = useChat({
     api: `${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/run`,
@@ -52,8 +62,6 @@ export default function WorkflowPageContent({
       });
     },
   });
-
-  console.log(messages);
 
   const isProcessing = status === "submitted" || messages.length > 0;
   const response = messages[1];
@@ -241,29 +249,33 @@ export default function WorkflowPageContent({
           )}
         </div>
       ) : (
-        <div className="container mx-auto px-4 max-w-5xl h-full w-full">
-          <div className="flex justify-center">
-            <Button size="lg" onClick={resetWorkflow} className="px-8">
-              Run Again
-            </Button>
-          </div>
+        <div className="h-full w-full flex flex-1">
+          {selectedArtifact && (
+            <>
+              <ArtifactViewer
+                artifact={selectedArtifact}
+                splitPosition={splitPosition}
+                messages={messages}
+              />
 
-          <div className="h-full w-full flex flex-1">
-            <ChatMessagesList messages={messages} status={status} />
-          </div>
+              {/* Resizable border */}
+              <div
+                className="w-[2px] hover:w-1 h-full cursor-col-resize bg-secondary transition-all"
+                onMouseDown={handleMouseDown}
+              />
+            </>
+          )}
 
-          {/* <div className="flex flex-col gap-8">
-            <OutputDisplay
-              response={response}
-              outputConfig={outputConfig}
-              status={status}
-            />
-            <div className="flex justify-center">
-              <Button size="lg" onClick={resetWorkflow} className="px-8">
-                Run Again
-              </Button>
+          <div
+            className="flex flex-col h-full min-w-[400px] relative"
+            style={{
+              width: selectedArtifact ? `${splitPosition}%` : "100%",
+            }}
+          >
+            <div className="flex-1">
+              <ChatMessagesList messages={messages} status={status} />
             </div>
-          </div> */}
+          </div>
         </div>
       )}
     </div>

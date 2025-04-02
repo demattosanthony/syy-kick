@@ -87,37 +87,6 @@ const workflowHandlers = {
         })
       );
 
-      console.log(
-        "Processed Attachments:",
-        Object.entries(processedAttachments).map(
-          ([key, { fileName, mimeType }]) => ({
-            inputId: key,
-            fileName,
-            mimeType,
-          })
-        )
-      );
-
-      //   res.write(`0:${JSON.stringify("Message 1")}\n`);
-
-      //   res.write(
-      //     `0:${JSON.stringify(
-      //       "Message 2\n\n\n\nWith another\n\nline break\n\n"
-      //     )}\n`
-      //   );
-
-      //   res.write(`0:${JSON.stringify("Message 2")}\n`);
-      //   res.write(
-      //     `d:{"finishReason":"stop","usage":{"promptTokens":10,"completionTokens":20}}\n`
-      //   );
-
-      //   res.write(`0:${JSON.stringify("Message 3")}\n`);
-      //   res.write(
-      //     `d:{"finishReason":"stop","usage":{"promptTokens":10,"completionTokens":20}}\n`
-      //   );
-
-      //   res.end();
-
       const runnner = new WorkflowRunner(
         workflowId,
         processedAttachments,

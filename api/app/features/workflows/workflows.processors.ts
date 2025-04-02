@@ -259,10 +259,11 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
     }
 
     // Convert normalized [0..1000] to pixel coordinates
-    const x1 = Math.round((x_min / 1000) * width);
-    const y1 = Math.round((y_min / 1000) * height);
-    const x2 = Math.round((x_max / 1000) * width);
-    const y2 = Math.round((y_max / 1000) * height);
+    const padding = 20; // 20px padding on each side
+    const x1 = Math.max(0, Math.round((x_min / 1000) * width) - padding);
+    const y1 = Math.max(0, Math.round((y_min / 1000) * height) - padding);
+    const x2 = Math.min(width, Math.round((x_max / 1000) * width) + padding);
+    const y2 = Math.min(height, Math.round((y_max / 1000) * height) + padding);
 
     // Crop image
     const boxImage = image
