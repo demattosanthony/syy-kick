@@ -355,7 +355,7 @@ const threadsOps = {
       let tools = {
         web_search: createWebSearchTool(),
         ...(thread.knowledgeBase === undefined && {
-          search_projects_information: createProjectSearchTool(
+          search_project_information: createProjectSearchTool(
             modelConfig,
             req.workspace!,
             req.dbUser!,
