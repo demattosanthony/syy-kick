@@ -7,7 +7,7 @@ import {
 } from "./workflows.registry";
 import { WorkflowAttachment } from "./workflows.types";
 import { WorkflowRunner } from "./workflows.runnner";
-import { FileData } from "./workflows.schemas";
+import { FileData, ProgressUpdate } from "./workflows.schemas";
 
 const workflowHandlers = {
   getAll: async (req: Request, res: Response) => {
@@ -88,52 +88,52 @@ const workflowHandlers = {
         })
       );
 
+      const workflowProgressCallback = (update: ProgressUpdate) => {
+        if (update.type === "workflow_start") {
+          res.write('0:"Okay let me get started!\\n\\n"\n');
+        }
+
+        if (update.type === "step_start") {
+          res.write(`0:"I am starting the step ${update.data.stepId}\\n\\n"\n`);
+        }
+
+        if (update.type === "step_complete") {
+          res.write(
+            `0:"I am done with the step ${update.data.stepId}\\n\\n"\n`
+          );
+        }
+
+        if (update.type === "workflow_complete") {
+          const escapedOutput = update.data.output
+            .replace(/\\/g, "\\\\") // escape backslashes
+            .replace(/"/g, '\\"') // escape quotes
+            .replace(/\n/g, "\\n"); // escape newlines
+
+          // Check the workflow output type
+          if (workflow.output.type === "text/csv") {
+            res.write(
+              `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
+            );
+            res.write(
+              `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"application/vnd.ant.code\\" language=\\"csv\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
+            );
+          } else if (workflow.output.type === "text/markdown") {
+            res.write(
+              `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
+            );
+            res.write(
+              `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"text/markdown\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
+            );
+          } else {
+            res.write(`0:"${escapedOutput}"\n`);
+          }
+        }
+      };
+
       const runnner = new WorkflowRunner(
         workflowId,
         processedAttachments,
-        (update) => {
-          if (update.type === "workflow_start") {
-            res.write('0:"Okay let me get started!\\n\\n"\n');
-          }
-
-          if (update.type === "step_start") {
-            res.write(
-              `0:"I am starting the step ${update.data.stepId}\\n\\n"\n`
-            );
-          }
-
-          if (update.type === "step_complete") {
-            res.write(
-              `0:"I am done with the step ${update.data.stepId}\\n\\n"\n`
-            );
-          }
-
-          if (update.type === "workflow_complete") {
-            const escapedOutput = update.data.output
-              .replace(/\\/g, "\\\\") // escape backslashes
-              .replace(/"/g, '\\"') // escape quotes
-              .replace(/\n/g, "\\n"); // escape newlines
-
-            // Check the workflow output type
-            if (workflow.output.type === "text/csv") {
-              res.write(
-                `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
-              );
-              res.write(
-                `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"application/vnd.ant.code\\" language=\\"csv\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
-              );
-            } else if (workflow.output.type === "text/markdown") {
-              res.write(
-                `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
-              );
-              res.write(
-                `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"text/markdown\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
-              );
-            } else {
-              res.write(`0:"${escapedOutput}"\n`);
-            }
-          }
-        },
+        workflowProgressCallback,
         true
       );
 
