@@ -1,16 +1,17 @@
 import { Request, Response } from "express";
 import { generateAttachmentData } from "../threads/threads.utils";
-import { ExtendedAttachment } from "../threads/threads.types";
 import {
   getAuthorizedWorkflowDefinitions,
   getWorkflowDefinition,
   isWorkflowAuthorized,
 } from "./workflows.registry";
+import { WorkflowAttachment } from "./workflows.types";
+import { WorkflowRunner } from "./workflows.runnner";
+import { FileData } from "./workflows.schemas";
 
 const workflowHandlers = {
   getAll: async (req: Request, res: Response) => {
     try {
-      console.log("req.workspace?.id", req.workspace?.id);
       const orgWorkflows = getAuthorizedWorkflowDefinitions(
         req.workspace?.id as string
       );
@@ -63,20 +64,96 @@ const workflowHandlers = {
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("x-vercel-ai-data-stream", "v1");
     res.flushHeaders();
 
-    const attachments: ExtendedAttachment[] = message.experimental_attachments;
+    let attachments: WorkflowAttachment[] = message.experimental_attachments;
 
     try {
-      const attachmentsData = await Promise.all(
-        attachments.map(async (attachment: any) => {
-          return generateAttachmentData(
-            attachment.file_key,
-            "application/pdf",
-            true
-          );
+      // Convert array to record structure matching FileData schema
+      const processedAttachments: Record<string, FileData> = {};
+
+      await Promise.all(
+        attachments.map(async (attachment) => {
+          processedAttachments[attachment.inputId] = {
+            fileName: attachment.name || "",
+            mimeType: attachment.contentType || "application/pdf",
+            url: await generateAttachmentData(
+              attachment.file_key,
+              attachment.contentType || "application/pdf",
+              true
+            ),
+          };
         })
       );
+
+      console.log(
+        "Processed Attachments:",
+        Object.entries(processedAttachments).map(
+          ([key, { fileName, mimeType }]) => ({
+            inputId: key,
+            fileName,
+            mimeType,
+          })
+        )
+      );
+
+      //   res.write(`0:${JSON.stringify("Message 1")}\n`);
+
+      //   res.write(
+      //     `0:${JSON.stringify(
+      //       "Message 2\n\n\n\nWith another\n\nline break\n\n"
+      //     )}\n`
+      //   );
+
+      //   res.write(`0:${JSON.stringify("Message 2")}\n`);
+      //   res.write(
+      //     `d:{"finishReason":"stop","usage":{"promptTokens":10,"completionTokens":20}}\n`
+      //   );
+
+      //   res.write(`0:${JSON.stringify("Message 3")}\n`);
+      //   res.write(
+      //     `d:{"finishReason":"stop","usage":{"promptTokens":10,"completionTokens":20}}\n`
+      //   );
+
+      //   res.end();
+
+      const runnner = new WorkflowRunner(
+        workflowId,
+        processedAttachments,
+        (update) => {
+          if (update.type === "workflow_start") {
+            res.write('0:"Okay let me get started!\\n\\n"\n');
+          }
+
+          if (update.type === "step_start") {
+            res.write(
+              `0:"I am starting the step ${update.data.stepId}\\n\\n"\n`
+            );
+          }
+
+          if (update.type === "step_complete") {
+            res.write(
+              `0:"I am done with the step ${update.data.stepId}\\n\\n"\n`
+            );
+          }
+
+          if (update.type === "workflow_complete") {
+            res.write(
+              `0:"I have completed all the steps. Here is my final result:\\n\\n\\n ${JSON.stringify(
+                update.data.output.csvArtifact
+              )}"\n`
+            );
+          }
+        },
+        true
+      );
+
+      await runnner.run();
+
+      res.write(`d:{"finishReason":"stop"}\n`);
+
+      res.end();
     } catch (error) {
       console.error("Error running workflow:", error);
       res.status(500).json({ error: "Failed to process workflow" });

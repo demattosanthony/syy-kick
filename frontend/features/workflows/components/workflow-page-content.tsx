@@ -12,8 +12,9 @@ import ErrorDisplay from "./workflow-error-display";
 import OutputDisplay from "./workflow-output-display";
 import FileUploadInput from "./workflow-file-input";
 import { Workflow } from "../workflows.types";
+import { ChatMessagesList } from "@/features/chat/messages/components";
 
-type ExtendedAttachment = Attachment & { file_key: string };
+type ExtendedAttachment = Attachment & { file_key: string; inputId: string };
 
 export default function WorkflowPageContent({
   workflowId,
@@ -51,6 +52,8 @@ export default function WorkflowPageContent({
       });
     },
   });
+
+  console.log(messages);
 
   const isProcessing = status === "submitted" || messages.length > 0;
   const response = messages[1];
@@ -119,6 +122,7 @@ export default function WorkflowPageContent({
           contentType: file.type,
           url: viewUrl,
           file_key: file_metadata.file_key,
+          inputId,
         });
       }
       const fileNames = Object.values(files)
@@ -221,7 +225,7 @@ export default function WorkflowPageContent({
                     disabled={!areRequiredFilesUploaded()}
                     onClick={onSubmit}
                   >
-                    <Play className="h-6 w-6 mr-2" /> Submit and run flow
+                    <Play className="h-6 w-6 mr-2" /> Submit and run
                   </Button>
                 </div>
               )}
@@ -237,17 +241,18 @@ export default function WorkflowPageContent({
           )}
         </div>
       ) : (
-        <div className="container mx-auto px-4 py-16 max-w-5xl">
-          <div className="mb-8 max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold mb-4 gap-2">
-              📋 {workflow.title}
-            </h1>
-            <p className="text-base text-muted-foreground">
-              {workflow.description}
-            </p>
+        <div className="container mx-auto px-4 max-w-5xl h-full w-full">
+          <div className="flex justify-center">
+            <Button size="lg" onClick={resetWorkflow} className="px-8">
+              Run Again
+            </Button>
           </div>
 
-          <div className="flex flex-col gap-8">
+          <div className="h-full w-full flex flex-1">
+            <ChatMessagesList messages={messages} status={status} />
+          </div>
+
+          {/* <div className="flex flex-col gap-8">
             <OutputDisplay
               response={response}
               outputConfig={outputConfig}
@@ -258,7 +263,7 @@ export default function WorkflowPageContent({
                 Run Again
               </Button>
             </div>
-          </div>
+          </div> */}
         </div>
       )}
     </div>
