@@ -205,7 +205,7 @@ export class WorkflowRunner {
       // Emit workflow_complete event
       this.progressCallback({
         type: "workflow_complete",
-        data: { output: workflowOutput },
+        data: { output: workflowOutput, type: this.workflow.output.type },
       });
 
       return finalOutput;

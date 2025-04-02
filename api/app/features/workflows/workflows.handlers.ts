@@ -48,6 +48,7 @@ const workflowHandlers = {
     }
   },
 
+  // Using the ai sdk data stream protocol to send updates to the client: https://sdk.vercel.ai/docs/ai-sdk-ui/stream-protocol#data-stream-protocol
   run: async (req: Request, res: Response) => {
     const { workflowId } = req.params;
     const { message } = req.body;
@@ -113,12 +114,24 @@ const workflowHandlers = {
               .replace(/"/g, '\\"') // escape quotes
               .replace(/\n/g, "\\n"); // escape newlines
 
-            res.write(
-              `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
-            );
-            res.write(
-              `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"application/vnd.ant.code\\" language=\\"csv\\" title=\\"Workflow Output\\">${escapedOutput}</antArtifact>"\n`
-            );
+            // Check the workflow output type
+            if (workflow.output.type === "text/csv") {
+              res.write(
+                `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
+              );
+              res.write(
+                `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"application/vnd.ant.code\\" language=\\"csv\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
+              );
+            } else if (workflow.output.type === "text/markdown") {
+              res.write(
+                `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
+              );
+              res.write(
+                `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"text/markdown\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
+              );
+            } else {
+              res.write(`0:"${escapedOutput}"\n`);
+            }
           }
         },
         true

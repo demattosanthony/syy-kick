@@ -54,7 +54,7 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
         images: "doc-ocr.images",
       },
       config: {
-        modelName: "gpt-4o",
+        modelName: "gemini-2.5-pro-exp",
         outputSchema: z.object({
           csvArtifact: z.string(),
         }),

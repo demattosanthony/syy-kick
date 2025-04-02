@@ -68,12 +68,6 @@ Ensure that your BOD document is:
 
 Format your output as a Markdown document. Use appropriate Markdown syntax for headings, lists, and emphasis.
 
-Your final output should be wrapped in artifact tags as follows:
-
-<antArtifact identifier="bod-document" type="text/markdown" title="Basis of Design Document">
-[Your Markdown-formatted BOD document goes here]
-</antArtifact>
-
 Remember, your final output should only include the Markdown-formatted BOD document within the specified artifact tags. Do not include any explanations, notes, or other content outside of these tags.`,
       },
     },

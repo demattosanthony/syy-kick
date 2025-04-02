@@ -249,7 +249,7 @@ export default function WorkflowPageContent({
           )}
         </div>
       ) : (
-        <div className="h-full w-full flex flex-1">
+        <div className="flex flex-1 h-full w-full relative">
           {selectedArtifact && (
             <>
               <ArtifactViewer

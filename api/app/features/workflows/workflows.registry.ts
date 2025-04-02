@@ -7,10 +7,10 @@ import {
 import { Workflow, WorkflowSchema } from "./workflows.schemas";
 
 const workflows: Workflow[] = [
-  equipmentServingListWorkflow,
-  basisOfDesignGenWorkflow,
   rfpEvalWorkflow,
   windowDoorScheduleGenWorkflow,
+  equipmentServingListWorkflow,
+  basisOfDesignGenWorkflow,
 ];
 
 const workflowRegistry = new Map<string, Workflow>();
