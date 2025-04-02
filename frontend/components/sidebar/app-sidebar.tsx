@@ -226,7 +226,11 @@ export function AppSidebar({
       </SidebarFooter>
       <SidebarRail />
       <SiteDialog
-        organizationId={activeWorkspace?.id}
+        organizationId={
+          activeWorkspace?.type === "organization"
+            ? activeWorkspace.id
+            : undefined
+        }
         mode="create"
         showDialog={showCreateSiteDialog}
         setShowDialog={setShowCreateSiteDialog}
