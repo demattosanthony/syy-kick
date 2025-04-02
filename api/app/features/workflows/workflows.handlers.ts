@@ -5,7 +5,7 @@ import {
   getAuthorizedWorkflowDefinitions,
   getWorkflowDefinition,
   isWorkflowAuthorized,
-} from "./workflows.config";
+} from "./workflows.registry";
 
 const workflowHandlers = {
   getAll: async (req: Request, res: Response) => {
@@ -77,8 +77,6 @@ const workflowHandlers = {
           );
         })
       );
-
-      return {};
     } catch (error) {
       console.error("Error running workflow:", error);
       res.status(500).json({ error: "Failed to process workflow" });

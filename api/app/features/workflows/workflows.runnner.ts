@@ -1,4 +1,4 @@
-import { getWorkflowDefinition } from "./workflows.config";
+import { getWorkflowDefinition } from "./workflows.registry";
 import { stepExecutorRegistry } from "./workflows.processors";
 import {
   FileData,
