@@ -9,7 +9,11 @@ const file = await Bun.file(docPath).bytes();
 const base64 = Buffer.from(file).toString("base64");
 
 const processEvent = (update: ProgressUpdate) => {
-  console.log(JSON.stringify(update));
+  //   console.log(JSON.stringify(update));
+  //   console.log("\n\n");
+  // Check the event
+  // Convert to assitant message or tool messagge
+  // save to messages table with tool calls
 };
 
 const runner = new WorkflowRunner(
@@ -21,8 +25,9 @@ const runner = new WorkflowRunner(
       url: base64,
     },
   },
-  processEvent
+  processEvent,
+  true
 );
 
 const result = await runner.run();
-// console.log(result.csvArtifact);
+console.log(result.csvArtifact);

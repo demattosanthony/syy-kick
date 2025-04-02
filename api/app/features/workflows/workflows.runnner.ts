@@ -18,11 +18,13 @@ export class WorkflowRunner {
   private state: WorkflowState;
   private utilities: StepExecutorUtilities;
   private progressCallback: ProgressCallback;
+  private debug: boolean;
 
   constructor(
     workflowId: string,
     initialRequestInputs: Record<string, FileData>,
-    progressCallback: ProgressCallback
+    progressCallback: ProgressCallback,
+    debug: boolean = false
   ) {
     const definition = getWorkflowDefinition(workflowId);
     if (!definition) {
@@ -36,6 +38,7 @@ export class WorkflowRunner {
     this.utilities = {
       getDataSourceValue: this.getDataSourceValue,
     };
+    this.debug = debug;
   }
 
   private async processInitalInputs(): Promise<void> {
@@ -144,7 +147,8 @@ export class WorkflowRunner {
             step,
             workflow: this.workflow,
             utils: this.utilities,
-            progressCallback: this.progressCallback, // Pass to executor
+            progressCallback: this.progressCallback,
+            debug: this.debug,
           });
 
           // Emit step_complete event
@@ -163,7 +167,13 @@ export class WorkflowRunner {
 
         // Store the output
         this.state.stepOutputs[step.id] = output;
-        console.log(`Step ${step.id} completed`);
+
+        if (this.debug) {
+          console.log(`State after step ${step.id}:`, {
+            workflowInput: Object.keys(this.state.workflowInput),
+            stepOutputs: Object.keys(this.state.stepOutputs),
+          });
+        }
       }
 
       // Workflow complete

@@ -147,6 +147,7 @@ export type StepExecutorInput = {
   state: WorkflowState; // Full current workflow state
   workflow: Workflow; // The parent workflow definition
   utils: StepExecutorUtilities; // Shared utilities
+  debug: boolean;
   progressCallback?: ProgressCallback;
 };
 export type StepExecutorFunction = (

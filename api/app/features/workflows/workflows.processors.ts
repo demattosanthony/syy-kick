@@ -17,7 +17,11 @@ import { Jimp } from "jimp";
 export const executeLLMStep: StepExecutorFunction = async ({
   step,
   inputs,
+  debug,
 }: StepExecutorInput): Promise<StepOutputData> => {
+  if (debug) {
+    console.log(`[${step.id}] Inputs:`, inputs);
+  }
   const stepConfig = step.config as LLMStepConfig["config"];
   const modelName = stepConfig.modelName || "claude-3.5-sonnet";
   let populatedPrompt = stepConfig.promptTemplate;
@@ -40,6 +44,14 @@ export const executeLLMStep: StepExecutorFunction = async ({
     contentType: file.mimeType,
     name: file.fileName,
   }));
+
+  if (debug) {
+    console.log(`[${step.id}] Populated Prompt:`, populatedPrompt);
+    console.log(
+      `[${step.id}] Attachments:`,
+      attachments.map((a) => a.name)
+    );
+  }
 
   try {
     const { object } = await generateObject({
@@ -67,6 +79,10 @@ export const executeLLMStep: StepExecutorFunction = async ({
       );
     }
 
+    if (debug) {
+      console.log(`[${step.id}] Validated Output:`, validatedOutput.data);
+    }
+
     return validatedOutput.data as StepOutputData;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
@@ -79,8 +95,15 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
   step,
   state,
   utils,
+  debug,
 }: StepExecutorInput): Promise<StepOutputData> => {
   const stepConfig = step.config as PdfPageExtractStepConfig["config"];
+  if (debug) {
+    console.log(`[${step.id}] Inputs:`, {
+      pdfDataSource: stepConfig.pdfDataSource,
+      pageNumberSource: stepConfig.pageNumberSource,
+    });
+  }
   const pageNumber = utils.getDataSourceValue(
     state,
     stepConfig.pageNumberSource
@@ -110,6 +133,14 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
     );
   }
 
+  if (debug) {
+    console.log(
+      `[${
+        step.id
+      }] Extracting page ${pageNumber} from PDF with ${pdfDoc.getPageCount()} pages`
+    );
+  }
+
   // Extract page
   const newPdfDoc = await PDFDocument.create();
   const [copiedPage] = await newPdfDoc.copyPages(pdfDoc, [pageNumber - 1]);
@@ -123,6 +154,16 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
     maxDimension: 8000,
   });
 
+  if (debug) {
+    try {
+      const imageFilePath = `./debug-images/${step.id}_page_${pageNumber}.png`;
+      await Bun.write(imageFilePath, Buffer.from(pageImage, "base64"));
+      console.log(`[${step.id}] Saved image to ${imageFilePath}`);
+    } catch (writeError) {
+      console.error(`[${step.id}] Failed to save image:`, writeError);
+    }
+  }
+
   return { imageBase64: pageImage, pageNumber };
 };
 
@@ -130,8 +171,14 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
   step,
   state,
   utils,
+  debug,
 }: StepExecutorInput): Promise<StepOutputData> => {
   const stepConfig = step.config as ObjectDetectionStepConfig["config"];
+  if (debug) {
+    console.log(`[${step.id}] Inputs:`, {
+      imageDataSource: stepConfig.imageDataSource,
+    });
+  }
   const imageFileData = utils.getDataSourceValue(
     state,
     stepConfig.imageDataSource
@@ -144,15 +191,22 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
     );
   }
 
+  const model = MODELS[stepConfig.model].model;
+  const prompt = stepConfig.promptTemplate;
+
+  if (debug) {
+    console.log(`[${step.id}] Prompt:`, prompt);
+  }
+
   // Run object detection
   const { object } = await generateObject({
-    model: MODELS[stepConfig.model].model,
+    model: model,
     messages: [
       {
         role: "user",
         content: [
           { type: "image", image: imageFileData, mimeType: "image/png" },
-          { type: "text", text: stepConfig.promptTemplate },
+          { type: "text", text: prompt },
         ],
       },
     ],
@@ -162,6 +216,10 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
       ),
     }),
   });
+
+  if (debug) {
+    console.log(`[${step.id}] Detected Bounding Boxes:`, object.bounding_boxes);
+  }
 
   // Process image
   const image = await Jimp.read(Buffer.from(imageFileData, "base64"));
@@ -202,6 +260,17 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
       fileName: `box_${index}_${label}.jpeg`,
       mimeType: "image/jpeg",
     });
+
+    if (debug) {
+      try {
+        const safeLabel = label.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+        const imageFilePath = `./debug-images/${step.id}_box_${index}_${safeLabel}.jpeg`;
+        await Bun.write(imageFilePath, Buffer.from(boxImageBase64, "base64"));
+        console.log(`[${step.id}] Saved box ${index} to ${imageFilePath}`);
+      } catch (writeError) {
+        console.error(`[${step.id}] Failed to save box ${index}:`, writeError);
+      }
+    }
   }
 
   return {
