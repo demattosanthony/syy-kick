@@ -97,12 +97,27 @@ export type ObjectDetectionStepConfig = z.infer<
   typeof ObjectDetectionStepSchema
 >;
 
+export const DocumentOCRStepSchema = BaseStepSchema.extend({
+  type: z.literal("document_ocr"),
+  config: z.object({
+    documentDataSource: z
+      .string()
+      .min(1)
+      .describe("Path to the FileData object (e.g., 'workflowInput.document')"),
+    outputSchema: z
+      .instanceof(z.ZodType)
+      .describe("Zod schema instance for the expected JSON output"),
+  }),
+});
+export type DocumentOCRStepConfig = z.infer<typeof DocumentOCRStepSchema>;
+
 // --- Union Schema for Any Step Type ---
 // This uses the 'type' field to determine which specific schema to apply.
 export const WorkflowStepSchemaUnion = z.discriminatedUnion("type", [
   LLMStepSchema,
   PdfPageExtractStepSchema,
   ObjectDetectionStepSchema,
+  DocumentOCRStepSchema,
 ]);
 export type WorkflowStepConfig = z.infer<typeof WorkflowStepSchemaUnion>;
 

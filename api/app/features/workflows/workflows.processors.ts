@@ -7,8 +7,9 @@ import {
   StepExecutorFunction,
   StepExecutorInput,
   StepOutputData,
+  DocumentOCRStepConfig,
 } from "./workflows.schemas";
-import { MODELS } from "../models";
+import { mistralAi, MODELS } from "../models";
 import { PDFDocument } from "pdf-lib";
 import { getPdfPageAsImage } from "../../utils";
 import { z } from "zod";
@@ -63,8 +64,8 @@ export const executeLLMStep: StepExecutorFunction = async ({
           content: [
             { type: "text", text: populatedPrompt },
             ...(attachments.map((a) => ({
-              type: "file",
-              data: a.url,
+              type: a.contentType?.startsWith("image") ? "image" : "file",
+              [a.contentType?.startsWith("image") ? "image" : "data"]: a.url,
               mimeType: a.contentType,
             })) as any),
           ],
@@ -278,7 +279,87 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
   };
 };
 
+export const documentOcrStep: StepExecutorFunction = async ({
+  step,
+  state,
+  utils,
+  debug,
+}: StepExecutorInput): Promise<StepOutputData> => {
+  const stepConfig = step.config as DocumentOCRStepConfig["config"];
+  if (debug) {
+    console.log(`[${step.id}] Inputs:`, {
+      imageDataSource: stepConfig.documentDataSource,
+    });
+  }
+
+  const documentFileData = utils.getDataSourceValue(
+    state,
+    stepConfig.documentDataSource
+  ) as FileData | undefined;
+
+  // Validate input
+  if (!documentFileData) {
+    throw new Error(
+      `Invalid document at '${stepConfig.documentDataSource}' in step ${step.id}`
+    );
+  }
+
+  // Run OCR
+  const result = await mistralAi.ocr.process({
+    model: "mistral-ocr-latest",
+    document: {
+      documentUrl: `data:${documentFileData.mimeType};base64,${documentFileData.url}`,
+      type: "document_url",
+    },
+    includeImageBase64: true,
+  });
+
+  let markdown = "";
+  let images = [];
+
+  for (const item of result.pages) {
+    if (item.markdown) {
+      markdown += item.markdown + "\n\n";
+    }
+
+    for (let index = 0; index < item.images.length; index++) {
+      const image = item.images[index];
+      if (!image.imageBase64) {
+        continue;
+      }
+
+      // Extract base64 data, removing any prefix if present
+      let imageBase64 = image.imageBase64;
+      if (imageBase64.includes(",")) {
+        imageBase64 = imageBase64.split(",", 2)[1];
+      }
+
+      images.push({
+        url: imageBase64,
+        fileName: image.id,
+        mimeType: "image/jpeg",
+      });
+
+      if (debug) {
+        try {
+          const imageFilePath = `./debug-images/${step.id}_image_${index}.jpeg`;
+          await Bun.write(imageFilePath, Buffer.from(imageBase64, "base64"));
+          console.log(`Saved image: ${imageFilePath}`);
+        } catch (error) {
+          console.error(`Failed to process image ${index}:`, error);
+        }
+      }
+    }
+  }
+
+  return {
+    markdown,
+    images,
+  };
+};
+
 export const stepExecutorRegistry = new Map<string, StepExecutorFunction>();
 stepExecutorRegistry.set("llm", executeLLMStep);
 stepExecutorRegistry.set("pdf_page_extract", executePdfPageExtractionStep);
 stepExecutorRegistry.set("object_detection", executeObjectDetectionStep);
+stepExecutorRegistry.set("document_ocr", documentOcrStep);

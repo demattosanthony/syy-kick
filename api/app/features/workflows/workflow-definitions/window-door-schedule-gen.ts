@@ -28,14 +28,32 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
   },
   steps: [
     {
+      id: "doc-ocr",
+      title: "Document OCR",
+      type: "document_ocr",
+      config: {
+        documentDataSource: "workflowInput.architectural-drawings",
+        outputSchema: z.object({
+          markdown: z.string(),
+          images: z.array(
+            z.object({
+              url: z.string(),
+              fileName: z.string(),
+              mimeType: z.string(),
+            })
+          ),
+        }),
+      },
+    },
+    {
       id: "ai-evaluation",
       title: "AI Evaluation",
       type: "llm",
       inputMapping: {
-        file: "workflowInput.architectural-drawings",
+        images: "doc-ocr.images",
       },
       config: {
-        modelName: "claude-3.7-sonnet",
+        modelName: "gemini-2.5-pro-exp",
         outputSchema: z.object({
           csvArtifact: z.string(),
         }),
