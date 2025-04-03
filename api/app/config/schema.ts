@@ -41,6 +41,7 @@ export const bytea = customType<{
 });
 
 export { sites, sitesRelations } from "../features/sites/sites.schema";
+export { issues } from "../features/issues/issues.schema";
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
