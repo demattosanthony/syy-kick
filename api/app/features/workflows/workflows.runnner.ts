@@ -121,7 +121,7 @@ export class WorkflowRunner {
         // Emit step_start event
         this.progressCallback({
           type: "step_start",
-          data: { stepId: step.id, title: step.title },
+          data: { stepId: step.id, message: step.processingMessage },
         });
 
         let output: StepOutputData;
@@ -154,7 +154,7 @@ export class WorkflowRunner {
           // Emit step_complete event
           this.progressCallback({
             type: "step_complete",
-            data: { stepId: step.id },
+            data: { stepId: step.id, message: step.processedMessage },
           });
         } catch (stepError: any) {
           // Emit step_error event

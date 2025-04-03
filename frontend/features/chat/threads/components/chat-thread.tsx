@@ -85,10 +85,9 @@ export default function ThreadPage({
     status,
     stop,
     error,
-    setMessages,
   } = useChat({
     api: isWorkflow
-      ? `${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/run`
+      ? `${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/run?threadId=${threadId}`
       : `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference`,
     credentials: "include",
     initialInput: isNew ? initalInput : "",
@@ -196,9 +195,7 @@ export default function ThreadPage({
     // If its a new thread, send the message right away
     if (isNew) {
       onSubmit({ preventDefault: () => {} } as React.FormEvent);
-      router.replace(
-        `/threads/${threadId}?isWorkflow=${isWorkflow}&workflowId=${workflowId}`
-      );
+      router.replace(`/threads/${threadId}`);
       setInitalInput("");
 
       setTimeout(() => {

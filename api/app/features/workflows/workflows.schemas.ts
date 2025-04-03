@@ -31,7 +31,8 @@ export type WorkflowOutputConfig = z.infer<typeof WorkflowOutputConfigSchema>;
 // Base Schema for common fields
 const BaseStepSchema = z.object({
   id: z.string().min(1),
-  title: z.string().min(1),
+  processingMessage: z.string(),
+  processedMessage: z.string(),
   description: z.string().optional(),
   inputMapping: z
     .record(z.string())

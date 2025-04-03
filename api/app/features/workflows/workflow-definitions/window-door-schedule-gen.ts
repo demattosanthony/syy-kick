@@ -30,7 +30,8 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
   steps: [
     {
       id: "doc-ocr",
-      title: "Document OCR",
+      processingMessage: "Processing the architectural drawings...",
+      processedMessage: "Architectural drawings processed successfully.",
       type: "document_ocr",
       config: {
         documentDataSource: "workflowInput.architectural-drawings",
@@ -48,7 +49,8 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
     },
     {
       id: "ai-evaluation",
-      title: "AI Evaluation",
+      processingMessage: "Generating window and door schedules...",
+      processedMessage: "Window and door schedules generated successfully.",
       type: "llm",
       inputMapping: {
         images: "doc-ocr.images",

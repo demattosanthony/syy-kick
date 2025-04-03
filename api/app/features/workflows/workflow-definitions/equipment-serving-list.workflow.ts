@@ -20,22 +20,6 @@ export const equipmentServingListWorkflow: Workflow = {
       acceptedFileTypes: "application/pdf",
       required: true,
     },
-    {
-      id: "mechanical-schedule",
-      type: "file",
-      title: "Mechanical Schedule PDF",
-      description: "Primary source for areas served",
-      acceptedFileTypes: "application/pdf",
-      required: false,
-    },
-    {
-      id: "mechanical-floorplans",
-      type: "file",
-      title: "Mechanical Floorplans PDF",
-      description: "Secondary source if schedules do not list service areas",
-      acceptedFileTypes: "application/pdf",
-      required: false,
-    },
   ],
   output: {
     type: "text/csv",
@@ -47,7 +31,8 @@ export const equipmentServingListWorkflow: Workflow = {
     {
       id: "find-schedules-page",
       type: "llm",
-      title: "Find Mechanical Schedules Page",
+      processingMessage: "Finding the page with mechanical schedules...",
+      processedMessage: "Mechanical schedules page found.",
       inputMapping: {
         file: "workflowInput.mechanicalDrawings",
       },
@@ -63,7 +48,8 @@ export const equipmentServingListWorkflow: Workflow = {
     {
       id: "extract-pdf-page",
       type: "pdf_page_extract",
-      title: "Extract Mechanical Schedules Page",
+      processingMessage: "Extracting the page with mechanical schedules...",
+      processedMessage: "Mechanical schedules page extracted.",
       config: {
         pdfDataSource: "workflowInput.mechanicalDrawings",
         pageNumberSource: "find-schedules-page.pageNumber",
@@ -72,7 +58,8 @@ export const equipmentServingListWorkflow: Workflow = {
     {
       id: "schedule-data-object-detection",
       type: "object_detection",
-      title: "Detect Schedule Tables",
+      processingMessage: "Detecting schedule tables in the extracted page...",
+      processedMessage: "Schedule tables detected successfully.",
       config: {
         imageDataSource: "extract-pdf-page.imageBase64",
         model: "gemini-2.5-pro-exp",
@@ -95,7 +82,9 @@ Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "..
     {
       id: "spreadsheet-creation",
       type: "llm",
-      title: "Create Equipment Serving List",
+      processingMessage:
+        "Creating the equipment serving list from the detected schedule tables...",
+      processedMessage: "Equipment serving list created successfully.",
       inputMapping: {
         images: "schedule-data-object-detection.screenshots",
       },

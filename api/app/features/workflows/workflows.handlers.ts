@@ -8,6 +8,14 @@ import {
 import { WorkflowAttachment } from "./workflows.types";
 import { WorkflowRunner } from "./workflows.runnner";
 import { FileData, ProgressUpdate } from "./workflows.schemas";
+import db from "../../config/db";
+import {
+  messageAttachments,
+  messages,
+  threads,
+  toolCalls as toolCallsTable,
+} from "../../config/schema";
+import { eq } from "drizzle-orm";
 
 const workflowHandlers = {
   getAll: async (req: Request, res: Response) => {
@@ -52,8 +60,7 @@ const workflowHandlers = {
   run: async (req: Request, res: Response) => {
     const { workflowId } = req.params;
     const { message } = req.body;
-
-    console.log("GOT A HIT");
+    const { threadId } = req.query;
 
     const workflow = getWorkflowDefinition(workflowId as any);
     if (!workflow) {
@@ -70,9 +77,46 @@ const workflowHandlers = {
     res.setHeader("x-vercel-ai-data-stream", "v1");
     res.flushHeaders();
 
-    let attachments: WorkflowAttachment[] = message.experimental_attachments;
-
     try {
+      await db
+        .update(threads)
+        .set({
+          title: `${workflow.title} Run - ${Date.now()}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(threads.id, threadId as string));
+
+      // Save the initial user message first
+      const userMessage = await db
+        .insert(messages)
+        .values({
+          userId: req.dbUser!.id,
+          id: crypto.randomUUID(),
+          threadId: threadId as string,
+          role: "user",
+          text: message.content || "",
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Save attachments if any
+      let attachments: WorkflowAttachment[] = message.experimental_attachments;
+      if (attachments?.length > 0) {
+        await Promise.all(
+          attachments.map((attachment) =>
+            db.insert(messageAttachments).values({
+              messageId: userMessage[0].id,
+              fileName: attachment.name,
+              mimeType: attachment.contentType,
+              fileKey: attachment.file_key,
+              type: attachment.contentType?.includes("image")
+                ? "image"
+                : "file",
+            })
+          )
+        );
+      }
+
       // Convert array to record structure matching FileData schema
       const processedAttachments: Record<string, FileData> = {};
 
@@ -90,19 +134,63 @@ const workflowHandlers = {
         })
       );
 
-      const workflowProgressCallback = (update: ProgressUpdate) => {
+      const [assistantMessage] = await db
+        .insert(messages)
+        .values({
+          userId: req.dbUser!.id,
+          id: crypto.randomUUID(),
+          threadId: threadId as string,
+          role: "assistant",
+          text: "Okay let me get started!\n\n",
+          createdAt: new Date(),
+        })
+        .returning();
+
+      const workflowProgressCallback = async (update: ProgressUpdate) => {
         if (update.type === "workflow_start") {
           res.write('0:"Okay let me get started!\\n\\n"\n');
         }
 
         if (update.type === "step_start") {
-          res.write(`0:"I am starting the step ${update.data.stepId}\\n\\n"\n`);
+          const toolCallId = `step-${update.data.stepId}`;
+          // Tool call start
+          res.write(
+            `b:{"toolCallId":"${toolCallId}","toolName":"workflow-step"}\n`
+          );
+          // Tool call with initial message
+          res.write(
+            `9:{"toolCallId":"${toolCallId}","toolName":"workflow-step","args":{"message":"${update.data.message}"}}\n`
+          );
+
+          // Attach the tool call to the initial assistant message
+          await db.insert(toolCallsTable).values({
+            id: crypto.randomUUID(),
+            messageId: assistantMessage.id,
+            toolName: "workflow-step",
+            toolCallId: toolCallId,
+            args: { message: update.data.message },
+            status: "pending",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
         }
 
         if (update.type === "step_complete") {
+          const toolCallId = `step-${update.data.stepId}`;
+          // Tool result with completion message
           res.write(
-            `0:"I am done with the step ${update.data.stepId}\\n\\n"\n`
+            `a:{"toolCallId":"${toolCallId}","result":"${update.data.message}"}\n`
           );
+
+          // Update tool call status and result
+          await db
+            .update(toolCallsTable)
+            .set({
+              status: "completed",
+              result: update.data.message,
+              updatedAt: new Date(),
+            })
+            .where(eq(toolCallsTable.toolCallId, toolCallId));
         }
 
         if (update.type === "workflow_complete") {
@@ -111,6 +199,7 @@ const workflowHandlers = {
             .replace(/"/g, '\\"') // escape quotes
             .replace(/\n/g, "\\n"); // escape newlines
 
+          let finalMessage = "";
           // Check the workflow output type
           if (workflow.output.type === "text/csv") {
             res.write(
@@ -119,6 +208,9 @@ const workflowHandlers = {
             res.write(
               `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"application/vnd.ant.code\\" language=\\"csv\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
             );
+            finalMessage = `<antThinking>Returning the artifact from the workflow run</antThinking>
+
+<antArtifact identifier="workflow-output" type="application/vnd.ant.code" language="csv" title="${workflow.title} Output">${update.data.output}</antArtifact>`;
           } else if (workflow.output.type === "text/markdown") {
             res.write(
               `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
@@ -126,9 +218,23 @@ const workflowHandlers = {
             res.write(
               `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"text/markdown\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
             );
+            finalMessage = `<antThinking>Returning the artifact from the workflow run</antThinking>
+
+<antArtifact identifier="workflow-output" type="text/markdown" title="${workflow.title} Output">${update.data.output}</antArtifact>`;
           } else {
             res.write(`0:"${escapedOutput}"\n`);
           }
+
+          // Save final assistant message with workflow output
+          console.log("Final message:", finalMessage);
+          await db.insert(messages).values({
+            userId: req.dbUser!.id,
+            id: crypto.randomUUID(),
+            threadId: threadId as string,
+            role: "assistant",
+            text: finalMessage,
+            createdAt: new Date(),
+          });
         }
       };
 

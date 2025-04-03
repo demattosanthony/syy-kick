@@ -24,9 +24,45 @@ const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
       return <SearchDocumentsTool tool={tool} />;
     case "web_search":
       return <WebSearchTool tool={tool} />;
+    case "workflow-step":
+      return <WorkflowStepTool tool={tool} />;
     default:
       return null;
   }
+};
+
+const WorkflowStepTool = ({ tool }: { tool: ToolInvocation }) => {
+  const loading = tool.state === "partial-call" || tool.state === "call";
+  const message = loading ? tool.args?.message || "" : tool.result || "";
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2">
+        <Loader variant="text-shimmer" text={message} size="lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-fit rounded-3xl border border-border p-2 cursor-default hover:bg-secondary/30 transition-colors duration-200 min-h-[34px] h-auto flex items-center gap-2">
+      <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+        <svg
+          className="w-3.5 h-3.5 text-green-500"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      </div>
+      <span className="text-sm text-muted-foreground">{message}</span>
+    </div>
+  );
 };
 
 const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {

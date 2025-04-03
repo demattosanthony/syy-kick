@@ -30,7 +30,8 @@ export const basisOfDesignGenWorkflow: Workflow = {
   steps: [
     {
       id: "basis-of-design",
-      title: "Basis of Design",
+      processingMessage: "Generating Basis of Design document...",
+      processedMessage: "Basis of Design document generated successfully.",
       type: "llm",
       inputMapping: {
         file: "workflowInput.engineering-drawings",

@@ -30,7 +30,8 @@ export const rfpEvalWorkflow: Workflow = {
   steps: [
     {
       id: "ai-evaluation",
-      title: "AI Evaluation",
+      processingMessage: "Evaluating the RFP document...",
+      processedMessage: "Evaluation completed successfully.",
       type: "llm",
       inputMapping: {
         file: "workflowInput.rfpDoc",
