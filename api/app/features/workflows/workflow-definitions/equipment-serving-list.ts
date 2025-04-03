@@ -96,7 +96,7 @@ Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "..
         promptTemplate: `You are tasked with creating an 'Equipment Serving' list csv file based on mechanical schedules images. Your objective is to identify which areas the large mechanical equipment (like AHUs, DOAS, etc.) serves using the provided drawings, prioritizing mechanical schedules within the drawings as the primary source. Smaller units or equipment without listed service areas on the schedules should be ignored and not included in the final list.
 
 Format your final output as a csv artifact using the following structure:
-- Two columns: "Equipment ID" and "Service Area(s)"
+- Three columns: "Equipment ID", Location, and "Service Area(s)"
 - List each piece of equipment on a separate row.
 - If multiple areas are served by one piece of equipment, separate them with commas.
 - If you are uncertain about a service area, add "[NEEDS CONFIRMATION]" after the area description.

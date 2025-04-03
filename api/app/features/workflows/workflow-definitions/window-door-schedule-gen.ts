@@ -61,56 +61,67 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
         outputSchema: z.object({
           csvArtifact: z.string(),
         }),
-        promptTemplate: `You are an AI assistant specialized in analyzing architectural PDF plans. Your primary task is to extract window and door schedules from these plans, calculate areas, and present the information in a structured CSV format.
+        promptTemplate: `You are an expert architectural document analysis system, specialized in extracting and processing window and door specifications from architectural drawings. Your objective is to generate standardized window and door schedules in CSV format.
 
-Your goal is to create two separate schedules: one for windows and one for doors. Each schedule should include the following columns: Item, Height, Width, and Area (sq ft). Follow these steps:
+Analysis Protocol:
 
-1. Scan the PDF content for window and door schedules, dimensions, and relevant symbols.
-2. Extract the necessary information for each window and door.
-3. Convert all measurements to feet and inches if they're in a different unit.
-4. Calculate the area in square feet for each item based on the height and width.
-5. Round the calculated areas to two decimal places.
-6. Organize the information into two separate tables: one for windows and one for doors.
-7. Format the tables as CSV with proper formatting.
+1. SCHEDULE IDENTIFICATION
+First, analyze the document for existing window and door schedules:
+- Search for tables or sections explicitly labeled as "Window Schedule", "Door Schedule", or similar variants
+- If found, proceed to Protocol A
+- If not found, proceed to Protocol B
 
-Before providing your final output, work through the following steps inside <extraction_and_calculation> tags in your thinking block:
-- List all window and door items found in the PDF content.
-- For each item, write down the extracted dimensions and perform any necessary unit conversions.
-- Verify that all measurements are in feet and inches (e.g., 5'0").
-- Show your area calculations for each item, ensuring they're in square feet and rounded to two decimal places.
-- Note any challenges you encounter and how you resolve them.
-- If any information is missing or unclear, explain what's missing and how you plan to address it (e.g., by prompting the user for clarification or making estimates based on similar elements).
+Protocol A - Existing Schedule Processing:
+1. Extract all entries from the identified schedules
+2. Validate and standardize measurements:
+   - Convert all dimensions to feet and inches format (e.g., 7'0")
+   - Verify each entry has both height and width
+   - Calculate area in square feet (height × width)
+   - Round areas to two decimal places
+3. Format according to the required CSV structure
 
-Your final output should be a CSV text content containing both the window and door schedules. Use the following format for the CSV artifact:
+Protocol B - Floor Plan Analysis:
+1. Analyze architectural floor plan images for:
+   - Window symbols and annotations
+   - Door symbols and annotations
+   - Dimensional notations and scale indicators
+2. For each identified element:
+   - Extract or calculate dimensions using scale references
+   - Convert measurements to feet and inches
+   - Generate unique identifiers (e.g., "Window-A", "Door-1")
+   - Calculate areas using extracted dimensions
+3. Format according to the required CSV structure
 
-<example_artifact>
+Data Processing Requirements:
+- All measurements must be in feet and inches format (e.g., 7'0")
+- Areas must be in square feet, rounded to two decimal places
+- Each item requires: unique identifier, height, width, and calculated area
+
+Document your analysis process within <analysis_log> tags, including:
+- Protocol selected (A or B) with justification
+- Data extraction methodology
+- Any assumptions or estimations made
+- Conversion calculations performed
+- Quality control checks applied
+
+Output Format:
+Generate a CSV artifact with the following structure:
+
 WINDOW SCHEDULE
 Item,Height,Width,Area (sq ft)
-Window/Storefront A,7'0",10'0",70.00
-Window/Storefront C,7'0",9'0",63.00
-Window/Storefront D,7'0",7'0",49.00
-Window/Storefront F,7'0",3'0",21.00
-Window/Storefront G,7'0",2'0",14.00
-Window/Storefront H,7'0",6'0",42.00
-Window/Storefront I,2'0",6'0",12.00
-Window/Storefront J,2'0",9'0",18.00
-Window/Storefront K,2'0",10'0",20.00
+[window entries...]
 
 DOOR SCHEDULE
 Item,Height,Width,Area (sq ft)
-Door Type A1,7'0",3'0",21.00
-</example_artifact>
+[door entries...]
 
-Ensure that your CSV content includes both the window and door schedules, with a clear separation between them.
+Quality Control:
+- Verify all measurements are properly formatted (X'Y")
+- Confirm area calculations are accurate and rounded
+- Ensure unique identifiers are consistent and logical
+- Validate that no required data fields are missing
 
-Remember:
-- All measurements must be in feet and inches (e.g., 7'0").
-- Areas should be calculated in square feet and rounded to two decimal places.
-- Make sure to include the double quotes in the height and width measurements (e.g., 7'0").
-- Verify the accuracy of all extracted and calculated information before including it in the final output.
-- Format exactly as shown in the example above, with no extra quotes around the entire values.
-
-Your final output should consist only of the CSV artifact and should not duplicate or rehash any of the work you did in the thinking block.`,
+Return only the final CSV artifact in the specified format, without any additional commentary or markup.`,
       },
     },
   ],

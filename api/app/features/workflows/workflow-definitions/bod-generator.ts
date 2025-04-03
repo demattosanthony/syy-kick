@@ -29,15 +29,35 @@ export const basisOfDesignGenWorkflow: Workflow = {
   },
   steps: [
     {
+      id: "doc-ocr",
+      processingMessage: "Performing Optical Character Recognition (OCR)...",
+      processedMessage:
+        "Optical Character Recognition (OCR) completed successfully.",
+      type: "document_ocr",
+      config: {
+        documentDataSource: "workflowInput.engineering-drawings",
+        outputSchema: z.object({
+          markdown: z.string(),
+          images: z.array(
+            z.object({
+              url: z.string(),
+              fileName: z.string(),
+              mimeType: z.string(),
+            })
+          ),
+        }),
+      },
+    },
+    {
       id: "basis-of-design",
       processingMessage: "Generating Basis of Design document...",
       processedMessage: "Basis of Design document generated successfully.",
       type: "llm",
       inputMapping: {
-        file: "workflowInput.engineering-drawings",
+        file: "doc-ocr.images",
       },
       config: {
-        modelName: "claude-3.7-sonnet",
+        modelName: "gemini-2.5-pro-exp",
         outputSchema: z.object({
           basisOfDesignDocument: z.string(),
         }),
