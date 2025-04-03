@@ -97,7 +97,7 @@ Data Processing Requirements:
 - Areas must be in square feet, rounded to two decimal places
 - Each item requires: unique identifier, height, width, and calculated area
 
-Document your analysis process within <analysis_log> tags, including:
+Document your analysis process within <analysis_log> tags inside of your thinking block, including:
 - Protocol selected (A or B) with justification
 - Data extraction methodology
 - Any assumptions or estimations made

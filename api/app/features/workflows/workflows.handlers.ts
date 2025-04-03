@@ -16,6 +16,7 @@ import {
   toolCalls as toolCallsTable,
 } from "../../config/schema";
 import { eq } from "drizzle-orm";
+import { CONFIG } from "../../config/constants";
 
 const workflowHandlers = {
   getAll: async (req: Request, res: Response) => {
@@ -241,7 +242,7 @@ const workflowHandlers = {
         workflowId,
         processedAttachments,
         workflowProgressCallback,
-        true
+        CONFIG.__prod__ ? false : true // Logging enabled in dev mode
       );
 
       await runnner.run();
