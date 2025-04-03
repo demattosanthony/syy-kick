@@ -101,7 +101,9 @@ Format your final output as a csv artifact using the following structure:
 - If multiple areas are served by one piece of equipment, separate them with commas.
 - If you are uncertain about a service area, add "[NEEDS CONFIRMATION]" after the area description.
 
-Your final response to the user must be only the csv artifact.`,
+Your final response to the user must be only the csv artifact.
+
+Do not make up any information. Only include information that is present in the drawings. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
       },
     },
   ],

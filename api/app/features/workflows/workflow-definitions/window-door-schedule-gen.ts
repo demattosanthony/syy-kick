@@ -29,20 +29,56 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
   },
   steps: [
     {
-      id: "doc-ocr",
-      processingMessage: "Performing Optical Character Recognition (OCR)...",
-      processedMessage:
-        "Optical Character Recognition (OCR) completed successfully.",
-      type: "document_ocr",
+      id: "find-schedules-page",
+      type: "llm",
+      processingMessage: "Finding the page with window and door schedules...",
+      processedMessage: "Window and door schedules page found.",
+      inputMapping: {
+        file: "workflowInput.architectural-drawings",
+      },
       config: {
-        documentDataSource: "workflowInput.architectural-drawings",
+        modelName: "gemini-2.5-pro-exp",
+        promptTemplate: `You are an AI assistant specialized in analyzing architectural drawings. Your task is to examine a set of architectural drawings provided in a PDF format and identify the specific page that contains the window and door schedules.
+          
+Instructions:
+1. Carefully examine each page of the provided PDF.
+2. Look for a page that contains window and door schedules. These schedules typically list details about windows and doors used in the building, such as sizes, types, and quantities.
+3. When you find the page with the schedules, note the PDF page number. This should be the actual page number in the PDF file, not the sheet number that might be printed on the drawing itself.
+4. If you cannot find a page with window and door schedules, indicate that the schedules were not found.`,
         outputSchema: z.object({
-          markdown: z.string(),
-          images: z.array(
+          pageNumber: z.number(),
+        }),
+      },
+    },
+    {
+      id: "extract-pdf-page",
+      type: "pdf_page_extract",
+      processingMessage: "Extracting the page with mechanical schedules...",
+      processedMessage: "Mechanical schedules page extracted.",
+      config: {
+        pdfDataSource: "workflowInput.architectural-drawings",
+        pageNumberSource: "find-schedules-page.pageNumber",
+      },
+    },
+    {
+      id: "schedule-data-object-detection",
+      type: "object_detection",
+      processingMessage: "Detecting schedule tables in the extracted page...",
+      processedMessage: "Schedule tables detected successfully.",
+      config: {
+        imageDataSource: "extract-pdf-page.imageBase64",
+        model: "gemini-2.5-pro-exp",
+        promptTemplate: `Your task is to located all window and door schedule tables and place 2d bounding boxes around them. Each schedule table bounding box should contain the table title and all the rows of the table.
+Output the bounding boxes in the [y_min, x_min, y_max, x_max] format.
+The top left corner is (0,0). The x axis goes left→right, the y axis top→bottom.
+Coordinate values must be normalized to 0–1000 for both width and height.
+Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "..." }.`,
+        outputSchema: z.object({
+          screenshots: z.array(
             z.object({
               url: z.string(),
-              fileName: z.string(),
               mimeType: z.string(),
+              fileName: z.string(),
             })
           ),
         }),
@@ -54,7 +90,7 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
       processedMessage: "Window and door schedules generated successfully.",
       type: "llm",
       inputMapping: {
-        images: "doc-ocr.images",
+        images: "schedule-data-object-detection.screenshots",
       },
       config: {
         modelName: "gemini-2.5-pro-exp",
@@ -105,23 +141,39 @@ Document your analysis process within <analysis_log> tags inside of your thinkin
 - Quality control checks applied
 
 Output Format:
-Generate a CSV artifact with the following structure:
+Generate a CSV artifact with proper escaping using the following structure:
 
-WINDOW SCHEDULE
-Item,Height,Width,Area (sq ft)
-[window entries...]
+Example of correct CSV formatting:
+"WINDOW SCHEDULE"
+"Item","Height","Width","Area (sq ft)"
+"A","8'-0""","2'-4""","18.67"
+"B","4'-8""","2'-8""","12.44"
 
-DOOR SCHEDULE
-Item,Height,Width,Area (sq ft)
-[door entries...]
+"DOOR SCHEDULE"
+"Item","Height","Width","Area (sq ft)"
+"01A","8'-0""","3'-0""","24.00"
+"01B","8'-0""","3'-0""","24.00"
+
+CSV Formatting Rules:
+1. Every field must be enclosed in double quotes: "field"
+2. For measurements containing inches ("), add an additional " before the inches: "8'-0"""
+3. Separate fields with single commas (no spaces): "field1","field2"
+4. Each schedule should start with its title on a separate line
+5. Headers should be quoted: "Item","Height","Width","Area (sq ft)"
+
+Example of a single properly formatted line:
+"A","8'-0""","2'-4""","18.67"
 
 Quality Control:
-- Verify all measurements are properly formatted (X'Y")
+- Verify all measurements are properly formatted (X'-Y""")
 - Confirm area calculations are accurate and rounded
 - Ensure unique identifiers are consistent and logical
 - Validate that no required data fields are missing
+- Check that all fields are properly quoted and escaped
 
-Return only the final CSV artifact in the specified format, without any additional commentary or markup.`,
+Return only the final CSV artifact in the specified format, without any additional commentary or markup.
+
+Do not make up any information. Only include information that is present in the drawings. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
       },
     },
   ],
