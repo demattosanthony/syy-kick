@@ -4,20 +4,22 @@ import { Thread } from "@/types/chat";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useThreadsQuery } from "@/features/chat/threads/api";
-import { getModelIconPath } from "../../messages/utils";
 import { cn, getRelativeTimeString } from "@/lib/utils";
 
 export default function ThreadsList({
   projectId,
   compact = false,
   knowledgeBaseId,
+  workflowId,
+  showLatestMessage = true,
 }: {
   projectId?: string;
   compact?: boolean;
   knowledgeBaseId?: string;
+  workflowId?: string;
+  showLatestMessage?: boolean;
 }) {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
@@ -28,6 +30,7 @@ export default function ThreadsList({
       search,
       projectId,
       knowledgeBaseId,
+      workflowId,
     });
 
   useEffect(() => {
@@ -61,7 +64,12 @@ export default function ThreadsList({
       ) : (
         <>
           {threads?.map((thread, i) => (
-            <ThreadItem key={i} thread={thread} compact={compact} />
+            <ThreadItem
+              key={i}
+              thread={thread}
+              compact={compact}
+              showLatestMessage={showLatestMessage}
+            />
           ))}
 
           <div ref={scrollRef} className="h-10">
@@ -82,9 +90,11 @@ export default function ThreadsList({
 function ThreadItem({
   thread,
   compact = false,
+  showLatestMessage = true,
 }: {
   thread: Thread;
   compact?: boolean;
+  showLatestMessage?: boolean;
 }) {
   const lastMessage = thread.messages[thread.messages.length - 1];
   const provider = lastMessage?.provider;
@@ -100,17 +110,6 @@ function ThreadItem({
         } rounded-lg transition-colors max-w-full`}
       >
         <div className="flex items-center gap-4 min-w-0">
-          {!compact && (
-            <Avatar className="flex-shrink-0 w-6 h-6">
-              <AvatarImage
-                src={
-                  provider ? getModelIconPath(provider) || "" : "/ai-avatar.png"
-                }
-              />
-              <AvatarFallback />
-            </Avatar>
-          )}
-
           <div className="flex-1 min-w-0">
             <div
               className={` ${
@@ -125,15 +124,17 @@ function ThreadItem({
                 ? model
                 : "AI Assistant"}
             </div>
-            <p
-              className={cn(
-                "text-sm text-muted-foreground line-clamp-2",
-                compact ? "max-w-[230px]" : "max-w-[calc(100vw-8rem)]",
-                compact ? "md:max-w-[230px]" : "md:max-w-[calc(100vw-12rem)]"
-              )}
-            >
-              {lastMessage.text}
-            </p>
+            {showLatestMessage && (
+              <p
+                className={cn(
+                  "text-sm text-muted-foreground line-clamp-2",
+                  compact ? "max-w-[230px]" : "max-w-[calc(100vw-8rem)]",
+                  compact ? "md:max-w-[230px]" : "md:max-w-[calc(100vw-12rem)]"
+                )}
+              >
+                {lastMessage.text}
+              </p>
+            )}
             <time className="text-xs text-muted-foreground">
               {getRelativeTimeString(lastMessage.createdAt)}
             </time>

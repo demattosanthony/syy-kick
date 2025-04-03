@@ -11,6 +11,7 @@ const getThreadsSchema = z.object({
   search: z.string().optional(),
   projectId: z.string().optional(),
   knowledgeBaseId: z.string().optional(),
+  workflowId: z.string().optional(),
 });
 
 const updateThreadSchema = z.object({

@@ -36,9 +36,8 @@ router.post(
 router.get(
   "/",
   handle(async (req) => {
-    const { page, search, projectId, knowledgeBaseId } = getThreadsSchema.parse(
-      req.query
-    );
+    const { page, search, projectId, knowledgeBaseId, workflowId } =
+      getThreadsSchema.parse(req.query);
     const orgId = getOrgIdOrUnedfined(req.workspace);
     return threadsOps.listThreads(
       req.dbUser!.id,
@@ -46,7 +45,8 @@ router.get(
       (search || "").trim(),
       orgId,
       projectId,
-      knowledgeBaseId
+      knowledgeBaseId,
+      workflowId
     );
   })
 );

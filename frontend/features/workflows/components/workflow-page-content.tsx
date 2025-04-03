@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Slash } from "lucide-react";
 import Link from "next/link";
+import { ThreadsList } from "@/features/chat/threads/components";
 
 export type WorkflowAttachment = Attachment & {
   file_key: string;
@@ -155,71 +156,84 @@ export default function WorkflowPageContent({
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-background to-secondary/10">
-      <div className="mx-auto px-4 py-4">
-        <Breadcrumb className="mb-8">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <Link
-                href="/workflows"
-                className="hover:text-blue-500 hover:underline"
-              >
-                Workflows
-              </Link>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator>
-              <Slash className="w-4 h-4" />
-            </BreadcrumbSeparator>
-            <BreadcrumbItem>
-              <span className="font-bold truncate">{workflow?.title}</span>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-6 text-center">
-            <div className="inline-block p-3 mb-6 rounded-full bg-primary/10">
-              <span className="text-4xl">📋</span>
-            </div>
-            <h1 className="text-4xl font-bold mb-4">{workflow?.title}</h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              {workflow?.description}
-            </p>
-          </div>
-
-          <ErrorDisplay errorDetails={errorDetails} onReset={resetWorkflow} />
-
-          {!errorDetails && (
-            <div className="rounded-xl p-8">
-              <div className="flex flex-col gap-8">
-                {workflowInputs.map((input) => (
-                  <FileUploadInput
-                    key={input.id}
-                    input={{
-                      ...input,
-                      maxFileSize: 32 * 1024 * 1024 /* 32 MB */,
-                    }}
-                    file={files[input.id]}
-                    onFileChange={(file) =>
-                      setFiles((prev) => ({ ...prev, [input.id]: file }))
-                    }
-                    setInput={() => {}}
-                  />
-                ))}
-                <Button
-                  className="w-full mt-6 py-7 text-lg font-medium transition-all hover:scale-[1.02]"
-                  size="lg"
-                  disabled={!areRequiredFilesUploaded()}
-                  onClick={onSubmit}
+    <div className="h-screen w-full flex flex-col">
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto px-4 py-4">
+          <Breadcrumb className="mb-8">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <Link
+                  href="/workflows"
+                  className="hover:text-blue-500 hover:underline"
                 >
-                  <Play className="h-6 w-6 mr-3" />
-                  {areRequiredFilesUploaded()
-                    ? "Submit and run"
-                    : "Upload required files to continue"}
-                </Button>
+                  Workflows
+                </Link>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator>
+                <Slash className="w-4 h-4" />
+              </BreadcrumbSeparator>
+              <BreadcrumbItem>
+                <span className="font-bold truncate">{workflow?.title}</span>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
+          <div className="max-w-2xl mx-auto flex flex-col items-center">
+            <div className="mb-6 text-center">
+              <div className="inline-block p-3 mb-6 rounded-full bg-primary/10">
+                <span className="text-4xl">📋</span>
+              </div>
+              <h1 className="text-4xl font-bold mb-4">{workflow?.title}</h1>
+              <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+                {workflow?.description}
+              </p>
+            </div>
+
+            <ErrorDisplay errorDetails={errorDetails} onReset={resetWorkflow} />
+
+            {!errorDetails && (
+              <div className="rounded-xl p-8 w-full">
+                <div className="flex flex-col gap-8">
+                  {workflowInputs.map((input) => (
+                    <FileUploadInput
+                      key={input.id}
+                      input={{
+                        ...input,
+                        maxFileSize: 32 * 1024 * 1024 /* 32 MB */,
+                      }}
+                      file={files[input.id]}
+                      onFileChange={(file) =>
+                        setFiles((prev) => ({ ...prev, [input.id]: file }))
+                      }
+                      setInput={() => {}}
+                    />
+                  ))}
+                  <Button
+                    className="w-full mt-6 py-7 text-lg font-medium transition-all hover:scale-[1.02]"
+                    size="lg"
+                    disabled={!areRequiredFilesUploaded()}
+                    onClick={onSubmit}
+                  >
+                    <Play className="h-6 w-6 mr-3" />
+                    {areRequiredFilesUploaded()
+                      ? "Submit and run"
+                      : "Upload required files to continue"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* History section */}
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold mb-6">History</h2>
+              <div className="">
+                <ThreadsList
+                  workflowId={workflowId}
+                  showLatestMessage={false}
+                />
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
