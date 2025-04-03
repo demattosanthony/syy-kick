@@ -54,8 +54,8 @@ export default function Home() {
 
     try {
       // Create thread in background
-      const { id: threadId } = await api.threads.createThread();
-      router.push(`/threads/${threadId}?new=true`);
+      const { id: threadId } = await api.threads.createThread({});
+      router.push(`/threads/${threadId}?isNew=true`);
     } catch (error: unknown) {
       if (error instanceof Error && error.message === "subscription_required") {
         setShowPricingDialog(true);
@@ -118,7 +118,7 @@ export default function Home() {
         </div>
       </main>
 
-      {!user && (
+      {!user && userFetched && (
         <footer className="text-xs text-gray-500 text-center p-4 shrink-0">
           By using our service, you agree to our{" "}
           <a

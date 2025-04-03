@@ -34,7 +34,8 @@ const threadsOps = {
     userId: string,
     organizationId?: string,
     projectId?: string,
-    knowledgeBaseId?: string
+    knowledgeBaseId?: string,
+    workflowId?: string
   ) {
     if (!userId) throw new Error("User ID is required");
     const id = crypto.randomUUID();
@@ -45,6 +46,7 @@ const threadsOps = {
       organizationId: organizationId || null,
       projectId: projectId || null,
       knowledgeBaseId: knowledgeBaseId || null,
+      workflowId: workflowId || null,
       createdAt: now,
       updatedAt: now,
     });
@@ -178,7 +180,8 @@ const threadsOps = {
     search: string,
     organizationId?: string,
     projectId?: string,
-    knowledgeBaseId?: string
+    knowledgeBaseId?: string,
+    workflowId?: string
   ) {
     const LIMIT = 10;
     const offset = (page - 1) * LIMIT;
@@ -199,6 +202,10 @@ const threadsOps = {
     // Add knowledge base filtering if knowledgeBaseId is provided
     if (knowledgeBaseId) {
       conditions.push(eq(threads.knowledgeBaseId, knowledgeBaseId));
+    }
+
+    if (workflowId) {
+      conditions.push(eq(threads.workflowId, workflowId));
     }
 
     let baseQuery;

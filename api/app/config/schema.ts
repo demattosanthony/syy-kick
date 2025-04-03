@@ -252,6 +252,7 @@ export const threads = pgTable("threads", {
     () => knowledgeBases.id,
     { onDelete: "cascade" }
   ),
+  workflowId: text("workflow_id"),
 });
 export type Thread = typeof threads.$inferSelect;
 export type ThreadWithRelations = Thread & {

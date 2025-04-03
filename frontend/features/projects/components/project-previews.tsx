@@ -143,7 +143,7 @@ function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <motion.div
-      className="bg-card text-card-foreground rounded-lg shadow-sm border border-border overflow-hidden cursor-pointer"
+      className="bg-card text-card-foreground rounded-lg shadow-sm border border-border overflow-hidden cursor-pointer h-full"
       initial={{ y: 0, boxShadow: "var(--shadow-sm)" }}
       whileHover={{
         y: -2,
