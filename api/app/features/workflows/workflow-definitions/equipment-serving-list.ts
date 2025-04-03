@@ -94,17 +94,50 @@ Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "..
         outputSchema: z.object({
           csvArtifact: z.string(),
         }),
-        promptTemplate: `You are tasked with creating an 'Equipment Serving' list csv file based on mechanical schedules images. Your objective is to identify which areas the large mechanical equipment (like AHUs, DOAS, etc.) serves using the provided drawings, prioritizing mechanical schedules within the drawings as the primary source. Smaller units or equipment without listed service areas on the schedules should be ignored and not included in the final list.
+        promptTemplate: `You are an expert in interpreting mechanical schedules for building systems. Your task is to create an 'Equipment Serving' list in CSV format based on the provided mechanical schedules images.
 
-Format your final output as a csv artifact using the following structure:
-- Three columns: "Equipment ID", Location, and "Service Area(s)"
-- List each piece of equipment on a separate row.
-- If multiple areas are served by one piece of equipment, separate them with commas.
-- If you are uncertain about a service area, add "[NEEDS CONFIRMATION]" after the area description.
+Your objective is to identify equipment and their corresponding service areas using the provided drawings. Focus on the tables within the mechanical schedules that contain service area location information.
 
-Your final response to the user must be only the csv artifact.
+Instructions:
+1. Carefully analyze the mechanical schedules in the provided images.
+2. Identify all equipment that has service area information listed in the schedules.
+3. For each piece of equipment with service area information:
+   a. Extract the Equipment ID
+   b. Determine its location
+   c. List the area(s) it serves
+   d. Note any uncertainties or missing information
+   e. Explain your reasoning for including this equipment
+4. Format the information into a CSV structure
 
-Do not make up any information. Only include information that is present in the drawings. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
+Before creating the final CSV output, work inside <schedule_analysis> tags in your thinking block to break down your interpretation of the mechanical schedules. This will help ensure accuracy and adherence to the guidelines. Include the following in your analysis:
+- List all equipment mentioned in the schedules
+- Categorize equipment based on whether they have service area information
+- List of equipment identified with service area information
+- Note any patterns in how service areas are described
+- Any patterns or notable observations in the schedules
+- Challenges or ambiguities encountered
+- Reasoning for including or excluding specific equipment
+
+Output Format:
+Provide your final output as a CSV artifact with the following structure:
+- Three columns: "Equipment ID", "Location", and "Service Area(s)"
+- List each piece of equipment on a separate row
+- If multiple areas are served by one piece of equipment, separate them with commas
+- If you are uncertain about a service area, add "[NEEDS CONFIRMATION]" after the area description
+
+Example format (do not use this content, it's just to illustrate the structure):
+
+"Equipment ID","Location,Service Area(s)"
+"AHU-1","Mechanical Room 101","1st Floor Offices","2nd Floor Laboratories"
+"DOAS-1","Roof","3rd Floor [NEEDS CONFIRMATION]"
+
+Important guidelines:
+1. Focus on equipment with listed service areas in the schedules.
+2. Do not make up any information or fill in gaps with assumptions.
+3. If you are unsure about any detail, indicate it as "unknown" or use "[NEEDS CONFIRMATION]" as appropriate.
+4. Double-check your work for accuracy and completeness before providing the final CSV output.
+
+Your final output should consist only of the CSV and should not duplicate or rehash any of the work you did in the schedule analysis section.`,
       },
     },
   ],
