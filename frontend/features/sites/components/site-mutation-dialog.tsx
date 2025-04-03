@@ -38,7 +38,7 @@ export default function SiteMutationDialog({
   const [formData, setFormData] = useState<MutationSiteData>({
     name: "",
     description: null,
-    type: "organization",
+    type: organizationId ? "organization" : "personal",
     address: {
       address: "",
       city: "",
@@ -112,7 +112,6 @@ export default function SiteMutationDialog({
     if (isUpdateSuccess && onUpdate) {
       onUpdate();
     }
-
   }, [
     isCreateSuccess,
     isCreateError,
@@ -145,11 +144,9 @@ export default function SiteMutationDialog({
       <DialogContent className="max-w-lg">
         <PropagationStopper>
           <DialogHeader>
-            <DialogTitle>{
-              mode === "create" ?
-                "Create a new Site"
-                : "Update your site"
-            }</DialogTitle>
+            <DialogTitle>
+              {mode === "create" ? "Create a new Site" : "Update your site"}
+            </DialogTitle>
             <DialogDescription></DialogDescription>
           </DialogHeader>
           <form
@@ -224,9 +221,13 @@ export default function SiteMutationDialog({
               />
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={isCreating || isUpdating} onClick={(e) => {
-                e.stopPropagation();
-              }}>
+              <Button
+                type="submit"
+                disabled={isCreating || isUpdating}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
                 {submitButtonLabel}
               </Button>
             </DialogFooter>
