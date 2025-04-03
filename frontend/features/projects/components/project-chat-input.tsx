@@ -30,13 +30,15 @@ const ProjectChatInput = ({
     if (initalInput.trim() === "") return;
 
     try {
-      const { id: threadId } = await api.threads.createThread(
-        activeWorkspace?.type === "organization"
-          ? activeWorkspace.id
-          : undefined,
-        type === "project" ? projectId : undefined,
-        type === "knowledge-base" ? knowledgeBaseId : undefined
-      );
+      const { id: threadId } = await api.threads.createThread({
+        organizationId:
+          activeWorkspace?.type === "organization"
+            ? activeWorkspace.id
+            : undefined,
+        projectId: type === "project" ? projectId : undefined,
+        knowledgeBaseId:
+          type === "knowledge-base" ? knowledgeBaseId : undefined,
+      });
       router.push(`/threads/${threadId}?new=true`);
     } catch (error: unknown) {
       console.error("Failed to create thread:", error);

@@ -3,6 +3,7 @@ import { z } from "zod";
 const createThreadSchema = z.object({
   projectId: z.string().optional(),
   knowledgeBaseId: z.string().optional(),
+  workflowId: z.string().optional(),
 });
 
 const getThreadsSchema = z.object({

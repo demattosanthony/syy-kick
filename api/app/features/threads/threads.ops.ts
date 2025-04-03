@@ -34,7 +34,8 @@ const threadsOps = {
     userId: string,
     organizationId?: string,
     projectId?: string,
-    knowledgeBaseId?: string
+    knowledgeBaseId?: string,
+    workflowId?: string
   ) {
     if (!userId) throw new Error("User ID is required");
     const id = crypto.randomUUID();
@@ -45,6 +46,7 @@ const threadsOps = {
       organizationId: organizationId || null,
       projectId: projectId || null,
       knowledgeBaseId: knowledgeBaseId || null,
+      workflowId: workflowId || null,
       createdAt: now,
       updatedAt: now,
     });

@@ -117,7 +117,9 @@ export default function WorkflowPageContent({
       });
       setInitalInput(`Process the following files: ${fileNames}.`);
 
-      const thread = await api.threads.createThread();
+      const thread = await api.threads.createThread({
+        workflowId,
+      });
       router.push(
         `/threads/${thread.id}?isNew=true&isWorkflow=true&workflowId=${workflowId}`
       );
@@ -141,7 +143,7 @@ export default function WorkflowPageContent({
     },
   ];
 
-  if (!workflow) {
+  if (workflow === null) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-4">
         <h2 className="text-2xl font-bold">Workflow not found</h2>
@@ -154,7 +156,7 @@ export default function WorkflowPageContent({
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-background to-secondary/10">
-      <div className="container mx-auto px-4 py-4">
+      <div className="mx-auto px-4 py-4">
         <Breadcrumb className="mb-8">
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -169,7 +171,7 @@ export default function WorkflowPageContent({
               <Slash className="w-4 h-4" />
             </BreadcrumbSeparator>
             <BreadcrumbItem>
-              <span className="font-bold">{workflow.title}</span>
+              <span className="font-bold truncate">{workflow?.title}</span>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -179,9 +181,9 @@ export default function WorkflowPageContent({
             <div className="inline-block p-3 mb-6 rounded-full bg-primary/10">
               <span className="text-4xl">📋</span>
             </div>
-            <h1 className="text-4xl font-bold mb-4">{workflow.title}</h1>
+            <h1 className="text-4xl font-bold mb-4">{workflow?.title}</h1>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              {workflow.description}
+              {workflow?.description}
             </p>
           </div>
 

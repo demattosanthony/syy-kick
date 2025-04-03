@@ -24,6 +24,15 @@ import React from "react";
 import api from "@/lib/api";
 import { useThreadQuery } from "../api";
 
+type WorkflowId = keyof typeof workflowNameMap;
+
+const workflowNameMap = {
+  "bod-generator": "Basis of Design Generator",
+  "equipment-serving-builder": "Equipment Serving List Builder",
+  "rfp-evaluator": "RFP Evaluator",
+  "window-door-schedule-gen": "Window and Door Schedule Generator",
+} as const;
+
 export default function ThreadHeader() {
   const params = useParams();
   const router = useRouter();
@@ -65,6 +74,9 @@ export default function ThreadHeader() {
   } else if (thread?.knowledgeBase) {
     parentName = thread.knowledgeBase.name;
     parentLink = `/knowledge-bases/${thread.knowledgeBase.id}`;
+  } else if (thread?.workflowId) {
+    parentName = workflowNameMap[thread.workflowId as WorkflowId] || "Workflow";
+    parentLink = `/workflows/${thread.workflowId}`;
   }
 
   return (
@@ -97,7 +109,9 @@ export default function ThreadHeader() {
                     <Slash />
                   </BreadcrumbSeparator>
                   <BreadcrumbItem>
-                    <span className="font-bold">{thread?.title}</span>
+                    <span className="font-bold max-w-[250px] truncate">
+                      {thread?.title}
+                    </span>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>

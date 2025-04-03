@@ -18,13 +18,16 @@ const router = Router();
 router.post(
   "/",
   handle(async (req) => {
-    const { projectId, knowledgeBaseId } = createThreadSchema.parse(req.body);
+    const { projectId, knowledgeBaseId, workflowId } = createThreadSchema.parse(
+      req.body
+    );
     const orgId = getOrgIdOrUnedfined(req.workspace);
     return threadsOps.createThread(
       req.dbUser!.id,
       orgId,
       projectId,
-      knowledgeBaseId
+      knowledgeBaseId,
+      workflowId
     );
   })
 );

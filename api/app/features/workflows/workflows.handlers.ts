@@ -241,7 +241,7 @@ const workflowHandlers = {
         workflowId,
         processedAttachments,
         workflowProgressCallback,
-        false
+        true
       );
 
       await runnner.run();

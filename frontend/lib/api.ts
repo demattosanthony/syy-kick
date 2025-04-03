@@ -465,16 +465,19 @@ class UploadApi extends ApiRequest {
  * Thread API Module
  */
 class ThreadApi extends ApiRequest {
-  async createThread(
-    organizationId?: string,
-    projectId?: string,
-    knowledgeBaseId?: string
-  ): Promise<{ id: string }> {
+  async createThread(params: {
+    organizationId?: string;
+    projectId?: string;
+    knowledgeBaseId?: string;
+    workflowId?: string;
+  }): Promise<{ id: string }> {
     try {
+      const { organizationId, projectId, knowledgeBaseId, workflowId } = params;
       return await this.request<{ id: string }>("/threads", "POST", {
         organizationId,
         projectId,
         knowledgeBaseId,
+        workflowId,
       });
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 402) {

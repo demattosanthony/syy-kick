@@ -76,6 +76,7 @@ export interface Thread {
   isPublic?: boolean;
   knowledgeBaseId?: string;
   knowledgeBase?: KnowledgeBase;
+  workflowId?: string;
   messages: ChatMessage[];
 }
 
