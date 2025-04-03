@@ -173,6 +173,5 @@ export type StepExecutorFunction = (
 
 // Utilities passed to executors
 export type StepExecutorUtilities = {
-  //   getFileData: (fileKey: string, mimeType?: string) => Promise<string>; // Fetch file content
   getDataSourceValue: (state: WorkflowState, sourcePath: string) => any; // Resolve data paths
 };

@@ -9,11 +9,7 @@ export default function WorkflowPage() {
     workflowId: string;
   }>();
 
-  const { data: workflow, isLoading } = useWorkflowQuery(workflowId);
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  const { data: workflow } = useWorkflowQuery(workflowId);
 
   return <WorkflowPageContent workflowId={workflowId} workflow={workflow} />;
 }
