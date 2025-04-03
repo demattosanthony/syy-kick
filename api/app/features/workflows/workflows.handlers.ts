@@ -241,13 +241,12 @@ const workflowHandlers = {
         workflowId,
         processedAttachments,
         workflowProgressCallback,
-        true
+        false
       );
 
       await runnner.run();
 
       res.write(`d:{"finishReason":"stop"}\n`);
-
       res.end();
     } catch (error) {
       console.error("Error running workflow:", error);
