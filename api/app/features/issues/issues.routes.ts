@@ -7,14 +7,18 @@ export default Router()
   // Routes requiring projectId context
   .get(
     "/projects/:projectId/issues",
-    // Add permission check for listing issues within a project if needed
-    // Example: PermissionsMiddlewares.project(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.LIST),
+    // PermissionsMiddlewares.projects(
+    //   Permissions.Resources.PROJECT_ISSUES,
+    //   Permissions.Actions.READ
+    // ),
     handlers.list
   )
   .post(
     "/projects/:projectId/issues",
-    // Add permission check for creating issues within a project
-    // Example: PermissionsMiddlewares.project(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.CREATE),
+    // PermissionsMiddlewares.projects(
+    //   Permissions.Resources.PROJECT_ISSUES,
+    //   Permissions.Actions.CREATE
+    // ),
     handlers.create
   )
 
