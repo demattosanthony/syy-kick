@@ -81,7 +81,7 @@ const workflowHandlers = {
       await db
         .update(threads)
         .set({
-          title: `${workflow.title} Run - ${Date.now()}`,
+          title: `${workflow.title} Execution - ${new Date().toLocaleString()}`,
           updatedAt: new Date(),
         })
         .where(eq(threads.id, threadId as string));
@@ -226,7 +226,6 @@ const workflowHandlers = {
           }
 
           // Save final assistant message with workflow output
-          console.log("Final message:", finalMessage);
           await db.insert(messages).values({
             userId: req.dbUser!.id,
             id: crypto.randomUUID(),

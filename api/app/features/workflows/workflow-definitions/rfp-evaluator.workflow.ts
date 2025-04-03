@@ -37,7 +37,10 @@ export const rfpEvalWorkflow: Workflow = {
         file: "workflowInput.rfpDoc",
       },
       config: {
-        modelName: "claude-3.7-sonnet",
+        outputSchema: z.object({
+          evaluation: z.string(),
+        }),
+        modelName: "gpt-4o",
         promptTemplate: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
 
 # Setty & Associates Overview
@@ -136,66 +139,9 @@ You take these steps to evaluate the RFP:
 6. Determine the market segment the project falls under.
 7. Provide csv artifact with the evaluation results.
 
-Your final response to the user is a csv artifact with the evaluation results.
-
-<artifacts_info>
-Artifacts are for self contained content that users will modify or reuse, displayed in a separate UI window for clarity.
-
-<artifact_instructions>
-  When creating the artifact you follow these steps:
-
-  1. Wrap the content in opening and closing \`<antArtifact>\` tags.
-  2. Assign an identifier to the \`identifier\` attribute of the opening \`<antArtifact>\` tag. For updates, reuse the prior identifier. For new artifacts, the identifier should be descriptive and relevant to the content, using kebab-case (e.g., "example-code-snippet"). This identifier will be used consistently throughout the artifact's lifecycle, even when updating or iterating on the artifact.
-  3. Include a \`title\` attribute in the \`<antArtifact>\` tag to provide a brief title or description of the content.
-  4. Add a \`type\` attribute to the opening \`<antArtifact>\` tag to specify the type of content the artifact represents. Since you are always creating a csv artifact the type should be"
-    - type="application/vnd.ant.code" language="csv"
-</artifact_instructions>
-
-Here is a template of what the csv artifact result should look like:
-
-<example_artifact>
-   <user_query>Evaluate this RFP</user_query>
-
-   <assistant_response>
-      Based on my analysis, here are the results:
-
-        <antArtifact identifier="evaluation-results" type="application/vnd.ant.code" language="csv" title="Dulles International Airport Evaluation Results">
-            Project Information
-            Project Name,"Dulles International Airport"
-            Project Location,"Washington, D.C."
-            Client,"Washington Metropolitan Airports Authority"
-            Project Budget,"$500,000,000"
-            Potential Team Members,"Clark Construction, HOK, Gensler"
-            Identified Decision Makers,John Smith, Jane Doe
-            Anticipated Completion,"January 2025"
-            Market Segment,Aviation & Transportation
-
-            Evaluation Criteria
-            Knowledge of project before RFP,3
-            Relationship with client/decision makers,4
-            Knowledge of project goals/drivers,5
-            Availability of qualified staff,4
-            Expertise with project type,5
-            Experience relevative to Competition,4
-            Working Experience of Proposed Team,2
-            Profitability Likelihood,3
-            History / Comfort Level with Location,4
-            Potential for Future Work,5
-            Total Score,39
-
-            Notes
-            (note_1)
-            (note_2)
-            (note_3)
-        </antArtifact>
-    </assistant_response>
-</example_artifact>
-</artifacts_info>
+Your final response to the user is a csv artifact with the evaluation results and only the csv artifact.
 
 Ensure all your math is correct before creating the evaluation results artifact.`,
-        outputSchema: z.object({
-          evaluation: z.string(),
-        }),
       },
     },
   ],

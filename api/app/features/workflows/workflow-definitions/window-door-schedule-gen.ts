@@ -30,8 +30,9 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
   steps: [
     {
       id: "doc-ocr",
-      processingMessage: "Processing the architectural drawings...",
-      processedMessage: "Architectural drawings processed successfully.",
+      processingMessage: "Performing Optical Character Recognition (OCR)...",
+      processedMessage:
+        "Optical Character Recognition (OCR) completed successfully.",
       type: "document_ocr",
       config: {
         documentDataSource: "workflowInput.architectural-drawings",

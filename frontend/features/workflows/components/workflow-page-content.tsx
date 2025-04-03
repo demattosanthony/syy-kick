@@ -145,11 +145,14 @@ export default function WorkflowPageContent({
   }
 
   return (
-    <div className="h-screen w-full flex flex-col items-center overflow-y-auto">
+    <div className="min-h-screen w-full bg-gradient-to-b from-background to-secondary/10">
       <div className="container mx-auto px-4 py-16 max-w-2xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-4 gap-2">📋 {workflow.title}</h1>
-          <p className="text-base text-muted-foreground">
+        <div className="mb-6 text-center">
+          <div className="inline-block p-3 mb-6 rounded-full bg-primary/10">
+            <span className="text-4xl">📋</span>
+          </div>
+          <h1 className="text-4xl font-bold mb-4">{workflow.title}</h1>
+          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
             {workflow.description}
           </p>
         </div>
@@ -157,7 +160,7 @@ export default function WorkflowPageContent({
         <ErrorDisplay errorDetails={errorDetails} onReset={resetWorkflow} />
 
         {!errorDetails && (
-          <>
+          <div className="rounded-xl p-8">
             <div className="flex flex-col gap-8">
               {workflowInputs.map((input) => (
                 <FileUploadInput
@@ -174,15 +177,18 @@ export default function WorkflowPageContent({
                 />
               ))}
               <Button
-                className="w-full mt-6 py-6 text-lg"
+                className="w-full mt-6 py-7 text-lg font-medium transition-all hover:scale-[1.02]"
                 size="lg"
                 disabled={!areRequiredFilesUploaded()}
                 onClick={onSubmit}
               >
-                <Play className="h-6 w-6 mr-2" /> Submit and run
+                <Play className="h-6 w-6 mr-3" />
+                {areRequiredFilesUploaded()
+                  ? "Submit and run"
+                  : "Upload required files to continue"}
               </Button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
