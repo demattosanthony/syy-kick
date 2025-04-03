@@ -13,6 +13,7 @@ export default function Page() {
       <CardContent className="p-2">
         <ProjectFileExplorer
           projectId={projectId}
+          contentSource="project"
           currentPath={currentPath}
           variant="detailed"
         />
@@ -22,6 +23,7 @@ export default function Page() {
 
   return (
     <ProjectFileLayout
+      contentSource="project"
       projectId={projectId}
       pathArray={decodedPathArray}
       rightContent={rightContent}

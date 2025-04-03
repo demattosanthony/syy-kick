@@ -2,7 +2,6 @@ import React from "react";
 import { Message } from "ai/react";
 import ArtifactPreview from "./artifact-preview";
 import MarkdownViewer from "./viewers/markdown-viewer";
-import Syyclops3dEye from "@/features/chat/messages/components/syy-eye";
 import { useAtom, useSetAtom } from "jotai";
 import {
   alreadyAutoSelectedArtifactAtom,
@@ -14,6 +13,7 @@ import {
 } from "@/lib/artifact-utils";
 import ThinkingDropdown from "./thinking-dropdown";
 import ToolCallMessageContent from "./tool-call-result";
+import Image from "next/image";
 
 const TextContent: React.FC<{
   text: string;
@@ -114,9 +114,13 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
       return (
         <React.Fragment>
           {message.parts
-            .sort((a, b) =>
-              a.type === "reasoning" ? -1 : b.type === "reasoning" ? 1 : 0
-            )
+            .sort((a, b) => {
+              if (a.type === "reasoning") return -1;
+              if (b.type === "reasoning") return 1;
+              if (a.type === "text") return -1;
+              if (b.type === "text") return 1;
+              return 0;
+            })
             .map((part, index) =>
               part.type === "reasoning" ? (
                 <ThinkingDropdown
@@ -158,7 +162,7 @@ const AssistantMessage: React.FC<{
   <div className="flex flex-col justify-start">
     <div className="flex">
       <div className="mr-[1px] mt-1 w-[32px] h-[32px] min-h-[32px] min-w-[32px]">
-        {showEye && <Syyclops3dEye size={22} animate={false} />}
+        {showEye && <Image src="/logo192.png" width={22} height={22} alt="" />}
       </div>
 
       <div className="max-w-full md:max-w-[750px] overflow-hidden bg-background break-words mt-[1px] flex flex-col gap-2">

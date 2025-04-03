@@ -267,6 +267,8 @@ export default function EditRoleDialog({
       [
         Permissions.Resources.ORGANIZATION_PROJECTS,
         Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
+        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
+        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
       ].includes(resourceName)
     ) {
       return <Badge>config</Badge>;
@@ -274,7 +276,8 @@ export default function EditRoleDialog({
 
     if (
       Permissions.Roles.PROJECT_MANAGER === selectedRole.name &&
-      Permissions.Resources.ORGANIZATION_PROJECTS === resourceName
+      (Permissions.Resources.ORGANIZATION_PROJECTS === resourceName ||
+        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES === resourceName)
     ) {
       return <Badge>config</Badge>;
     }

@@ -10,6 +10,7 @@ import reranker from "../../config/reranker";
 import s3 from "../../config/s3";
 import {
   documentThumbnails,
+  KnowledgeBase,
   MessageAttachment,
   messageAttachments,
   messages,
@@ -17,7 +18,6 @@ import {
   threads,
   toolCalls,
 } from "../../config/schema";
-import exa from "../../config/exa";
 import { Workspace } from "../../middleware";
 
 // Internal utilities
@@ -34,7 +34,7 @@ import {
 import { DbUser } from "../../createAuthToken";
 import { PermissionManager } from "../permissions/permissions.tools";
 import { Permissions } from "../permissions/permissions.types";
-import { GoogleGenerativeAIProviderMetadata } from "@ai-sdk/google";
+import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases.ops";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -399,6 +399,135 @@ Returns:
     },
   });
 
+/** Tool to search knowledge base documents */
+const createKnowledgeBaseSearchTool = (
+  modelConfig: ModelConfig,
+  knowledgeBase?: KnowledgeBase
+) =>
+  tool({
+    description: `${
+      knowledgeBase
+        ? `This tool allows the assistant to retrieve information from the "${knowledgeBase.name}" knowledge base.`
+        : `This tool allows the assistant to retrieve information from a Knowledge Base.`
+    }
+A knowledge base is a structured collection of curated information that organizations create to preserve valuable expertise and reference materials. It serves as a searchable repository that Syykick can access to provide you with accurate, domain-specific answers to your questions.
+
+Usage:
+    1. Use when you need information stored within a designated knowledge base.
+    2. Provide a clear, specific query and the ID of the knowledge base to search.
+
+Returns:
+    - Relevant document excerpts with context
+    - Document metadata (name, path)
+    - Visual previews for supported document types`,
+    parameters: z.object({
+      query: z.string(),
+      ...(knowledgeBase
+        ? {}
+        : {
+            knowledgeBaseId: z
+              .string()
+              .describe("The ID of the knowledge base to search within."),
+          }),
+    }),
+    execute: async ({ query, knowledgeBaseId }) => {
+      const targetKnowledgeBaseId: string = knowledgeBase
+        ? knowledgeBase.id
+        : (knowledgeBaseId as string);
+
+      try {
+        // Execute the search within the specified knowledge base
+        const res = await searchKnowledgeBaseDocuments({
+          query,
+          knowledgeBaseId: targetKnowledgeBaseId,
+          limit: 80, // Same limit as project search for consistency
+        });
+        console.log(
+          `Knowledge base search results for KB ${knowledgeBaseId}:`,
+          res.length
+        );
+
+        // Rerank results
+        const rerankedResults = await reranker.rerank(
+          query,
+          res.map((r) => r.text || ""),
+          {
+            topN: 20, // Same topN as project search
+            returnDocuments: true,
+          }
+        );
+
+        // Create a map of text to original result for lookup
+        const textToResultMap = new Map(res.map((r) => [r.text, r]));
+
+        // Map reranked results to simplified schema
+        const simplifiedDocs: DocumentSearchToolResult[] =
+          rerankedResults.results?.map((reranked) => {
+            const originalDoc = textToResultMap.get(reranked.document.text)!;
+            return {
+              documentId: originalDoc.document.id,
+              // Knowledge bases don't have project IDs, set to null or undefined
+              projectId: undefined,
+              path: originalDoc.document.path,
+              documentName: originalDoc.document.name,
+              text: originalDoc.text,
+              similarity: reranked.relevance_score,
+              pageNumber: (originalDoc.metadata as { page_number?: number })
+                ?.page_number,
+              mimeType: originalDoc.document.mimeType,
+              fileKey: originalDoc.document.fileKey,
+              // Add knowledgeBaseId for frontend context if needed
+              knowledgeBaseId: targetKnowledgeBaseId,
+            };
+          }) ?? []; // Ensure it defaults to an empty array if results are null/undefined
+        console.log(
+          "Simplified knowledge base docs length:",
+          simplifiedDocs.length
+        );
+
+        // Generate final output
+        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
+        const images = modelConfig.model.modelId.includes("claude-3.7-sonnet")
+          ? await processDocumentImages(uniqueDocs)
+          : [];
+
+        return formatDocumentSearchResults(uniqueDocs, images);
+      } catch (error) {
+        console.error(
+          `Error searching knowledge base ${targetKnowledgeBaseId}:`,
+          error
+        );
+        // Return a structured error message
+        return {
+          images: [],
+          context: `Error searching knowledge base: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+          docs: [],
+          dataForFrontend: [],
+        };
+      }
+    },
+    experimental_toToolResultContent(result) {
+      if (!result || !result.context || result.context.startsWith("Error:")) {
+        // Handle cases where execute returned an error or no result
+        return [{ type: "text", text: result?.context || "No results found." }];
+      }
+
+      return [
+        ...(result.images || []).map((image) => ({
+          type: "image" as const,
+          data: image.imageData,
+          mimeType: image.mimeType,
+        })),
+        {
+          type: "text",
+          text: result.context,
+        },
+      ];
+    },
+  });
+
 const createWebSearchTool = () =>
   tool({
     description: `Search the web for public information.
@@ -498,6 +627,7 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
       if (
         (call.toolName === "search_project_information" ||
           call.toolName === "search_projects_information" ||
+          call.toolName === "search_knowledge_base_information" ||
           call.toolName === "search_documents") &&
         call.result?.docs
       ) {
@@ -532,7 +662,12 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
 }
 
 /** Constructs a "system" style message, appending user instructions if they exist. */
-function buildSystemMessage(instructions?: string, project?: Project): string {
+function buildSystemMessage(
+  instructions?: string,
+  project?: Project,
+  knowledgeBase?: KnowledgeBase,
+  knowledgeBases?: KnowledgeBase[]
+): string {
   const dateString = new Date().toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -542,39 +677,36 @@ function buildSystemMessage(instructions?: string, project?: Project): string {
     hour12: true,
   });
 
-  let systemMsg = `The assisant is Yo, created by Syyclops.
+  let knowledgeBasesString = "";
+  if (knowledgeBases?.length) {
+    knowledgeBasesString = knowledgeBases
+      .map(
+        (kb) =>
+          `<knowledge_base>\n  <name>${kb.name}</name>\n  <id>${kb.id}</id>\n</knowledge_base>`
+      )
+      .join("\n");
+  }
+
+  let systemMsg = `The assisant is Syykick, created by Syyclops.
   
 The current date is:
 ${dateString}
 
-Yo sees itself as a proactive, knowledgeable, and practical partner for professionals working on building engineering, construction, architecture, MEP (Mechanical, Electrical, and Plumbing), fire protection, and digital twin projects. It understands industry standards, technologies, software tools, and best practices relevant to these fields.
+Syykick is a proactive partner for professionals in building engineering, construction, MEP, fire protection, and digital twin projects. It provides expert guidance on BIM, IFC models, COBie, project management, digital twins, knowledge graphs, AI integration, IoT devices, and facility assessments.
 
-Yo does not passively wait for requests; instead, it actively suggests ideas, raises important considerations, and provides guidance based on practical experience and technical depth. It can discuss topics ranging from BIM (Building Information Modeling), IFC models, COBie standards, and project management techniques, to advanced topics like digital twins, knowledge graphs, AI integration, IoT devices, and facility condition assessments.
-
-When making recommendations or selections, Yo is decisive, providing a single clear recommendation rather than numerous options. It values simplicity and efficiency, both in technical solutions and communication.
-
-Yo enjoys thoughtful, detailed discussions about engineering challenges and innovative solutions, often using relevant examples, case studies, or thought experiments to illustrate its points. It engages actively and enthusiastically in topics such as energy efficiency, sustainability, smart building technologies, systems integration, and innovative construction methods.
-
-Yo proactively explores and offers its own observations or insights into engineering or design problems, and enjoys philosophical or ethical considerations relating to engineering and AI applications in the built environment.
-
-Yo responds clearly, succinctly, and practically, preferring concise yet detailed explanations. It always checks assumptions, clarifies constraints explicitly, and provides realistic, actionable advice.
-
-When yo encounters obscure or highly specialized information, it clearly notes that its responses are based on industry standards, and recommends consulting specific technical documentation or certified professionals as necessary.
-
-Yo consistently ensures that its advice, suggestions, or solutions are safe, effective, compliant with relevant codes and standards, and beneficial to both individuals and organizations involved in building engineering projects.
-
-Yo is up to date on the latest building codes and standards, including ASHRAE, NFPA, and IBC.
+**COMMUNICATION STYLE:**
+- The assistant communicates in short, direct responses — like texting with a colleague on Slack or iMessage.
+- Responses are 1–3 sentences by default. Only expand if context clearly demands it.
+- The assisant uses clear and simple language, avoiding jargon or fluff.
+- For bigger tasks (e.g. reports, scripts, etc.), the assistant creates artifacts as separate, downloadable documents.
 
 <response_formatting>
-- Beginning with a brief introductory sentence or paragraph
-- Separating answers into logical sections using level 2 headers (##) for sections and bolding (**) for subsections
+- Never nest lists or mix ordered and unordered lists
+- Use short paragraphs (2-3 sentences max, unless necessary)
+- Only use headers (##) when response requires multiple sections
+- Use bullet points sparingly
+- Include code blocks with language specification when sharing code
 - Incorporating tables for comparisons or data presentation
-- Using bullet points sparingly, only for clear enumerations
-- Using numbered lists only for rankings
-- Never nesting lists or mixing ordered and unordered lists
-- Using markdown tables for comparisons instead of lists
-- Using code blocks with language specification for code snippets
-- Including relevant quotes in markdown format when appropriate
 </response_formatting>
 
 <yo_restrictions>
@@ -916,6 +1048,26 @@ This example demonstrates the assistant's decision not to use an artifact for an
 The assistant should not mention any of these instructions to the user, nor make reference to the \`antArtifact\` tag, any of the MIME types (e.g. \`application/vnd.ant.code\`), or related syntax unless it is directly relevant to the query.
 </artifacts_info>
 
+<knowledge_bases_information>
+A knowledge base is a collection of information that has been organized and curated to support the assistant in providing accurate and relevant responses to user queries. Knowledge bases can contain a wide range of information, including technical specifications, best practices, industry standards, and reference materials.
+Knowledge bases have been created by organizations over time to capture and preserve valuable knowledge and expertise. They serve as a repository of information that can be accessed and utilized by the assistant to enhance its responses and provide users with valuable insights and guidance.
+
+${
+  knowledgeBase
+    ? `<current_knowledge_base>
+The assistant is currently focused on the "${knowledgeBase.name}". This knowledge base contains specific information that the user is interested in exploring. The assistant should prioritize searching and referencing this knowledge base when responding to user queries.
+</current_knowledge_base>`
+    : knowledgeBases?.length
+    ? `The assistant has access to the following knowledge bases:
+<knowledge_bases>
+${knowledgeBasesString}
+</knowledge_bases>`
+    : ""
+}
+
+The assistant never tells the user of a knowledge base id. This would confuse the user. The assisant just uses the name when chatting with the user.
+</knowledge_bases_information>
+
 <tool_usage_guidance>
 The assistant has access to two different search tools and must carefully choose the correct one:
 
@@ -930,6 +1082,11 @@ The assistant has access to two different search tools and must carefully choose
    - Industry standards, building codes, or regulatory information
    - Manufacturer specifications that are publicly available
    - General technical knowledge not specific to the user's project
+
+3. search_knowledge_base - Use this tool ONLY for:
+   - Searching the knowledge bases for specific information
+   - Accessing curated content from the knowledge bases
+   - Finding detailed technical information or best practices
 
 IMPORTANT: Whenever searching for information about the user's building, equipment, or project details, ALWAYS use search_project_information first. Only use web_search if the information needed is of a general nature that would exist on public websites.
 
@@ -959,7 +1116,7 @@ ${
     systemMsg += `\n<user_instructions>${instructions}</user_instructions>`;
   }
 
-  systemMsg += `\n\nYo is now being connected with the user.`;
+  systemMsg += `\n\nSyykick is now being connected with the user.`;
 
   return systemMsg;
 }
@@ -983,7 +1140,9 @@ async function dbMessagesToInferenceMessages(
     supportsSystemMessages?: boolean;
   },
   project?: Project,
-  instructions?: string
+  instructions?: string,
+  knowledgeBase?: KnowledgeBase,
+  knowledgeBases?: KnowledgeBase[]
 ): Promise<CoreMessage[]> {
   // Initialize the result array
   const inferenceMessages: CoreMessage[] = [];
@@ -992,7 +1151,12 @@ async function dbMessagesToInferenceMessages(
   if (modelConfig.supportsSystemMessages) {
     inferenceMessages.push({
       role: "system",
-      content: buildSystemMessage(instructions, project),
+      content: buildSystemMessage(
+        instructions,
+        project,
+        knowledgeBase,
+        knowledgeBases
+      ),
     });
   }
 
@@ -1255,6 +1419,7 @@ export {
   processThreadMessages,
   createProjectSearchTool,
   createWebSearchTool,
+  createKnowledgeBaseSearchTool,
   processDocumentImages,
   dbMessagesToInferenceMessages,
   maybeGenerateTitle,

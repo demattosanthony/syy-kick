@@ -21,11 +21,12 @@ import { useLoadScript, Libraries } from "@react-google-maps/api";
 const libraries: Libraries = ["places"];
 
 type LocationData = {
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  postalCode?: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postalCode: string;
+  placeId?: string;
   latitude?: string;
   longitude?: string;
 };
@@ -48,8 +49,9 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
     state: "",
     country: "",
     postalCode: "",
-    latitude: "",
-    longitude: "",
+    placeId: undefined,
+    latitude: undefined,
+    longitude: undefined,
   });
   const autocompleteService =
     useRef<google.maps.places.AutocompleteService | null>(null);
@@ -91,8 +93,9 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
         state: value.state || "",
         country: value.country || "",
         postalCode: value.postalCode || "",
-        latitude: value.latitude || "",
-        longitude: value.longitude || "",
+        placeId: value.placeId,
+        latitude: value.latitude,
+        longitude: value.longitude,
       });
     }
   }, [showManualEntry, value]);
@@ -174,8 +177,9 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
           }
         });
 
-        const locationData: LocationData = {
+        const locationData: Partial<LocationData> = {
           // Use the extracted street address instead of the full formatted address
+          placeId: placeId,
           address: streetAddress,
           latitude: place.geometry?.location?.lat().toString(),
           longitude: place.geometry?.location?.lng().toString(),
@@ -196,7 +200,7 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
           }
         });
 
-        onChange(locationData);
+        onChange(locationData as LocationData);
         // Still display the full formatted address in the input field for user convenience
         setInput(place.formatted_address || "");
         setOpen(false);

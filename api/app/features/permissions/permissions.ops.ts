@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, not } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import db from "../../config/db";
 import {
   organizationInvites,
@@ -18,7 +18,6 @@ import { orgInvitation } from "../../../emails/permissions";
 import { randomBytes } from "crypto";
 import s3 from "../../config/s3";
 import { PermissionManager } from "./permissions.tools";
-import Constants from "./permissions.constants";
 
 export const permissionsOps = {
   /** ---- Get Roles */

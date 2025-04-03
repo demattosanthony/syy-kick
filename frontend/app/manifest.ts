@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Yo",
-    short_name: "Yo",
-    description: "Yo",
+    name: "Syykick",
+    short_name: "Syykick",
+    description: "Syykick",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     icons: [
       {
-        src: "/app-icon-180.png",
+        src: "/pwa-app-icons/180.png",
         sizes: "180x180",
         type: "image/png",
       },

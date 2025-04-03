@@ -1,6 +1,6 @@
 import { File, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import React, { useCallback } from "react";
+import React from "react";
 import { ToolInvocation } from "ai";
 import {
   Sheet,
@@ -20,28 +20,70 @@ const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
     case "search_project_information":
     case "search_documents":
     case "search_projects_information":
+    case "search_knowledge_base":
       return <SearchDocumentsTool tool={tool} />;
     case "web_search":
       return <WebSearchTool tool={tool} />;
+    case "workflow-step":
+      return <WorkflowStepTool tool={tool} />;
     default:
       return null;
   }
 };
 
+const WorkflowStepTool = ({ tool }: { tool: ToolInvocation }) => {
+  const loading = tool.state === "partial-call" || tool.state === "call";
+  const message = loading ? tool.args?.message || "" : tool.result || "";
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2">
+        <Loader variant="text-shimmer" text={message} size="lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-fit rounded-3xl border border-border p-2 cursor-default hover:bg-secondary/30 transition-colors duration-200 min-h-[34px] h-auto flex items-center gap-2">
+      <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+        <svg
+          className="w-3.5 h-3.5 text-green-500"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      </div>
+      <span className="text-sm text-muted-foreground">{message}</span>
+    </div>
+  );
+};
+
 const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
   const [open, setOpen] = React.useState(false);
   const hasResults = tool.state === "result" && tool.result;
-  const resultCount = hasResults ? tool.result.dataForFrontend.length : 0;
+  const resultCount =
+    hasResults && tool.result?.dataForFrontend
+      ? tool.result.dataForFrontend.length
+      : 0;
 
   // Show loading state
   if (tool.state === "partial-call" || tool.state === "call") {
+    let loadingText = "Searching project information...";
+
+    if (tool.toolName === "search_knowledge_base") {
+      loadingText = "Searching knowledge base...";
+    }
+
     return (
       <div className="">
-        <Loader
-          variant="text-shimmer"
-          text="Searching project information..."
-          size="lg"
-        />
+        <Loader variant="text-shimmer" text={loadingText} size="lg" />
       </div>
     );
   }
@@ -102,7 +144,7 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
           <SheetDescription>Results for "{tool.args?.query}"</SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto mt-4">
-          {tool.result.dataForFrontend.map(
+          {tool.result.dataForFrontend?.map(
             (
               result: {
                 path: string;
@@ -117,12 +159,13 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
                 key={`result-${idx}`}
                 className="flex flex-col gap-3 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
                 onClick={() => {
-                  window.open(
-                    `/projects/${result.projectId}/blob/${result.path}${
-                      result.page ? `?page=${result.page}` : ""
-                    }`,
-                    "_blank"
-                  );
+                  if (result.projectId && result.path)
+                    window.open(
+                      `/projects/${result.projectId}/blob/${result.path}${
+                        result.page ? `?page=${result.page}` : ""
+                      }`,
+                      "_blank"
+                    );
                 }}
               >
                 <div className="flex items-center gap-3">

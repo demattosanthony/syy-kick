@@ -41,7 +41,7 @@ async function main() {
 
   app.use("/", routes);
 
-  app.listen(CONFIG.PORT, () => {
+  app.listen(CONFIG.PORT as number, "0.0.0.0", () => {
     console.log(`Server is running on http://localhost:${CONFIG.PORT}`);
   });
 }

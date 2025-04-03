@@ -11,7 +11,7 @@ import { toast } from "sonner";
 const useAuth = () => {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const { setActiveWorkspace } = useWorkspace();
+  const { setActiveWorkspace, workspaces } = useWorkspace();
 
   async function logOut() {
     await api.auth.logout();
@@ -92,20 +92,17 @@ const useAuth = () => {
     if (orgId) {
       // Find the org workspace and set it as active
       setTimeout(async () => {
-        const workspaces = queryClient.getQueryData<any>([
-          "me",
-        ])?.organizationMembers;
-        const orgWorkspace = workspaces?.find(
-          (w: any) => w.organization.id === orgId
-        );
+        const orgWorkspace = workspaces?.find((w) => w.id === orgId);
 
         if (orgWorkspace) {
           const workspace: Workspace = {
-            id: orgWorkspace.organization.id,
-            name: orgWorkspace.organization.name,
+            id: orgWorkspace.id,
+            name: orgWorkspace.name,
             type: "organization" as const,
-            logo: orgWorkspace.organization.logo,
-            subscriptionStatus: orgWorkspace.organization.subscriptionStatus,
+            logo: orgWorkspace.logo,
+            subscriptionStatus: orgWorkspace.subscriptionStatus,
+            slug: orgWorkspace.slug || "",
+            sites: orgWorkspace.sites || [],
           };
           setActiveWorkspace(workspace);
         }
@@ -113,6 +110,7 @@ const useAuth = () => {
         // Only clear orgId param
         const params = new URLSearchParams(window.location.search);
         params.delete("orgId");
+        params.delete("orgJoined");
         const newUrl = `${window.location.pathname}${
           params.toString() ? `?${params.toString()}` : ""
         }`;

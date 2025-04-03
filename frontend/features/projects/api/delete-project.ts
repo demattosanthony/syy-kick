@@ -8,6 +8,7 @@ export function useDeleteProjectMutation() {
     mutationFn: (projectId: string) => api.projects.deleteProject(projectId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["me"] });
     },
   });
 }

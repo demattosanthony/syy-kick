@@ -11,7 +11,11 @@ export function NewThreadButton() {
   const isMobile = useIsMobile();
 
   return (
-    <Link href={"/"} prefetch onMouseDown={() => isMobile && toggleSidebar()}>
+    <Link
+      href={"/"}
+      prefetch={true}
+      onMouseDown={() => isMobile && toggleSidebar()}
+    >
       <Button
         variant={"outline"}
         className="w-full"

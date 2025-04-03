@@ -89,5 +89,6 @@ export function useFileUpload(acceptedTypes: string[]) {
     removeUpload,
     clearUploads,
     handleDrop,
+    processFiles,
   };
 }

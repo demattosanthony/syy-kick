@@ -1,3 +1,4 @@
+import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
 import { Project } from "./project";
 
 export enum MessageRole {
@@ -61,6 +62,7 @@ export type FileUpload = {
   file: File;
   preview: string;
   type: "image" | "pdf";
+  inputId?: string;
 };
 
 export interface Thread {
@@ -72,6 +74,9 @@ export interface Thread {
   projectId?: string;
   project?: Project;
   isPublic?: boolean;
+  knowledgeBaseId?: string;
+  knowledgeBase?: KnowledgeBase;
+  workflowId?: string;
   messages: ChatMessage[];
 }
 

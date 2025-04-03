@@ -23,24 +23,8 @@ export const WorkspaceProvider = ({
   children: React.ReactNode;
   initialWorkspace?: Workspace | null;
 }) => {
-  // Check jotai's storage key for existing workspace
   const [activeWorkspace, setActiveWorkspaceState] =
-    React.useState<Workspace | null>(() => {
-      if (typeof window !== "undefined") {
-        const stored = localStorage.getItem("activeWorkspace");
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored);
-            // Clean up jotai storage
-            localStorage.removeItem("activeWorkspace");
-            return parsed;
-          } catch {
-            return initialWorkspace || null;
-          }
-        }
-      }
-      return initialWorkspace || null;
-    });
+    React.useState<Workspace | null>(initialWorkspace || null);
   const { data: user } = useMeQuery();
   const [workspaces, setWorkspaces] = React.useState<Workspace[]>([]);
 
@@ -53,7 +37,7 @@ export const WorkspaceProvider = ({
       workspace
     )}; path=/; max-age=2147483647; secure${
       process.env.NODE_ENV === "production"
-        ? "; domain=.syyclops.com; samesite=lax"
+        ? "; domain=.syykick.com; samesite=lax"
         : "; samesite=lax"
     }`;
 
@@ -63,11 +47,21 @@ export const WorkspaceProvider = ({
   // Set up workspaces and ensure active workspace is valid
   React.useEffect(() => {
     if (user) {
+      const personalOrg = user.organizations.find(
+        (org) => org.type === "personal"
+      );
+
+      if (!personalOrg) {
+        throw new Error("User must have a personal organization");
+      }
+
       const personalWorkspace: Workspace = {
-        id: user.id,
-        name: "Personal",
-        logo: user.profilePicture,
+        id: personalOrg.id,
+        name: personalOrg.name,
+        slug: personalOrg.slug,
         type: "personal",
+        logo: personalOrg.logo,
+        sites: personalOrg.sites,
       };
 
       const organizationWorkspaces: Workspace[] = (
@@ -75,27 +69,36 @@ export const WorkspaceProvider = ({
       ).map((organization) => ({
         id: organization.id,
         name: organization.name,
-        type: "organization" as const,
+        slug: organization.slug,
+        type: organization.type,
         logo: organization.logo,
         subscriptionStatus: organization.subscriptionStatus,
+        sites: organization.sites,
       }));
 
-      const allWorkspaces = [personalWorkspace, ...organizationWorkspaces];
-      setWorkspaces(allWorkspaces);
+      setWorkspaces(organizationWorkspaces);
 
-      // Update active workspace with fresh data if it exists, otherwise set to personal
+      // Determine the default workspace: first organization or personal if none exist
+      const defaultWorkspace =
+        organizationWorkspaces.length > 0
+          ? organizationWorkspaces[0]
+          : personalWorkspace;
+
+      // Update active workspace with fresh data if it exists, otherwise set the default
       // Need to do this because logo is a presigned URL that expires
       if (activeWorkspace) {
-        const updatedWorkspace = allWorkspaces.find(
+        const updatedWorkspace = organizationWorkspaces.find(
           (w) => w.id === activeWorkspace.id
         );
         if (updatedWorkspace) {
           setActiveWorkspace(updatedWorkspace);
         } else {
-          setActiveWorkspace(personalWorkspace);
+          // If the stored workspace is invalid, set the default
+          setActiveWorkspace(defaultWorkspace);
         }
       } else {
-        setActiveWorkspace(personalWorkspace);
+        // If no workspace was stored, set the default
+        setActiveWorkspace(defaultWorkspace);
       }
     }
   }, [user]); // Depend on user data

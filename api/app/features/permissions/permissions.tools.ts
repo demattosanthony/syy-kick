@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import db from "../../config/db";
 import {
   Permissions,
@@ -9,12 +9,14 @@ import {
   UserRole,
 } from "./permissions.types";
 import {
+  accessLogs,
   actions,
   memberRoles,
   permissions,
   projects,
   resources,
   roles,
+  sites,
 } from "../../config/schema";
 import { permissionsOps } from "./permissions.ops";
 import Constants from "./permissions.constants";
@@ -439,6 +441,24 @@ export class PermissionManager {
   }
 
   /**
+   * Checks if a site is owned by a user (would mean that it belongs to his personal workspace)
+   * @param {string} userId - The user ID
+   * @param {string} siteId - The site ID
+   * @returns {Promise<boolean>} - True if the user owns the site, false otherwise
+   * @memberof PermissionManager
+   * @example
+   * const isUserSite = await PermissionManager.isUserSite("user-id", "site-id");
+   * console.log(isUserSite); // true
+   **/
+  static async isUserSite(userId: string, siteId: string): Promise<boolean> {
+    const site = await db.query.sites.findFirst({
+      where: and(eq(sites.id, siteId), eq(sites.userId, userId)),
+    });
+
+    return !!site;
+  }
+
+  /**
    * Checks if a user is a project member
    * @param {string} userId - The user ID
    * @param {string} projectId - The project ID
@@ -523,6 +543,75 @@ export class PermissionManager {
     return [];
   }
 
+  static async getUserSitesIds(
+    userId: string,
+    orgId: string
+  ): Promise<string[]> {
+    const userRole = await db.query.memberRoles.findFirst({
+      where: and(
+        eq(memberRoles.organizationId, orgId),
+        eq(memberRoles.userId, userId)
+      ),
+      with: {
+        role: true,
+      },
+    });
+
+    if (!userRole) {
+      return [];
+    }
+
+    if (
+      [
+        Permissions.Roles.ORGANIZATION_ADMIN,
+        Permissions.Roles.ORGANIZATION_MANAGER,
+      ].includes(userRole.role.name as Permissions.Roles)
+    ) {
+      const sitesList = await db.query.sites.findMany({
+        where: eq(sites.organizationId, orgId),
+      });
+
+      return sitesList.map((site) => site.id);
+    }
+
+    if (
+      [
+        Permissions.Roles.PROJECT_MANAGER,
+        Permissions.Roles.PROJECT_MEMBER,
+      ].includes(userRole.role.name as Permissions.Roles)
+    ) {
+      // Get the user's projects
+      const memberProjects = await db
+        .select({ projectId: memberRoles.projectId })
+        .from(memberRoles)
+        .where(
+          and(
+            eq(memberRoles.organizationId, orgId),
+            eq(memberRoles.userId, userId)
+          )
+        );
+
+      const projectIds = memberProjects
+        .map((p) => p.projectId)
+        .filter((id): id is string => !!id);
+
+      if (projectIds.length === 0) return [];
+
+      // Get the projects sites
+      const linkedProjects = await db
+        .selectDistinct({ siteId: projects.siteId })
+        .from(projects)
+        .where(inArray(projects.id, projectIds));
+
+      // Return the sites IDs
+      return linkedProjects
+        .map((p) => p.siteId)
+        .filter((id): id is string => !!id);
+    }
+
+    return [];
+  }
+
   /**
    * Get personnal workspace permissions (full access)
    * @returns {Promise<UserRole>} - The user's personnal workspace permissions
@@ -592,5 +681,103 @@ export class PermissionManager {
       role: userOrgRole.role,
       resources: resourcesPermissions,
     };
+  }
+
+  /**
+   * Logs a user's access to an organization, project, or document
+   * @param {string} userId - The user ID
+   * @param {Permissions.Actions} action - The action performed
+   * @param {Permissions.Resources} resource - The resource accessed
+   * @param {Permissions.Status} status - The status of the access
+   * @param {string} organizationId - The organization ID (optional)
+   * @param {string} projectId - The project ID (optional)
+   * @param {string} documentId - The document ID (optional)
+   * @memberof PermissionManager
+   * @example
+   * await PermissionManager.logAccess("user-id", Permissions.Actions.READ, Permissions.Resources.ORGANIZATION, "org-id");
+   **/
+  static async logAccess(
+    userId: string,
+    action: Permissions.Actions,
+    resource: Permissions.Resources,
+    status: Permissions.Status,
+    identifiers: {
+      organizationId?: string;
+      projectId?: string;
+      documentId?: string;
+      siteId?: string;
+      knowledgeBaseId?: string;
+    }
+  ) {
+    const actionId = await PermissionManager.getActionId(action);
+    const resourceId = await PermissionManager.getResourseId(resource);
+
+    if (!actionId || !resourceId) {
+      throw new Error("Action or resource not found");
+    }
+
+    await db.insert(accessLogs).values({
+      userId,
+      organizationId: identifiers.organizationId,
+      projectId: identifiers.projectId,
+      documentId: identifiers.documentId,
+      actionId,
+      resourceId,
+      siteId: identifiers.siteId,
+      knowledgeBaseId: identifiers.knowledgeBaseId,
+      status,
+    });
+  }
+
+  /**
+   * Get the most recent accessed projects for a user
+   * @param {string} userId - The user ID
+   * @param {string|undefined} organizationId - The organization ID (optional)
+   * @returns {Promise<string[]>} - The most recent accessed projects IDs
+   * @memberof PermissionManager
+   * @example
+   * const mostRecentAccessedProjects = await PermissionManager.getMostRecentAccessedProjects("user-id", "org-id");
+   * console.log(mostRecentAccessedProjects);
+   * // ["project-id-1", "project-id-2"]
+   **/
+  static async getMostRecentAccessedProjects(
+    userId: string,
+    organizationId?: string
+  ): Promise<string[]> {
+    const resourceId = await PermissionManager.getResourseId(
+      Permissions.Resources.ORGANIZATION_PROJECTS
+    );
+    const actionId = await PermissionManager.getActionId(
+      Permissions.Actions.READ
+    );
+
+    const conditions = [
+      isNull(accessLogs.siteId),
+      isNull(accessLogs.documentId),
+      eq(accessLogs.resourceId, resourceId as string),
+      eq(accessLogs.actionId, actionId as string),
+      eq(accessLogs.userId, userId),
+    ];
+
+    if (organizationId) {
+      conditions.push(eq(projects.organizationId, organizationId));
+    }
+
+    const mostRecentAccessed = await db
+      .select({
+        projectId: projects.id,
+        lastAccess: sql`MAX(${accessLogs.createdAt})`.as("last_access"),
+      })
+      .from(accessLogs)
+      .leftJoin(projects, eq(accessLogs.projectId, projects.id))
+      .where(and(...conditions))
+      .groupBy(projects.id)
+      .orderBy(desc(sql`MAX(${accessLogs.createdAt})`))
+      .limit(10);
+
+    // Retourne juste les IDs de projets (uniques), triés par ordre d'accès décroissant
+    return mostRecentAccessed
+      .map((row) => row.projectId)
+      .filter((id): id is string => !!id);
   }
 }

@@ -55,7 +55,11 @@ export default function WorkflowsList(props: WorkflowsListProps) {
 function WorkflowItem({ workflow }: { workflow: Workflow }) {
   return (
     <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full group relative">
-      <Link href={`/workflows/${workflow.id}`} prefetch className="block">
+      <Link
+        href={`/workflows/${workflow.id}`}
+        prefetch={false}
+        className="block"
+      >
         <div className="flex items-center gap-4 min-w-0">
           <div className="text-muted-foreground relative">
             <GitBranch className="w-6 h-6 absolute text-purple-400 transition-opacity duration-200 group-hover:opacity-0" />

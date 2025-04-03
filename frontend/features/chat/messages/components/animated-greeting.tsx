@@ -1,5 +1,6 @@
 import { atom, useAtom } from "jotai";
 import { useEffect } from "react";
+import { motion } from "framer-motion";
 
 interface AnimatedGreetingProps {
   name: string;
@@ -8,17 +9,18 @@ interface AnimatedGreetingProps {
 export const animatedAtom = atom(false);
 
 const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
-  const [, setIsAnimated] = useAtom(animatedAtom);
+  const [isAnimated, setIsAnimated] = useAtom(animatedAtom);
 
   const getGreeting = () => {
-    if (!name) return "Welcome to Yo";
+    if (!name) return "Hi, I'm Syykick";
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
     if (hour < 17) return "Good Afternoon";
     return "Good Evening";
   };
 
-  const greetingText = name ? `${getGreeting()}, ${name}` : getGreeting();
+  const greeting = getGreeting();
+  const greetingText = name ? `${greeting}, ${name}` : greeting;
   const assistText = "How can I help you today?";
 
   useEffect(() => {
@@ -27,15 +29,23 @@ const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <h3
+      <motion.h3
+        initial={isAnimated ? false : { opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
         className="scroll-m-20 text-2xl md:text-4xl font-semibold text-center tracking-normal"
         aria-label={greetingText}
       >
         {greetingText}
-      </h3>
-      <div className="text-lg font-medium text-center tracking-normal">
+      </motion.h3>
+      <motion.div
+        initial={isAnimated ? false : { opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+        className="text-lg font-medium text-center tracking-normal"
+      >
         {assistText}
-      </div>
+      </motion.div>
     </div>
   );
 };

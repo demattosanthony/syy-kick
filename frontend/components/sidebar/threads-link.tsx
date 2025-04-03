@@ -17,7 +17,7 @@ export function ThreadsLink() {
   return (
     <Link
       href={"/threads"}
-      prefetch
+      prefetch={false}
       onMouseDown={() => isMobile && toggleSidebar()}
     >
       <Button

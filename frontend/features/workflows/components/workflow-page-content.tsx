@@ -2,18 +2,29 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Attachment } from "ai";
 import api from "@/lib/api";
-import ProcessingIndicator from "./workflow-processing";
 import ErrorDisplay from "./workflow-error-display";
-import OutputDisplay from "./workflow-output-display";
 import FileUploadInput from "./workflow-file-input";
 import { Workflow } from "../workflows.types";
+import { useAtom } from "jotai";
+import { initalInputAtom, workflowInputAtom } from "@/atoms/chat";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Slash } from "lucide-react";
+import Link from "next/link";
+import { ThreadsList } from "@/features/chat/threads/components";
 
-type ExtendedAttachment = Attachment & { file_key: string };
+export type WorkflowAttachment = Attachment & {
+  file_key: string;
+  inputId: string;
+};
 
 export default function WorkflowPageContent({
   workflowId,
@@ -24,36 +35,13 @@ export default function WorkflowPageContent({
 }) {
   const router = useRouter();
   const [files, setFiles] = useState<Record<string, File | null>>({});
-  const [showReasoning, setShowReasoning] = useState(true);
   const [errorDetails, setErrorDetails] = useState<{
     type: "upload" | "processing" | "general" | "network";
     message: string;
   } | null>(null);
   const hasAutoHiddenReasoning = useRef(false);
-
-  const { handleSubmit, messages, setInput, status, setMessages } = useChat({
-    api: `${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/run`,
-    credentials: "include",
-    experimental_prepareRequestBody({ messages, id }) {
-      return { message: messages[messages.length - 1], id };
-    },
-    onError: (error) => {
-      console.error("Workflow error:", error);
-      setErrorDetails({
-        type:
-          error.message.includes("network") || error.message.includes("fetch")
-            ? "network"
-            : error.message.includes("upload") || error.message.includes("file")
-            ? "upload"
-            : "processing",
-        message:
-          error.message || "An error occurred while processing your request.",
-      });
-    },
-  });
-
-  const isProcessing = status === "submitted" || messages.length > 0;
-  const response = messages[1];
+  const [, setWorkflowInput] = useAtom(workflowInputAtom);
+  const [, setInitalInput] = useAtom(initalInputAtom);
 
   // Initialize files state based on workflow inputs
   useEffect(() => {
@@ -77,10 +65,7 @@ export default function WorkflowPageContent({
       });
       setFiles(resetFiles);
     }
-    setInput("");
-    setMessages([]);
     setErrorDetails(null);
-    setShowReasoning(true);
     hasAutoHiddenReasoning.current = false;
     if (errorDetails) window.location.reload();
   };
@@ -98,7 +83,7 @@ export default function WorkflowPageContent({
     if (!areRequiredFilesUploaded()) return;
 
     try {
-      const attachments: ExtendedAttachment[] = [];
+      const attachments: WorkflowAttachment[] = [];
       for (const inputId in files) {
         const file = files[inputId];
         if (!file) continue;
@@ -119,16 +104,26 @@ export default function WorkflowPageContent({
           contentType: file.type,
           url: viewUrl,
           file_key: file_metadata.file_key,
+          inputId,
         });
       }
       const fileNames = Object.values(files)
         .filter(Boolean)
         .map((file) => file?.name)
         .join(", ");
-      setInput(fileNames);
-      handleSubmit({ preventDefault: () => {} } as React.FormEvent, {
-        experimental_attachments: attachments,
+
+      setWorkflowInput({
+        attachments,
+        input: "",
       });
+      setInitalInput(`Process the following files: ${fileNames}.`);
+
+      const thread = await api.threads.createThread({
+        workflowId,
+      });
+      router.push(
+        `/threads/${thread.id}?isNew=true&isWorkflow=true&workflowId=${workflowId}`
+      );
     } catch (err) {
       console.error("Submission error:", err);
       setErrorDetails({
@@ -138,23 +133,6 @@ export default function WorkflowPageContent({
     }
   };
 
-  // Determine current step in the workflow process
-  const getCurrentStep = () => {
-    if (errorDetails) return 0;
-    if (!areRequiredFilesUploaded()) return 1;
-    if (isProcessing && (!response?.content || response?.content === ""))
-      return 2;
-    if (response) {
-      if (showReasoning && !hasAutoHiddenReasoning.current) {
-        setShowReasoning(false);
-        hasAutoHiddenReasoning.current = true;
-      }
-      return 3;
-    }
-    return 1;
-  };
-
-  const currentStep = getCurrentStep();
   const workflowInputs = workflow?.inputs || [
     {
       id: "default-input",
@@ -165,13 +143,8 @@ export default function WorkflowPageContent({
       required: true,
     },
   ];
-  const outputConfig = workflow?.output || {
-    type: "csv",
-    title: "Output",
-    description: "View the final results",
-  };
 
-  if (!workflow) {
+  if (workflow === null) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-4">
         <h2 className="text-2xl font-bold">Workflow not found</h2>
@@ -183,23 +156,43 @@ export default function WorkflowPageContent({
   }
 
   return (
-    <div className="h-screen w-full flex flex-col items-center overflow-y-auto">
-      {currentStep !== 3 ? (
-        <div className="container mx-auto px-4 py-16 max-w-2xl">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-4 gap-2">
-              📋 {workflow.title}
-            </h1>
-            <p className="text-base text-muted-foreground">
-              {workflow.description}
-            </p>
-          </div>
+    <div className="h-screen w-full flex flex-col">
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto px-4 py-4">
+          <Breadcrumb className="mb-8">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <Link
+                  href="/workflows"
+                  className="hover:text-blue-500 hover:underline"
+                >
+                  Workflows
+                </Link>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator>
+                <Slash className="w-4 h-4" />
+              </BreadcrumbSeparator>
+              <BreadcrumbItem>
+                <span className="font-bold truncate">{workflow?.title}</span>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
 
-          <ErrorDisplay errorDetails={errorDetails} onReset={resetWorkflow} />
+          <div className="max-w-2xl mx-auto flex flex-col items-center">
+            <div className="mb-6 text-center">
+              <div className="inline-block p-3 mb-6 rounded-full bg-primary/10">
+                <span className="text-4xl">📋</span>
+              </div>
+              <h1 className="text-4xl font-bold mb-4">{workflow?.title}</h1>
+              <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+                {workflow?.description}
+              </p>
+            </div>
 
-          {!errorDetails && (
-            <>
-              {currentStep === 1 && (
+            <ErrorDisplay errorDetails={errorDetails} onReset={resetWorkflow} />
+
+            {!errorDetails && (
+              <div className="rounded-xl p-8 w-full">
                 <div className="flex flex-col gap-8">
                   {workflowInputs.map((input) => (
                     <FileUploadInput
@@ -212,55 +205,37 @@ export default function WorkflowPageContent({
                       onFileChange={(file) =>
                         setFiles((prev) => ({ ...prev, [input.id]: file }))
                       }
-                      setInput={setInput}
+                      setInput={() => {}}
                     />
                   ))}
                   <Button
-                    className="w-full mt-6 py-6 text-lg"
+                    className="w-full mt-6 py-7 text-lg font-medium transition-all hover:scale-[1.02]"
                     size="lg"
                     disabled={!areRequiredFilesUploaded()}
                     onClick={onSubmit}
                   >
-                    <Play className="h-6 w-6 mr-2" /> Submit and run flow
+                    <Play className="h-6 w-6 mr-3" />
+                    {areRequiredFilesUploaded()
+                      ? "Submit and run"
+                      : "Upload required files to continue"}
                   </Button>
                 </div>
-              )}
+              </div>
+            )}
 
-              {currentStep === 2 && (
-                <ProcessingIndicator
-                  reasoning={response?.reasoning}
-                  showReasoning={showReasoning}
-                  onToggleReasoning={() => setShowReasoning(!showReasoning)}
+            {/* History section */}
+            <div className="mt-12 w-full max-w-xl">
+              <h2 className="text-2xl font-bold mb-6">History</h2>
+              <div className="">
+                <ThreadsList
+                  workflowId={workflowId}
+                  showLatestMessage={false}
                 />
-              )}
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="container mx-auto px-4 py-16 max-w-5xl">
-          <div className="mb-8 max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold mb-4 gap-2">
-              📋 {workflow.title}
-            </h1>
-            <p className="text-base text-muted-foreground">
-              {workflow.description}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-8">
-            <OutputDisplay
-              response={response}
-              outputConfig={outputConfig}
-              status={status}
-            />
-            <div className="flex justify-center">
-              <Button size="lg" onClick={resetWorkflow} className="px-8">
-                Run Again
-              </Button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

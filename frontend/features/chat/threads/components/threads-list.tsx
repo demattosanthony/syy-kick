@@ -4,27 +4,34 @@ import { Thread } from "@/types/chat";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useThreadsQuery } from "@/features/chat/threads/api";
-import { getModelIconPath } from "../../messages/utils";
 import { cn, getRelativeTimeString } from "@/lib/utils";
 
 export default function ThreadsList({
   projectId,
   compact = false,
-  initalThreads,
+  knowledgeBaseId,
+  workflowId,
+  showLatestMessage = true,
 }: {
   projectId?: string;
   compact?: boolean;
-  initalThreads?: Thread[];
+  knowledgeBaseId?: string;
+  workflowId?: string;
+  showLatestMessage?: boolean;
 }) {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useThreadsQuery(search, projectId, initalThreads);
+    useThreadsQuery({
+      search,
+      projectId,
+      knowledgeBaseId,
+      workflowId,
+    });
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -51,13 +58,34 @@ export default function ThreadsList({
   return (
     <div>
       {threads?.length === 0 && !isLoading ? (
-        <div className="flex items-center justify-center h-40 text-muted-foreground">
-          No threads found
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <svg
+            className="w-12 h-12 mb-4 text-muted-foreground"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+          <p className="text-lg font-medium text-muted-foreground">
+            No threads yet
+          </p>
         </div>
       ) : (
         <>
           {threads?.map((thread, i) => (
-            <ThreadItem key={i} thread={thread} compact={compact} />
+            <ThreadItem
+              key={i}
+              thread={thread}
+              compact={compact}
+              showLatestMessage={showLatestMessage}
+            />
           ))}
 
           <div ref={scrollRef} className="h-10">
@@ -78,35 +106,25 @@ export default function ThreadsList({
 function ThreadItem({
   thread,
   compact = false,
+  showLatestMessage = true,
 }: {
   thread: Thread;
   compact?: boolean;
+  showLatestMessage?: boolean;
 }) {
   const lastMessage = thread.messages[thread.messages.length - 1];
-  const provider = lastMessage?.provider;
   const model = lastMessage?.model;
   const title = thread.title;
   if (!lastMessage || !lastMessage.text) return null;
 
   return (
-    <Link href={`/threads/${thread.id}`} prefetch>
+    <Link href={`/threads/${thread.id}`} prefetch={false}>
       <div
         className={`hover:bg-accent ${
           compact ? "p-2" : "p-4"
         } rounded-lg transition-colors max-w-full`}
       >
         <div className="flex items-center gap-4 min-w-0">
-          {!compact && (
-            <Avatar className="flex-shrink-0 w-6 h-6">
-              <AvatarImage
-                src={
-                  provider ? getModelIconPath(provider) || "" : "/ai-avatar.png"
-                }
-              />
-              <AvatarFallback />
-            </Avatar>
-          )}
-
           <div className="flex-1 min-w-0">
             <div
               className={` ${
@@ -121,15 +139,18 @@ function ThreadItem({
                 ? model
                 : "AI Assistant"}
             </div>
-            <p
-              className={cn(
-                "text-sm text-muted-foreground line-clamp-2",
-                compact ? "max-w-[230px]" : "max-w-[calc(100vw-8rem)]",
-                compact ? "md:max-w-[230px]" : "md:max-w-[calc(100vw-12rem)]"
-              )}
-            >
-              {lastMessage.text}
-            </p>
+            {showLatestMessage && (
+              <p
+                className={cn(
+                  "text-sm text-muted-foreground line-clamp-2",
+                  compact
+                    ? "max-w-[230px] md:max-w-[230px]"
+                    : "max-w-[calc(100vw-8rem)] md:max-w-[650px]"
+                )}
+              >
+                {lastMessage.text}
+              </p>
+            )}
             <time className="text-xs text-muted-foreground">
               {getRelativeTimeString(lastMessage.createdAt)}
             </time>
@@ -140,7 +161,7 @@ function ThreadItem({
   );
 }
 
-function ThreadSkeleton({ compact = false }: { compact?: boolean }) {
+export function ThreadSkeleton({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`${compact ? "p-2" : "p-4"}`}>
       <div className="flex items-start gap-4">

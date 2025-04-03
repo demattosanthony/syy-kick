@@ -1,9 +1,9 @@
-import { Router } from "express";
-import { organizationInvites } from "./config/schema";
+import { Router, Request, Response } from "express";
+import { organizationInvites, projects } from "./config/schema";
 import db from "./config/db";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import s3 from "./config/s3";
-import { handle } from "./utils";
+import { getOrgIdOrUnedfined, handle } from "./utils";
 import { auth, checkSub } from "./middleware";
 import threadsOps from "./features/threads/threads.ops";
 
@@ -17,6 +17,9 @@ import projectRoutes from "./features/projects";
 import workflowRoutes from "./features/workflows/workflows.routes";
 import permissionsRoutes from "./features/permissions/permissions.routes";
 import analyticsRoutes from "./features/analytics";
+import knowledgeBasesRoutes from "./features/knowledge-bases/knowledge-bases.routes";
+import sitesRoutes from "./features/sites/sites.routes";
+import { PermissionManager } from "./features/permissions/permissions.tools";
 
 export default Router()
   .use("/auth", authRoutes)
@@ -76,8 +79,10 @@ export default Router()
     })
   )
   .use("/organizations", auth, organizationRoutes)
+  .use("/sites", auth, checkSub, sitesRoutes)
   .use("/projects", auth, checkSub, projectRoutes)
   .use("/workflows", auth, workflowRoutes)
+  .use("/knowledge-bases", auth, knowledgeBasesRoutes)
   .post(
     "/presigned-url",
     auth,
@@ -106,4 +111,29 @@ export default Router()
     })
   )
   .use("/permissions", auth, permissionsRoutes)
-  .use("/analytics", analyticsRoutes);
+  .use("/analytics", analyticsRoutes)
+
+  // Temporary (projects with no site associated)
+  .get("/unlinked-projects", auth, async (req: Request, res: Response) => {
+    const orgId = getOrgIdOrUnedfined(req.workspace);
+
+    const conditions = [isNull(projects.siteId)];
+
+    if (orgId && req.dbUser!.id) {
+      const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
+        req.dbUser!.id,
+        orgId
+      );
+
+      conditions.push(inArray(projects.id, orgProjectsIds));
+    } else if (req.dbUser!.id) {
+      conditions.push(eq(projects.userId, req.dbUser!.id));
+    }
+
+    const projectsList = await db.query.projects.findMany({
+      where: and(...conditions),
+      orderBy: (projects, { desc }) => [desc(projects.createdAt)],
+    });
+
+    res.json(projectsList);
+  });

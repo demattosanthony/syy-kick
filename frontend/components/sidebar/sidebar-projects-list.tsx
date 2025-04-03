@@ -37,6 +37,7 @@ export function SidebarProjectsList({ user }: ProjectsListProps) {
 
   const { data: projects, isLoading } = useProjectsQuery({
     limit: 8,
+    sort: "recent",
   });
   const deleteProjectMutatio = useDeleteProjectMutation();
 

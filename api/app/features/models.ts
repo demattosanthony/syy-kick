@@ -11,9 +11,14 @@ import { togetherai } from "@ai-sdk/togetherai";
 import { createPerplexity } from "@ai-sdk/perplexity";
 import { mistral } from "@ai-sdk/mistral";
 import { wrapLanguageModel, extractReasoningMiddleware } from "ai";
+import { Mistral as MistralAi } from "@mistralai/mistralai";
 
 const perplexity = createPerplexity({
   apiKey: process.env.PPLX_API_KEY ?? "",
+});
+
+export const mistralAi = new MistralAi({
+  apiKey: process.env["MISTRAL_API_KEY"] ?? "",
 });
 
 export interface ModelConfig {
@@ -195,8 +200,20 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
     //   description:
     //     "Improved quality, especially for world knowledge, code, and long context",
     // },
+    "gemini-2.5-pro-exp": {
+      model: google("gemini-2.5-pro-exp-03-25"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "google",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 2 * 1024 * 1024 * 1024, //
+      maxFileSize: 50 * 1024 * 1024, // 50MB
+      description:
+        "Gemini 2.5 is a thinking model, designed to tackle increasingly complex problems. Google's first 2.5 model, Gemini 2.5 Pro Experimental, leads common benchmarks by meaningful margins and showcases strong reasoning and code capabilities.",
+    },
     "gemini-2.0-flash": {
-      model: google("gemini-2.0-flash"),
+      model: google("gemini-2.0-flash-001"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "google",

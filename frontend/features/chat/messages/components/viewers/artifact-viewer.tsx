@@ -27,64 +27,38 @@ import { getArtifactVersionInfo } from "@/lib/artifact-utils";
 import { Artifact } from "@/types/chat";
 import { Message } from "ai";
 
-// Content renderers
+// Content renderers and parsers
 import MarkdownViewer from "./markdown-viewer";
 import { marked } from "marked";
 import mermaid from "mermaid";
+import Papa from "papaparse";
 
 export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
-  // Helper function to parse CSV line respecting quotes and handling special cases
-  const parseCSVLine = (line: string): string[] => {
-    // Special case for architectural dimensions - replace the trailing inch mark temporarily
-    line = line.replace(/(\d+)'(\d+)"/g, "$1'$2INCH");
+  // Parse CSV
+  const parseResult = Papa.parse(content, {
+    header: false,
+    skipEmptyLines: true,
+    delimiter: ",", // explicitly set delimiter
+    quoteChar: '"', // explicitly set quote character
+    escapeChar: '"', // use double quotes for escaping
+  });
 
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          // Handle escaped quotes
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === "," && !inQuotes) {
-        // Restore inch symbol before adding to result
-        result.push(current.replace(/INCH/g, '"'));
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-
-    // Restore inch symbol before adding the last item
-    result.push(current.replace(/INCH/g, '"'));
-    return result;
-  };
-
-  const rows = content.split("\n").filter((row) => row.trim() !== "") || [];
+  const rows = parseResult.data as string[][];
   const headerRow = rows[0];
   const bodyRows = rows.slice(1);
 
-  // Parse header and body using the new parsing function
-  const headerCells = headerRow ? parseCSVLine(headerRow) : [];
-  const parsedBodyRows = bodyRows.map((row) => parseCSVLine(row));
-
   // Find the maximum number of columns
   const maxColumns = Math.max(
-    headerCells.length,
-    ...parsedBodyRows.map((row) => row.length)
+    headerRow?.length || 0,
+    ...bodyRows.map((row) => row.length)
   );
 
   // Pad header cells if needed
+  const headerCells = [...(headerRow || [])];
   while (headerCells.length < maxColumns) {
     headerCells.push("");
   }
+
   return (
     <div className="h-full w-full overflow-auto whitespace-nowrap">
       <table className="min-w-full table-fixed border-collapse">
@@ -101,7 +75,7 @@ export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
           </tr>
         </thead>
         <tbody>
-          {parsedBodyRows.map((row, i) => {
+          {bodyRows.map((row, i) => {
             // Pad row cells with empty strings if needed
             const cells = [...row];
             while (cells.length < maxColumns) {

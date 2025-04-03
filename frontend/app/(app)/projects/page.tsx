@@ -1,47 +1,73 @@
-"use server";
+"use client";
 
 import { ProjectsList } from "@/features/projects/components";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/features/chat/threads/components";
 import { CreateProjectDialog } from "@/features/projects/components";
-import api from "@/lib/api";
+import { SiteHeader } from "@/features/sites/components";
+import ProjectsFilters from "@/features/projects/components/projects-filters";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import Link from "next/link";
+import { Slash } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useGetSiteQuery } from "@/features/sites/api";
 
-export default async function ProjectsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ search?: string }>;
-}) {
-  // Get search parameter from URL
-  const resolvedSearchParams = await searchParams;
-  const search = resolvedSearchParams.search || "";
+export default function ProjectsPage() {
+  const searchParams = useSearchParams();
+  const search = searchParams.get("search") ?? "";
+  const siteId = searchParams.get("siteId");
 
-  // Fetch projects server-side
-  const projectsData = await api.projects
-    .listProjects({
-      search,
-      page: 1,
-      limit: 10,
-    })
-    .catch(() => ({
-      data: [],
-      pagination: {
-        page: 1,
-        limit: 10,
-        totalCount: 0,
-        totalPages: 0,
-        hasMore: false,
-      },
-    }));
+  const { data: site } = useGetSiteQuery({
+    siteId,
+  });
 
   return (
     <main className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">
-      <div className="flex items-center justify-between mb-6">
+      {site && (
+        <>
+          <Breadcrumb className="absolute top-4 left-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <Link
+                  href="/sites"
+                  className="hover:text-blue-500 hover:underline"
+                >
+                  Sites
+                </Link>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator>
+                <Slash className="w-4 h-4" />
+              </BreadcrumbSeparator>
+              <BreadcrumbItem>
+                <span className="font-bold">{site?.name}</span>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          <SiteHeader site={site} />
+        </>
+      )}
+
+      <div className="flex items-center justify-between mb-6 mt-6">
         <h1 className="text-2xl font-bold ">Projects</h1>
 
-        <CreateProjectDialog trigger={<Button>Create Project</Button>} />
+        {siteId && site && (
+          <CreateProjectDialog
+            trigger={<Button>Create Project</Button>}
+            siteId={siteId}
+            organizationId={site.organizationId}
+          />
+        )}
       </div>
-      <SearchBar initialSearch={search} />
-      <ProjectsList initialProjects={projectsData} />
+      <div className="flex items-center justify-between mb-6 mt-6 gap-2">
+        <SearchBar initialSearch={search} className="flex-1" />
+        <ProjectsFilters />
+      </div>
+      <ProjectsList />
     </main>
   );
 }
