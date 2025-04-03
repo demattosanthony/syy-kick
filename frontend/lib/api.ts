@@ -38,6 +38,13 @@ const getCommonHeaders = () => ({
 });
 
 import { serverFetch } from "../app/actions";
+import {
+  CreateIssueData,
+  Issue,
+  IssueStatus,
+  PaginatedIssues,
+  UpdateIssueData,
+} from "@/features/projects/issues/issues.types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -1055,6 +1062,92 @@ export class KnowledgeBasesApi extends ApiRequest {
 }
 
 /**
+ * Issues API Module
+ */
+class IssuesApi extends ApiRequest {
+  async listIssues(
+    projectId: string,
+    options?: {
+      status?: IssueStatus;
+      page?: number;
+      limit?: number;
+    }
+  ): Promise<PaginatedIssues> {
+    const queryParams = new URLSearchParams();
+    if (options?.status) {
+      queryParams.append("status", options.status);
+    }
+    if (options?.page !== undefined) {
+      queryParams.append("page", options.page.toString());
+    }
+    if (options?.limit !== undefined) {
+      queryParams.append("limit", options.limit.toString());
+    }
+
+    const endpoint = `/projects/${projectId}/issues?${queryParams.toString()}`;
+    try {
+      return await this.request<PaginatedIssues>(endpoint, "GET");
+    } catch (error) {
+      console.error(`Failed to list issues for project ${projectId}:`, error);
+      throw error;
+    }
+  }
+
+  async createIssue(
+    projectId: string,
+    data: CreateIssueData
+  ): Promise<{ message: string; issueId: string }> {
+    try {
+      return await this.request<{ message: string; issueId: string }>(
+        `/projects/${projectId}/issues`,
+        "POST",
+        data
+      );
+    } catch (error) {
+      console.error(`Failed to create issue in project ${projectId}:`, error);
+      throw error;
+    }
+  }
+
+  async getIssue(issueId: string): Promise<Issue> {
+    try {
+      return await this.request<Issue>(`/issues/${issueId}`, "GET");
+    } catch (error) {
+      console.error(`Failed to get issue ${issueId}:`, error);
+      throw error;
+    }
+  }
+
+  async updateIssue(
+    issueId: string,
+    data: UpdateIssueData
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/issues/${issueId}`,
+        "PATCH",
+        data
+      );
+    } catch (error) {
+      console.error(`Failed to update issue ${issueId}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteIssue(issueId: string): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/issues/${issueId}`,
+        "DELETE"
+      );
+    } catch (error) {
+      console.error(`Failed to delete issue ${issueId}:`, error);
+      throw error;
+    }
+  }
+}
+
+/**
  *  Centralized ApiClient class that uses the modules
  */
 class ApiClient {
@@ -1070,6 +1163,7 @@ class ApiClient {
   permissions: PermissionsApi;
   sites: SitesApi;
   knowledgeBases: KnowledgeBasesApi;
+  issues: IssuesApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -1084,6 +1178,7 @@ class ApiClient {
     this.permissions = new PermissionsApi(baseUrl);
     this.sites = new SitesApi(baseUrl);
     this.knowledgeBases = new KnowledgeBasesApi(baseUrl);
+    this.issues = new IssuesApi(baseUrl);
   }
 }
 
