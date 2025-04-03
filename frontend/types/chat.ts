@@ -62,6 +62,7 @@ export type FileUpload = {
   file: File;
   preview: string;
   type: "image" | "pdf";
+  inputId?: string;
 };
 
 export interface Thread {

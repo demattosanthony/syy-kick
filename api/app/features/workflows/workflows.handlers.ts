@@ -53,6 +53,8 @@ const workflowHandlers = {
     const { workflowId } = req.params;
     const { message } = req.body;
 
+    console.log("GOT A HIT");
+
     const workflow = getWorkflowDefinition(workflowId as any);
     if (!workflow) {
       res.status(404).json({ error: "Workflow not found" });

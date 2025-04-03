@@ -15,13 +15,14 @@ import {
   selectedProjectDocsAtom,
   temperatureAtom,
   uploadsAtom,
+  workflowInputAtom,
 } from "@/atoms/chat";
 
 // Hooks
 import { useQueryClient } from "@tanstack/react-query";
 import { useChat } from "@ai-sdk/react";
 import { useAtom } from "jotai";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 // Components
@@ -46,19 +47,23 @@ export default function ThreadPage({
   viewOnly = false,
   messagesAreBeingFetched = false,
   showCloneThreadButton = false,
+  isNew = false,
+  isWorkflow = false,
+  workflowId = "",
 }: {
   initalMessages: Message[];
   thread?: Thread;
   viewOnly?: boolean;
   messagesAreBeingFetched?: boolean;
   showCloneThreadButton?: boolean;
+  isNew?: boolean;
+  isWorkflow?: boolean;
+  workflowId?: string;
 }) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const params = useParams<{ threadId: string }>();
   const { threadId } = params;
-  const searchParams = useSearchParams();
-  const isNew = searchParams.get("new") === "true";
   const [initalInput, setInitalInput] = useAtom(initalInputAtom);
   const [model] = useAtom(modelAtom);
   const [uploads, setUploads] = useAtom(uploadsAtom);
@@ -69,6 +74,7 @@ export default function ThreadPage({
   const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
     selectedProjectDocsAtom
   );
+  const [workflowInput, setWorkflowInput] = useAtom(workflowInputAtom);
 
   const {
     input,
@@ -79,8 +85,11 @@ export default function ThreadPage({
     status,
     stop,
     error,
+    setMessages,
   } = useChat({
-    api: `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference`,
+    api: isWorkflow
+      ? `${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/run`
+      : `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference`,
     credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,
@@ -96,6 +105,19 @@ export default function ThreadPage({
   });
 
   async function processAttachments() {
+    // If the thread is a workflow, use the workflow input attachments
+    if (isWorkflow) {
+      const attachments = workflowInput.attachments.map((attachment) => ({
+        name: attachment.name,
+        contentType: attachment.contentType,
+        url: attachment.url,
+        file_key: attachment.file_key,
+        inputId: attachment.inputId,
+      }));
+
+      return attachments;
+    }
+
     const attachments: ExtendedAttachment[] = [];
 
     // Process uploads
@@ -164,13 +186,19 @@ export default function ThreadPage({
     // Reset attachments after submit
     setUploads([]);
     setSelectedProjectDocs([]);
+    setWorkflowInput({
+      attachments: [],
+      input: "",
+    });
   }
 
   useEffect(() => {
     // If its a new thread, send the message right away
     if (isNew) {
       onSubmit({ preventDefault: () => {} } as React.FormEvent);
-      router.replace(`/threads/${threadId}`);
+      router.replace(
+        `/threads/${threadId}?isWorkflow=${isWorkflow}&workflowId=${workflowId}`
+      );
       setInitalInput("");
 
       setTimeout(() => {

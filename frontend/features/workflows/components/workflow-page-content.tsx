@@ -2,25 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
 import { Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Attachment } from "ai";
 import api from "@/lib/api";
-import ProcessingIndicator from "./workflow-processing";
 import ErrorDisplay from "./workflow-error-display";
-import OutputDisplay from "./workflow-output-display";
 import FileUploadInput from "./workflow-file-input";
 import { Workflow } from "../workflows.types";
-import {
-  ArtifactViewer,
-  ChatMessagesList,
-} from "@/features/chat/messages/components";
-import { selectedArtifactAtom } from "@/atoms/chat";
 import { useAtom } from "jotai";
-import { useResizeLayout } from "@/features/chat/threads/hooks";
+import { initalInputAtom, workflowInputAtom } from "@/atoms/chat";
 
-type ExtendedAttachment = Attachment & { file_key: string; inputId: string };
+export type WorkflowAttachment = Attachment & {
+  file_key: string;
+  inputId: string;
+};
 
 export default function WorkflowPageContent({
   workflowId,
@@ -31,40 +26,13 @@ export default function WorkflowPageContent({
 }) {
   const router = useRouter();
   const [files, setFiles] = useState<Record<string, File | null>>({});
-  const [showReasoning, setShowReasoning] = useState(true);
   const [errorDetails, setErrorDetails] = useState<{
     type: "upload" | "processing" | "general" | "network";
     message: string;
   } | null>(null);
   const hasAutoHiddenReasoning = useRef(false);
-
-  const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
-
-  const { splitPosition, handleMouseDown } = useResizeLayout();
-
-  const { handleSubmit, messages, setInput, status, setMessages } = useChat({
-    api: `${process.env.NEXT_PUBLIC_API_URL}/workflows/${workflowId}/run`,
-    credentials: "include",
-    experimental_prepareRequestBody({ messages, id }) {
-      return { message: messages[messages.length - 1], id };
-    },
-    onError: (error) => {
-      console.error("Workflow error:", error);
-      setErrorDetails({
-        type:
-          error.message.includes("network") || error.message.includes("fetch")
-            ? "network"
-            : error.message.includes("upload") || error.message.includes("file")
-            ? "upload"
-            : "processing",
-        message:
-          error.message || "An error occurred while processing your request.",
-      });
-    },
-  });
-
-  const isProcessing = status === "submitted" || messages.length > 0;
-  const response = messages[1];
+  const [, setWorkflowInput] = useAtom(workflowInputAtom);
+  const [, setInitalInput] = useAtom(initalInputAtom);
 
   // Initialize files state based on workflow inputs
   useEffect(() => {
@@ -88,10 +56,7 @@ export default function WorkflowPageContent({
       });
       setFiles(resetFiles);
     }
-    setInput("");
-    setMessages([]);
     setErrorDetails(null);
-    setShowReasoning(true);
     hasAutoHiddenReasoning.current = false;
     if (errorDetails) window.location.reload();
   };
@@ -109,7 +74,7 @@ export default function WorkflowPageContent({
     if (!areRequiredFilesUploaded()) return;
 
     try {
-      const attachments: ExtendedAttachment[] = [];
+      const attachments: WorkflowAttachment[] = [];
       for (const inputId in files) {
         const file = files[inputId];
         if (!file) continue;
@@ -137,10 +102,17 @@ export default function WorkflowPageContent({
         .filter(Boolean)
         .map((file) => file?.name)
         .join(", ");
-      setInput(fileNames);
-      handleSubmit({ preventDefault: () => {} } as React.FormEvent, {
-        experimental_attachments: attachments,
+
+      setWorkflowInput({
+        attachments,
+        input: "",
       });
+      setInitalInput(`Process the following files: ${fileNames}.`);
+
+      const thread = await api.threads.createThread();
+      router.push(
+        `/threads/${thread.id}?isNew=true&isWorkflow=true&workflowId=${workflowId}`
+      );
     } catch (err) {
       console.error("Submission error:", err);
       setErrorDetails({
@@ -150,23 +122,6 @@ export default function WorkflowPageContent({
     }
   };
 
-  // Determine current step in the workflow process
-  const getCurrentStep = () => {
-    if (errorDetails) return 0;
-    if (!areRequiredFilesUploaded()) return 1;
-    if (isProcessing && (!response?.content || response?.content === ""))
-      return 2;
-    if (response) {
-      if (showReasoning && !hasAutoHiddenReasoning.current) {
-        setShowReasoning(false);
-        hasAutoHiddenReasoning.current = true;
-      }
-      return 3;
-    }
-    return 1;
-  };
-
-  const currentStep = getCurrentStep();
   const workflowInputs = workflow?.inputs || [
     {
       id: "default-input",
@@ -177,11 +132,6 @@ export default function WorkflowPageContent({
       required: true,
     },
   ];
-  const outputConfig = workflow?.output || {
-    type: "csv",
-    title: "Output",
-    description: "View the final results",
-  };
 
   if (!workflow) {
     return (
@@ -196,88 +146,45 @@ export default function WorkflowPageContent({
 
   return (
     <div className="h-screen w-full flex flex-col items-center overflow-y-auto">
-      {currentStep !== 3 ? (
-        <div className="container mx-auto px-4 py-16 max-w-2xl">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-4 gap-2">
-              📋 {workflow.title}
-            </h1>
-            <p className="text-base text-muted-foreground">
-              {workflow.description}
-            </p>
-          </div>
+      <div className="container mx-auto px-4 py-16 max-w-2xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-4 gap-2">📋 {workflow.title}</h1>
+          <p className="text-base text-muted-foreground">
+            {workflow.description}
+          </p>
+        </div>
 
-          <ErrorDisplay errorDetails={errorDetails} onReset={resetWorkflow} />
+        <ErrorDisplay errorDetails={errorDetails} onReset={resetWorkflow} />
 
-          {!errorDetails && (
-            <>
-              {currentStep === 1 && (
-                <div className="flex flex-col gap-8">
-                  {workflowInputs.map((input) => (
-                    <FileUploadInput
-                      key={input.id}
-                      input={{
-                        ...input,
-                        maxFileSize: 32 * 1024 * 1024 /* 32 MB */,
-                      }}
-                      file={files[input.id]}
-                      onFileChange={(file) =>
-                        setFiles((prev) => ({ ...prev, [input.id]: file }))
-                      }
-                      setInput={setInput}
-                    />
-                  ))}
-                  <Button
-                    className="w-full mt-6 py-6 text-lg"
-                    size="lg"
-                    disabled={!areRequiredFilesUploaded()}
-                    onClick={onSubmit}
-                  >
-                    <Play className="h-6 w-6 mr-2" /> Submit and run
-                  </Button>
-                </div>
-              )}
-
-              {currentStep === 2 && (
-                <ProcessingIndicator
-                  reasoning={response?.reasoning}
-                  showReasoning={showReasoning}
-                  onToggleReasoning={() => setShowReasoning(!showReasoning)}
+        {!errorDetails && (
+          <>
+            <div className="flex flex-col gap-8">
+              {workflowInputs.map((input) => (
+                <FileUploadInput
+                  key={input.id}
+                  input={{
+                    ...input,
+                    maxFileSize: 32 * 1024 * 1024 /* 32 MB */,
+                  }}
+                  file={files[input.id]}
+                  onFileChange={(file) =>
+                    setFiles((prev) => ({ ...prev, [input.id]: file }))
+                  }
+                  setInput={() => {}}
                 />
-              )}
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="flex flex-1 h-full w-full relative">
-          {selectedArtifact && (
-            <>
-              <ArtifactViewer
-                artifact={selectedArtifact}
-                splitPosition={splitPosition}
-                messages={messages}
-              />
-
-              {/* Resizable border */}
-              <div
-                className="w-[2px] hover:w-1 h-full cursor-col-resize bg-secondary transition-all"
-                onMouseDown={handleMouseDown}
-              />
-            </>
-          )}
-
-          <div
-            className="flex flex-col h-full min-w-[400px] relative"
-            style={{
-              width: selectedArtifact ? `${splitPosition}%` : "100%",
-            }}
-          >
-            <div className="flex-1">
-              <ChatMessagesList messages={messages} status={status} />
+              ))}
+              <Button
+                className="w-full mt-6 py-6 text-lg"
+                size="lg"
+                disabled={!areRequiredFilesUploaded()}
+                onClick={onSubmit}
+              >
+                <Play className="h-6 w-6 mr-2" /> Submit and run
+              </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
