@@ -6,10 +6,12 @@ export function useThreadsQuery({
   search,
   projectId,
   knowledgeBaseId,
+  workflowId,
 }: {
   search?: string;
   projectId?: string;
   knowledgeBaseId?: string;
+  workflowId?: string;
 } = {}) {
   const { activeWorkspace } = useWorkspace();
 
@@ -20,13 +22,15 @@ export function useThreadsQuery({
       activeWorkspace?.id,
       projectId,
       knowledgeBaseId,
+      workflowId,
     ],
     queryFn: async ({ pageParam = 1 }) => {
       const threads = await api.threads.getThreads(
         pageParam,
         search,
         projectId,
-        knowledgeBaseId
+        knowledgeBaseId,
+        workflowId
       );
       return {
         threads,

@@ -62,6 +62,7 @@ export type FileUpload = {
   file: File;
   preview: string;
   type: "image" | "pdf";
+  inputId?: string;
 };
 
 export interface Thread {
@@ -75,6 +76,7 @@ export interface Thread {
   isPublic?: boolean;
   knowledgeBaseId?: string;
   knowledgeBase?: KnowledgeBase;
+  workflowId?: string;
   messages: ChatMessage[];
 }
 
