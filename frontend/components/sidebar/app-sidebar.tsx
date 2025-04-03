@@ -29,6 +29,7 @@ import {
   ArrowLeftToLine,
   ArrowRightToLine,
   BookOpen,
+  FolderClosed,
   MapPinIcon,
   Plus,
   Workflow,
@@ -151,6 +152,15 @@ export function AppSidebar({
                     }
                   />
                 )}
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarButton
+                  href="/projects"
+                  icon={FolderClosed}
+                  hoverIcon={FolderClosed}
+                  label="Projects"
+                />
               </SidebarMenuItem>
 
               {activeWorkspace?.type === "organization" && (
