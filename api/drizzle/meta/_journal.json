@@ -281,6 +281,20 @@
       "when": 1743686811586,
       "tag": "0039_famous_shockwave",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1743710563275,
+      "tag": "0040_high_alex_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1743712448026,
+      "tag": "0041_marvelous_krista_starr",
+      "breakpoints": true
     }
   ]
 }

@@ -8,11 +8,11 @@ import {
 } from "drizzle-orm/pg-core";
 import { projects, users } from "../../config/schema";
 import { z } from "zod";
-
-// DB Schema
+import { relations } from "drizzle-orm";
 
 export const ISSUE_STATUS = ["open", "closed"] as const;
 
+// DB Schema
 export const issues = pgTable("issues", {
   id: uuid("id").primaryKey().defaultRandom(),
   projectId: uuid("project_id")
@@ -41,9 +41,44 @@ export const issueAssignees = pgTable(
     assignedAt: timestamp("assigned_at").defaultNow().notNull(),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.issueId, table.userId] }), // Composite primary key
+    // Define composite primary key using the callback syntax
+    pk: primaryKey({
+      name: "issue_assignees_pk",
+      columns: [table.issueId, table.userId],
+    }),
   })
 );
+
+export const issuesRelations = relations(issues, ({ one, many }) => ({
+  // Relation: Issue -> Creator (User)
+  creator: one(users, {
+    fields: [issues.creatorId],
+    references: [users.id],
+  }),
+  // Relation: Issue -> Project
+  project: one(projects, {
+    fields: [issues.projectId],
+    references: [projects.id],
+  }),
+  // Relation: Issue -> IssueAssignees (Join Table Records)
+  // Renamed 'assigneeLinks' to 'assignees' to match the query in issue.ops.ts
+  assignees: many(issueAssignees),
+  // Relation: Issue -> Comments
+  comments: many(issueComments),
+}));
+
+export const issueAssigneesRelations = relations(issueAssignees, ({ one }) => ({
+  // Relation: IssueAssignee -> Issue
+  issue: one(issues, {
+    fields: [issueAssignees.issueId],
+    references: [issues.id],
+  }),
+  // Relation: IssueAssignee -> User
+  user: one(users, {
+    fields: [issueAssignees.userId],
+    references: [users.id],
+  }),
+}));
 
 export const issueComments = pgTable("issue_comments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -57,6 +92,19 @@ export const issueComments = pgTable("issue_comments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const issueCommentsRelations = relations(issueComments, ({ one }) => ({
+  // Relation: IssueComment -> Issue
+  issue: one(issues, {
+    fields: [issueComments.issueId],
+    references: [issues.id],
+  }),
+  // Relation: IssueComment -> Author (User)
+  author: one(users, {
+    fields: [issueComments.authorId],
+    references: [users.id],
+  }),
+}));
 
 // Validation Schemas
 export const createIssueSchema = z.object({

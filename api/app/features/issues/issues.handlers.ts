@@ -10,6 +10,8 @@ export const issueHandlers = {
    */
   list: async (req: Request, res: Response) => {
     try {
+      console.log("Listing issues for project");
+      console.log("Request params:", req.params);
       const { projectId } = req.params; // Assuming projectId is in the route path
       if (!projectId) {
         res.status(400).json({ message: "Project ID is required" });
@@ -23,6 +25,13 @@ export const issueHandlers = {
         res.status(400).json({ message: "Invalid status filter" });
         return;
       }
+
+      console.log(
+        "Listing issues for project:",
+        projectId,
+        "with status:",
+        status
+      );
 
       const issues = await issueOps.getAllIssues({
         projectId: projectId,
