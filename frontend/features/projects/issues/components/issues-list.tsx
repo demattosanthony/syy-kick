@@ -100,13 +100,6 @@ export function IssuesList({ projectId }: IssuesListProps) {
           Loading more...
         </div>
       )}
-
-      {/* Optional: Show message when all issues are loaded */}
-      {!hasNextPage && !isLoading && !isFetchingNextPage && (
-        <div className="p-4 text-center text-sm text-muted-foreground">
-          No more issues
-        </div>
-      )}
     </div>
   );
 }
