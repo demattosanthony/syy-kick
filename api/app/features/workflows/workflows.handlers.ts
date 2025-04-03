@@ -129,7 +129,7 @@ const workflowHandlers = {
             url: await generateAttachmentData(
               attachment.file_key,
               attachment.contentType || "application/pdf",
-              true
+              false
             ),
           };
         })
