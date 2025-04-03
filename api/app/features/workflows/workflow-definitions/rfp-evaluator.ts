@@ -40,7 +40,7 @@ export const rfpEvalWorkflow: Workflow = {
         outputSchema: z.object({
           evaluation: z.string(),
         }),
-        modelName: "gpt-4o",
+        modelName: "gemini-2.5-pro-exp",
         promptTemplate: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
 
 # Setty & Associates Overview
@@ -137,11 +137,34 @@ You take these steps to evaluate the RFP:
 4. Determine the total score and evaluate the outcome based on the scoring legend.
 5. Write down any notes or thoughts on the effort necessary to win the project.
 6. Determine the market segment the project falls under.
-7. Provide csv artifact with the evaluation results.
+7. Create a properly formatted CSV artifact with the evaluation results.
 
-Your final response to the user is a csv artifact with the evaluation results and only the csv artifact.
+CSV Formatting Requirements:
+1. Every field must be enclosed in double quotes
+2. Separate fields with single commas (no spaces)
+3. Include headers in quotes
+4. Each section should start with its title on a separate line
 
-Ensure all your math is correct before creating the evaluation results artifact.`,
+Example of correct CSV formatting:
+"PROJECT INFORMATION"
+"Field","Value"
+"Project Name","Sample Project"
+"Project Location","Washington DC"
+
+"EVALUATION CRITERIA"
+"Criteria","Score"
+"Knowledge of project before RFP","4"
+"Relationship with client/decision makers","3"
+
+Your final response must contain only the CSV artifact with no additional commentary or markup. The CSV should include all sections:
+- Project Information
+- Evaluation Criteria with scores
+- Total Score
+- Outcome based on scoring range
+- Market Segment
+- Notes
+
+Do not make up or assume any information that is not present in the RFP document. Use "unknown" for any fields where information is not available.`,
       },
     },
   ],
