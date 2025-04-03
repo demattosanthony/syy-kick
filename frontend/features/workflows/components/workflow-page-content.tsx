@@ -224,7 +224,7 @@ export default function WorkflowPageContent({
             )}
 
             {/* History section */}
-            <div className="mt-12">
+            <div className="mt-12 w-full max-w-xl">
               <h2 className="text-2xl font-bold mb-6">History</h2>
               <div className="">
                 <ThreadsList
