@@ -10,6 +10,7 @@ export const equipmentServingListWorkflow: Workflow = {
     "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
     "a5b8c99d-9e1d-42a9-8473-b52471932d51",
     "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
+    "282c0c89-85d7-4b94-bd31-6e87b0637cc1",
   ],
   inputs: [
     {
