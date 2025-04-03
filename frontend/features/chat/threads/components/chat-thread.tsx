@@ -103,8 +103,6 @@ export default function ThreadPage({
     },
   });
 
-  console.log(messages);
-
   async function processAttachments() {
     // If the thread is a workflow, use the workflow input attachments
     if (isWorkflow) {

@@ -34,7 +34,6 @@ import mermaid from "mermaid";
 import Papa from "papaparse";
 
 export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
-  console.log(content);
   // Parse CSV
   const parseResult = Papa.parse(content, {
     header: false,
