@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Play } from "lucide-react";
+import { Loader, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Attachment } from "ai";
 import api from "@/lib/api";
@@ -35,6 +35,7 @@ export default function WorkflowPageContent({
 }) {
   const router = useRouter();
   const [files, setFiles] = useState<Record<string, File | null>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorDetails, setErrorDetails] = useState<{
     type: "upload" | "processing" | "general" | "network";
     message: string;
@@ -82,6 +83,7 @@ export default function WorkflowPageContent({
   const onSubmit = async () => {
     if (!areRequiredFilesUploaded()) return;
 
+    setIsSubmitting(true);
     try {
       const attachments: WorkflowAttachment[] = [];
       for (const inputId in files) {
@@ -124,12 +126,14 @@ export default function WorkflowPageContent({
       router.push(
         `/threads/${thread.id}?isNew=true&isWorkflow=true&workflowId=${workflowId}`
       );
+      setIsSubmitting(false);
     } catch (err) {
       console.error("Submission error:", err);
       setErrorDetails({
         type: "general",
         message: "An unexpected error occurred. Please try again.",
       });
+      setIsSubmitting(false);
     }
   };
 
@@ -214,10 +218,19 @@ export default function WorkflowPageContent({
                     disabled={!areRequiredFilesUploaded()}
                     onClick={onSubmit}
                   >
-                    <Play className="h-6 w-6 mr-3" />
-                    {areRequiredFilesUploaded()
-                      ? "Submit and run"
-                      : "Upload required files to continue"}
+                    {isSubmitting ? (
+                      <>
+                        <Loader className="animate-spin h-6 w-6 mr-3" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-6 w-6 mr-3" />
+                        {areRequiredFilesUploaded()
+                          ? "Submit and run"
+                          : "Upload required files to continue"}
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
