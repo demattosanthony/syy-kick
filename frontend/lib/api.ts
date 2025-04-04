@@ -82,8 +82,8 @@ async function clientFetch<T>(
     throw new ApiError(
       response.status,
       errorData?.message ||
-        errorData?.error ||
-        `Request failed with status ${response.status}`
+      errorData?.error ||
+      `Request failed with status ${response.status}`
     );
   }
 
@@ -582,8 +582,7 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -637,8 +636,7 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`,
       "DELETE"
     );
@@ -654,8 +652,7 @@ class ProjectsApi extends ApiRequest {
     }
 
     return await this.request(
-      `/projects/${projectId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -718,17 +715,21 @@ class ProjectsApi extends ApiRequest {
   ): Promise<{
     success: boolean;
   }> {
-    // Use the mixin to prepare files and get entries
-    const payload = await this.fileUploadMixin.prepareFilesForUpload(
-      projectId,
-      "projects",
-      files,
-      basePath,
-      onProgress
-    );
+    try {
+      // Use the mixin to prepare files and get entries
+      const payload = await this.fileUploadMixin.prepareFilesForUpload(
+        projectId,
+        "projects",
+        files,
+        basePath,
+        onProgress
+      );
 
-    // Make the actual API request with the prepared data
-    return this.request(`/projects/${projectId}/documents`, "POST", payload);
+      // Make the actual API request with the prepared data
+      return this.request(`/projects/${projectId}/documents`, "POST", payload);
+    } catch (error) {
+      throw error;
+    }
   }
 
   // Temporary
@@ -1006,8 +1007,7 @@ export class KnowledgeBasesApi extends ApiRequest {
     const queryParams = new URLSearchParams();
     if (path) queryParams.append("path", path);
     return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/knowledge-bases/${knowledgeBaseId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }

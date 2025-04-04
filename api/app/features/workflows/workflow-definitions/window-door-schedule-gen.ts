@@ -37,7 +37,7 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
         file: "workflowInput.architectural-drawings",
       },
       config: {
-        modelName: "gemini-2.5-pro-exp",
+        modelName: "gemini-2.5-pro-preview",
         promptTemplate: `You are an AI assistant specialized in analyzing architectural drawings. Your task is to examine a set of architectural drawings provided in a PDF format and identify the specific page that contains the window and door schedules.
           
 Instructions:
@@ -67,7 +67,7 @@ Instructions:
       processedMessage: "Schedule tables detected successfully.",
       config: {
         imageDataSource: "extract-pdf-page.imageBase64",
-        model: "gemini-2.5-pro-exp",
+        model: "gemini-2.5-pro-preview",
         promptTemplate: `Your task is to located all window and door schedule tables and place 2d bounding boxes around them. Each schedule table bounding box should contain the table title and all the rows of the table.
 Output the bounding boxes in the [y_min, x_min, y_max, x_max] format.
 The top left corner is (0,0). The x axis goes left→right, the y axis top→bottom.
@@ -93,7 +93,7 @@ Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "..
         images: "schedule-data-object-detection.screenshots",
       },
       config: {
-        modelName: "gemini-2.5-pro-exp",
+        modelName: "gemini-2.5-pro-preview",
         outputSchema: z.object({
           csvArtifact: z.string(),
         }),

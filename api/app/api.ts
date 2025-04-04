@@ -13,7 +13,6 @@ import modelRoutes from "./features/models";
 import threadRoutes from "./features/threads/threads.routes";
 import paymentRoutes, { webhook } from "./features/payments";
 import organizationRoutes from "./features/organizations";
-import projectRoutes from "./features/projects";
 import workflowRoutes from "./features/workflows/workflows.routes";
 import permissionsRoutes from "./features/permissions/permissions.routes";
 import analyticsRoutes from "./features/analytics";
@@ -21,6 +20,7 @@ import knowledgeBasesRoutes from "./features/knowledge-bases/knowledge-bases.rou
 import sitesRoutes from "./features/sites/sites.routes";
 import issuesRoutes from "./features/issues/issues.routes";
 import { PermissionManager } from "./features/permissions/permissions.tools";
+import projectsRoutes from "./features/projects/projects.routes";
 
 export default Router()
   .use("/auth", authRoutes)
@@ -81,7 +81,7 @@ export default Router()
   )
   .use("/organizations", auth, organizationRoutes)
   .use("/sites", auth, checkSub, sitesRoutes)
-  .use("/projects", auth, checkSub, projectRoutes)
+  .use("/projects", auth, checkSub, projectsRoutes)
   .use("", auth, checkSub, issuesRoutes)
   .use("/workflows", auth, workflowRoutes)
   .use("/knowledge-bases", auth, knowledgeBasesRoutes)

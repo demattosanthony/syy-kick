@@ -57,7 +57,7 @@ export const basisOfDesignGenWorkflow: Workflow = {
         file: "doc-ocr.images",
       },
       config: {
-        modelName: "gemini-2.5-pro-exp",
+        modelName: "gemini-2.5-pro-preview",
         outputSchema: z.object({
           basisOfDesignDocument: z.string(),
         }),

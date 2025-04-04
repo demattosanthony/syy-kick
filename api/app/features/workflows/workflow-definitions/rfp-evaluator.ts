@@ -40,7 +40,7 @@ export const rfpEvalWorkflow: Workflow = {
         outputSchema: z.object({
           evaluation: z.string(),
         }),
-        modelName: "gemini-2.5-pro-exp",
+        modelName: "gemini-2.5-pro-preview",
         promptTemplate: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
 
 # Setty & Associates Overview
