@@ -1037,8 +1037,6 @@ The user is working on a project named ${project.name}. Use the search_project_i
 <user_instructions>${instructions}</user_instructions>`;
   }
 
-  console.log(systemMsg);
-
   return systemMsg;
 }
 
