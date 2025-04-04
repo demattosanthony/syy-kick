@@ -31,13 +31,13 @@ export default Router()
   )
   .patch(
     // Using PATCH for partial updates is common
-    "/projects/:projectId/issues/:issueId",
+    "/projects/:projectId/issues/:issueNumber",
     // Add permission check for updating a specific issue
     // Example: PermissionsMiddlewares.issue(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.UPDATE),
     handlers.update
   )
   .delete(
-    "/projects/:projectId/issues/:issueId",
+    "/projects/:projectId/issues/:issueNumber",
     // Add permission check for deleting a specific issue
     // Example: PermissionsMiddlewares.issue(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.DELETE),
     handlers.delete

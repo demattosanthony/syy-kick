@@ -1136,7 +1136,7 @@ class IssuesApi extends ApiRequest {
   ): Promise<{ message: string }> {
     try {
       return await this.request<{ message: string }>(
-        `projects/${projectId}/issues/${issueNumber}`,
+        `/projects/${projectId}/issues/${issueNumber}`,
         "PATCH",
         data
       );

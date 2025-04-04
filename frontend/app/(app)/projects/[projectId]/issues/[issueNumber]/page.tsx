@@ -6,6 +6,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { cn, getRelativeTimeString } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUpdateIssue } from "@/features/projects/issues/api";
+import { Button } from "@/components/ui/button";
+import { CircleCheck, CircleDot, RefreshCcwDot } from "lucide-react";
 
 export default function IssueDetailPage() {
   const params = useParams<{
@@ -26,12 +29,25 @@ export default function IssueDetailPage() {
     isNaN(issueNumberInt) ? undefined : issueNumberInt
   );
 
+  const { mutate: updateIssue, isPending: isUpdating } = useUpdateIssue();
+
+  const handleToggleIssueStatus = () => {
+    if (!issue) return;
+
+    const newStatus = issue.status === "open" ? "closed" : "open";
+    updateIssue({
+      projectId,
+      issueNumber: issue.issueNumber,
+      data: { status: newStatus },
+    });
+  };
+
   if (isLoading) {
     // TODO: Replace with a proper loading skeleton component
     return <div>Loading issue details...</div>;
   }
 
-  if (error || !issue) {
+  if (error) {
     return (
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
@@ -40,6 +56,10 @@ export default function IssueDetailPage() {
         </AlertDescription>
       </Alert>
     );
+  }
+
+  if (!issue) {
+    return null;
   }
 
   return (
@@ -54,14 +74,16 @@ export default function IssueDetailPage() {
         </h1>
         <div className="flex items-center space-x-2 text-sm text-gray-600">
           <Badge
-            variant={issue.status === "open" ? "default" : "destructive"}
             className={cn(
-              "text-sm font-medium rounded-md",
-              issue.status === "open"
-                ? "bg-green-100 text-green-500"
-                : "bg-red-100 text-purple-500"
+              "text-base font-semibold rounded-md text-white gap-1",
+              issue.status === "open" ? "bg-green-500" : "bg-purple-500"
             )}
           >
+            {issue.status === "open" ? (
+              <CircleDot className="h-4 w-4 text-white" />
+            ) : (
+              <CircleCheck className="h-4 w-4 text-white" />
+            )}
             {issue.status.charAt(0).toUpperCase() + issue.status.slice(1)}
           </Badge>
           {/* <span>
@@ -74,7 +96,7 @@ export default function IssueDetailPage() {
       {/* Issue Body */}
       <div className="flex flex-col md:flex-row gap-6">
         {/* Main Content (Description) */}
-        <div className="flex-grow">
+        <div className="flex-grow flex flex-col">
           {/* Wrap Avatar and Description box in a flex container */}
           <div className="flex items-start gap-4">
             <Avatar className="mt-1 flex-shrink-0">
@@ -113,6 +135,24 @@ export default function IssueDetailPage() {
           </div>
 
           {/* // TODO: Add comment section */}
+
+          <Button
+            variant="outline"
+            className="mt-4 ml-auto" // Use auto margins to push to bottom-right
+            onClick={handleToggleIssueStatus}
+            disabled={isUpdating}
+          >
+            {issue.status === "open" ? (
+              <>
+                <CircleCheck className="h-4 w-4 text-purple-500" /> Close issue
+              </>
+            ) : (
+              <>
+                <RefreshCcwDot className="h-4 w-4 text-green-500" /> Reopen
+                issue
+              </>
+            )}
+          </Button>
         </div>
 
         {/* Sidebar (Placeholder) */}
