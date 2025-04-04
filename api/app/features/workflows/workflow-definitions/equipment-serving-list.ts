@@ -38,7 +38,7 @@ export const equipmentServingListWorkflow: Workflow = {
         file: "workflowInput.mechanicalDrawings",
       },
       config: {
-        modelName: "gemini-2.5-pro-exp",
+        modelName: "gemini-2.5-pro-preview",
         promptTemplate:
           "Find the page containing mechanical schedules in the provided PDF.",
         outputSchema: z.object({
@@ -63,7 +63,7 @@ export const equipmentServingListWorkflow: Workflow = {
       processedMessage: "Schedule tables detected successfully.",
       config: {
         imageDataSource: "extract-pdf-page.imageBase64",
-        model: "gemini-2.5-pro-exp",
+        model: "gemini-2.5-pro-preview",
         promptTemplate: `Detect all engineering equipment schedule tables, with no more than 20 items. Each schedule table bounding box should contain the table title and all the rows of the table.
 Output the bounding boxes in the [y_min, x_min, y_max, x_max] format.
 The top left corner is (0,0). The x axis goes left→right, the y axis top→bottom.
@@ -90,7 +90,7 @@ Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "..
         images: "schedule-data-object-detection.screenshots",
       },
       config: {
-        modelName: "gemini-2.5-pro-exp",
+        modelName: "gemini-2.5-pro-preview",
         outputSchema: z.object({
           csvArtifact: z.string(),
         }),
