@@ -1,12 +1,8 @@
-// External dependencies
-import { CoreMessage, generateText, tool } from "ai";
+import { CoreMessage } from "ai";
 import { and, eq } from "drizzle-orm";
-import { z } from "zod";
 
-// Internal configuration
 import { CONFIG } from "../../config/constants";
 import db from "../../config/db";
-import reranker from "../../config/reranker";
 import s3 from "../../config/s3";
 import {
   documentThumbnails,
@@ -18,23 +14,15 @@ import {
   threads,
   toolCalls,
 } from "../../config/schema";
-import { Workspace } from "../../middleware";
 
-// Internal utilities
 import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
 
-// Feature imports
-import { ModelConfig, MODELS } from "../models";
+import { MODELS } from "../models";
 import {
   DocumentSearchToolResult,
   MyMessage,
   ThreadWithMessages,
 } from "./threads.types";
-import { DbUser } from "../../createAuthToken";
-import { PermissionManager } from "../permissions/permissions.tools";
-import { Permissions } from "../permissions/permissions.types";
-import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases.ops";
-import { documentsOps } from "../projects/docs/documents.ops";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -88,7 +76,7 @@ function convertResultsToXml(docs: DocumentSearchToolResult[]): string {
 }
 
 /** Extracts unique documents, treating PDF pages as separate docs */
-function getUniqueDocuments(
+export function getUniqueDocuments(
   docs: DocumentSearchToolResult[]
 ): DocumentSearchToolResult[] {
   const uniqueDocsMap = new Map<string, DocumentSearchToolResult>();
@@ -202,7 +190,7 @@ async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
   return results;
 }
 
-function formatDocumentSearchResults(
+export function formatDocumentSearchResults(
   docs: DocumentSearchToolResult[],
   images: { fileKey: string; imageData: string; mimeType: string }[]
 ) {
@@ -225,398 +213,6 @@ function formatDocumentSearchResults(
     })),
   };
 }
-
-/** Tool to search all project information */
-const createProjectSearchTool = (
-  modelConfig: ModelConfig,
-  workspace: Workspace,
-  user: DbUser,
-  projectId?: string
-) =>
-  tool({
-    description: `Search project documents and retrieve relevant information.
-
-Usage:
-    1. Use when you need specific information from project documents not available in the conversation history.
-    2. Provide a clear, specific query to search across all project documents.
-    3. Best for technical details, specifications, or project-specific information.
-    4. Avoid using for general questions or when information is already in the conversation.
-
-Returns:
-    - Relevant document excerpts with context
-    - Document metadata (name, path, type)
-    - Visual previews for supported document types`,
-    parameters: z.object({
-      query: z.string(),
-    }),
-    execute: async ({ query }) => {
-      // Determine project IDs based on workspace type
-      let projectIds: string[] | undefined;
-
-      try {
-        // Handle organization workspace
-        if (workspace.type === "organization") {
-          if (projectId) {
-            // Check user's access to the specific project
-            const orgRole = await PermissionManager.getUserOrganisationRole(
-              user.id,
-              workspace.id
-            );
-
-            // Admins and managers have access to all projects
-            const isAdmin = [
-              Permissions.Roles.SUPER_ADMIN,
-              Permissions.Roles.ORGANIZATION_ADMIN,
-              Permissions.Roles.ORGANIZATION_MANAGER,
-            ].includes(orgRole?.role.name as Permissions.Roles);
-
-            if (isAdmin) {
-              projectIds = [projectId];
-            } else {
-              // Check regular member's access to the project
-              if (!orgRole) {
-                throw new Error("User is not a member of the organization");
-              }
-
-              const resourceId = await PermissionManager.getResourseId(
-                Permissions.Resources.ORGANIZATION_PROJECT_DOCS
-              );
-
-              if (!resourceId) {
-                throw new Error("Resource not found");
-              }
-
-              const hasAccess =
-                await PermissionManager.userHasAccessToRessource(
-                  orgRole,
-                  workspace.id,
-                  resourceId,
-                  Permissions.Actions.READ,
-                  projectId
-                );
-
-              if (!hasAccess) {
-                throw new Error("User does not have access to the project");
-              }
-
-              projectIds = [projectId];
-            }
-          } else {
-            // No specific project ID, get all accessible projects
-            projectIds = await PermissionManager.getUserOrgProjectsIds(
-              user.id,
-              workspace.id
-            );
-          }
-        } else if (projectId) {
-          // For non-organization workspaces with a projectId
-          projectIds = [projectId];
-        }
-      } catch (error) {
-        console.error("Error determining project IDs:", error);
-        return {
-          images: [],
-          context: "",
-          docs: [],
-          dataForFrontend: [],
-        };
-      }
-
-      try {
-        // Execute the search with the determined project IDs
-        const res = await documentsOps.searchProjectDocuments({
-          query,
-          workspace,
-          projectIds,
-          limit: 80,
-        });
-        console.log("Search results:", res.length);
-
-        // Rerank results
-        const rerankedResults = await reranker.rerank(
-          query,
-          res.map((r) => r.text || ""),
-          {
-            topN: 20,
-            returnDocuments: true,
-          }
-        );
-
-        // Create a map of text to original result for lookup
-        const textToResultMap = new Map(res.map((r) => [r.text, r]));
-
-        // Map reranked results to simplified schema
-        const simplifiedDocs: DocumentSearchToolResult[] =
-          rerankedResults.results?.map((reranked) => {
-            const originalDoc = textToResultMap.get(reranked.document.text)!;
-            return {
-              documentId: originalDoc.document.id,
-              projectId: originalDoc.document.projectId || projectId || "", // Fallback to parameter or empty string
-              path: originalDoc.document.path,
-              documentName: originalDoc.document.name,
-              text: originalDoc.text,
-              similarity: reranked.relevance_score,
-              pageNumber: (originalDoc.metadata as { page_number?: number })
-                ?.page_number,
-              mimeType: originalDoc.document.mimeType,
-              fileKey: originalDoc.document.fileKey,
-            };
-          });
-        console.log("Simplified docs length:", simplifiedDocs.length);
-
-        // Generate final output
-        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
-        const images =
-          modelConfig.model.modelId.includes("claude-3-7-sonnet") ||
-          modelConfig.model.modelId.includes("claude-3-5-sonnet")
-            ? await processDocumentImages(uniqueDocs)
-            : [];
-
-        return formatDocumentSearchResults(uniqueDocs, images);
-      } catch (error) {
-        console.error("Error searching project documents:", error);
-        return {
-          images: [],
-          context: "",
-          docs: [],
-          dataForFrontend: [],
-        };
-      }
-    },
-    experimental_toToolResultContent(result) {
-      if (!result) {
-        return [];
-      }
-      return [
-        ...result.images.map((image) => ({
-          type: "image" as const,
-          data: image.imageData,
-          mimeType: image.mimeType,
-        })),
-        {
-          type: "text",
-          text: result.context,
-        },
-      ];
-    },
-  });
-
-/** Tool to search knowledge base documents */
-const createKnowledgeBaseSearchTool = (
-  modelConfig: ModelConfig,
-  knowledgeBase?: KnowledgeBase
-) =>
-  tool({
-    description: `${
-      knowledgeBase
-        ? `This tool allows you to retrieve information from the "${knowledgeBase.name}" knowledge base.`
-        : `This tool allows you to retrieve information from a Knowledge Base.`
-    }
-
-Usage:
-    1. Use when you need information stored within a designated knowledge base.
-
-Returns:
-    - Relevant document excerpts with context
-    - Document metadata (name, path)
-    - Visual previews for supported document types`,
-    parameters: z.object({
-      query: z.string(),
-      ...(knowledgeBase
-        ? {}
-        : {
-            knowledgeBaseId: z
-              .string()
-              .describe("The ID of the knowledge base to search within."),
-          }),
-    }),
-    execute: async ({ query, knowledgeBaseId }) => {
-      const targetKnowledgeBaseId: string = knowledgeBase
-        ? knowledgeBase.id
-        : (knowledgeBaseId as string);
-
-      try {
-        // Execute the search within the specified knowledge base
-        const res = await searchKnowledgeBaseDocuments({
-          query,
-          knowledgeBaseId: targetKnowledgeBaseId,
-          limit: 80, // Same limit as project search for consistency
-        });
-        console.log(
-          `Knowledge base search results for KB ${knowledgeBaseId}:`,
-          res.length
-        );
-
-        // Rerank results
-        const rerankedResults = await reranker.rerank(
-          query,
-          res.map((r) => r.text || ""),
-          {
-            topN: 20, // Same topN as project search
-            returnDocuments: true,
-          }
-        );
-
-        // Create a map of text to original result for lookup
-        const textToResultMap = new Map(res.map((r) => [r.text, r]));
-
-        // Map reranked results to simplified schema
-        const simplifiedDocs: DocumentSearchToolResult[] =
-          rerankedResults.results?.map((reranked) => {
-            const originalDoc = textToResultMap.get(reranked.document.text)!;
-            return {
-              documentId: originalDoc.document.id,
-              // Knowledge bases don't have project IDs, set to null or undefined
-              projectId: undefined,
-              path: originalDoc.document.path,
-              documentName: originalDoc.document.name,
-              text: originalDoc.text,
-              similarity: reranked.relevance_score,
-              pageNumber: (originalDoc.metadata as { page_number?: number })
-                ?.page_number,
-              mimeType: originalDoc.document.mimeType,
-              fileKey: originalDoc.document.fileKey,
-              // Add knowledgeBaseId for frontend context if needed
-              knowledgeBaseId: targetKnowledgeBaseId,
-            };
-          }) ?? []; // Ensure it defaults to an empty array if results are null/undefined
-        console.log(
-          "Simplified knowledge base docs length:",
-          simplifiedDocs.length
-        );
-
-        // Generate final output
-        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
-        const images = modelConfig.model.modelId.includes("claude-3.7-sonnet")
-          ? await processDocumentImages(uniqueDocs)
-          : [];
-
-        return formatDocumentSearchResults(uniqueDocs, images);
-      } catch (error) {
-        console.error(
-          `Error searching knowledge base ${targetKnowledgeBaseId}:`,
-          error
-        );
-        // Return a structured error message
-        return {
-          images: [],
-          context: `Error searching knowledge base: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
-          docs: [],
-          dataForFrontend: [],
-        };
-      }
-    },
-    experimental_toToolResultContent(result) {
-      if (!result || !result.context || result.context.startsWith("Error:")) {
-        // Handle cases where execute returned an error or no result
-        return [{ type: "text", text: result?.context || "No results found." }];
-      }
-
-      return [
-        ...(result.images || []).map((image) => ({
-          type: "image" as const,
-          data: image.imageData,
-          mimeType: image.mimeType,
-        })),
-        {
-          type: "text",
-          text: result.context,
-        },
-      ];
-    },
-  });
-
-const createWebSearchTool = () =>
-  tool({
-    description: `Search the web for public information.
-
-When to use:
-- Product manuals and technical specifications
-- Industry standards and building codes
-- Manufacturer documentation
-- General knowledge questions
-
-When NOT to use:
-- Project-specific information (use search_project_information instead)
-- Information about your specific building or equipment
-- Content in your uploaded documents
-
-Tips:
-- Use specific search terms including manufacturer names and model numbers
-- Add "pdf" when looking for technical documents`,
-    parameters: z.object({
-      query: z.string(),
-    }),
-    execute: async ({ query }) => {
-      const { text, sources, providerMetadata } = await generateText({
-        model: MODELS["gemini-2.0-flash-online"].model,
-        prompt: `Search the web for information on "${query}"`,
-        maxTokens: 1200,
-        temperature: 0,
-      });
-
-      const metadata = providerMetadata?.google as
-        | Record<string, any>
-        | undefined;
-      const groundingMetadata = metadata?.groundingMetadata;
-      let formattedText = text;
-
-      // Add citations to text if groundingMetadata exists
-      if (groundingMetadata?.groundingSupports?.length) {
-        // Sort supports by startIndex descending to avoid position shifts
-        const supports = [...groundingMetadata.groundingSupports].sort(
-          (a, b) => (b.segment?.startIndex ?? 0) - (a.segment?.startIndex ?? 0)
-        );
-
-        for (const support of supports) {
-          const { segment, groundingChunkIndices } = support;
-          if (
-            segment?.endIndex != null &&
-            groundingChunkIndices?.length &&
-            groundingChunkIndices[0] < sources.length
-          ) {
-            // Insert citation at the end of the segment
-            const sourceIndex = groundingChunkIndices[0];
-            formattedText =
-              formattedText.substring(0, segment.endIndex) +
-              ` [${sourceIndex + 1}]` +
-              formattedText.substring(segment.endIndex);
-          }
-        }
-      }
-
-      // Process sources to resolve redirect URLs
-      const processedSources = await Promise.all(
-        sources.map(async (source) => {
-          if (
-            source.url?.includes(
-              "vertexaisearch.cloud.google.com/grounding-api-redirect"
-            )
-          ) {
-            try {
-              const response = await fetch(source.url, {
-                method: "HEAD",
-                redirect: "manual",
-              });
-              const location = response.headers.get("location");
-              if (location) return { ...source, url: location };
-            } catch (error) {
-              console.error("Error resolving redirect URL:", error);
-            }
-          }
-          return source;
-        })
-      );
-
-      return {
-        text: formattedText,
-        sources: processedSources,
-        queries: groundingMetadata?.webSearchQueries,
-      };
-    },
-  });
 
 async function processThreadMessages(thread: ThreadWithMessages | null) {
   if (!thread) return null;
@@ -701,6 +297,7 @@ Available Tools:
 1. search_project_information: Use for accessing project-specific data, dimensions, or requirements.
 2. web_search: Use for external reference materials, industry standards, building codes, or general technical knowledge not specific to the user's project.
 3. search_knowledge_base: Use for searching curated content from knowledge bases.
+4. list_items: Use to list available projects or browse the file/folder structure *within* a specific project. Useful for exploration or finding specific files/folders by name. Use the 'path' argument to specify a directory within a project (e.g., 'path: "drawings/electrical"').
 
 Knowledge Bases:
 A knowledge base is a collection of organized and curated information to support accurate and relevant responses. Available knowledge bases:
@@ -721,7 +318,7 @@ Do not mention knowledge base IDs to users; refer to them by name only.
 Decision-Making Process:
 For each user query, follow these steps:
 1. Determine if it's a general question you can answer directly.
-2. If not, decide which tool is most appropriate (search_project_information, web_search, or search_knowledge_base).
+2. If not, decide which tool is most appropriate (search_project_information, web_search, search_knowledge_base, or list_items). Consider if the user is searching for specific *content* (use search tools) or exploring the available projects/files (use list_items).
 3. Use the chosen tool to gather necessary information.
 4. Formulate a concise response based on the gathered information.
 5. Decide whether to create an artifact or keep the response in the chat.
@@ -1334,9 +931,6 @@ export {
   generateAttachmentData,
   processAttachments,
   processThreadMessages,
-  createProjectSearchTool,
-  createWebSearchTool,
-  createKnowledgeBaseSearchTool,
   processDocumentImages,
   dbMessagesToInferenceMessages,
   maybeGenerateTitle,

@@ -249,8 +249,6 @@ export const documentsOps = {
       // 1. Normalize the incoming path
       const normalizedEntryPath = normalizePath(entry.path);
 
-      console.log("normalizedEntryPath", normalizedEntryPath);
-
       // 2. Combine with basePath if provided
       const fullPath = data.basePath
         ? normalizePath(`${data.basePath}/${normalizedEntryPath}`)

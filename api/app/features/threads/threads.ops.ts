@@ -18,9 +18,6 @@ import { embeddingModel } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
-  createKnowledgeBaseSearchTool,
-  createProjectSearchTool,
-  createWebSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
   maybeGenerateTitle,
@@ -28,6 +25,12 @@ import {
 } from "./threads.utils";
 import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
+import {
+  createKnowledgeBaseSearchTool,
+  createListTool,
+  createProjectSearchTool,
+  createWebSearchTool,
+} from "./tools";
 
 const threadsOps = {
   async createThread(
@@ -373,6 +376,7 @@ const threadsOps = {
           modelConfig,
           thread.knowledgeBase
         ),
+        list_tool: createListTool(req.workspace!, req.dbUser!, thread.project),
       };
 
       let aiResponse = "";

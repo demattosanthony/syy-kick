@@ -92,7 +92,7 @@ export const projectsOps = {
   },
 
   listProjects: async (params: {
-    siteId: string;
+    siteId?: string;
     organizationId?: string;
     userId?: string;
     search?: string;
