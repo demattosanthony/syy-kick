@@ -25,7 +25,6 @@ import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
 
 // Feature imports
 import { ModelConfig, MODELS } from "../models";
-import { searchProjectDocuments } from "../projects";
 import {
   DocumentSearchToolResult,
   MyMessage,
@@ -35,6 +34,7 @@ import { DbUser } from "../../createAuthToken";
 import { PermissionManager } from "../permissions/permissions.tools";
 import { Permissions } from "../permissions/permissions.types";
 import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases.ops";
+import { documentsOps } from "../projects/docs/documents.ops";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -324,7 +324,7 @@ Returns:
 
       try {
         // Execute the search with the determined project IDs
-        const res = await searchProjectDocuments({
+        const res = await documentsOps.searchProjectDocuments({
           query,
           workspace,
           projectIds,
