@@ -114,13 +114,13 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
       return (
         <React.Fragment>
           {message.parts
-            .sort((a, b) => {
-              if (a.type === "reasoning") return -1;
-              if (b.type === "reasoning") return 1;
-              if (a.type === "text") return -1;
-              if (b.type === "text") return 1;
-              return 0;
-            })
+            // .sort((a, b) => {
+            //   if (a.type === "reasoning") return -1;
+            //   if (b.type === "reasoning") return 1;
+            //   if (a.type === "text") return -1;
+            //   if (b.type === "text") return 1;
+            //   return 0;
+            // })
             .map((part, index) =>
               part.type === "reasoning" ? (
                 <ThinkingDropdown
