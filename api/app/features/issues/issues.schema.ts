@@ -1,4 +1,5 @@
 import {
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -18,6 +19,7 @@ export const issues = pgTable("issues", {
   projectId: uuid("project_id")
     .notNull()
     .references(() => projects.id, { onDelete: "cascade" }),
+  issueNumber: integer("issue_number").notNull(), // Unique issue number for each project.
   creatorId: uuid("creator_id")
     .notNull()
     .references(() => users.id, { onDelete: "set null" }), // Keep issue even if creator deleted
@@ -115,7 +117,6 @@ export const createIssueSchema = z.object({
 });
 
 export const updateIssueSchema = z.object({
-  issueId: z.string(),
   title: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
   status: z.enum(ISSUE_STATUS).optional(),

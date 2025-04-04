@@ -4,15 +4,12 @@ import { IssuesList } from "@/features/projects/issues/components/issues-list";
 import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { CreateIssueDialog } from "@/features/projects/issues/components/create-issue-dialog";
 import Link from "next/link";
 
 export default function ProjectIssuesPage() {
   const { projectId } = useParams<{
     projectId: string;
   }>();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   return (
     <div className="container max-w-5xl py-6 space-y-4">
@@ -23,11 +20,6 @@ export default function ProjectIssuesPage() {
         </Link>
       </div>
       <IssuesList projectId={projectId} />
-      <CreateIssueDialog
-        projectId={projectId}
-        isOpen={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-      />
     </div>
   );
 }

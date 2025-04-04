@@ -24,20 +24,20 @@ export default Router()
 
   // Routes operating on a specific issueId
   .get(
-    "/issues/:issueId",
+    "/projects/:projectId/issues/:issueNumber",
     // Add permission check for reading a specific issue
     // Example: PermissionsMiddlewares.issue(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.READ),
     handlers.get
   )
   .patch(
     // Using PATCH for partial updates is common
-    "/issues/:issueId",
+    "/projects/:projectId/issues/:issueId",
     // Add permission check for updating a specific issue
     // Example: PermissionsMiddlewares.issue(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.UPDATE),
     handlers.update
   )
   .delete(
-    "/issues/:issueId",
+    "/projects/:projectId/issues/:issueId",
     // Add permission check for deleting a specific issue
     // Example: PermissionsMiddlewares.issue(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.DELETE),
     handlers.delete

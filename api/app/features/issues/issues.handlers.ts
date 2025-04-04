@@ -52,9 +52,10 @@ export const issueHandlers = {
    */
   get: async (req: Request, res: Response) => {
     try {
-      const { issueId } = req.params;
+      const { issueNumber, projectId } = req.params;
       const issue = await issueOps.getIssue({
-        issueId: issueId,
+        issueNumber: Number(issueNumber),
+        projectId: projectId,
       });
 
       if (!issue) {
@@ -122,11 +123,12 @@ export const issueHandlers = {
    */
   update: async (req: Request, res: Response) => {
     try {
-      const { issueId } = req.params;
+      const { issueNumber, projectId } = req.params;
 
       // Validation happens within issueOps.updateIssue
       await issueOps.updateIssue({
-        issueId: issueId,
+        issueNumber: Number(issueNumber),
+        projectId: projectId,
         data: req.body, // Pass the request body directly
       });
 
@@ -152,9 +154,11 @@ export const issueHandlers = {
    */
   delete: async (req: Request, res: Response) => {
     try {
-      const { issueId } = req.params;
+      const { issueNumber, projectId } = req.params;
+
       await issueOps.deleteIssue({
-        issueId: issueId,
+        issueNumber: Number(issueNumber),
+        projectId: projectId,
       });
 
       res.status(200).json({

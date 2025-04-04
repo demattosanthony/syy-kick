@@ -82,8 +82,8 @@ async function clientFetch<T>(
     throw new ApiError(
       response.status,
       errorData?.message ||
-      errorData?.error ||
-      `Request failed with status ${response.status}`
+        errorData?.error ||
+        `Request failed with status ${response.status}`
     );
   }
 
@@ -582,7 +582,8 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -636,7 +637,8 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`,
       "DELETE"
     );
@@ -652,7 +654,8 @@ class ProjectsApi extends ApiRequest {
     }
 
     return await this.request(
-      `/projects/${projectId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -1007,7 +1010,8 @@ export class KnowledgeBasesApi extends ApiRequest {
     const queryParams = new URLSearchParams();
     if (path) queryParams.append("path", path);
     return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/knowledge-bases/${knowledgeBaseId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -1109,39 +1113,46 @@ class IssuesApi extends ApiRequest {
     }
   }
 
-  async getIssue(issueId: string): Promise<Issue> {
+  async getIssue(projectId: string, issueNumber: number): Promise<Issue> {
     try {
-      return await this.request<Issue>(`/issues/${issueId}`, "GET");
+      return await this.request<Issue>(
+        `/projects/${projectId}/issues/${issueNumber}`,
+        "GET"
+      );
     } catch (error) {
-      console.error(`Failed to get issue ${issueId}:`, error);
+      console.error(`Failed to get issue ${issueNumber}:`, error);
       throw error;
     }
   }
 
   async updateIssue(
-    issueId: string,
+    projectId: string,
+    issueNumber: number,
     data: UpdateIssueData
   ): Promise<{ message: string }> {
     try {
       return await this.request<{ message: string }>(
-        `/issues/${issueId}`,
+        `projects/${projectId}/issues/${issueNumber}`,
         "PATCH",
         data
       );
     } catch (error) {
-      console.error(`Failed to update issue ${issueId}:`, error);
+      console.error(`Failed to update issue ${issueNumber}:`, error);
       throw error;
     }
   }
 
-  async deleteIssue(issueId: string): Promise<{ message: string }> {
+  async deleteIssue(
+    projectId: string,
+    issueNumber: number
+  ): Promise<{ message: string }> {
     try {
       return await this.request<{ message: string }>(
-        `/issues/${issueId}`,
+        `/projects/${projectId}/issues/${issueNumber}`,
         "DELETE"
       );
     } catch (error) {
-      console.error(`Failed to delete issue ${issueId}:`, error);
+      console.error(`Failed to delete issue ${issueNumber}:`, error);
       throw error;
     }
   }

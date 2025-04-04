@@ -1,0 +1,1 @@
+ALTER TABLE "issues" ADD COLUMN "issue_number" integer NOT NULL;

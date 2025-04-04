@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, max, sql } from "drizzle-orm";
 import {
   createIssueSchema,
   Issue,
@@ -65,15 +65,26 @@ export const issueOps = {
   },
 
   /**
-   * Get a single issue by its ID.
+   * Get a single issue by its project ID and issue number.
    */
   getIssue: async ({
-    issueId,
+    projectId,
+    issueNumber,
   }: {
-    issueId: string;
+    projectId: string;
+    issueNumber: number;
   }): Promise<Issue | undefined> => {
+    // Validate input - ensure issueNumber is a positive integer
+    if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+      console.error("Invalid issue number provided:", issueNumber);
+      return undefined; // Or throw an error
+    }
+
     return await db.query.issues.findFirst({
-      where: eq(issues.id, issueId),
+      where: and(
+        eq(issues.projectId, projectId),
+        eq(issues.issueNumber, issueNumber)
+      ),
       with: {
         creator: true,
         assignees: true,
@@ -93,6 +104,13 @@ export const issueOps = {
     // Validate input data
     const validatedData = createIssueSchema.parse(data);
 
+    const maxIssueNumberResult = await db
+      .select({ maxIssueNumber: max(issues.issueNumber) })
+      .from(issues)
+      .where(eq(issues.projectId, validatedData.projectId));
+
+    const nextIssueNumber = (maxIssueNumberResult[0]?.maxIssueNumber || 0) + 1;
+
     const [newIssue] = await db
       .insert(issues)
       .values({
@@ -100,6 +118,9 @@ export const issueOps = {
         creatorId: validatedData.creatorId,
         title: validatedData.title,
         description: validatedData.description,
+        issueNumber: nextIssueNumber,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning({ id: issues.id });
 
@@ -110,15 +131,24 @@ export const issueOps = {
   },
 
   /**
-   * Update an existing issue.
+   * Update an existing issue identified by project ID and issue number.
    */
   updateIssue: async ({
-    issueId,
+    projectId,
+    issueNumber,
     data,
   }: {
-    issueId: string;
+    projectId: string;
+    issueNumber: number;
     data: z.infer<typeof updateIssueSchema>;
   }): Promise<void> => {
+    // Validate input - ensure issueNumber is a positive integer
+    if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+      console.error("Invalid issue number provided for update:", issueNumber);
+      // Decide on error handling: return, throw new Error, etc.
+      throw new Error("Invalid issue number provided for update.");
+    }
+
     // Validate input data
     const validatedData = updateIssueSchema.parse(data);
 
@@ -127,14 +157,47 @@ export const issueOps = {
       return;
     }
 
-    await db.update(issues).set(validatedData).where(eq(issues.id, issueId));
+    const updatePayload = {
+      ...validatedData,
+      updatedAt: new Date(),
+    };
+
+    await db
+      .update(issues)
+      .set(updatePayload)
+      .where(
+        and(
+          eq(issues.projectId, projectId),
+          eq(issues.issueNumber, issueNumber)
+        )
+      );
   },
 
   /**
-   * Delete an issue by its ID.
+   * Delete an issue by its project ID and issue number.
    * Note: Comments and Assignees referencing this issue will also be deleted due to cascading deletes defined in the schema.
    */
-  deleteIssue: async ({ issueId }: { issueId: string }): Promise<void> => {
-    await db.delete(issues).where(eq(issues.id, issueId));
+  deleteIssue: async ({
+    projectId,
+    issueNumber,
+  }: {
+    projectId: string;
+    issueNumber: number;
+  }): Promise<void> => {
+    // Validate input - ensure issueNumber is a positive integer
+    if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+      console.error("Invalid issue number provided for delete:", issueNumber);
+      // Decide on error handling: return, throw new Error, etc.
+      throw new Error("Invalid issue number provided for delete.");
+    }
+
+    await db
+      .delete(issues)
+      .where(
+        and(
+          eq(issues.projectId, projectId),
+          eq(issues.issueNumber, issueNumber)
+        )
+      );
   },
 };

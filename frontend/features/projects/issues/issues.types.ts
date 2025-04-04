@@ -1,3 +1,5 @@
+import { User } from "@/types/user";
+
 export type IssueStatus = "open" | "closed";
 
 export interface Issue {
@@ -5,10 +7,12 @@ export interface Issue {
   projectId: string;
   creatorId: string;
   title: string;
+  issueNumber: number;
   description?: string | null;
   status: IssueStatus;
   createdAt: string;
   updatedAt: string;
+  creator: User;
 }
 
 export interface PaginatedIssues {

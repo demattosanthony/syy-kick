@@ -1,11 +1,12 @@
 "use client";
 
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useGetIssues } from "../api";
 import React, { useEffect } from "react";
 import { useInView } from "react-intersection-observer";
+import { getRelativeTimeString } from "@/lib/utils";
+import { CheckCircle, CircleDot, Inbox } from "lucide-react";
 
 interface IssuesListProps {
   projectId: string;
@@ -20,6 +21,8 @@ export function IssuesList({ projectId }: IssuesListProps) {
     isLoading,
     error,
   } = useGetIssues(projectId);
+
+  console.log("IssuesList data", data);
 
   // Setup Intersection Observer
   const { ref, inView } = useInView({
@@ -41,8 +44,21 @@ export function IssuesList({ projectId }: IssuesListProps) {
     return <div>Error loading issues: {error.message}</div>;
   }
 
+  // Check if there are any issues after loading and no error
+  const hasIssues = data?.pages.some((page) => page.data.length > 0);
+
   return (
-    <div className="divide-y divide-border rounded-lg border">
+    <div className="divide-y divide-border rounded-lg border ">
+      {!hasIssues && (
+        <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
+          <Inbox className="h-10 w-10 mb-4 text-gray-400" />
+          <p className="text-sm font-medium">No issues yet.</p>
+          <p className="text-xs">
+            Be the first to create an issue for this project!
+          </p>
+        </div>
+      )}
+
       {data?.pages.map((page, i) => (
         <React.Fragment key={i}>
           {page.data.map((issue) => (
@@ -53,46 +69,31 @@ export function IssuesList({ projectId }: IssuesListProps) {
               <Checkbox />
               <div className="relative flex-1">
                 <div className="flex items-center gap-2">
-                  <Badge
-                    variant={issue.status === "open" ? "secondary" : "outline"}
-                    className={
-                      issue.status === "open"
-                        ? "bg-green-50 text-green-500 hover:bg-green-50"
-                        : ""
-                    }
-                  >
-                    {issue.status === "open" ? "Open" : "Closed"}
-                  </Badge>
+                  {issue.status === "open" ? (
+                    <CircleDot className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 text-purple-500" />
+                  )}
+
                   <Link
-                    href={`/projects/${projectId}/${issue.id}`}
+                    href={`/projects/${projectId}/issues/${issue.issueNumber}`}
                     replace={false}
-                    className="font-medium hover:underline"
+                    className="font-medium hover:underline hover:text-blue-500"
                   >
                     {issue.title}
                   </Link>
-                  <span className="text-muted-foreground">
-                    {/* #{is.server_assigned_id} */}
-                  </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  opened {new Date(issue.createdAt).toLocaleDateString()} by{" "}
-                  {/* {topic.creation_author} */}
+                  {issue.creator.name} opened{" "}
+                  {getRelativeTimeString(issue.createdAt)}.
                 </p>
               </div>
-              {/* ... end of existing issue rendering code ... */}
             </div>
           ))}
         </React.Fragment>
       ))}
 
       {hasNextPage && <div ref={ref} style={{ height: "1px" }} />}
-
-      {/* Optional: Show loading indicator at the bottom */}
-      {isFetchingNextPage && (
-        <div className="p-4 text-center text-muted-foreground">
-          Loading more...
-        </div>
-      )}
     </div>
   );
 }

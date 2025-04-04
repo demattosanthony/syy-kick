@@ -18,7 +18,11 @@ import {
   Strikethrough,
   Quote,
   Heading,
+  ListOrdered,
+  CheckSquare,
 } from "lucide-react";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
 
 const MenuBar = ({ editor }: { editor: Editor | null }) => {
   if (!editor) return null;
@@ -47,6 +51,18 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       isActive: editor.isActive("bulletList"),
       icon: List,
       label: "Bullet List",
+    },
+    {
+      action: () => editor.chain().focus().toggleOrderedList().run(),
+      isActive: editor.isActive("orderedList"),
+      icon: ListOrdered,
+      label: "Numbered List",
+    },
+    {
+      action: () => editor.chain().focus().toggleTaskList().run(),
+      isActive: editor.isActive("taskList"),
+      icon: CheckSquare,
+      label: "Task List",
     },
     {
       action: () => editor.chain().focus().toggleStrike().run(),
@@ -93,6 +109,9 @@ export default function NewIssuePage() {
       StarterKit.configure({
         heading: {
           levels: [3],
+          HTMLAttributes: {
+            class: "scroll-m-20 text-xl font-semibold tracking-tight",
+          },
         },
         codeBlock: {
           HTMLAttributes: {
@@ -101,22 +120,35 @@ export default function NewIssuePage() {
         },
         blockquote: {
           HTMLAttributes: {
-            class: "border-l-4 border-muted-foreground pl-4 italic",
+            class: "mt-6 border-l-2 pl-6 italic text-base",
+          },
+        },
+        bulletList: {
+          HTMLAttributes: {
+            class: "mb-2 ml-6 list-disc text-base",
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: "mb-2 ml-6 list-decimal text-base",
           },
         },
       }),
       Placeholder.configure({
         placeholder: "Type your description here...",
       }),
+      TaskList,
+      TaskItem.configure({
+        nested: true,
+        HTMLAttributes: {
+          class: "flex items-center gap-2 data-[checked=true]:line-through",
+        },
+      }),
     ],
     editorProps: {
       attributes: {
         class: cn(
-          // Base styles (padding, min-height, text size, etc.)
           "min-h-[400px] w-full px-3 py-2 text-sm outline-none",
-          // Prose styles for typography (headings, lists, etc.)
-          "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl dark:prose-invert max-w-none",
-          // Disabled styles
           "disabled:cursor-not-allowed disabled:opacity-50"
         ),
       },
@@ -132,8 +164,8 @@ export default function NewIssuePage() {
     }
 
     // Ensure editor content is fetched correctly
-    const htmlDescription = editor?.getHTML() || "";
-    const isEmptyDescription = editor?.isEmpty || htmlDescription === "<p></p>";
+    const htmlDescription = editor?.getText() || "";
+    const isEmptyDescription = editor?.isEmpty || htmlDescription === "";
 
     createIssueMutation.mutate(
       {
@@ -147,9 +179,8 @@ export default function NewIssuePage() {
         onSuccess: (data) => {
           toast.success(data.message || "Issue created successfully!");
           router.push(`/projects/${projectId}/issues`);
-          // Optional: Reset editor after successful submission
-          // editor?.commands.clearContent();
-          // setTitle("");
+          editor?.commands.clearContent();
+          setTitle("");
         },
         onError: (error) => {
           toast.error(`Failed to create issue: ${error.message}`);
@@ -159,12 +190,12 @@ export default function NewIssuePage() {
   };
   return (
     <div className="container max-w-3xl py-8">
-      <h1 className="text-xl font-bold mb-6">Create new issue</h1>
+      <h1 className="text-xl font-bold mb-4">Create new issue</h1>
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title" className="text-base">
-              Title <span className="text-red-500">*</span>
+              Add a title <span className="text-red-500">*</span>
             </Label>
             <Input
               id="title"
@@ -175,16 +206,21 @@ export default function NewIssuePage() {
               required
             />
           </div>
-          <div
-            className={cn(
-              "flex flex-col min-h-[200px]",
-              "rounded-md border border-input bg-background",
-              "ring-offset-background focus-within:outline-none focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-1"
-            )}
-          >
-            <MenuBar editor={editor} />
-            <div className="flex-grow overflow-auto">
-              <EditorContent editor={editor} />
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-base">
+              Add a description
+            </Label>
+            <div
+              className={cn(
+                "flex flex-col min-h-[400px]",
+                "rounded-md border border-input bg-background",
+                "ring-offset-background focus-within:outline-none focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-1"
+              )}
+            >
+              <MenuBar editor={editor} />
+              <div className="flex-grow overflow-auto">
+                <EditorContent editor={editor} />
+              </div>
             </div>
           </div>
         </div>

@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Issue } from "../issues.types";
 import api from "@/lib/api";
 
-export const useGetIssue = (issueId: string | undefined) => {
+export const useGetIssue = (projectId?: string, issueNumber?: number) => {
   return useQuery<Issue, Error>({
-    queryKey: ["issue", issueId],
-    queryFn: () => api.issues.getIssue(issueId!),
-    enabled: !!issueId,
+    queryKey: ["issue", projectId, issueNumber],
+    queryFn: () => api.issues.getIssue(projectId!, issueNumber!),
+    enabled: !!projectId && !!issueNumber,
   });
 };

@@ -8,13 +8,18 @@ export const useUpdateIssue = () => {
   return useMutation<
     { message: string },
     Error,
-    { issueId: string; data: UpdateIssueData }
+    {
+      projectId: string;
+      issueNumber: number;
+      data: UpdateIssueData;
+    }
   >({
-    mutationFn: ({ issueId, data }) => api.issues.updateIssue(issueId, data),
+    mutationFn: ({ projectId, issueNumber, data }) =>
+      api.issues.updateIssue(projectId, issueNumber, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["issues"] });
       queryClient.invalidateQueries({
-        queryKey: ["issue", variables.issueId],
+        queryKey: ["issue", variables.projectId, variables.issueNumber],
       });
     },
   });
