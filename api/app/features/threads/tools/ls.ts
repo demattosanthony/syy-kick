@@ -104,7 +104,7 @@ Notes:
             .filter((item) => item.type === "file")
             .map(
               (item) =>
-                `📄 ${item.name} (${
+                `📄 ${item.name} ID: ${item.id} (${
                   item.size ? formatBytes(item.size) : "N/A"
                 })`
             );
@@ -165,7 +165,7 @@ Notes:
               .filter((item) => item.type === "file")
               .map(
                 (item) =>
-                  `📄 ${item.name} (${
+                  `📄 ${item.name} ID: ${item.id} (${
                     item.size ? formatBytes(item.size) : "N/A"
                   })`
               );

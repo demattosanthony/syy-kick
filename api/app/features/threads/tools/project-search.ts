@@ -36,8 +36,9 @@ Returns:
     - Visual previews for supported document types`,
     parameters: z.object({
       query: z.string(),
+      documentId: z.string().optional(),
     }),
-    execute: async ({ query }) => {
+    execute: async ({ query, documentId }) => {
       // Determine project IDs based on workspace type
       let projectIds: string[] | undefined;
 
@@ -117,6 +118,7 @@ Returns:
           workspace,
           projectIds,
           limit: 80,
+          documentId,
         });
         console.log("Search results:", res.length);
 

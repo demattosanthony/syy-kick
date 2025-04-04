@@ -320,9 +320,10 @@ export const documentsOps = {
     query: string;
     workspace: Workspace;
     projectIds?: string[];
+    documentId?: string;
     limit?: number;
   }) => {
-    const { projectIds, query, limit = 20, workspace } = params;
+    const { projectIds, query, limit = 20, workspace, documentId } = params;
     try {
       // If projectIds are provided, verify they exist
       if (projectIds && projectIds.length > 0) {
@@ -356,7 +357,16 @@ export const documentsOps = {
 
       // Build the where clause based on provided parameters
       let whereClause;
-      if (projectIds && projectIds.length > 0) {
+      if (documentId) {
+        // Search within specific document
+        whereClause = and(
+          eq(documentEmbeddings.documentId, documentId),
+          sql`1 - (${cosineDistance(
+            documentEmbeddings.embedding,
+            queryEmbedding
+          )}) > 0.45`
+        );
+      } else if (projectIds && projectIds.length > 0) {
         // Search within specific projects
         whereClause = and(
           inArray(documents.projectId, projectIds),
