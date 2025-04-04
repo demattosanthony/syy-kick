@@ -22,6 +22,8 @@ import { documentsSchemas } from "./documents.schemas";
 import { z } from "zod";
 import { Workspace } from "../../../middleware";
 import { smallOpenaiEmbeddingModel } from "../../models";
+import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../../../config/unstructured";
+import { queue } from "../../../doc-job-queue";
 
 export const documentsOps = {
   getProjectDocs: async (projectId: string, path: string = "") => {
@@ -303,11 +305,11 @@ export const documentsOps = {
           projectId,
           ...(entry.type === "file"
             ? {
-                fileKey: entry.fileKey,
-                size: entry.size,
-                mimeType: entry.mimeType,
-                fileHash: entry.sha256,
-              }
+              fileKey: entry.fileKey,
+              size: entry.size,
+              mimeType: entry.mimeType,
+              fileHash: entry.sha256,
+            }
             : {}),
         })
         .returning();
@@ -316,6 +318,25 @@ export const documentsOps = {
       createdThisRun.add(fullPath);
       createdDocs.push(newDoc);
     }
+
+    // Process uploaded files in the background
+    for (const doc of createdDocs) {
+      const extension = doc.name.toLowerCase().match(/\.[^.]*$/)?.[0];
+      if (
+        doc.type === "file" &&
+        doc.fileKey &&
+        ALLOWED_UNSTRUCTURED_EXTENSIONS.includes(extension)
+      ) {
+        await queue.addToQueue({
+          fileKey: doc.fileKey,
+          fileName: doc.path,
+          mimeType: doc.mimeType || "",
+          documentId: doc.id,
+        });
+      }
+    }
+
+    return { success: true };
   },
 
   searchProjectDocuments: async (params: {
