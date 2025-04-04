@@ -4,6 +4,7 @@ import ProjectNavBreadcrumbs from "@/features/projects/components/project-nav-br
 import { useParams, usePathname } from "next/navigation";
 import { ProjectAddFileButton } from "@/features/projects/components";
 import { useProjectQuery } from "../api";
+import ProjectSharePointPicker from "./files/project-sharepoint-picker";
 
 export default function ProjectsHeader() {
   const params = useParams();
@@ -22,6 +23,7 @@ export default function ProjectsHeader() {
       {!isProjectSettingsPage && pathname !== `/projects/${pid}` && (
         <ProjectAddFileButton projectId={pid} contentSource="project" />
       )}
+
     </div>
   );
 }

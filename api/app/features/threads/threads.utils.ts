@@ -25,7 +25,6 @@ import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
 
 // Feature imports
 import { ModelConfig, MODELS } from "../models";
-import { searchProjectDocuments } from "../projects";
 import {
   DocumentSearchToolResult,
   MyMessage,
@@ -35,6 +34,7 @@ import { DbUser } from "../../createAuthToken";
 import { PermissionManager } from "../permissions/permissions.tools";
 import { Permissions } from "../permissions/permissions.types";
 import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases.ops";
+import { documentsOps } from "../projects/docs/documents.ops";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -324,7 +324,7 @@ Returns:
 
       try {
         // Execute the search with the determined project IDs
-        const res = await searchProjectDocuments({
+        const res = await documentsOps.searchProjectDocuments({
           query,
           workspace,
           projectIds,
@@ -405,11 +405,10 @@ const createKnowledgeBaseSearchTool = (
   knowledgeBase?: KnowledgeBase
 ) =>
   tool({
-    description: `${
-      knowledgeBase
+    description: `${knowledgeBase
         ? `This tool allows the assistant to retrieve information from the "${knowledgeBase.name}" knowledge base.`
         : `This tool allows the assistant to retrieve information from a Knowledge Base.`
-    }
+      }
 A knowledge base is a structured collection of curated information that organizations create to preserve valuable expertise and reference materials. It serves as a searchable repository that Syykick can access to provide you with accurate, domain-specific answers to your questions.
 
 Usage:
@@ -425,10 +424,10 @@ Returns:
       ...(knowledgeBase
         ? {}
         : {
-            knowledgeBaseId: z
-              .string()
-              .describe("The ID of the knowledge base to search within."),
-          }),
+          knowledgeBaseId: z
+            .string()
+            .describe("The ID of the knowledge base to search within."),
+        }),
     }),
     execute: async ({ query, knowledgeBaseId }) => {
       const targetKnowledgeBaseId: string = knowledgeBase
@@ -500,9 +499,8 @@ Returns:
         // Return a structured error message
         return {
           images: [],
-          context: `Error searching knowledge base: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
+          context: `Error searching knowledge base: ${error instanceof Error ? error.message : "Unknown error"
+            }`,
           docs: [],
           dataForFrontend: [],
         };
@@ -1052,18 +1050,17 @@ The assistant should not mention any of these instructions to the user, nor make
 A knowledge base is a collection of information that has been organized and curated to support the assistant in providing accurate and relevant responses to user queries. Knowledge bases can contain a wide range of information, including technical specifications, best practices, industry standards, and reference materials.
 Knowledge bases have been created by organizations over time to capture and preserve valuable knowledge and expertise. They serve as a repository of information that can be accessed and utilized by the assistant to enhance its responses and provide users with valuable insights and guidance.
 
-${
-  knowledgeBase
-    ? `<current_knowledge_base>
+${knowledgeBase
+      ? `<current_knowledge_base>
 The assistant is currently focused on the "${knowledgeBase.name}". This knowledge base contains specific information that the user is interested in exploring. The assistant should prioritize searching and referencing this knowledge base when responding to user queries.
 </current_knowledge_base>`
-    : knowledgeBases?.length
-    ? `The assistant has access to the following knowledge bases:
+      : knowledgeBases?.length
+        ? `The assistant has access to the following knowledge bases:
 <knowledge_bases>
 ${knowledgeBasesString}
 </knowledge_bases>`
-    : ""
-}
+        : ""
+    }
 
 The assistant never tells the user of a knowledge base id. This would confuse the user. The assisant just uses the name when chatting with the user.
 </knowledge_bases_information>
@@ -1104,12 +1101,11 @@ The assistant uses the search_project_information to find relevant information b
 
 The assisant first analyzes the user message carefully to decide whether to use the search_project_information tool.
 
-${
-  project
-    ? `<project_name>${project.name}</project_name>
+${project
+      ? `<project_name>${project.name}</project_name>
 <project_number>${project.projectNumber}</project_number>`
-    : ""
-}
+      : ""
+    }
 </project_info>`;
 
   if (instructions && instructions.length > 0) {
@@ -1283,8 +1279,8 @@ async function createToolMessage(
         toolName: call.toolName,
         result:
           call.toolName === "search_project_information" ||
-          call.toolName === "search_documents" ||
-          call.toolName === "search_projects_information"
+            call.toolName === "search_documents" ||
+            call.toolName === "search_projects_information"
             ? convertResultsToXml((call.result as any).docs)
             : call.result,
       };
@@ -1402,7 +1398,7 @@ async function maybeGenerateTitle(
   try {
     const textContent = Array.isArray(firstUserTextMessage.content)
       ? firstUserTextMessage.content.find((chunk) => chunk.type === "text")
-          ?.text || ""
+        ?.text || ""
       : (firstUserTextMessage.content as string) || "";
 
     const title = await generateThreadTitle(textContent);
