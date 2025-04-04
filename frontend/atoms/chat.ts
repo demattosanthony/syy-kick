@@ -3,6 +3,7 @@ import { atomWithStorage } from "jotai/utils";
 import { Model } from "@/types/model";
 import { Artifact, ChatMessage, FileUpload } from "@/types/chat";
 import { DocumentContent } from "@/types/project";
+import { WorkflowAttachment } from "@/features/workflows/components/workflow-page-content";
 
 export const CLAUDE_3_5_CONFIG = {
   name: "claude-3.7-sonnet",
@@ -55,3 +56,10 @@ export const abortControllerAtom = atom<AbortController>(new AbortController());
 export const selectedProjectDocsAtom = atom<DocumentContent[]>([]);
 export const selectedArtifactAtom = atom<Artifact | null>(null);
 export const alreadyAutoSelectedArtifactAtom = atom<string | null>(null);
+export const workflowInputAtom = atom<{
+  attachments: WorkflowAttachment[];
+  input: string;
+}>({
+  attachments: [],
+  input: "",
+});

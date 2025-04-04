@@ -29,6 +29,7 @@ import {
   ArrowLeftToLine,
   ArrowRightToLine,
   BookOpen,
+  FolderClosed,
   MapPinIcon,
   Plus,
   Workflow,
@@ -153,6 +154,15 @@ export function AppSidebar({
                 )}
               </SidebarMenuItem>
 
+              <SidebarMenuItem>
+                <SidebarButton
+                  href="/projects"
+                  icon={FolderClosed}
+                  hoverIcon={FolderClosed}
+                  label="Projects"
+                />
+              </SidebarMenuItem>
+
               {activeWorkspace?.type === "organization" && (
                 <SidebarMenuItem>
                   <SidebarButton
@@ -226,7 +236,11 @@ export function AppSidebar({
       </SidebarFooter>
       <SidebarRail />
       <SiteDialog
-        organizationId={activeWorkspace?.id}
+        organizationId={
+          activeWorkspace?.type === "organization"
+            ? activeWorkspace.id
+            : undefined
+        }
         mode="create"
         showDialog={showCreateSiteDialog}
         setShowDialog={setShowCreateSiteDialog}
