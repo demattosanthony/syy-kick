@@ -443,4 +443,29 @@ export const documentsOps = {
       throw error;
     }
   },
+
+  getDocumentEmbeddings: async (projectId: string, path: string) => {
+    const document = await db.query.documents.findFirst({
+      where: and(eq(documents.projectId, projectId), eq(documents.path, path)),
+    });
+
+    if (!document) {
+      throw new Error(`Document not found at path: ${path}`);
+    }
+
+    if (document.type === "folder") {
+      throw new Error("Cannot read contents of a folder");
+    }
+
+    // Get all embeddings chunks for this document
+    const embeddings = await db.query.documentEmbeddings.findMany({
+      where: eq(documentEmbeddings.documentId, document.id),
+      orderBy: asc(documentEmbeddings.createdAt), // Maintain original text order
+    });
+
+    return {
+      document,
+      embeddings,
+    };
+  },
 };

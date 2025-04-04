@@ -298,6 +298,7 @@ Available Tools:
 2. web_search: Use for external reference materials, industry standards, building codes, or general technical knowledge not specific to the user's project.
 3. search_knowledge_base: Use for searching curated content from knowledge bases.
 4. list_items: Use to list available projects or browse the file/folder structure *within* a specific project. Useful for exploration or finding specific files/folders by name. Use the 'path' argument to specify a directory within a project (e.g., 'path: "drawings/electrical"').
+5. read_file: Use to read the contents of a specific file within a project. Requires the file path. When in a project context, use just the path (e.g., 'path: "docs/specifications/hvac.txt"'). Without project context, use "projectId:/path" format (e.g., 'path: "abc123:/docs/specifications/hvac.txt"').
 
 Knowledge Bases:
 A knowledge base is a collection of organized and curated information to support accurate and relevant responses. Available knowledge bases:

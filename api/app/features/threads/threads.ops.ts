@@ -26,6 +26,7 @@ import {
 import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
 import {
+  createFileReadTool,
   createKnowledgeBaseSearchTool,
   createListTool,
   createProjectSearchTool,
@@ -376,7 +377,12 @@ const threadsOps = {
           modelConfig,
           thread.knowledgeBase
         ),
-        list_tool: createListTool(req.workspace!, req.dbUser!, thread.project),
+        list_items: createListTool(req.workspace!, req.dbUser!, thread.project),
+        read_file: createFileReadTool(
+          req.workspace!,
+          req.dbUser!,
+          thread.project
+        ),
       };
 
       let aiResponse = "";
