@@ -8,13 +8,29 @@ import { cn, getRelativeTimeString } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUpdateIssue } from "@/features/projects/issues/api";
 import { Button } from "@/components/ui/button";
-import { CircleCheck, CircleDot, RefreshCcwDot } from "lucide-react";
+import {
+  CircleCheck,
+  CircleDot,
+  MoreHorizontal,
+  Pencil,
+  RefreshCcwDot,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { IssueEditor } from "@/features/projects/issues/components/issue-editor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function IssueDetailPage() {
   const params = useParams<{
     projectId: string;
     issueNumber: string;
   }>();
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
 
   // Ensure issueNumber is parsed correctly
   const issueNumberInt = parseInt(params.issueNumber, 10);
@@ -40,6 +56,34 @@ export default function IssueDetailPage() {
       issueNumber: issue.issueNumber,
       data: { status: newStatus },
     });
+  };
+
+  // Handler for saving the edited description
+  const handleSaveDescription = (newDescriptionHtml: string) => {
+    if (!issue) return;
+
+    updateIssue(
+      {
+        projectId,
+        issueNumber: issue.issueNumber,
+        data: { description: newDescriptionHtml },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Description updated successfully!");
+          setIsEditingDescription(false);
+        },
+        onError: (err) => {
+          toast.error(`Failed to update description: ${err.message}`);
+          // Optionally leave edit mode open or provide feedback
+        },
+      }
+    );
+  };
+
+  // Handler for canceling the edit
+  const handleCancelEditDescription = () => {
+    setIsEditingDescription(false);
   };
 
   if (isLoading) {
@@ -72,25 +116,19 @@ export default function IssueDetailPage() {
             #{issue.issueNumber}
           </span>
         </h1>
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <Badge
-            className={cn(
-              "text-base font-semibold rounded-md text-white gap-1",
-              issue.status === "open" ? "bg-green-500" : "bg-purple-500"
-            )}
-          >
-            {issue.status === "open" ? (
-              <CircleDot className="h-4 w-4 text-white" />
-            ) : (
-              <CircleCheck className="h-4 w-4 text-white" />
-            )}
-            {issue.status.charAt(0).toUpperCase() + issue.status.slice(1)}
-          </Badge>
-          {/* <span>
-            <strong>{issue.creator.name || issue.creator.email}</strong> opened
-            this issue {getRelativeTimeString(issue.createdAt)} ago
-          </span> */}
-        </div>
+        <Badge
+          className={cn(
+            "text-base font-semibold rounded-md text-white gap-1",
+            issue.status === "open" ? "bg-green-500" : "bg-purple-500"
+          )}
+        >
+          {issue.status === "open" ? (
+            <CircleDot className="h-4 w-4 text-white" />
+          ) : (
+            <CircleCheck className="h-4 w-4 text-white" />
+          )}
+          {issue.status.charAt(0).toUpperCase() + issue.status.slice(1)}
+        </Badge>
       </div>
 
       {/* Issue Body */}
@@ -107,31 +145,58 @@ export default function IssueDetailPage() {
               <AvatarFallback />
             </Avatar>
 
-            {/* Description Box */}
-            <div className="border rounded-md p-4 bg-card text-card-foreground flex-grow">
-              {/* Added flex-grow to take remaining space */}
-              <div className="flex items-center justify-between pb-2 mb-2 border-b">
+            {/* Description Box / Editor */}
+            {isEditingDescription ? (
+              <div className="flex-grow">
+                <IssueEditor
+                  initialContent={issue.description || ""}
+                  onSave={handleSaveDescription}
+                  onCancel={handleCancelEditDescription}
+                  isLoading={isUpdating}
+                  placeholder="Add a description..."
+                />
+              </div>
+            ) : (
+              <div className="border rounded-md bg-card text-card-foreground flex-grow">
                 {/* Header for the description box */}
-                <span className="text-sm font-semibold text-muted-foreground">
-                  <strong>{issue.creator.name || issue.creator.email}</strong>{" "}
-                  commented {getRelativeTimeString(issue.createdAt)}
-                </span>
-                {/* TODO: Add options dropdown (edit, delete, etc.) */}
+                <div className="flex items-center justify-between p-3 border-b bg-muted/50 rounded-t-md">
+                  <span className="text-sm font-semibold text-muted-foreground">
+                    <strong>{issue.creator.name || issue.creator.email}</strong>{" "}
+                    commented {getRelativeTimeString(issue.createdAt)}
+                  </span>
+                  {/* Edit Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setIsEditingDescription(true)}
+                        disabled={isUpdating} // Disable if an update is already pending
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      {/* Add other options like Delete later if needed */}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                {/* Content */}
+                <div className="p-4 max-w-none">
+                  {issue.description ? (
+                    <div
+                      dangerouslySetInnerHTML={{ __html: issue.description }}
+                    />
+                  ) : (
+                    <p className="italic text-gray-500">
+                      No description provided.
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="p-2 max-w-none">
-                {issue.description ? (
-                  <div
-                    dangerouslySetInnerHTML={{
-                      __html: issue.description /* or safeDescriptionHtml */,
-                    }}
-                  />
-                ) : (
-                  <p className="italic text-gray-500">
-                    No description provided.
-                  </p>
-                )}
-              </div>
-            </div>
+            )}
           </div>
 
           {/* // TODO: Add comment section */}
