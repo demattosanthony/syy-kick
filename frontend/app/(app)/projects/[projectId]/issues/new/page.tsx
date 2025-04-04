@@ -164,8 +164,8 @@ export default function NewIssuePage() {
     }
 
     // Ensure editor content is fetched correctly
-    const htmlDescription = editor?.getText() || "";
-    const isEmptyDescription = editor?.isEmpty || htmlDescription === "";
+    const htmlDescription = editor?.getHTML() || "";
+    const isEmptyDescription = editor?.isEmpty || htmlDescription === "<p></p>";
 
     createIssueMutation.mutate(
       {
