@@ -19,7 +19,7 @@ export default function ProjectIssuesPage() {
     <div className="container max-w-5xl py-6 space-y-4">
       <div className="flex justify-between items-center gap-4">
         <Input
-          placeholder="Search issues by title or description..."
+          placeholder="Search issues..."
           className="max-w-sm"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}

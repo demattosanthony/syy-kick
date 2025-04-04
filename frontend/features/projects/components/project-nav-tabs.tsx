@@ -1,13 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Code2,
-  CircleDot,
-  Settings,
-  FolderClosed,
-  ChevronsLeftRight,
-} from "lucide-react";
+import { CircleDot, Settings, ChevronsLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useParams, usePathname } from "next/navigation";
@@ -46,7 +40,10 @@ export default function ProjectNavigationTabs() {
       <div className="flex h-12 items-center gap-2 px-4 overflow-x-auto">
         {navItems.map((item) => {
           const itemPath = `/projects/${projectId}${item.href}`;
-          const isActive = pathname === itemPath;
+          const isActive =
+            item.href === ""
+              ? pathname === itemPath
+              : pathname.startsWith(itemPath);
 
           return (
             <Button
