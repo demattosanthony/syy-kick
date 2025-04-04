@@ -7,17 +7,19 @@ export const useGetIssues = (
   options?: {
     status?: IssueStatus;
     limit?: number;
+    searchTerm?: string;
   }
 ) => {
   const limit = options?.limit ?? 10;
 
   return useInfiniteQuery<PaginatedIssues, Error>({
-    queryKey: ["issues", projectId, options?.status],
+    queryKey: ["issues", projectId, options?.status, options?.searchTerm],
     queryFn: ({ pageParam = 1 }) =>
       api.issues.listIssues(projectId, {
         ...options,
         page: pageParam as number,
         limit: limit,
+        searchTerm: options?.searchTerm,
       }),
     getNextPageParam: (lastPage) => {
       return lastPage.pagination.hasMore

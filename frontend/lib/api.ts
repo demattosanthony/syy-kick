@@ -1075,6 +1075,7 @@ class IssuesApi extends ApiRequest {
       status?: IssueStatus;
       page?: number;
       limit?: number;
+      searchTerm?: string;
     }
   ): Promise<PaginatedIssues> {
     const queryParams = new URLSearchParams();
@@ -1086,6 +1087,9 @@ class IssuesApi extends ApiRequest {
     }
     if (options?.limit !== undefined) {
       queryParams.append("limit", options.limit.toString());
+    }
+    if (options?.searchTerm) {
+      queryParams.append("searchTerm", options.searchTerm);
     }
 
     const endpoint = `/projects/${projectId}/issues?${queryParams.toString()}`;

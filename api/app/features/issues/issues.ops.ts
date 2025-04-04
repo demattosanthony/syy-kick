@@ -1,4 +1,4 @@
-import { and, desc, eq, max, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, max, or, sql } from "drizzle-orm";
 import {
   createIssueSchema,
   Issue,
@@ -19,11 +19,24 @@ export const issueOps = {
     status?: (typeof ISSUE_STATUS)[number];
     page?: number;
     limit?: number;
+    searchTerm?: string;
   }): Promise<PaginatedIssues> => {
     const conditions = [eq(issues.projectId, params.projectId)];
 
     if (params.status) {
       conditions.push(eq(issues.status, params.status));
+    }
+
+    // Add search condition if searchTerm is provided
+    if (params.searchTerm && params.searchTerm.trim() !== "") {
+      const searchPattern = `%${params.searchTerm.trim()}%`;
+      conditions.push(
+        or(
+          ilike(issues.title, searchPattern),
+          // Use sql`coalesce` to handle potentially null descriptions
+          ilike(sql`coalesce(${issues.description}, '')`, searchPattern)
+        )!
+      );
     }
 
     // Set default pagination values

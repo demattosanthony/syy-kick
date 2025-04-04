@@ -10,8 +10,6 @@ export const issueHandlers = {
    */
   list: async (req: Request, res: Response) => {
     try {
-      console.log("Listing issues for project");
-      console.log("Request params:", req.params);
       const { projectId } = req.params; // Assuming projectId is in the route path
       if (!projectId) {
         res.status(400).json({ message: "Project ID is required" });
@@ -38,6 +36,7 @@ export const issueHandlers = {
         status: status,
         page: Number(req.query.page) || 1,
         limit: Number(req.query.limit) || 10,
+        searchTerm: req.query.searchTerm as string,
       });
 
       res.json(issues as PaginatedIssues);
