@@ -45,50 +45,43 @@ export function IssuesList({ projectId }: IssuesListProps) {
     <div className="divide-y divide-border rounded-lg border">
       {data?.pages.map((page, i) => (
         <React.Fragment key={i}>
-          {page.data.map(
-            (
-              issue // Make sure this property name is correct
-            ) => (
-              <div
-                key={issue.id}
-                className="flex items-center gap-4 p-4 hover:bg-muted/50"
-              >
-                {/* ... existing issue rendering code ... */}
-                <Checkbox />
-                <div className="relative flex-1">
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        issue.status === "open" ? "secondary" : "outline"
-                      }
-                      className={
-                        issue.status === "open"
-                          ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
-                          : ""
-                      }
-                    >
-                      {issue.status === "open" ? "Open" : "Closed"}
-                    </Badge>
-                    <Link
-                      href={`/projects/${projectId}/${issue.id}`}
-                      replace={false}
-                      className="font-medium hover:underline"
-                    >
-                      {issue.title}
-                    </Link>
-                    <span className="text-muted-foreground">
-                      {/* #{is.server_assigned_id} */}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    opened {new Date(issue.createdAt).toLocaleDateString()} by{" "}
-                    {/* {topic.creation_author} */}
-                  </p>
+          {page.data.map((issue) => (
+            <div
+              key={issue.id}
+              className="flex items-center gap-4 p-4 hover:bg-muted/50"
+            >
+              <Checkbox />
+              <div className="relative flex-1">
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={issue.status === "open" ? "secondary" : "outline"}
+                    className={
+                      issue.status === "open"
+                        ? "bg-green-50 text-green-500 hover:bg-green-50"
+                        : ""
+                    }
+                  >
+                    {issue.status === "open" ? "Open" : "Closed"}
+                  </Badge>
+                  <Link
+                    href={`/projects/${projectId}/${issue.id}`}
+                    replace={false}
+                    className="font-medium hover:underline"
+                  >
+                    {issue.title}
+                  </Link>
+                  <span className="text-muted-foreground">
+                    {/* #{is.server_assigned_id} */}
+                  </span>
                 </div>
-                {/* ... end of existing issue rendering code ... */}
+                <p className="text-sm text-muted-foreground">
+                  opened {new Date(issue.createdAt).toLocaleDateString()} by{" "}
+                  {/* {topic.creation_author} */}
+                </p>
               </div>
-            )
-          )}
+              {/* ... end of existing issue rendering code ... */}
+            </div>
+          ))}
         </React.Fragment>
       ))}
 

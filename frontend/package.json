@@ -38,6 +38,11 @@
     "@tanstack/query-sync-storage-persister": "^5.71.1",
     "@tanstack/react-query": "^5.64.1",
     "@tanstack/react-query-persist-client": "^5.71.1",
+    "@tiptap/extension-heading": "^2.11.7",
+    "@tiptap/extension-placeholder": "^2.11.7",
+    "@tiptap/pm": "^2.11.7",
+    "@tiptap/react": "^2.11.7",
+    "@tiptap/starter-kit": "^2.11.7",
     "ai": "^4.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -71,6 +76,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.16",
     "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20",
     "@types/papaparse": "^5.3.15",
