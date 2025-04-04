@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Code2, CircleDot, Settings } from "lucide-react";
+import {
+  Code2,
+  CircleDot,
+  Settings,
+  FolderClosed,
+  ChevronsLeftRight,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useParams, usePathname } from "next/navigation";
@@ -17,7 +23,7 @@ const navItems: NavItem[] = [
   {
     label: "Overview",
     href: "",
-    icon: <Code2 className="h-4 w-4" />,
+    icon: <ChevronsLeftRight className="h-4 w-4" />,
   },
   {
     label: "Issues",

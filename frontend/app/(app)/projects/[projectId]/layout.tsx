@@ -12,7 +12,7 @@ export default function ProjectPageLayout({
 
       <ProjectNavigationTabs />
 
-      {children}
+      <div className="pt-2 w-full flex flex-1 justify-center">{children}</div>
     </div>
   );
 }
