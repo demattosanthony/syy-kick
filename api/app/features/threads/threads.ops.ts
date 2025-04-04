@@ -382,7 +382,7 @@ const threadsOps = {
       const result = streamText({
         model: modelConfig.model,
         messages: inferenceMsgs,
-        temperature: 0.3,
+        temperature: 0.6,
         tools: tools ? tools : undefined,
         maxSteps: tools ? 8 : undefined,
         toolChoice: "auto",
