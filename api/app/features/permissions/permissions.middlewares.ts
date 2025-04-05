@@ -258,7 +258,11 @@ export default class PermissionsMiddlewares {
         return;
       }
 
-      const { projectId } = req.params;
+      let projectId = req.params.projectId;
+
+      if (!projectId && resource === Permissions.Resources.ORGANIZATION_PROJECT_DOCS) {
+        projectId = req.originalUrl.split('/')[2];
+      }
 
       const isUserProject = await PermissionManager.isUserProject(
         userId,
