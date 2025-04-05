@@ -308,7 +308,7 @@ const threadsOps = {
         typeof inferenceSchema
       >;
 
-      // 1) Add the user message to DB
+      // 1) Store the user message
       if (message) {
         await threadsOps.createMessage(req.dbUser!.id, threadId, "user", {
           content: message.content || "",
