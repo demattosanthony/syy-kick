@@ -153,6 +153,26 @@ export function configurePassport() {
     )
   );
 
+  passport.use(
+    "microsoft-files",
+    new MicrosoftStrategy(
+      {
+        clientID: process.env.MICROSOFT_CLIENT_ID!,
+        clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
+        callbackURL: process.env.MICROSOFT_FILES_CALLBACK_URL!,
+        tenant: "common",
+        scope: [
+          "Files.Read.All",
+          "Sites.Read.All",
+        ],
+      },
+      async (accessToken: string, refreshToken: string, profile: any, done: VerifiedCallback) => {
+        const access = { accessToken, refreshToken };
+        done(null, access);
+      }
+    )
+  );
+
   return passport;
 }
 
@@ -215,7 +235,7 @@ export async function authenticateSaml(
           try {
             const samlEmail =
               profile[
-                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
+              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
               ];
             const [emailName, emailDomain] = samlEmail.split("@");
 

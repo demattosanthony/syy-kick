@@ -11,6 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import React from "react";
 import { useUploadDocsMutation } from "../../api";
 import { useUploadKnowledgeBaseFiles } from "@/features/knowledge-bases/api";
+import Image from "next/image";
+import useMicrosoftPicker from "../../hooks/use-microsoft-picker";
 
 interface UploadButtonsProps {
   projectId?: string;
@@ -24,6 +26,12 @@ const ProjectAddFileButton = ({
   contentSource,
 }: UploadButtonsProps) => {
   const [open, setOpen] = React.useState(false);
+
+  const { openPicker } = useMicrosoftPicker({
+    onFilesSelected: (files) => {
+      console.log(files, '<---- files')
+    }
+  });
 
   const {
     mutateAsync: uploadProjectFiles,
@@ -159,6 +167,23 @@ const ProjectAddFileButton = ({
               </Button>
             </label>
           </div>
+          <Button
+            variant="ghost"
+            onClick={() => openPicker()}
+            className="w-full justify-start gap-2 text-sm cursor-pointer"
+          >
+            <Image src="/logos/msft.svg" alt="Microsoft" width={16} height={16} />
+            Upload files
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => openPicker()}
+            className="w-full justify-start gap-2 text-sm cursor-pointer"
+          >
+            <Image src="/logos/msft.svg" alt="Microsoft" width={16} height={16} />
+            Upload folder
+          </Button>
+
         </PopoverContent>
       </Popover>
 

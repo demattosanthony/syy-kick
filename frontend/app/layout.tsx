@@ -47,6 +47,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          type="text/javascript"
+          src="https://js.live.net/v7.2/OneDrive.js"
+        />
         {/* iOS Splash Screen Images */}
         <link
           rel="apple-touch-startup-image"

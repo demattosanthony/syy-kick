@@ -327,6 +327,34 @@ export default Router()
     myPassport.authenticate("microsoft", authConfig),
     handlers.oauthCallback
   )
+  .get("/microsoft-files", (req, res) => {
+    console.log("microsoft-files");
+    myPassport.authenticate("microsoft-files", {
+      session: false,
+      failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
+    })(req, res);
+  })
+  .get(
+    "/microsoft-files/callback",
+    myPassport.authenticate("microsoft-files", {
+      failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
+      session: false,
+    }),
+    (req: Request, res: Response) => {
+      const user = req.user as any;
+
+      console.log(user, '<---- user')
+
+      res.send(`
+        <script>
+          window.opener.postMessage({
+            accessToken: "${user.accessToken}"
+          }, window.origin);
+          window.close();
+        </script>
+      `);
+    }
+  )
   .get("/saml/:slug", authenticateSaml)
   .post("/saml/:slug/callback", authenticateSaml, handlers.samlCallback)
   .get("/saml/check/:slug", async (req: Request, res: Response) => {
