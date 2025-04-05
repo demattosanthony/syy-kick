@@ -3,7 +3,7 @@ import { handlers } from "./documents.handlers";
 import PermissionsMiddlewares from "../../permissions/permissions.middlewares";
 import { Permissions } from "../../permissions/permissions.types";
 
-export default Router()
+export default Router({ mergeParams: true })
   .get(
     "",
     PermissionsMiddlewares.projects(
