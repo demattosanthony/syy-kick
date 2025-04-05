@@ -367,7 +367,7 @@ const threadsOps = {
       // 5) Create tools for the assistant if project ID exists
       let tools = {
         web_search: createWebSearchTool(),
-        ...(thread.knowledgeBase === undefined && {
+        ...(thread.knowledgeBase === null && {
           search_project_information: createProjectSearchTool(
             modelConfig,
             req.workspace!,
