@@ -28,7 +28,7 @@ import {
 async function getModelConfig(model: string) {
   if (model !== "Auto") return MODELS[model];
 
-  return MODELS["claude-3.7-sonnet"];
+  return MODELS["gpt-4o"];
 }
 
 /** If environment is production and user allows, return a presigned URL, else base64. */

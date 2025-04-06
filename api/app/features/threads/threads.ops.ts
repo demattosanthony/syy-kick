@@ -312,15 +312,7 @@ const threadsOps = {
         typeof inferenceSchema
       >;
 
-      // 1) Fetch thread
-      const thread = await threadsOps.getThread(threadId);
-      if (!thread) {
-        console.error("Thread not found");
-        res.status(404).json({ error: "Thread not found" });
-        return;
-      }
-
-      // 2) Add the user message to DB
+      // 1) Store the user message
       if (message) {
         await threadsOps.createMessage(req.dbUser!.id, threadId, "user", {
           content: message.content || "",
@@ -329,43 +321,57 @@ const threadsOps = {
         });
       }
 
-      // 3) Re-fetch all messages from DB to build inference context
-      const rawMessages = await db.query.messages.findMany({
-        where: eq(messages.threadId, threadId),
-        orderBy: messages.createdAt,
-        with: { attachments: true, toolCalls: true },
-      });
+      // 2) Fetch thread and knowledge bases in parallel
+      const [thread, knowledgeBases, modelConfig] = await Promise.all([
+        db.query.threads.findFirst({
+          where: eq(threads.id, threadId),
+          with: {
+            project: true,
+            organization: true,
+            knowledgeBase: true,
+            messages: {
+              with: {
+                attachments: true,
+                toolCalls: true,
+              },
+              orderBy: messages.createdAt,
+            },
+          },
+        }),
+        listKnowledgeBases(
+          req.dbUser!.id,
+          getOrgIdOrUnedfined(req.workspace),
+          1,
+          999
+        ),
+        Promise.resolve(getModelConfig(model)),
+      ]);
 
-      // 4) Determine appropriate model
-      const modelConfig = await getModelConfig(model);
+      if (!thread) {
+        console.error("Thread not found");
+        res.status(404).json({ error: "Thread not found" });
+        return;
+      }
 
-      // Find knowledge bases the user or org has
-      const knowledgeBases = await listKnowledgeBases(
-        req.dbUser!.id,
-        getOrgIdOrUnedfined(req.workspace),
-        1,
-        999
-      );
-
-      // 6) Prepare messages for inference
+      // 3) Prepare messages for inference
       const inferenceMsgs = await dbMessagesToInferenceMessages(
-        rawMessages,
+        thread.messages,
         modelConfig,
-        thread.project,
+        thread.project || undefined,
         instructions && instructions.length > 0 ? instructions : undefined,
-        thread.knowledgeBase,
+        thread.knowledgeBase || undefined,
         knowledgeBases.data
       );
 
-      // console.log("Inference messages:", inferenceMsgs);
+      // 4) Generate a thread title if missing
+      if (!thread.title) {
+        maybeGenerateTitle(threadId, inferenceMsgs, thread.title);
+      }
 
-      // 5) Generate a thread title if missing
-      await maybeGenerateTitle(threadId, inferenceMsgs, thread.title);
-
-      // 7) Create tools for the assistant if project ID exists
+      // 5) Create tools for the assistant if project ID exists
       let tools = {
         web_search: createWebSearchTool(),
-        ...(thread.knowledgeBase === undefined && {
+        ...(thread.knowledgeBase === null && {
           search_project_information: createProjectSearchTool(
             modelConfig,
             req.workspace!,
@@ -375,7 +381,7 @@ const threadsOps = {
         }),
         search_knowledge_base: createKnowledgeBaseSearchTool(
           modelConfig,
-          thread.knowledgeBase
+          thread.knowledgeBase || undefined
         ),
         list_items: createListTool(req.workspace!, req.dbUser!, thread.project),
         read_file: createFileReadTool(
