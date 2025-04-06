@@ -371,23 +371,21 @@ const threadsOps = {
       // 5) Create tools for the assistant if project ID exists
       let tools = {
         web_search: createWebSearchTool(),
-        ...(thread.knowledgeBase === null && {
-          search_project_information: createProjectSearchTool(
-            modelConfig,
-            req.workspace!,
-            req.dbUser!,
-            thread.projectId || undefined
-          ),
-        }),
-        search_knowledge_base: createKnowledgeBaseSearchTool(
+        file_search: createProjectSearchTool(
           modelConfig,
-          thread.knowledgeBase || undefined
+          req.workspace!,
+          req.dbUser!,
+          thread.projectId || undefined
         ),
-        list_items: createListTool(req.workspace!, req.dbUser!, thread.project),
+        list_files: createListTool(
+          req.workspace!,
+          req.dbUser!,
+          thread.project || undefined
+        ),
         read_file: createFileReadTool(
           req.workspace!,
           req.dbUser!,
-          thread.project
+          thread.project || undefined
         ),
       };
 

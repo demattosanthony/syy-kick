@@ -4,10 +4,8 @@ import { ModelConfig } from "../../models";
 import { z } from "zod";
 import { searchKnowledgeBaseDocuments } from "../../knowledge-bases/knowledge-bases.ops";
 import reranker from "../../../config/reranker";
-import { DocumentSearchToolResult } from "../threads.types";
 import {
   formatDocumentSearchResults,
-  getUniqueDocuments,
   processDocumentImages,
 } from "../threads.utils";
 
@@ -70,37 +68,39 @@ Returns:
         const textToResultMap = new Map(res.map((r) => [r.text, r]));
 
         // Map reranked results to simplified schema
-        const simplifiedDocs: DocumentSearchToolResult[] =
-          rerankedResults.results?.map((reranked) => {
-            const originalDoc = textToResultMap.get(reranked.document.text)!;
-            return {
-              documentId: originalDoc.document.id,
-              // Knowledge bases don't have project IDs, set to null or undefined
-              projectId: undefined,
-              path: originalDoc.document.path,
-              documentName: originalDoc.document.name,
-              text: originalDoc.text,
-              similarity: reranked.relevance_score,
-              pageNumber: (originalDoc.metadata as { page_number?: number })
-                ?.page_number,
-              mimeType: originalDoc.document.mimeType,
-              fileKey: originalDoc.document.fileKey,
-              // Add knowledgeBaseId for frontend context if needed
-              knowledgeBaseId: targetKnowledgeBaseId,
-            };
-          }) ?? []; // Ensure it defaults to an empty array if results are null/undefined
-        console.log(
-          "Simplified knowledge base docs length:",
-          simplifiedDocs.length
-        );
+        // const simplifiedDocs: DocumentSearchToolResult[] =
+        //   rerankedResults.results?.map((reranked) => {
+        //     const originalDoc = textToResultMap.get(reranked.document.text)!;
+        //     return {
+        //       documentId: originalDoc.document.id,
+        //       // Knowledge bases don't have project IDs, set to null or undefined
+        //       projectId: undefined,
+        //       path: originalDoc.document.path,
+        //       documentName: originalDoc.document.name,
+        //       text: originalDoc.text,
+        //       similarity: reranked.relevance_score,
+        //       pageNumber: (originalDoc.metadata as { page_number?: number })
+        //         ?.page_number,
+        //       mimeType: originalDoc.document.mimeType,
+        //       fileKey: originalDoc.document.fileKey,
+        //       // Add knowledgeBaseId for frontend context if needed
+        //       knowledgeBaseId: targetKnowledgeBaseId,
+        //     };
+        //   }) ?? []; // Ensure it defaults to an empty array if results are null/undefined
+        // console.log(
+        //   "Simplified knowledge base docs length:",
+        //   simplifiedDocs.length
+        // );
+
+        return "";
 
         // Generate final output
-        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
-        const images = modelConfig.model.modelId.includes("claude-3.7-sonnet")
-          ? await processDocumentImages(uniqueDocs)
-          : [];
+        // const uniqueDocs = getUniqueDocuments(simplifiedDocs);
+        // const images = modelConfig.model.modelId.includes("claude-3.7-sonnet")
+        //   ? await processDocumentImages(uniqueDocs)
+        //   : [];
 
-        return formatDocumentSearchResults(uniqueDocs, images);
+        // return formatDocumentSearchResults(uniqueDocs, images);
       } catch (error) {
         console.error(
           `Error searching knowledge base ${targetKnowledgeBaseId}:`,
@@ -117,22 +117,22 @@ Returns:
         };
       }
     },
-    experimental_toToolResultContent(result) {
-      if (!result || !result.context || result.context.startsWith("Error:")) {
-        // Handle cases where execute returned an error or no result
-        return [{ type: "text", text: result?.context || "No results found." }];
-      }
+    // experimental_toToolResultContent(result) {
+    //   if (!result || !result.context || result.context.startsWith("Error:")) {
+    //     // Handle cases where execute returned an error or no result
+    //     return [{ type: "text", text: result?.context || "No results found." }];
+    //   }
 
-      return [
-        ...(result.images || []).map((image) => ({
-          type: "image" as const,
-          data: image.imageData,
-          mimeType: image.mimeType,
-        })),
-        {
-          type: "text",
-          text: result.context,
-        },
-      ];
-    },
+    //   return [
+    //     ...(result.images || []).map((image) => ({
+    //       type: "image" as const,
+    //       data: image.imageData,
+    //       mimeType: image.mimeType,
+    //     })),
+    //     {
+    //       type: "text",
+    //       text: result.context,
+    //     },
+    //   ];
+    // },
   });

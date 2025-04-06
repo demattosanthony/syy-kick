@@ -8,10 +8,8 @@ import { ModelConfig } from "../../models";
 import { PermissionManager } from "../../permissions/permissions.tools";
 import { Permissions } from "../../permissions/permissions.types";
 import { documentsOps } from "../../projects/docs/documents.ops";
-import { DocumentSearchToolResult } from "../threads.types";
 import {
   formatDocumentSearchResults,
-  getUniqueDocuments,
   processDocumentImages,
 } from "../threads.utils";
 
@@ -120,73 +118,17 @@ Returns:
           limit: 80,
           documentId,
         });
-        console.log("Search results:", res.length);
+        console.log("Search results:", res);
 
-        // Rerank results
-        const rerankedResults = await reranker.rerank(
-          query,
-          res.map((r) => r.text || ""),
-          {
-            topN: 20,
-            returnDocuments: true,
-          }
-        );
+        const llmContext = formatDocumentSearchResults(res);
 
-        // Create a map of text to original result for lookup
-        const textToResultMap = new Map(res.map((r) => [r.text, r]));
+        console.log("\n\n");
+        console.log(llmContext.context);
 
-        // Map reranked results to simplified schema
-        const simplifiedDocs: DocumentSearchToolResult[] =
-          rerankedResults.results?.map((reranked) => {
-            const originalDoc = textToResultMap.get(reranked.document.text)!;
-            return {
-              documentId: originalDoc.document.id,
-              projectId: originalDoc.document.projectId || projectId || "", // Fallback to parameter or empty string
-              path: originalDoc.document.path,
-              documentName: originalDoc.document.name,
-              text: originalDoc.text,
-              similarity: reranked.relevance_score,
-              pageNumber: (originalDoc.metadata as { page_number?: number })
-                ?.page_number,
-              mimeType: originalDoc.document.mimeType,
-              fileKey: originalDoc.document.fileKey,
-            };
-          });
-        console.log("Simplified docs length:", simplifiedDocs.length);
-
-        // Generate final output
-        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
-        const images =
-          modelConfig.model.modelId.includes("claude-3-7-sonnet") ||
-          modelConfig.model.modelId.includes("claude-3-5-sonnet")
-            ? await processDocumentImages(uniqueDocs)
-            : [];
-
-        return formatDocumentSearchResults(uniqueDocs, images);
+        return llmContext.context;
       } catch (error) {
         console.error("Error searching project documents:", error);
-        return {
-          images: [],
-          context: "",
-          docs: [],
-          dataForFrontend: [],
-        };
+        return "Error searching project documents";
       }
-    },
-    experimental_toToolResultContent(result) {
-      if (!result) {
-        return [];
-      }
-      return [
-        ...result.images.map((image) => ({
-          type: "image" as const,
-          data: image.imageData,
-          mimeType: image.mimeType,
-        })),
-        {
-          type: "text",
-          text: result.context,
-        },
-      ];
     },
   });
