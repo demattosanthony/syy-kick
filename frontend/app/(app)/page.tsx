@@ -27,10 +27,11 @@ import { useProjectsQuery } from "@/features/projects/api";
 
 export default function Home() {
   const { data: user, isFetched: userFetched } = useMeQuery();
-  const { data: recentProjects } = useProjectsQuery({
-    sort: "recent",
-    limit: 6,
-  });
+  const { data: recentProjects, isFetching: projectsLoading } =
+    useProjectsQuery({
+      sort: "recent",
+      limit: 6,
+    });
 
   const router = useRouter();
   const [initalInput, setInitalInput] = useAtom(initalInputAtom);
@@ -100,7 +101,10 @@ export default function Home() {
           <div className="max-w-5xl w-full flex flex-col items-center">
             {user ? (
               <div className="mt-6 w-full">
-                <ProjectPreviews projects={recentProjects || []} />
+                <ProjectPreviews
+                  projects={recentProjects || []}
+                  isLoading={projectsLoading}
+                />
               </div>
             ) : (
               <div className="flex flex-col items-center max-w-[800px] w-full">
