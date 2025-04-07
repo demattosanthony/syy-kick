@@ -8,6 +8,7 @@ import { usePermissions } from "@/features/permissions/context";
 import Image from "next/image";
 import Link from "next/link";
 import { useWorkspace } from "@/components/sidebar/workspace-context";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Add this style tag for the pin point shape
 const PinStyles = () => (
@@ -51,7 +52,13 @@ const PinStyles = () => (
     }
   `}</style>
 );
-const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
+const ProjectPreviews = ({
+  projects,
+  isLoading,
+}: {
+  projects: Project[];
+  isLoading: boolean;
+}) => {
   const { canCreateOrgProjects } = usePermissions();
   const { activeWorkspace } = useWorkspace();
 
@@ -65,6 +72,14 @@ const ProjectPreviews = ({ projects }: { projects: Project[] }) => {
           <p className="text-sm text-muted-foreground">
             Continue working on your recent projects
           </p>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-[150px] rounded-lg" />
+          ))}
         </div>
       )}
 
