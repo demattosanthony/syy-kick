@@ -76,9 +76,16 @@ const UserMessage = ({ message }: { message: Message }) => {
 
   return (
     <div className="mb-4">
-      {message.experimental_attachments?.map((attachment, idx) => (
-        <ChatAttachment key={idx} attachment={attachment} />
-      ))}
+      {message.experimental_attachments &&
+        message.experimental_attachments.length > 0 && (
+          <div className="flex justify-end mb-2">
+            <div className="flex flex-col gap-2 items-end">
+              {message.experimental_attachments.map((attachment, idx) => (
+                <ChatAttachment key={idx} attachment={attachment} />
+              ))}
+            </div>
+          </div>
+        )}
       {message.content && (
         <MessageBubble
           content={message.content || ""}
