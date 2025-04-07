@@ -8,7 +8,7 @@ export const handlers = {
    * Otherwise, return the actual file (text or base64).
    */
   getDocument: async (req: Request, res: Response) => {
-    const projectId = req.originalUrl.split("/")[2];
+    const { projectId } = req.params;
     if (!projectId) {
       res.status(400).json({ error: "Project ID is required" });
       return;
@@ -24,7 +24,7 @@ export const handlers = {
   },
 
   documentsUpload: async (req: Request, res: Response) => {
-    const projectId = req.originalUrl.split("/")[2];
+    const { projectId } = req.params;
     if (!projectId) {
       res.status(400).json({ error: "Project ID is required" });
       return;
@@ -48,8 +48,7 @@ export const handlers = {
 
   getDocuments: async (req: Request, res: Response) => {
     try {
-      // Extraire le projectId du chemin de la requête
-      const projectId = req.originalUrl.split("/")[2];
+      const { projectId } = req.params;
       const { path } = req.query;
 
       if (!projectId) {
@@ -70,7 +69,7 @@ export const handlers = {
   },
 
   deleteContents: async (req: Request, res: Response) => {
-    const projectId = req.originalUrl.split("/")[2];
+    const { projectId } = req.params;
     if (!projectId) {
       res.status(400).json({ error: "Project ID is required" });
       return;
