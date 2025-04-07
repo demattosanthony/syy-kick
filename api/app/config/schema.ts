@@ -48,7 +48,7 @@ export {
   issueAssigneesRelations,
   issuesRelations,
   issueCommentsRelations,
-} from "../features/issues/issues.schema";
+} from "../features/projects/issues/issues.schema";
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),

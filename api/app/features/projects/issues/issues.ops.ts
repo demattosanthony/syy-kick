@@ -7,7 +7,7 @@ import {
   updateIssueSchema,
 } from "./issues.schema";
 import { PaginatedIssues } from "./issues.types";
-import db from "../../config/db";
+import db from "../../../config/db";
 import { z } from "zod";
 
 export const issueOps = {

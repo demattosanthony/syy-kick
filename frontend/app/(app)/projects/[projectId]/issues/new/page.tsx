@@ -34,13 +34,11 @@ export default function NewIssuePage() {
       {
         onSuccess: (data) => {
           toast.success(data.message || "Issue created successfully!");
-          // Navigate first, then reset state
           router.push(`/projects/${projectId}/issues`);
+
           // Resetting state for the form
           setTitle("");
-          setDescription(""); // Reset description state
-          // Editor content reset is handled internally by IssueEditor via initialContent prop if needed,
-          // but resetting state here ensures it's clear for next potential load.
+          setDescription("");
         },
         onError: (error) => {
           toast.error(`Failed to create issue: ${error.message}`);
@@ -85,17 +83,17 @@ export default function NewIssuePage() {
         </div>
         <div className="flex gap-3 justify-end">
           <Button
-            type="submit"
-            disabled={createIssueMutation.isPending || !title}
-          >
-            Create Issue
-          </Button>
-          <Button
             type="button"
             variant="outline"
             onClick={() => router.push(`/projects/${projectId}/issues`)}
           >
             Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={createIssueMutation.isPending || !title}
+          >
+            Create Issue
           </Button>
         </div>
       </form>

@@ -7,9 +7,9 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { projects, users } from "../../config/schema";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
+import { projects, users } from "../../../config/schema";
 
 export const ISSUE_STATUS = ["open", "closed"] as const;
 
