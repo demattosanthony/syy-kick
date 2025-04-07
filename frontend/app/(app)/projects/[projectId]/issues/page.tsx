@@ -25,7 +25,7 @@ export default function ProjectIssuesPage() {
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         <Link href={`/projects/${projectId}/issues/new`}>
-          <Button>Create Issue</Button>
+          <Button>New Issue</Button>
         </Link>
       </div>
       <IssuesList projectId={projectId} searchTerm={debouncedSearchTerm} />

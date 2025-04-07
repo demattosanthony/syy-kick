@@ -47,13 +47,42 @@ export const issueOps = {
     const limit = params.limit || 10;
     const offset = (page - 1) * limit;
 
-    // Get total count for pagination metadata
-    const [countResult] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(issues)
-      .where(and(...conditions));
+    // Perform counts concurrently
+    const [countResult, openCountResult, closedCountResult] = await Promise.all(
+      [
+        // Get total count for pagination metadata based on current filters
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(issues)
+          .where(and(...conditions)),
+        // Get total open count for the project
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(issues)
+          .where(
+            and(
+              eq(issues.projectId, params.projectId),
+              // TODO: Verify 'open' is the correct status value from ISSUE_STATUS
+              eq(issues.status, "open")
+            )
+          ),
+        // Get total closed count for the project
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(issues)
+          .where(
+            and(
+              eq(issues.projectId, params.projectId),
+              // TODO: Verify 'closed' is the correct status value from ISSUE_STATUS
+              eq(issues.status, "closed")
+            )
+          ),
+      ]
+    );
 
-    const totalCount = countResult.count || 0;
+    const totalCount = countResult[0]?.count || 0;
+    const totalOpen = openCountResult[0]?.count || 0;
+    const totalClosed = closedCountResult[0]?.count || 0;
 
     // Get issues
     const issuesList = await db.query.issues.findMany({
@@ -73,9 +102,11 @@ export const issueOps = {
       pagination: {
         page,
         limit,
-        totalCount,
+        totalCount, // Filtered count
         totalPages: Math.ceil(totalCount / limit),
         hasMore: totalCount > page * limit,
+        totalOpen, // Added: Total open issues in the project
+        totalClosed, // Added: Total closed issues in the project
       },
     };
   },

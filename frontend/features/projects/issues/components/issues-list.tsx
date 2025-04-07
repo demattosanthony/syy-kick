@@ -18,19 +18,13 @@ interface IssuesListProps {
 export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
   const [filterStatus, setFilterStatus] = useState<IssueStatus>("open");
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    error,
-  } = useGetIssues(projectId, {
-    status: filterStatus,
-    searchTerm: searchTerm,
-  });
-
-  console.log("IssuesList data", data);
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetIssues(
+    projectId,
+    {
+      status: filterStatus,
+      searchTerm: searchTerm,
+    }
+  );
 
   // Setup Intersection Observer
   const { ref, inView } = useInView({
@@ -62,7 +56,7 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
             } px-4 py-2 -mb-px hover:bg-transparent hover:text-primary`}
             onClick={() => setFilterStatus("open")}
           >
-            Open
+            Open ({data?.pages[0].pagination.totalOpen})
           </Button>
           <Button
             variant="ghost"
@@ -73,7 +67,7 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
             } px-4 py-2 -mb-px hover:bg-transparent hover:text-primary`}
             onClick={() => setFilterStatus("closed")}
           >
-            Closed
+            Closed ({data?.pages[0].pagination.totalClosed})
           </Button>
         </div>
 

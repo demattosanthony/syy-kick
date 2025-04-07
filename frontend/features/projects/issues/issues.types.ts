@@ -33,6 +33,8 @@ export interface PaginatedIssues {
     totalCount: number;
     totalPages: number;
     hasMore: boolean;
+    totalOpen: number;
+    totalClosed: number;
   };
 }
 
