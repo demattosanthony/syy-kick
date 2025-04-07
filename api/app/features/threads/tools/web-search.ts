@@ -4,13 +4,12 @@ import { MODELS } from "../../models";
 
 export const createWebSearchTool = () =>
   tool({
-    description: `Search the web for public information.
+    description: `This tool allows you to search the web for information on a specific topic. It can provide you with product manuals, technical specifications, and general knowledge.
 
 When to use:
 - Product manuals and technical specifications
 - Industry standards and building codes
 - Manufacturer documentation
-- General knowledge questions
 
 When NOT to use:
 - Project-specific information (use search_project_information instead)

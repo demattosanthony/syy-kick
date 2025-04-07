@@ -115,7 +115,7 @@ Returns:
           query,
           workspace,
           projectIds,
-          limit: 80,
+          limit: 25,
           documentId,
         });
         console.log("Search results:", res);
