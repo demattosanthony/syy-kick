@@ -10,18 +10,6 @@ import { projectsOps } from "../../projects/projects.ops";
 import { SortOption } from "../../projects/projects.types";
 import { normalizePath } from "../../projects/docs/documents.utils";
 
-function formatBytes(bytes: number, decimals = 2): string {
-  if (!+bytes) return "0 Bytes"; // Handle 0 or non-numeric input
-
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-}
-
 /** Tool to list projects or project contents (like 'ls') */
 export const createListTool = (
   workspace: Workspace,
@@ -80,8 +68,18 @@ Notes:
         .describe(
           'Optional. Either:\n1. Directory path (when project selected)\n2. "projectId:/path" format to list contents of a specific project\n3. Empty to list projects or project root'
         ),
+      page_size: z
+        .number()
+        .optional()
+        .describe("Optional. Number of items to display per page (default: 10)")
+        .default(10),
+      page_start: z
+        .number()
+        .optional()
+        .describe("Optional. Starting page number for pagination (default: 1)")
+        .default(1),
     }),
-    execute: async ({ path }) => {
+    execute: async ({ path, page_size, page_start }) => {
       try {
         if (project) {
           // List project contents for the given projectId
@@ -123,7 +121,8 @@ Notes:
 
             // Verify user has access to this project
             const listParams: Parameters<typeof projectsOps.listProjects>[0] = {
-              limit: 100,
+              limit: page_size,
+              page: page_start,
               sort: SortOption.NAME_ASC,
             };
 
@@ -178,7 +177,8 @@ Notes:
           // List projects accessible to the user in the workspace
           let projectsResult;
           const listParams: Parameters<typeof projectsOps.listProjects>[0] = {
-            limit: 100,
+            limit: page_size,
+            page: page_start,
             sort: SortOption.NAME_ASC,
           };
 
@@ -249,3 +249,15 @@ Notes:
       return [{ type: "text", text: result }];
     },
   });
+
+function formatBytes(bytes: number, decimals = 2): string {
+  if (!+bytes) return "0 Bytes"; // Handle 0 or non-numeric input
+
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}

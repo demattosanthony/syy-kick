@@ -357,6 +357,7 @@ const threadsOps = {
       const inferenceMsgs = await dbMessagesToInferenceMessages(
         thread.messages,
         modelConfig,
+        req.dbUser!,
         thread.project || undefined,
         instructions && instructions.length > 0 ? instructions : undefined,
         thread.knowledgeBase || undefined,
@@ -396,7 +397,7 @@ const threadsOps = {
       const result = streamText({
         model: modelConfig.model,
         messages: inferenceMsgs,
-        temperature: 0.6,
+        temperature: 0,
         tools: tools ? tools : undefined,
         maxSteps: tools ? 8 : undefined,
         toolChoice: "auto",
