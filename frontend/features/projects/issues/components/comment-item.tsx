@@ -129,7 +129,7 @@ export default function CommentItem({
               )}
             </div>
             <div
-              className="p-4 prose prose-sm sm:prose lg:prose-lg xl:prose-xl dark:prose-invert max-w-none"
+              className="p-4 max-w-none"
               dangerouslySetInnerHTML={{ __html: comment.comment }}
             />
           </>

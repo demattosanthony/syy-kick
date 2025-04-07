@@ -743,6 +743,10 @@ class ProjectsApi extends ApiRequest {
       throw error;
     }
   }
+
+  async getProjectMembers(projectId: string): Promise<User[]> {
+    return await this.request<User[]>(`/projects/${projectId}/members`);
+  }
 }
 
 class PermissionsApi extends ApiRequest {

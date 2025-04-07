@@ -49,4 +49,12 @@ export default Router()
       Permissions.Actions.READ
     ),
     documentsHandlers.getDocument
+  )
+  .get(
+    "/:projectId/members",
+    PermissionsMiddlewares.projects(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.READ
+    ),
+    handlers.getProjectMembers
   );

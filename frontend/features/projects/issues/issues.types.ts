@@ -10,6 +10,11 @@ export interface IssueComment {
   author: User;
 }
 
+export interface IssueAssignee {
+  assignedAt: string;
+  user: User;
+}
+
 export interface Issue {
   id: string;
   projectId: string;
@@ -23,6 +28,7 @@ export interface Issue {
   creator: User;
 
   comments?: IssueComment[];
+  assignees?: IssueAssignee[];
 }
 
 export interface PaginatedIssues {
@@ -41,10 +47,12 @@ export interface PaginatedIssues {
 export interface CreateIssueData {
   title: string;
   description?: string;
+  assignees?: string[];
 }
 
 export interface UpdateIssueData {
   title?: string;
   description?: string | null;
   status?: IssueStatus;
+  assignees?: string[];
 }

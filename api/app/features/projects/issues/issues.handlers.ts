@@ -96,7 +96,8 @@ export const issueHandlers = {
         creatorId: creatorId,
         title: req.body.title,
         description: req.body.description,
-        dueDate: req.body.dueDate, // Added dueDate
+        dueDate: req.body.dueDate,
+        assignees: req.body.assignees,
       };
 
       // Validation happens within issueOps.createIssue

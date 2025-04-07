@@ -4,6 +4,7 @@ import {
   createIssueSchema,
   Issue,
   ISSUE_STATUS,
+  issueAssignees,
   issueComments,
   issues,
   updateCommentSchema,
@@ -134,7 +135,11 @@ export const issueOps = {
       ),
       with: {
         creator: true,
-        assignees: true,
+        assignees: {
+          with: {
+            user: true,
+          },
+        },
         comments: {
           with: {
             author: true,
@@ -178,6 +183,18 @@ export const issueOps = {
     if (!newIssue) {
       throw new Error("Failed to create issue.");
     }
+
+    // Handle assignees
+    if (validatedData.assignees && validatedData.assignees.length > 0) {
+      await db.insert(issueAssignees).values(
+        validatedData.assignees.map((userId) => ({
+          issueId: newIssue.id,
+          userId: userId,
+          assignedAt: new Date(),
+        }))
+      );
+    }
+
     return newIssue;
   },
 
@@ -202,26 +219,60 @@ export const issueOps = {
 
     // Validate input data
     const validatedData = updateIssueSchema.parse(data);
+    const { assignees: newAssignees, ...issueUpdateData } = validatedData;
 
-    if (Object.keys(validatedData).length === 0) {
+    if (Object.keys(issueUpdateData).length === 0 && !newAssignees) {
       // Nothing to update
       return;
     }
 
+    // Fetch the issue first to get its ID for assignee updates
+    const issue = await db.query.issues.findFirst({
+      where: and(
+        eq(issues.projectId, projectId),
+        eq(issues.issueNumber, issueNumber)
+      ),
+      columns: {
+        id: true,
+      },
+    });
+
+    if (!issue) {
+      throw new Error("Issue not found for update.");
+    }
+
     const updatePayload = {
-      ...validatedData,
+      ...issueUpdateData,
       updatedAt: new Date(),
     };
 
-    await db
-      .update(issues)
-      .set(updatePayload)
-      .where(
-        and(
-          eq(issues.projectId, projectId),
-          eq(issues.issueNumber, issueNumber)
-        )
-      );
+    await db.transaction(async (tx) => {
+      if (Object.keys(issueUpdateData).length > 0) {
+        await tx
+          .update(issues)
+          .set(updatePayload)
+          .where(eq(issues.id, issue.id)); // Use issue ID for update
+      }
+
+      // Handle assignees update
+      if (newAssignees !== undefined) {
+        // Delete existing assignees for this issue
+        await tx
+          .delete(issueAssignees)
+          .where(eq(issueAssignees.issueId, issue.id));
+
+        // Insert new assignees if any are provided
+        if (newAssignees.length > 0) {
+          await tx.insert(issueAssignees).values(
+            newAssignees.map((userId) => ({
+              issueId: issue.id,
+              userId: userId,
+              assignedAt: new Date(),
+            }))
+          );
+        }
+      }
+    });
   },
 
   /**

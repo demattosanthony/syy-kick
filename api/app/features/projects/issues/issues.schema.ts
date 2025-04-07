@@ -115,12 +115,14 @@ export const createIssueSchema = z.object({
   creatorId: z.string().uuid(),
   title: z.string().min(1).max(255),
   description: z.string().optional(),
+  assignees: z.array(z.string().uuid()).optional(),
 });
 
 export const updateIssueSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
   status: z.enum(ISSUE_STATUS).optional(),
+  assignees: z.array(z.string().uuid()).optional(),
 });
 
 export const createCommentSchema = z.object({
