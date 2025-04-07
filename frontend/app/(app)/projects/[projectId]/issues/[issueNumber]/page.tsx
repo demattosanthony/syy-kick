@@ -3,20 +3,18 @@
 import { useGetIssue } from "@/features/projects/issues/api/get-issue";
 import { useParams } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { cn, getInitials, getRelativeTimeString } from "@/lib/utils";
+import { getInitials, getRelativeTimeString } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUpdateIssue } from "@/features/projects/issues/api";
 import { Button } from "@/components/ui/button";
 import {
   CircleCheck,
-  CircleDot,
   Loader2,
   MoreHorizontal,
   Pencil,
   RefreshCcwDot,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { IssueEditor } from "@/features/projects/issues/components/issue-editor";
 import {
@@ -29,6 +27,7 @@ import { useCreateCommentMutation } from "@/features/projects/issues/api/create-
 import { Separator } from "@/components/ui/separator";
 import { useMeQuery } from "@/features/user/api";
 import CommentItem from "@/features/projects/issues/components/comment-item";
+import { Input } from "@/components/ui/input";
 
 export default function IssueDetailPage() {
   const params = useParams<{
@@ -51,6 +50,9 @@ export default function IssueDetailPage() {
     projectId,
     isNaN(issueNumberInt) ? undefined : issueNumberInt
   );
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(issue?.title || "");
 
   const { mutate: updateIssue, isPending: isUpdating } = useUpdateIssue();
 
@@ -105,6 +107,35 @@ export default function IssueDetailPage() {
     setNewCommentHtml(""); // Clear the comment input
   };
 
+  const handleSaveTitle = () => {
+    if (!issue || !editedTitle || editedTitle === issue.title) {
+      setIsEditingTitle(false); // Exit edit mode if title is unchanged or empty
+      if (!editedTitle) {
+        toast.info("Title cannot be empty.");
+        setEditedTitle(issue?.title || ""); // Reset to original title if empty
+      }
+      return;
+    }
+
+    updateIssue(
+      {
+        projectId,
+        issueNumber: issue.issueNumber,
+        data: { title: editedTitle },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Title updated successfully!");
+          setIsEditingTitle(false);
+        },
+        onError: (err) => {
+          toast.error(`Failed to update title: ${err.message}`);
+          // Keep editing mode open for correction
+        },
+      }
+    );
+  };
+
   if (isLoading) {
     // TODO: Replace with a proper loading skeleton component
     return <div>Loading issue details...</div>;
@@ -134,33 +165,64 @@ export default function IssueDetailPage() {
 
   return (
     // Change min-h-screen to h-screen, remove space-y-6
-    <div className="container mx-auto p-4 max-w-5xl min-h-screen">
-      {/* Add min-h-screen */}
+    <div className="container mx-auto p-4 max-w-5xl h-full w-full">
       {/* Issue Header */}
       <div className="pb-4 border-b flex-shrink-0">
-        <h1 className="text-3xl font-semibold mb-2">
-          {issue.title}{" "}
-          <span className="text-gray-500 font-normal">
-            #{issue.issueNumber}
-          </span>
-        </h1>
-        <Badge
-          className={cn(
-            "text-base font-semibold rounded-md text-white gap-1",
-            issue.status === "open"
-              ? "bg-green-500 hover:bg-green-600"
-              : "bg-purple-500 hover:bg-purple-600"
-          )}
-        >
-          {issue.status === "open" ? (
-            <CircleDot className="h-4 w-4 text-white" />
+        {/* Flex container for title and edit controls */}
+        <div className="flex justify-between items-start gap-2 mb-2">
+          {isEditingTitle ? (
+            <div className="flex-grow flex items-center gap-2">
+              <Input
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveTitle();
+                  if (e.key === "Escape") setIsEditingTitle(false);
+                }}
+              />
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditingTitle(false);
+                  setEditedTitle(issue?.title || ""); // Reset on cancel
+                }}
+                disabled={isUpdating}
+                size={"sm"}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveTitle}
+                disabled={isUpdating || !editedTitle}
+                size={"sm"}
+              >
+                Save
+              </Button>
+            </div>
           ) : (
-            <CircleCheck className="h-4 w-4 text-white" />
+            <div className="flex-grow flex items-center gap-2">
+              {/* Wrap H1 and edit button in a flex container */}
+              <h1 className="text-3xl font-semibold flex-grow">
+                {issue.title}{" "}
+                <span className="text-gray-500 font-normal">
+                  #{issue.issueNumber}
+                </span>
+              </h1>
+              {/* Edit Button */}
+              <Button
+                size={"sm"}
+                onClick={() => {
+                  setEditedTitle(issue.title); // Set initial value for input
+                  setIsEditingTitle(true);
+                }}
+              >
+                Edit
+              </Button>
+            </div>
           )}
-          {issue.status.charAt(0).toUpperCase() + issue.status.slice(1)}
-        </Badge>
+        </div>
       </div>
-
       {/* Issue Body */}
       {/* Keep flex-1 overflow-hidden */}
       <div className="flex flex-col md:flex-row gap-6">
@@ -248,36 +310,42 @@ export default function IssueDetailPage() {
               ))}
             </div>
           )}
+
           {/* New Comment Form */}
-          {/* Removed Separator */}
-          <div className="flex items-start gap-4 pt-4">
-            {/* Keep internal spacing */}
-            <Avatar className="mt-1 flex-shrink-0">
-              <AvatarImage
-                src={user?.profilePicture}
-                alt="Current User Avatar"
-              />
-              <AvatarFallback>
-                {getInitials(user?.name, user?.email)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-grow">
-              <IssueEditor
-                initialContent={newCommentHtml} // Use state for content
-                onChange={setNewCommentHtml} // Update state on change
-                placeholder="Leave a comment..."
-                isLoading={isCreatingComment} // Reflect loading state
-                minHeight="100px"
-                showControls={false} // Hide Save/Cancel
-                // Removed props related to internal submit button
-                onCancel={() => setNewCommentHtml("")} // Provide a way to cancel/clear
-              />
+          <div className="pt-4">
+            {/* Use flex to position Avatar and the Title/Editor block */}
+            <div className="flex items-start gap-4">
+              <Avatar className="flex-shrink-0 mt-1">
+                {/* Align avatar slightly */}
+                <AvatarImage
+                  src={user?.profilePicture}
+                  alt="Current User Avatar"
+                />
+                <AvatarFallback>
+                  {getInitials(user?.name, user?.email)}
+                </AvatarFallback>
+              </Avatar>
+              {/* Container for Title and Editor */}
+              <div className="flex-grow">
+                <h3 className="font-medium mb-2">Add a comment</h3>{" "}
+                {/* Added mb-2 */}
+                <IssueEditor
+                  initialContent={newCommentHtml} // Use state for content
+                  onChange={setNewCommentHtml} // Update state on change
+                  placeholder="Leave a comment..."
+                  isLoading={isCreatingComment} // Reflect loading state
+                  minHeight="100px"
+                  showControls={false} // Hide Save/Cancel
+                  // Removed props related to internal submit button
+                  onCancel={() => setNewCommentHtml("")} // Provide a way to cancel/clear
+                />
+              </div>
             </div>
           </div>
 
           {/* Action Buttons (Moved and combined) */}
           {/* Make sticky */}
-          <div className="flex justify-end items-center gap-2 pt-2 mt-2 bg-background pb-4">
+          <div className="flex justify-end items-center gap-2 pt-2 mt-2 bg-background pb-20">
             {/* Close/Reopen Button */}
             <Button
               variant="outline"
@@ -312,7 +380,7 @@ export default function IssueDetailPage() {
 
         {/* Sidebar (Placeholder) */}
         {/* Add padding */}
-        <aside className="w-full md:w-64 lg:w-72 space-y-4 flex-shrink-0 pt-4 pl-2">
+        <aside className=" w-64  space-y-4 flex-shrink-0 pt-4 pl-2">
           {/* // TODO: Implement sidebar components (Assignees, Labels, Projects, etc.) */}
         </aside>
       </div>
