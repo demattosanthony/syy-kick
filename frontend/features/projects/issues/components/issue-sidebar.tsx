@@ -38,29 +38,27 @@ export function IssueSidebar({
       await onAssigneesChange(selectedAssigneeIds);
     } catch (error) {
       console.error("Failed to update assignees:", error);
-      // Error handled by parent mutation hook
-      // Consider reverting MultiSelect state visually if needed
     }
   };
 
   return (
     <aside className="w-64 space-y-4 flex-shrink-0 pt-4 pl-2">
       <div className="space-y-2">
-        <Label className="text-base font-semibold">Assignees</Label>
+        <Label className="text-sm font-bold">Assignees</Label>
         {isLoadingMembers ? (
-          <p>Loading members...</p>
+          <p />
         ) : (
           <MultiSelect
             options={memberOptions}
             onValueChange={handleAssigneesUpdate}
             defaultValue={currentAssigneeIds}
             placeholder="Select assignees..."
-            className="bg-background/50 w-full"
+            className="bg-background/50 w-full shadow-none"
             disabled={isUpdating}
+            animation={0}
           />
         )}
       </div>
-      {/* TODO: Implement other sidebar components (Labels, Projects, etc.) */}
     </aside>
   );
 }

@@ -3,7 +3,7 @@ import { IssueComment } from "../issues.types";
 import { useDeleteCommentMutation, useUpdateCommentMutation } from "../api";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, getInitials, getRelativeTimeString } from "@/lib/utils";
+import { getInitials, getRelativeTimeString } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,73 +79,66 @@ export default function CommentItem({
         </AvatarFallback>
       </Avatar>
 
-      <div
-        className={cn(
-          "border rounded-md bg-card text-card-foreground flex-grow",
-          isEditing && "p-0"
-        )}
-      >
-        {!isEditing ? (
-          <>
-            <div className="flex items-center justify-between p-3 border-b bg-muted/50 rounded-t-md">
-              <span className="text-sm font-semibold text-muted-foreground">
-                <strong>{comment.author.name || comment.author.email}</strong>{" "}
-                commented {getRelativeTimeString(comment.createdAt)}
-                {comment.createdAt !== comment.updatedAt && " (edited)"}
-              </span>
-              {canEditOrDelete && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      disabled={isUpdatingComment || isDeletingComment}
-                    >
-                      {isUpdatingComment || isDeletingComment ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <MoreHorizontal className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={handleDelete}
-                      className="text-red-600 focus:text-red-600 focus:bg-red-100"
-                      disabled={isDeletingComment}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-            <div
-              className="p-4 max-w-none"
-              dangerouslySetInnerHTML={{ __html: comment.comment }}
-            />
-          </>
-        ) : (
-          <div className="p-4 max-w-none">
-            <IssueEditor
-              initialContent={comment.comment}
-              onSave={handleSaveEdit}
-              onCancel={() => setIsEditing(false)}
-              isLoading={isUpdatingComment}
-              placeholder="Edit your comment..."
-              minHeight="150px"
-              showControls={true}
-            />
+      {isEditing ? (
+        <div className="flex-grow max-w-none">
+          <IssueEditor
+            initialContent={comment.comment}
+            onSave={handleSaveEdit}
+            onCancel={() => setIsEditing(false)}
+            isLoading={isUpdatingComment}
+            placeholder="Edit your comment..."
+            minHeight="125px"
+            showControls={true}
+          />
+        </div>
+      ) : (
+        <div className="border rounded-md bg-card text-card-foreground flex-grow">
+          <div className="flex items-center justify-between p-3 border-b bg-muted/50 rounded-t-md">
+            <span className="text-sm font-semibold text-muted-foreground">
+              <strong>{comment.author.name || comment.author.email}</strong>{" "}
+              commented {getRelativeTimeString(comment.createdAt)}
+              {comment.createdAt !== comment.updatedAt && " (edited)"}
+            </span>
+            {canEditOrDelete && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    disabled={isUpdatingComment || isDeletingComment}
+                  >
+                    {isUpdatingComment || isDeletingComment ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <MoreHorizontal className="h-4 w-4" />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleDelete}
+                    className="text-red-600 focus:text-red-600 focus:bg-red-100"
+                    disabled={isDeletingComment}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
-        )}
-      </div>
+          <div
+            className="p-4 max-w-none"
+            dangerouslySetInnerHTML={{ __html: comment.comment }}
+          />
+        </div>
+      )}
     </div>
   );
 }
