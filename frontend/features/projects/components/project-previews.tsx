@@ -66,7 +66,7 @@ const ProjectPreviews = ({
     <div className="w-full max-w-[950px] px-6 mx-auto">
       <PinStyles />
 
-      {projects?.length > 0 && (
+      {!isLoading && projects?.length > 0 && (
         <div className="flex flex-col gap-1 mb-3 ">
           <h3 className="text-lg font-medium">Recent Projects</h3>
           <p className="text-sm text-muted-foreground">
@@ -75,15 +75,43 @@ const ProjectPreviews = ({
         </div>
       )}
 
-      {isLoading && (
+      {/* Render the grid if loading or if there are projects */}
+      {(isLoading || projects.length > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} className="h-[150px] rounded-lg" />
-          ))}
+          {isLoading ? (
+            // Show skeletons while loading
+            Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton key={index} className="h-[150px] rounded-lg" />
+            ))
+          ) : (
+            // Show projects and potentially the "Add Project" card
+            <>
+              {projects.map((project) => (
+                <Link
+                  key={project.id}
+                  href={`/projects/${project.id}`}
+                  prefetch={false}
+                  className="block"
+                >
+                  <ProjectCard project={project} />
+                </Link>
+              ))}
+              {projects.length < 6 && canCreateOrgProjects && (
+                <AddProjectCard
+                  organizationId={
+                    activeWorkspace?.type === "organization"
+                      ? activeWorkspace.id
+                      : undefined
+                  }
+                />
+              )}
+            </>
+          )}
         </div>
       )}
 
-      {projects.length === 0 && canCreateOrgProjects ? (
+      {/* Show empty state only when not loading and no projects exist */}
+      {!isLoading && projects.length === 0 && canCreateOrgProjects && (
         <div className="flex justify-center items-center w-full">
           <div className="bg-card text-card-foreground rounded-xl shadow-sm border border-border p-6 w-full max-w-md flex flex-col items-center text-center">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
@@ -108,30 +136,6 @@ const ProjectPreviews = ({
               }
             />
           </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {projects.map((project) => (
-            <Link
-              key={project.id}
-              href={`/projects/${project.id}`}
-              prefetch={false}
-              className="block"
-            >
-              <ProjectCard project={project} />
-            </Link>
-          ))}
-
-          {/* Add "Create Project" card if there are fewer than 6 projects */}
-          {projects.length < 6 && canCreateOrgProjects && (
-            <AddProjectCard
-              organizationId={
-                activeWorkspace?.type === "organization"
-                  ? activeWorkspace.id
-                  : undefined
-              }
-            />
-          )}
         </div>
       )}
     </div>
