@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { IssueComment } from "../issues.types";
 import { useDeleteCommentMutation, useUpdateCommentMutation } from "../api";
 import { toast } from "sonner";
@@ -29,7 +29,6 @@ export default function CommentItem({
   currentUserId,
 }: CommentItemProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const editorRef = useRef<{ resetContent: () => void }>(null); // Ref for editor controls
 
   const { mutate: updateComment, isPending: isUpdatingComment } =
     useUpdateCommentMutation(projectId, issueNumber, comment.id);
@@ -83,7 +82,7 @@ export default function CommentItem({
       <div
         className={cn(
           "border rounded-md bg-card text-card-foreground flex-grow",
-          isEditing && "p-0" // Remove padding when editor is inside
+          isEditing && "p-0"
         )}
       >
         {!isEditing ? (
@@ -134,15 +133,17 @@ export default function CommentItem({
             />
           </>
         ) : (
-          <IssueEditor
-            initialContent={comment.comment}
-            onSave={handleSaveEdit} // Use onSave for editing existing comment
-            onCancel={() => setIsEditing(false)}
-            isLoading={isUpdatingComment}
-            placeholder="Edit your comment..."
-            minHeight="150px" // Smaller height for editing
-            showControls={true} // Show Save/Cancel
-          />
+          <div className="p-4 max-w-none">
+            <IssueEditor
+              initialContent={comment.comment}
+              onSave={handleSaveEdit}
+              onCancel={() => setIsEditing(false)}
+              isLoading={isUpdatingComment}
+              placeholder="Edit your comment..."
+              minHeight="150px"
+              showControls={true}
+            />
+          </div>
         )}
       </div>
     </div>

@@ -58,7 +58,7 @@ export function IssueCommentSection({
   };
 
   return (
-    <div className="flex-grow flex flex-col pr-2">
+    <div className="flex-grow flex flex-col pr-2 pb-20">
       {/* Comments List */}
       {sortedComments.length > 0 && (
         <div className="space-y-6 pt-6">

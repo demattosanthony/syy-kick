@@ -109,15 +109,15 @@ export default function IssueDetailPage() {
 
   return (
     // Use flex container for layout
-    <div className="container mx-auto p-4 max-w-5xl h-full w-full flex flex-col">
+    <div className="container mx-auto p-4 max-w-5xl h-full w-full flex flex-1 flex-col">
       <IssueHeader
         issue={issue}
         isUpdating={isUpdating}
         onSaveTitle={handleSaveTitle}
       />
 
-      <div className="flex flex-1 mt-4 gap-6 overflow-hidden">
-        <div className="flex-1 flex flex-col overflow-y-auto pr-4">
+      <div className="flex flex-1 mt-4 gap-6">
+        <div className="flex-1 flex flex-col pr-4">
           <IssueDescription
             issue={issue}
             isUpdating={isUpdating}
