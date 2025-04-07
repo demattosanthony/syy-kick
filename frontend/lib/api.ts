@@ -1160,6 +1160,58 @@ class IssuesApi extends ApiRequest {
       throw error;
     }
   }
+
+  // --- Comment API Methods ---
+  async createComment(
+    projectId: string,
+    issueNumber: number,
+    data: { comment: string }
+  ): Promise<{ message: string; commentId: string }> {
+    try {
+      return await this.request<{ message: string; commentId: string }>(
+        `/projects/${projectId}/issues/${issueNumber}/comments`,
+        "POST",
+        data
+      );
+    } catch (error) {
+      console.error(`Failed to add comment to issue ${issueNumber}:`, error);
+      throw error;
+    }
+  }
+
+  async updateComment(
+    projectId: string,
+    issueNumber: number,
+    commentId: string,
+    data: { comment: string }
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/projects/${projectId}/issues/${issueNumber}/comments/${commentId}`,
+        "PATCH",
+        data
+      );
+    } catch (error) {
+      console.error(`Failed to update comment ${commentId}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteComment(
+    projectId: string,
+    issueNumber: number,
+    commentId: string
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/projects/${projectId}/issues/${issueNumber}/comments/${commentId}`,
+        "DELETE"
+      );
+    } catch (error) {
+      console.error(`Failed to delete comment ${commentId}:`, error);
+      throw error;
+    }
+  }
 }
 
 /**

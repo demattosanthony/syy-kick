@@ -2,6 +2,14 @@ import { User } from "@/types/user";
 
 export type IssueStatus = "open" | "closed";
 
+export interface IssueComment {
+  id: string;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+  author: User;
+}
+
 export interface Issue {
   id: string;
   projectId: string;
@@ -13,6 +21,8 @@ export interface Issue {
   createdAt: string;
   updatedAt: string;
   creator: User;
+
+  comments?: IssueComment[];
 }
 
 export interface PaginatedIssues {

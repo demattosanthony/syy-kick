@@ -16,6 +16,7 @@ import {
   Heading,
   ListOrdered,
   CheckSquare,
+  Loader2,
 } from "lucide-react";
 import { useEffect } from "react";
 
@@ -105,7 +106,8 @@ interface IssueEditorProps {
   placeholder?: string;
   isLoading?: boolean;
   editable?: boolean;
-  showControls?: boolean; // New prop to control visibility of Save/Cancel
+  showControls?: boolean;
+  minHeight?: string;
 }
 
 export function IssueEditor({
@@ -116,7 +118,8 @@ export function IssueEditor({
   placeholder = "Type here...",
   isLoading = false,
   editable = true,
-  showControls = true, // Default to true
+  showControls = true,
+  minHeight = "400px",
 }: IssueEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -162,17 +165,17 @@ export function IssueEditor({
     editorProps: {
       attributes: {
         class: cn(
-          "min-h-[400px] w-full px-3 py-2 text-sm outline-none",
+          "w-full px-3 py-2 text-sm outline-none",
           "disabled:cursor-not-allowed disabled:opacity-50"
         ),
+        style: `min-height: ${minHeight};`,
       },
     },
     content: initialContent,
-    editable: editable && !isLoading, // Editor is editable only if not loading and editable prop is true
+    editable: editable && !isLoading,
     onUpdate: ({ editor }) => {
       if (onChange) {
         const htmlContent = editor.getHTML();
-        // Treat empty paragraph as empty string for consistency
         onChange(htmlContent === "<p></p>" ? "" : htmlContent);
       }
     },
@@ -200,24 +203,31 @@ export function IssueEditor({
     if (onSave) onSave(htmlContent === "<p></p>" ? "" : htmlContent);
   };
 
+  const resetContent = () => {
+    editor?.commands.clearContent(true); // Clear content and trigger update
+  };
+
   return (
-    <div
-      className={cn(
-        "flex flex-col",
-        "rounded-md border border-input bg-card", // Use bg-card for consistency
-        "ring-offset-background focus-within:outline-none focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-1",
-        isLoading && "opacity-70 cursor-not-allowed" // Style when loading
-      )}
-    >
-      <MenuBar editor={editor} />
-      <div className="flex-grow overflow-auto p-2">
-        {" "}
-        {/* Added padding */}
-        <EditorContent editor={editor} />
+    <div className={cn(isLoading && "opacity-70 cursor-not-allowed")}>
+      {/* Apply border and focus styles to this inner div */}
+      <div
+        className={cn(
+          "rounded-md border border-input bg-card",
+          "ring-offset-background focus-within:outline-none focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-1",
+          "overflow-hidden" // Ensure border radius applies correctly to children
+        )}
+      >
+        <MenuBar editor={editor} />
+        <div className="flex-grow overflow-auto p-3">
+          <EditorContent editor={editor} />
+        </div>
       </div>
-      {showControls &&
-        editable && ( // Only show controls if editable and showControls is true
-          <div className="flex justify-end gap-2 p-2 border-t border-input">
+
+      {/* Button container is now outside the bordered div */}
+      {editable &&
+        showControls && ( // Only show Save/Cancel controls now
+          // Added margin-top for spacing
+          <div className="flex justify-end gap-2 mt-3">
             <Button
               type="button"
               variant="ghost"
@@ -233,12 +243,16 @@ export function IssueEditor({
                 isLoading ||
                 !editor?.isEditable ||
                 editor?.getHTML() === initialContent
-              } // Disable if loading, not editable, or no changes
+              }
             >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
               {isLoading ? "Saving..." : "Save"}
             </Button>
           </div>
         )}
+      {/* Removed submit button logic previously here */}
     </div>
   );
 }

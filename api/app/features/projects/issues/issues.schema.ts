@@ -51,6 +51,20 @@ export const issueAssignees = pgTable(
   })
 );
 
+export const issueComments = pgTable("issue_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  issueId: uuid("issue_id")
+    .notNull()
+    .references(() => issues.id, { onDelete: "cascade" }),
+  authorId: uuid("author_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "set null" }), // Keep comment even if author deleted
+  comment: text("comment").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// DB Relations
 export const issuesRelations = relations(issues, ({ one, many }) => ({
   // Relation: Issue -> Creator (User)
   creator: one(users, {
@@ -82,19 +96,6 @@ export const issueAssigneesRelations = relations(issueAssignees, ({ one }) => ({
   }),
 }));
 
-export const issueComments = pgTable("issue_comments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  issueId: uuid("issue_id")
-    .notNull()
-    .references(() => issues.id, { onDelete: "cascade" }),
-  authorId: uuid("author_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "set null" }), // Keep comment even if author deleted
-  comment: text("comment").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
 export const issueCommentsRelations = relations(issueComments, ({ one }) => ({
   // Relation: IssueComment -> Issue
   issue: one(issues, {
@@ -120,4 +121,14 @@ export const updateIssueSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().optional(),
   status: z.enum(ISSUE_STATUS).optional(),
+});
+
+export const createCommentSchema = z.object({
+  issueId: z.string().uuid(),
+  authorId: z.string().uuid(),
+  comment: z.string().min(1),
+});
+
+export const updateCommentSchema = z.object({
+  comment: z.string().min(1),
 });

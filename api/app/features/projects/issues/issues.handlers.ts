@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { issueOps } from "./issues.ops";
-import { ISSUE_STATUS } from "./issues.schema";
+import { ISSUE_STATUS, issueComments } from "./issues.schema";
 import { PaginatedIssues } from "./issues.types";
+import db from "../../../config/db";
+import { eq } from "drizzle-orm";
 
 export const issueHandlers = {
   /**
@@ -167,6 +169,127 @@ export const issueHandlers = {
     } catch (error) {
       console.error("Error deleting issue:", error);
       res.status(500).json({ message: "Failed to delete issue" });
+    }
+  },
+
+  // --- Comment Handlers ---
+
+  /**
+   * Create a new comment on an issue
+   */
+  createComment: async (req: Request, res: Response) => {
+    try {
+      const { issueNumber, projectId } = req.params;
+      const authorId = req.dbUser?.id;
+
+      if (!authorId) {
+        res.status(401).json({ message: "Authentication required" });
+        return;
+      }
+
+      // Get the internal issue ID from project ID and issue number
+      const issue = await issueOps.getIssue({
+        projectId,
+        issueNumber: Number(issueNumber),
+      });
+      if (!issue) {
+        res.status(404).json({ message: "Issue not found" });
+        return;
+      }
+
+      const commentData = {
+        issueId: issue.id,
+        authorId: authorId,
+        comment: req.body.comment,
+      };
+
+      const newComment = await issueOps.createComment({ data: commentData });
+
+      res.status(201).json({
+        message: "Comment added successfully",
+        commentId: newComment.id,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res
+          .status(400)
+          .json({ message: "Validation failed", errors: error.errors });
+        return;
+      }
+      if (error instanceof Error && error.message === "Issue not found.") {
+        res.status(404).json({ message: error.message });
+        return;
+      }
+      console.error("Error creating comment:", error);
+      res.status(500).json({ message: "Failed to add comment" });
+    }
+  },
+
+  /**
+   * Update an existing comment
+   */
+  updateComment: async (req: Request, res: Response) => {
+    try {
+      const { commentId } = req.params;
+      const userId = req.dbUser?.id;
+
+      // Authorization check - does the user own the comment?
+      const comment = await db.query.issueComments.findFirst({
+        where: eq(issueComments.id, commentId),
+      });
+      if (!comment || comment.authorId !== userId) {
+        res.status(403).json({ message: "Forbidden" });
+        return;
+      }
+
+      await issueOps.updateComment({
+        commentId: commentId,
+        data: req.body,
+      });
+
+      res.status(200).json({ message: "Comment updated successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res
+          .status(400)
+          .json({ message: "Validation failed", errors: error.errors });
+        return;
+      }
+      if (
+        error instanceof Error &&
+        error.message === "Comment content cannot be empty."
+      ) {
+        res.status(400).json({ message: error.message });
+        return;
+      }
+      console.error("Error updating comment:", error);
+      res.status(500).json({ message: "Failed to update comment" });
+    }
+  },
+
+  /**
+   * Delete a comment
+   */
+  deleteComment: async (req: Request, res: Response) => {
+    try {
+      const { commentId } = req.params;
+      const userId = req.dbUser?.id;
+
+      // Authorization check - does the user own the comment?
+      const comment = await db.query.issueComments.findFirst({
+        where: eq(issueComments.id, commentId),
+      });
+      if (!comment || comment.authorId !== userId) {
+        res.status(403).json({ message: "Forbidden" });
+        return;
+      }
+
+      await issueOps.deleteComment({ commentId: commentId });
+
+      res.status(200).json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      res.status(500).json({ message: "Failed to delete comment" });
     }
   },
 };

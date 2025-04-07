@@ -41,4 +41,24 @@ export default Router({
     // Add permission check for deleting a specific issue
     // Example: PermissionsMiddlewares.issue(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.DELETE),
     handlers.delete
+  )
+
+  // --- Comment Routes (nested under issues) ---
+  .post(
+    "/:issueNumber/comments",
+    // Add permission check for creating comments on a specific issue
+    // Example: PermissionsMiddlewares.issue(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.CREATE), // Or a specific COMMENT permission
+    handlers.createComment
+  )
+  .patch(
+    "/:issueNumber/comments/:commentId", // Route specific to a comment ID
+    // Add permission check for updating a specific comment
+    // Example: PermissionsMiddlewares.comment(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.UPDATE),
+    handlers.updateComment
+  )
+  .delete(
+    "/:issueNumber/comments/:commentId", // Route specific to a comment ID
+    // Add permission check for deleting a specific comment
+    // Example: PermissionsMiddlewares.comment(Permissions.Resources.PROJECT_ISSUES, Permissions.Actions.DELETE),
+    handlers.deleteComment
   );

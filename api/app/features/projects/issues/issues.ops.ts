@@ -1,9 +1,12 @@
 import { and, desc, eq, ilike, max, or, sql } from "drizzle-orm";
 import {
+  createCommentSchema,
   createIssueSchema,
   Issue,
   ISSUE_STATUS,
+  issueComments,
   issues,
+  updateCommentSchema,
   updateIssueSchema,
 } from "./issues.schema";
 import { PaginatedIssues } from "./issues.types";
@@ -101,7 +104,11 @@ export const issueOps = {
       with: {
         creator: true,
         assignees: true,
-        comments: true,
+        comments: {
+          with: {
+            author: true,
+          },
+        },
       },
     });
   },
@@ -212,5 +219,78 @@ export const issueOps = {
           eq(issues.issueNumber, issueNumber)
         )
       );
+  },
+
+  // --- Comment Operations ---
+
+  /**
+   * Create a new comment on an issue.
+   */
+  createComment: async ({
+    data,
+  }: {
+    data: z.infer<typeof createCommentSchema>;
+  }): Promise<{ id: string }> => {
+    const validatedData = createCommentSchema.parse(data);
+
+    // Optional: Verify the issue exists before adding a comment
+    const issueExists = await db.query.issues.findFirst({
+      where: eq(issues.id, validatedData.issueId),
+      columns: { id: true },
+    });
+
+    if (!issueExists) {
+      throw new Error("Issue not found.");
+    }
+
+    const [newComment] = await db
+      .insert(issueComments)
+      .values({
+        ...validatedData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning({ id: issueComments.id });
+
+    if (!newComment) {
+      throw new Error("Failed to create comment.");
+    }
+    return newComment;
+  },
+
+  /**
+   * Update an existing comment.
+   */
+  updateComment: async ({
+    commentId,
+    data,
+  }: {
+    commentId: string;
+    data: z.infer<typeof updateCommentSchema>;
+  }): Promise<void> => {
+    const validatedData = updateCommentSchema.parse(data);
+
+    if (!validatedData.comment || validatedData.comment.trim() === "") {
+      throw new Error("Comment content cannot be empty.");
+    }
+
+    await db
+      .update(issueComments)
+      .set({
+        comment: validatedData.comment,
+        updatedAt: new Date(),
+      })
+      .where(eq(issueComments.id, commentId));
+  },
+
+  /**
+   * Delete a comment by its ID.
+   */
+  deleteComment: async ({
+    commentId,
+  }: {
+    commentId: string;
+  }): Promise<void> => {
+    await db.delete(issueComments).where(eq(issueComments.id, commentId));
   },
 };
