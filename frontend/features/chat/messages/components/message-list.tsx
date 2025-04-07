@@ -24,7 +24,7 @@ const MessageBubble = ({
         relative flex flex-col rounded-lg p-2
         ${
           isUser
-            ? "bg-primary text-white dark:text-black max-w-[85%]"
+            ? "bg-primary text-white dark:text-black max-w-[515px]"
             : "bg-background max-w-full"
         }
       `}

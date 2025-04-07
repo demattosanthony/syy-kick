@@ -353,6 +353,7 @@ const threadsOps = {
       const inferenceMsgs = await dbMessagesToInferenceMessages(
         thread.messages,
         modelConfig,
+        req.dbUser!,
         thread.project || undefined,
         instructions && instructions.length > 0 ? instructions : undefined,
         thread.knowledgeBase || undefined,
