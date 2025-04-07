@@ -27,7 +27,6 @@ export default function IssueDetailPage() {
   const {
     data: issue,
     isLoading,
-    isFetching,
     error,
   } = useGetIssue(
     projectId,
@@ -36,12 +35,9 @@ export default function IssueDetailPage() {
   const { data: members, isLoading: isLoadingMembers } =
     useProjectMembersQuery(projectId);
 
-  const { mutateAsync: updateIssue, isPending: isUpdating } = useUpdateIssue(); // Use mutateAsync for Promise
+  const { mutateAsync: updateIssue, isPending: isUpdating } = useUpdateIssue();
 
-  const {
-    mutateAsync: createComment,
-    isPending: isCreatingComment,
-  } = // Use mutateAsync for Promise
+  const { mutateAsync: createComment, isPending: isCreatingComment } =
     useCreateCommentMutation(projectId, issueNumberInt);
 
   // --- Handlers that call mutations ---
@@ -55,10 +51,9 @@ export default function IssueDetailPage() {
         data,
       });
       toast.success("Issue updated successfully!");
-      // refetchIssue(); // Optionally refetch issue data if cache invalidation isn't immediate/sufficient
     } catch (err: any) {
       toast.error(`Failed to update issue: ${err.message}`);
-      throw err; // Re-throw to allow components to handle UI state (e.g., keep edit mode open)
+      throw err;
     }
   };
 
@@ -83,24 +78,16 @@ export default function IssueDetailPage() {
   const handleCreateComment = async (commentHtml: string) => {
     try {
       await createComment({ comment: commentHtml });
-      // Comment creation success is handled by the mutation hook (cache update)
-      // No need for explicit success toast here unless desired
-      // refetchIssue(); // Optionally refetch if comment list doesn't update automatically
     } catch (err: any) {
       toast.error(`Failed to create comment: ${err.message}`);
-      throw err; // Re-throw maybe? Or just handle here.
+      throw err;
     }
   };
 
   // --- Render Logic ---
 
-  if (isLoading || isFetching) {
-    // TODO: Replace with a proper loading skeleton component
-    return (
-      <div className="container mx-auto p-4 max-w-5xl h-full w-full">
-        Loading issue details...
-      </div>
-    );
+  if (isLoading) {
+    return null;
   }
 
   if (error) {
@@ -117,12 +104,7 @@ export default function IssueDetailPage() {
   }
 
   if (!issue) {
-    // Should not happen if !isLoading and !error, but good practice
-    return (
-      <div className="container mx-auto p-4 max-w-5xl h-full w-full">
-        Issue not found.
-      </div>
-    );
+    return null;
   }
 
   return (

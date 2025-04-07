@@ -1,4 +1,4 @@
-import { Issue, IssueAssignee } from "@/features/projects/issues/issues.types";
+import { Issue } from "@/features/projects/issues/issues.types";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { User } from "@/types/user";
