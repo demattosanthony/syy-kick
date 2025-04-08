@@ -109,6 +109,7 @@ import {
 } from "./message-skeletons";
 import { Loader } from "@/components/ui/loader";
 import { ChatContainer } from "@/components/ui/chat-container";
+import { ScrollButton } from "@/components/ui/scroll-button";
 
 const LoadingMessage = React.memo(
   ({ status }: { status: "error" | "submitted" | "streaming" | "ready" }) => {
@@ -147,6 +148,7 @@ const ChatMessagesList = React.memo(
     showSkeletons?: boolean;
   }) => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
+    const bottomRef = useRef<HTMLDivElement>(null);
 
     return (
       <div className="flex-1 w-full h-full relative">
@@ -157,6 +159,7 @@ const ChatMessagesList = React.memo(
           )}
           autoScroll
           ref={chatContainerRef}
+          scrollToRef={bottomRef}
         >
           <div className="max-w-[840px] mx-auto w-full flex-1 flex flex-col gap-2">
             {showSkeletons ? (
@@ -190,6 +193,19 @@ const ChatMessagesList = React.memo(
             {status === "submitted" && <LoadingMessage status={status} />}
           </div>
         </ChatContainer>
+
+        <div className="absolute inset-x-0 bottom-2 pointer-events-none">
+          <div className="max-w-[640px] mx-auto relative h-0">
+            <div className="absolute right-0 bottom-0 pointer-events-auto">
+              <ScrollButton
+                containerRef={chatContainerRef}
+                scrollRef={bottomRef}
+                className="shadow-sm"
+                variant={"outline"}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
