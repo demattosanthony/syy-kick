@@ -13,9 +13,6 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install markitdown
-RUN pip install markitdown          
-
 # install dependencies into temp directory
 FROM base AS install
 RUN mkdir -p /temp/dev
@@ -37,11 +34,12 @@ RUN bun run build
 
 # final image
 FROM base AS release
+# Install markitdown globally
+RUN pip install 'markitdown[all]'
 COPY --from=install /temp/prod/node_modules node_modules
 COPY --from=prerelease /usr/src/app/. .
 
 ENV NODE_ENV=production
-ENV PATH="/usr/local/bin:${PATH}"
 
 # run the app
 USER bun
