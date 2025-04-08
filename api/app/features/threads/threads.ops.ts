@@ -91,6 +91,7 @@ const threadsOps = {
       for (const attachment of message.experimental_attachments) {
         // convert attachment to markdown
         let markdown = null;
+        console.log("Content type:", attachment.contentType);
         if (markitdownMimeTypes.includes(attachment.contentType!)) {
           const attachmentBuffer = await s3
             .file(attachment.file_key)

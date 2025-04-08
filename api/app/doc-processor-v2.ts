@@ -1,4 +1,5 @@
 import os from "os";
+import { mistralAi } from "./features/models";
 
 export const markitdownMimeTypes = [
   //   "application/pdf",
@@ -44,12 +45,48 @@ export const markitdown = async (input: string | Buffer, fileName: string) => {
   }
 };
 
-// const main = async () => {
-//   // Expand the tilde to the actual home directory
-//   const filePath = "~/taxes/2024/2024 W2.pdf";
-//   const expandedPath = filePath.replace(/^~(?=$|\/|\\)/, os.homedir());
-//   const output = await markitdown(expandedPath);
-//   console.log(output);
-// };
+export const ocrIt = async (input: Buffer, mimeType: string) => {
+  // Convert buffer to base64 string
+  const base64String = input.toString("base64");
 
-// main();
+  const result = await mistralAi.ocr.process({
+    model: "mistral-ocr-latest",
+    document: {
+      documentUrl: `data:${mimeType};base64,${base64String}`,
+      type: "document_url",
+    },
+  });
+
+  let markdown = "";
+  let images = [];
+
+  for (const [_, item] of result.pages.entries()) {
+    if (item.markdown) {
+      markdown += item.markdown + "\n\n";
+    }
+
+    for (let imageIndex = 0; imageIndex < item.images.length; imageIndex++) {
+      const image = item.images[imageIndex];
+      if (!image.imageBase64) {
+        continue;
+      }
+
+      // Extract base64 data, removing any prefix if present
+      let imageBase64 = image.imageBase64;
+      if (imageBase64.includes(",")) {
+        imageBase64 = imageBase64.split(",", 2)[1];
+      }
+
+      images.push({
+        url: imageBase64,
+        fileName: image.id,
+        mimeType: "image/jpeg",
+      });
+    }
+  }
+
+  return {
+    markdown,
+    images,
+  };
+};
