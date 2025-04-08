@@ -19,7 +19,8 @@
    - Windows:
      - Ghostscript: Download installer from https://ghostscript.com/releases/gsdnld.html
      - ImageMagick: Download installer from https://imagemagick.org/script/download.php
-4. Add environment variables as needed.
+4. Install markitdown cli: `pip install 'markitdown[all]'`
+5. Add environment variables as needed.
 
 ```bash
 cd api

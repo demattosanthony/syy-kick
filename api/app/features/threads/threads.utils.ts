@@ -13,6 +13,7 @@ import {
   Project,
   threads,
   toolCalls,
+  User,
 } from "../../config/schema";
 
 import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
@@ -21,12 +22,13 @@ import { MODELS } from "../models";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import { DocumentSearchResult } from "../projects/docs/documents.types";
 import { DbUser } from "../../createAuthToken";
+import { markitdownMimeTypes } from "../../doc-processor-v2";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
   if (model !== "Auto") return MODELS[model];
 
-  return MODELS["claude-3.5-sonnet"];
+  return MODELS["gemini-2.5-pro-preview"];
 }
 
 /** If environment is production and user allows, return a presigned URL, else base64. */
@@ -929,7 +931,19 @@ async function createAttachmentMessages(
   for (const att of attachments) {
     const data = await generateAttachmentData(att.fileKey, att.mimeType!, true);
 
-    if (att.mimeType?.includes("image")) {
+    if (markitdownMimeTypes.includes(att.mimeType!)) {
+      chunks.push({
+        type: "text",
+        text: `<file_attachment>
+    <file_name>
+        ${att.fileName}
+    </file_name>
+    <markdown>
+        ${att.markdown}
+    </markdown>
+</file_attachment>`,
+      });
+    } else if (att.mimeType?.includes("image")) {
       chunks.push({
         type: "image",
         image: data,

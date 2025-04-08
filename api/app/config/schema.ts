@@ -269,11 +269,12 @@ export const messageAttachments = pgTable("message_attachments", {
   messageId: uuid("message_id")
     .notNull()
     .references(() => messages.id, { onDelete: "cascade" }),
-  type: text("type", { enum: ["file", "image"] }).notNull(),
+  type: text("type", { enum: ["file", "image", "markdown"] }).notNull(),
   fileKey: varchar("file_key", { length: 255 }).notNull(),
   fileName: varchar("file_name", { length: 255 }),
   mimeType: varchar("mime_type", { length: 255 }),
   size: integer("size"),
+  markdown: text("markdown"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -692,7 +693,7 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
 export type MessageAttachment = {
   id: string;
   messageId: string;
-  type: "file" | "image";
+  type: "file" | "image" | "markdown";
   fileKey: string;
   fileName?: string;
   mimeType?: string;
