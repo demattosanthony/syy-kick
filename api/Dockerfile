@@ -41,6 +41,7 @@ COPY --from=install /temp/prod/node_modules node_modules
 COPY --from=prerelease /usr/src/app/. .
 
 ENV NODE_ENV=production
+ENV PATH="/usr/local/bin:${PATH}"
 
 # run the app
 USER bun
