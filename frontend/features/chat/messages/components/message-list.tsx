@@ -2,6 +2,7 @@
 
 import React, { useRef } from "react";
 import { Check, Copy } from "lucide-react";
+import Image from "next/image";
 
 interface MessageBubbleProps {
   content: string;
@@ -75,7 +76,7 @@ const UserMessage = ({ message }: { message: Message }) => {
   };
 
   return (
-    <div className="mb-4">
+    <div className="mb-2">
       {message.experimental_attachments &&
         message.experimental_attachments.length > 0 && (
           <div className="flex justify-end mb-2">
@@ -109,17 +110,28 @@ import {
 import { Loader } from "@/components/ui/loader";
 import { ChatContainer } from "@/components/ui/chat-container";
 
-const LoadingMessage = React.memo(() => {
-  return (
-    <div className="mb-4 mt flex flex-col justify-start">
-      <div className="flex items-center gap-1">
-        <div className="flex items-center rounded-lg bg-background">
-          <Loader variant="wave" size="lg" />
+const LoadingMessage = React.memo(
+  ({ status }: { status: "error" | "submitted" | "streaming" | "ready" }) => {
+    return (
+      <div className="mb-4 mt flex flex-col justify-start">
+        <div className="flex items-center">
+          {status === "submitted" && (
+            <div className="w-[22px] h-[22px] mr-2">
+              <Image src="/logo192.png" width={22} height={22} alt="" />
+            </div>
+          )}
+          <div className="flex h-full items-start justify-center">
+            {status === "submitted" ? (
+              <Loader variant="text-shimmer" text={"Thinking..."} size="lg" />
+            ) : (
+              <Loader variant="wave" size="lg" />
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 LoadingMessage.displayName = "LoadingMessage";
 
@@ -175,9 +187,7 @@ const ChatMessagesList = React.memo(
                 );
               })
             )}
-            {(status === "submitted" || status === "streaming") && (
-              <LoadingMessage />
-            )}
+            {status === "submitted" && <LoadingMessage status={status} />}
           </div>
         </ChatContainer>
       </div>

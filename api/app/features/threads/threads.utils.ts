@@ -36,6 +36,7 @@ import { PermissionManager } from "../permissions/permissions.tools";
 import { Permissions } from "../permissions/permissions.types";
 import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases.ops";
 import { documentsOps } from "../projects/docs/documents.ops";
+import { markitdownMimeTypes } from "../../doc-processor-v2";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -1316,7 +1317,19 @@ async function createAttachmentMessages(
   for (const att of attachments) {
     const data = await generateAttachmentData(att.fileKey, att.mimeType!, true);
 
-    if (att.mimeType?.includes("image")) {
+    if (markitdownMimeTypes.includes(att.mimeType!)) {
+      chunks.push({
+        type: "text",
+        text: `<file_attachment>
+    <file_name>
+        ${att.fileName}
+    </file_name>
+    <markdown>
+        ${att.markdown}
+    </markdown>
+</file_attachment>`,
+      });
+    } else if (att.mimeType?.includes("image")) {
       chunks.push({
         type: "image",
         image: data,

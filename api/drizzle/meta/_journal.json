@@ -281,6 +281,13 @@
       "when": 1743686811586,
       "tag": "0039_famous_shockwave",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1744084997096,
+      "tag": "0040_quick_titania",
+      "breakpoints": true
     }
   ]
 }
