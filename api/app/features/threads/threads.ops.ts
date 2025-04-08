@@ -91,7 +91,6 @@ const threadsOps = {
       for (const attachment of message.experimental_attachments) {
         // convert attachment to markdown
         let markdown = null;
-        console.log("Content type:", attachment.contentType);
         if (markitdownMimeTypes.includes(attachment.contentType!)) {
           const attachmentBuffer = await s3
             .file(attachment.file_key)
@@ -380,7 +379,7 @@ const threadsOps = {
         knowledgeBases.data
       );
 
-      console.log("Inference messages:", inferenceMsgs);
+      //   console.log("Inference messages:", inferenceMsgs);
 
       // 4) Generate a thread title if missing
       if (!thread.title) {
