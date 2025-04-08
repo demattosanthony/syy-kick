@@ -7,6 +7,15 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Install pip
+RUN apt-get update && \
+    apt-get install -y python3-pip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install markitdown
+RUN pip install markitdown          
+
 # install dependencies into temp directory
 FROM base AS install
 RUN mkdir -p /temp/dev

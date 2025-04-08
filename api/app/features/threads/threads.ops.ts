@@ -28,6 +28,8 @@ import {
 } from "./threads.utils";
 import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
+import { markitdown, markitdownMimeTypes } from "../../doc-processor-v2";
+import s3 from "../../config/s3";
 
 const threadsOps = {
   async createThread(
@@ -87,12 +89,29 @@ const threadsOps = {
     // Insert attachments if any
     if (message.experimental_attachments?.length) {
       for (const attachment of message.experimental_attachments) {
+        // convert attachment to markdown
+        let markdown = null;
+        if (markitdownMimeTypes.includes(attachment.contentType!)) {
+          const attachmentBuffer = await s3
+            .file(attachment.file_key)
+            .arrayBuffer();
+          markdown = await markitdown(
+            Buffer.from(attachmentBuffer),
+            attachment.name || ""
+          );
+        }
+
         await db.insert(messageAttachments).values({
           messageId,
           fileName: attachment.name,
           mimeType: attachment.contentType,
           fileKey: attachment.file_key,
-          type: attachment.contentType?.includes("image") ? "image" : "file",
+          type: attachment.contentType?.includes("image")
+            ? "image"
+            : attachment.contentType?.includes("markdown")
+            ? "markdown"
+            : "file",
+          markdown,
         });
       }
     }
@@ -359,6 +378,8 @@ const threadsOps = {
         thread.knowledgeBase || undefined,
         knowledgeBases.data
       );
+
+      console.log("Inference messages:", inferenceMsgs);
 
       // 4) Generate a thread title if missing
       if (!thread.title) {

@@ -28,9 +28,22 @@ export const AUTO_MODEL_CONFIG = {
     "image/webp",
     "image/gif",
     "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/msword",
+    "text/plain",
+    "text/markdown",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.ms-powerpoint",
+    "text/html",
+    "text/csv",
+    "application/json",
+    "text/xml",
+    "application/zip",
   ],
-  maxImageSize: 5 * 1024 * 1024, // 5MB
-  maxFileSize: 32 * 1024 * 1024, // 32MB
+  maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+  maxFileSize: 50 * 1024 * 1024, // 50MB
 };
 
 export const SONAR_PRO_CONFIG = {
@@ -40,7 +53,7 @@ export const SONAR_PRO_CONFIG = {
 
 // Persistent atoms
 export const modelAtom = atomWithStorage<Model>(
-  "selectedAiModel",
+  "selectedAiModel-v2",
   AUTO_MODEL_CONFIG
 );
 export const temperatureAtom = atomWithStorage("chatTemp", 0.5);
