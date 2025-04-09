@@ -27,10 +27,51 @@ export const AUTO_MODEL_CONFIG = {
     "image/png",
     "image/webp",
     "image/gif",
+    "image/heic",
+    "image/heif",
     "application/pdf",
+    "application/x-javascript",
+    "text/javascript",
+    "application/x-python",
+    "text/python",
+    "text/x-python",
+    "text/x-script.python",
+    "application/x-python-code",
+    "text/plain",
+    "text/html",
+    "text/md",
+    "text/csv",
+    "text/xml",
+    "text/rtf",
+    "text/markdown",
+    "text/x-markdown",
+    "text/org",
+    "text/asciidoc",
+    "text/restructuredtext",
+    "text/textile",
+    "text/wiki",
+    "text/yaml",
+    "text/toml",
+    "text/ini",
+    "text/properties",
+    "text/conf",
+    "text/log",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/msword",
+    "text/plain",
+    "text/markdown",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.ms-powerpoint",
+    "text/html",
+    "text/csv",
+    "application/json",
+    "text/xml",
+    "application/zip",
   ],
-  maxImageSize: 5 * 1024 * 1024, // 5MB
-  maxFileSize: 32 * 1024 * 1024, // 32MB
+  maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+  maxFileSize: 50 * 1024 * 1024, // 50MB
 };
 
 export const SONAR_PRO_CONFIG = {
@@ -40,7 +81,7 @@ export const SONAR_PRO_CONFIG = {
 
 // Persistent atoms
 export const modelAtom = atomWithStorage<Model>(
-  "selectedAiModel",
+  "selectedAiModel-v2.1",
   AUTO_MODEL_CONFIG
 );
 export const temperatureAtom = atomWithStorage("chatTemp", 0.5);

@@ -71,6 +71,22 @@ export const executeLLMStep: StepExecutorFunction = async ({
           ],
         },
       ],
+      experimental_repairText: async ({ text, error }) => {
+        // console.log("text");
+        // console.log(text);
+        // console.log("error", error);
+
+        // Remove 'ny\n' and ```json wrappers from the text
+        const cleaned = text
+          .replace("ny\n", "")
+          .replace(/```json\n/g, "")
+          .replace(/```/g, "")
+          .trim();
+
+        // console.log("cleaned");
+        // console.log(cleaned);
+        return cleaned;
+      },
     });
 
     const validatedOutput = stepConfig.outputSchema.safeParse(object);

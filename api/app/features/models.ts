@@ -12,6 +12,7 @@ import { createPerplexity } from "@ai-sdk/perplexity";
 import { mistral } from "@ai-sdk/mistral";
 import { wrapLanguageModel, extractReasoningMiddleware } from "ai";
 import { Mistral as MistralAi } from "@mistralai/mistralai";
+import { markitdownMimeTypes } from "../doc-processor-v2";
 
 const perplexity = createPerplexity({
   apiKey: process.env.PPLX_API_KEY ?? "",
@@ -44,6 +45,7 @@ export const anthropicModels = (
     "image/webp",
     "image/gif",
     "application/pdf",
+    ...markitdownMimeTypes,
   ];
 
   return {
@@ -93,6 +95,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
     "image/webp",
     "image/gif",
     "application/pdf",
+    ...markitdownMimeTypes,
   ];
 
   return {
@@ -185,21 +188,10 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
     "text/properties",
     "text/conf",
     "text/log",
+    ...markitdownMimeTypes,
   ];
 
   return {
-    // "gemini-2.0-pro-exp": {
-    //   model: google("gemini-2.0-pro-exp-02-05"),
-    //   supportsToolUse: true,
-    //   supportsStreaming: true,
-    //   provider: "google",
-    //   supportsSystemMessages: true,
-    //   supportedMimeTypes,
-    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-    //   maxFileSize: 50 * 1024 * 1024, // 50MB
-    //   description:
-    //     "Improved quality, especially for world knowledge, code, and long context",
-    // },
     "gemini-2.5-pro-preview": {
       model: google("gemini-2.5-pro-preview-03-25"),
       supportsToolUse: true,
@@ -238,44 +230,6 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
     },
-    "gemini-1.5-pro": {
-      model: google("gemini-1.5-pro-latest"),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      description:
-        "Gemini 1.5 Pro is the latest model of the Gemini family. It's a mid-size multimodal model that supports up to 1 million tokens and excels at long-context tasks.",
-    },
-    // "gemini-2.0-flash-online": {
-    //   model: google("gemini-2.0-flash", {
-    //     useSearchGrounding: true,
-    //   }),
-    //   supportsToolUse: true,
-    //   supportsStreaming: true,
-    //   provider: "google",
-    //   supportsSystemMessages: true,
-    //   supportedMimeTypes,
-    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-    //   maxFileSize: 50 * 1024 * 1024, // 50MB
-    //   description:
-    //     "Gemini 2.0 Flash Online enhances the speed of Gemini 2.0 Flash with the ability to access real-time information through search grounding. It's perfect for tasks that require up-to-date data and fast responses, while also supporting tool use, streaming, image and PDF inputs.",
-    // },
-    // "gemini-2.0-flash-thinking": {
-    //   model: google("gemini-2.0-flash-thinking-exp-01-21"),
-    //   supportsToolUse: false,
-    //   supportsStreaming: true,
-    //   provider: "google",
-    //   supportsSystemMessages: true,
-    //   supportedMimeTypes,
-    //   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-    //   maxFileSize: 50 * 1024 * 1024, // 50MB
-    //   description:
-    //     "Gemini 2.0 Flash Thinking is an experimental model trained to expose its reasoning process in responses. By making its thinking process explicit, this model demonstrates enhanced reasoning capabilities compared to other Gemini 2.0 Flash models.",
-    // },
   };
 };
 
@@ -289,7 +243,7 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: [],
+      supportedMimeTypes: [...markitdownMimeTypes],
       description:
         "Grok is an AI modeled after the Hitchhiker’s Guide to the Galaxy. It is intended to answer almost anything and, far harder, even suggest what questions to ask!",
     },
@@ -312,13 +266,15 @@ export const togetherAiModels = (
 ): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
+  const supportedMimeTypes = [...markitdownMimeTypes];
+
   return {
     "deepseek-r1": {
       model: wrapLanguageModel({
         model: togetherai("deepseek-ai/DeepSeek-R1"),
         middleware: extractReasoningMiddleware({ tagName: "think" }),
       }),
-      supportedMimeTypes: [],
+      supportedMimeTypes,
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "deepseek",
@@ -330,7 +286,7 @@ export const togetherAiModels = (
       model: togetherai("deepseek-ai/DeepSeek-V3"),
       supportsToolUse: true,
       supportsStreaming: true,
-      supportedMimeTypes: [],
+      supportedMimeTypes,
       provider: "deepseek",
       supportsSystemMessages: true,
       description: `DeepSeek-V3 is an open-source large language model that builds upon LLaMA (Meta’s foundational language model) to enable versatile functionalities such as text generation, code completion, and more. The model is hosted on Together AI and running on USA servers, no data gets shared with DeepSeek or china.`,
@@ -339,7 +295,7 @@ export const togetherAiModels = (
       model: togetherai("meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"),
       supportsToolUse: true,
       supportsStreaming: true,
-      supportedMimeTypes: [],
+      supportedMimeTypes,
       provider: "meta",
       supportsSystemMessages: true,
       description:
@@ -357,7 +313,7 @@ export const groqModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsToolUse: true,
       supportsStreaming: true,
       supportsSystemMessages: true,
-      supportedMimeTypes: [],
+      supportedMimeTypes: [...markitdownMimeTypes],
       provider: "meta",
       description:
         "The Meta Llama 3.3 multilingual large language model (LLM) is a pretrained and instruction tuned generative model in 70B (text in/text out). The Llama 3.3 instruction tuned text only model is optimized for multilingual dialogue use cases and outperforms many of the available open source and closed chat models on common industry benchmarks.",
@@ -440,10 +396,10 @@ export const MODELS: Record<string, ModelConfig> = {
   ...openaiModels(process.env.OPENAI_API_KEY),
   ...googleModels(process.env.GOOGLE_GENERATIVE_AI_API_KEY),
   ...xAiModels(process.env.XAI_API_KEY),
-  ...mistralModels(process.env.MISTRAL_API_KEY),
+  //   ...mistralModels(process.env.MISTRAL_API_KEY),
   //   ...togetherAiModels(process.env.TOGETHER_AI_API_KEY),
   //   ...groqModels(process.env.GROQ_API_KEY),
-  ...perplexityModels(process.env.PPLX_API_KEY),
+  //   ...perplexityModels(process.env.PPLX_API_KEY),
 };
 
 export const embeddingModel = openai.embedding("text-embedding-3-large", {

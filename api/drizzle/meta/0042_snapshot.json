@@ -1,6 +1,6 @@
 {
-  "id": "92e3d0dc-a630-4b06-8502-b066b7007381",
-  "prevId": "68514f85-e9d3-41b8-b7eb-60d031388af8",
+  "id": "68514f85-e9d3-41b8-b7eb-60d031388af8",
+  "prevId": "3fec33a5-b3b1-47c6-83ab-6303b469ece7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -775,12 +775,6 @@
         "project_id": {
           "name": "project_id",
           "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "issue_number": {
-          "name": "issue_number",
-          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },

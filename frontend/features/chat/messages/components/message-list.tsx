@@ -2,6 +2,7 @@
 
 import React, { useRef } from "react";
 import { Check, Copy } from "lucide-react";
+import Image from "next/image";
 
 interface MessageBubbleProps {
   content: string;
@@ -24,7 +25,7 @@ const MessageBubble = ({
         relative flex flex-col rounded-lg p-2
         ${
           isUser
-            ? "bg-primary text-white dark:text-black max-w-[85%]"
+            ? "bg-primary text-white dark:text-black max-w-[515px]"
             : "bg-background max-w-full"
         }
       `}
@@ -75,10 +76,17 @@ const UserMessage = ({ message }: { message: Message }) => {
   };
 
   return (
-    <div className="mb-4">
-      {message.experimental_attachments?.map((attachment, idx) => (
-        <ChatAttachment key={idx} attachment={attachment} />
-      ))}
+    <div className="mb-2">
+      {message.experimental_attachments &&
+        message.experimental_attachments.length > 0 && (
+          <div className="flex justify-end mb-2">
+            <div className="flex flex-col gap-2 items-end">
+              {message.experimental_attachments.map((attachment, idx) => (
+                <ChatAttachment key={idx} attachment={attachment} />
+              ))}
+            </div>
+          </div>
+        )}
       {message.content && (
         <MessageBubble
           content={message.content || ""}
@@ -101,18 +109,30 @@ import {
 } from "./message-skeletons";
 import { Loader } from "@/components/ui/loader";
 import { ChatContainer } from "@/components/ui/chat-container";
+import { ScrollButton } from "@/components/ui/scroll-button";
 
-const LoadingMessage = React.memo(() => {
-  return (
-    <div className="mb-4 mt flex flex-col justify-start">
-      <div className="flex items-center gap-1">
-        <div className="flex items-center rounded-lg bg-background">
-          <Loader variant="wave" size="lg" />
+const LoadingMessage = React.memo(
+  ({ status }: { status: "error" | "submitted" | "streaming" | "ready" }) => {
+    return (
+      <div className="mb-4 mt flex flex-col justify-start">
+        <div className="flex items-center">
+          {status === "submitted" && (
+            <div className="w-[22px] h-[22px] mr-2">
+              <Image src="/logo192.png" width={22} height={22} alt="" />
+            </div>
+          )}
+          <div className="flex h-full items-start justify-center">
+            {status === "submitted" ? (
+              <Loader variant="text-shimmer" text={"Thinking..."} size="lg" />
+            ) : (
+              <Loader variant="wave" size="lg" />
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 LoadingMessage.displayName = "LoadingMessage";
 
@@ -128,6 +148,7 @@ const ChatMessagesList = React.memo(
     showSkeletons?: boolean;
   }) => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
+    const bottomRef = useRef<HTMLDivElement>(null);
 
     return (
       <div className="flex-1 w-full h-full relative">
@@ -138,6 +159,7 @@ const ChatMessagesList = React.memo(
           )}
           autoScroll
           ref={chatContainerRef}
+          scrollToRef={bottomRef}
         >
           <div className="max-w-[840px] mx-auto w-full flex-1 flex flex-col gap-2">
             {showSkeletons ? (
@@ -168,11 +190,22 @@ const ChatMessagesList = React.memo(
                 );
               })
             )}
-            {(status === "submitted" || status === "streaming") && (
-              <LoadingMessage />
-            )}
+            {status === "submitted" && <LoadingMessage status={status} />}
           </div>
         </ChatContainer>
+
+        <div className="absolute inset-x-0 bottom-2 pointer-events-none">
+          <div className="max-w-[640px] mx-auto relative h-0">
+            <div className="absolute right-0 bottom-0 pointer-events-auto">
+              <ScrollButton
+                containerRef={chatContainerRef}
+                scrollRef={bottomRef}
+                className="shadow-sm"
+                variant={"outline"}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
