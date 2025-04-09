@@ -72,9 +72,10 @@ export const executeLLMStep: StepExecutorFunction = async ({
         },
       ],
       experimental_repairText: async ({ text, error }) => {
-        // console.log("text");
-        // console.log(text);
-        // console.log("error", error);
+        if (debug) {
+          console.log("[experimental_repairText] Original text:", text);
+          console.log("[experimental_repairText] Error:", error);
+        }
 
         // Remove 'ny\n' and ```json wrappers from the text
         const cleaned = text
@@ -83,8 +84,10 @@ export const executeLLMStep: StepExecutorFunction = async ({
           .replace(/```/g, "")
           .trim();
 
-        // console.log("cleaned");
-        // console.log(cleaned);
+        if (debug) {
+          console.log("[experimental_repairText] Cleaned text:", cleaned);
+        }
+
         return cleaned;
       },
     });
@@ -232,6 +235,35 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
         z.object({ box_2d: z.array(z.number()).length(4), label: z.string() })
       ),
     }),
+    experimental_repairText: async ({ text }) => {
+      if (debug) {
+        console.log("[experimental_repairText] Original text:", text);
+      }
+
+      // Remove 'ny\n' and ```json wrappers from the text
+      const cleaned = text
+        .replace("ny\n", "")
+        .replace(/```json\n/g, "")
+        .replace(/```/g, "")
+        .trim();
+
+      if (debug) {
+        console.log("[experimental_repairText] Cleaned text:", cleaned);
+      }
+
+      // Check if the cleaned text is an array string
+      if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
+        // Wrap the array string in the expected object structure
+        const wrapped = `{ "bounding_boxes": ${cleaned} }`;
+        if (debug) {
+          console.log("[experimental_repairText] Wrapped text:", wrapped);
+        }
+        return wrapped;
+      }
+
+      // Otherwise, return the cleaned text as is
+      return cleaned;
+    },
   });
 
   if (debug) {
