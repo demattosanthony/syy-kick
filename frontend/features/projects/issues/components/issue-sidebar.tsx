@@ -18,7 +18,6 @@ export function IssueSidebar({
   isUpdating,
   onAssigneesChange,
 }: IssueSidebarProps) {
-  console.log("projectMembers", projectMembers);
   const memberOptions =
     projectMembers?.map((member) => ({
       label: member.name || member.email,

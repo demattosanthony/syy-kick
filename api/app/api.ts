@@ -97,6 +97,7 @@ export default Router()
       const viewUrl = s3.file(file_key).presign({
         expiresIn: 3600,
         method: "GET",
+        type: mime_type,
       });
 
       return {
@@ -131,7 +132,11 @@ export default Router()
         return;
       }
 
-      res.setHeader("Content-Type", file.type.toString());
+      const stat = await s3.stat(file_key);
+      const contentType = stat.type || "application/octet-stream";
+
+      res.setHeader("Content-Type", contentType);
+      // Suggest inline display, browser will decide based on Content-Type
       res.setHeader("Content-Disposition", `inline; filename="${file.name}"`);
 
       // Get object stream

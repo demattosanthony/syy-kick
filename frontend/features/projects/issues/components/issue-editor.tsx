@@ -275,10 +275,10 @@ export function IssueEditor({
           const file_id = crypto.randomUUID();
           const file_key = `user-attachments/${file_id}`;
 
-          // 2. Get presigned URL from backend
+          // 2. Get presigned URL from backend, passing the determined mime type
           const presignResponse = await api.uploads.getPresignedUrl(
             file.name,
-            file.type,
+            file.type, // Use the potentially corrected mime type
             file.size,
             file_key
           );
@@ -290,7 +290,7 @@ export function IssueEditor({
             api.baseUrl
           ).toString();
 
-          // 3. Upload file to S3 using the presigned URL
+          // 3. Upload file to S3 using the presigned URL with the correct Content-Type
           const uploadResponse = await fetch(uploadUrl, {
             method: "PUT",
             body: file,
@@ -307,6 +307,7 @@ export function IssueEditor({
 
           // 4. Insert file representation into editor
           let contentToInsert = "";
+          // Use mimeType to check if it's an image for preview
           if (file.type.startsWith("image/")) {
             // Use viewUrl which is now absolute
             contentToInsert = `<img src="${viewUrl}" alt="${file.name}" style="max-width: 100%; height: auto; display: block; margin: 10px 0;" />`;
@@ -315,7 +316,19 @@ export function IssueEditor({
             contentToInsert = `<p><a href="${viewUrl}" target="_blank" rel="noopener noreferrer" class="attachment-link">${file.name}</a></p>`;
           }
 
-          editor.chain().focus().insertContent(contentToInsert).run();
+          // Move cursor to the end, insert a new paragraph if needed, then insert content
+          editor
+            .chain()
+            .focus()
+            .command(({ tr, state, dispatch }) => {
+              if (dispatch) {
+                tr.insert(state.doc.content.size, []); // Move cursor to end
+              }
+              return true;
+            })
+            .insertContent("<p></p>") // Ensure a new block/line
+            .insertContent(contentToInsert)
+            .run();
         }
       } catch (error) {
         console.error("File upload failed:", error);
