@@ -6,6 +6,7 @@ import s3 from "./config/s3";
 import { getOrgIdOrUnedfined, handle } from "./utils";
 import { auth, checkSub } from "./middleware";
 import threadsOps from "./features/threads/threads.ops";
+import { Readable } from "stream";
 
 // Routes
 import authRoutes from "./features/auth";
@@ -110,6 +111,52 @@ export default Router()
       };
     })
   )
+  .get("/user-attachments/:file_id", async (req, res) => {
+    try {
+      const { file_id } = req.params;
+
+      if (!file_id) {
+        res.status(400).json({ error: "File key is required" });
+        return;
+      }
+
+      const file_key = `user-attachments/${file_id}`;
+      const file = s3.file(file_key);
+
+      // Check if file exists
+      try {
+        await file.exists();
+      } catch (error) {
+        res.status(404).json({ error: "File not found" });
+        return;
+      }
+
+      res.setHeader("Content-Type", file.type.toString());
+      res.setHeader("Content-Disposition", `inline; filename="${file.name}"`);
+
+      // Get object stream
+      const webStream = file.stream();
+      const nodeStream = Readable.fromWeb(webStream);
+
+      // Handle stream errors
+      nodeStream.on("error", (error) => {
+        console.error("Stream error:", error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Error streaming file" });
+        }
+      });
+
+      nodeStream.pipe(res);
+    } catch (error) {
+      console.error("Error serving file:", error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error:
+            error instanceof Error ? error.message : "Internal server error",
+        });
+      }
+    }
+  })
   .use("/permissions", auth, permissionsRoutes)
   .use("/analytics", analyticsRoutes)
 

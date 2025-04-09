@@ -5,6 +5,8 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
+import Image from "@tiptap/extension-image";
+import Link from "@tiptap/extension-link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,8 +19,10 @@ import {
   ListOrdered,
   CheckSquare,
   Loader2,
+  Paperclip,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import api from "@/lib/api";
 
 interface MenuBarProps {
   editor: Editor | null;
@@ -26,6 +30,67 @@ interface MenuBarProps {
 
 const MenuBar = ({ editor }: MenuBarProps) => {
   if (!editor) return null;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = ""; // Reset file input
+
+    if (!files.length || !editor) return;
+
+    setIsUploading(true);
+    try {
+      for (const file of files) {
+        // 1. Generate a unique file key
+        const file_id = crypto.randomUUID();
+        const file_key = `user-attachments/${file_id}`;
+
+        // 2. Get presigned URL from backend
+        const presignResponse = await api.uploads.getPresignedUrl(
+          file.name,
+          file.type,
+          file.size,
+          file_key
+        );
+
+        const { url: uploadUrl } = presignResponse;
+        const viewUrl = `${api.baseUrl}/user-attachments/${file_id}`;
+
+        // 3. Upload file to S3 using the presigned URL
+        const uploadResponse = await fetch(uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: {
+            "Content-Type": file.type,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(
+            `Failed to upload file: ${uploadResponse.statusText}`
+          );
+        }
+
+        // 4. Insert file representation into editor
+        let contentToInsert = "";
+        if (file.type.startsWith("image/")) {
+          contentToInsert = `<img src="${viewUrl}" alt="${file.name}" style="max-width: 100%; height: auto; display: block; margin: 10px 0;" />`;
+        } else {
+          contentToInsert = `<p><a href="${viewUrl}" target="_blank" rel="noopener noreferrer" class="attachment-link">${file.name}</a></p>`;
+        }
+
+        editor.chain().focus().insertContent(contentToInsert).run();
+      }
+    } catch (error) {
+      console.error("File upload failed:", error);
+      // TODO: Show user-friendly error message
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const menuItems = [
     {
@@ -76,6 +141,13 @@ const MenuBar = ({ editor }: MenuBarProps) => {
       icon: Quote,
       label: "Blockquote",
     },
+    {
+      action: () => fileInputRef.current?.click(),
+      isActive: false,
+      icon: isUploading ? Loader2 : Paperclip,
+      label: "Attach File",
+      disabled: !editor.isEditable || isUploading,
+    },
   ];
 
   return (
@@ -87,13 +159,25 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           size="icon"
           variant="ghost"
           onClick={item.action}
-          className={cn("h-8 w-8", item.isActive ? "bg-muted" : "")}
+          className={cn(
+            "h-8 w-8",
+            item.isActive ? "bg-muted" : "",
+            item.label === "Attach File" && isUploading ? "animate-spin" : ""
+          )}
           aria-label={item.label}
-          disabled={!editor.isEditable}
+          disabled={!editor.isEditable || item.disabled}
         >
           <item.icon className="h-4 w-4" />
         </Button>
       ))}
+      <input
+        type="file"
+        multiple
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        style={{ display: "none" }}
+        disabled={isUploading}
+      />
     </div>
   );
 };
@@ -160,6 +244,24 @@ export function IssueEditor({
         HTMLAttributes: {
           class: "flex items-center gap-2 data-[checked=true]:line-through",
         },
+      }),
+      Image.configure({
+        allowBase64: false,
+        HTMLAttributes: {
+          style:
+            "max-width: 100%; height: auto; display: block; margin: 10px 0;",
+          alt: "User uploaded image",
+        },
+      }),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        HTMLAttributes: {
+          target: "_blank",
+          rel: "noopener noreferrer",
+          // class: null, // To remove default classes if any
+        },
+        validate: (href: string) => /^https?:\/\//.test(href), // Basic validation for http/https <-- Add type string
       }),
     ],
     editorProps: {
