@@ -1,1 +1,0 @@
-ALTER TABLE "issue_assignees" ADD CONSTRAINT "issue_assignees_pk" PRIMARY KEY("issue_id","user_id");

@@ -1,5 +1,5 @@
 {
-  "id": "3fec33a5-b3b1-47c6-83ab-6303b469ece7",
+  "id": "6d1c91c5-8370-4eb5-b128-56271445e724",
   "prevId": "553b123d-a27b-4d87-950e-ff0bc12d0413",
   "version": "7",
   "dialect": "postgresql",
@@ -668,7 +668,15 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "issue_assignees_pk": {
+          "name": "issue_assignees_pk",
+          "columns": [
+            "issue_id",
+            "user_id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -767,6 +775,12 @@
         "project_id": {
           "name": "project_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_number": {
+          "name": "issue_number",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -1104,6 +1118,12 @@
         "size": {
           "name": "size",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "markdown": {
+          "name": "markdown",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },

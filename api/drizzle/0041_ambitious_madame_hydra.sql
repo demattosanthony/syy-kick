@@ -1,7 +1,8 @@
 CREATE TABLE "issue_assignees" (
 	"issue_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
-	"assigned_at" timestamp DEFAULT now() NOT NULL
+	"assigned_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "issue_assignees_pk" PRIMARY KEY("issue_id","user_id")
 );
 --> statement-breakpoint
 CREATE TABLE "issue_comments" (
@@ -16,6 +17,7 @@ CREATE TABLE "issue_comments" (
 CREATE TABLE "issues" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"project_id" uuid NOT NULL,
+	"issue_number" integer NOT NULL,
 	"creator_id" uuid NOT NULL,
 	"title" varchar(255) NOT NULL,
 	"description" text,
