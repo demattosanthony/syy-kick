@@ -134,7 +134,7 @@ export const MultiSelect = React.forwardRef<
       animation = 0,
       maxCount = 3,
       modalPopover = false,
-      asChild = false,
+      //   asChild = false,
       className,
       ...props
     },
@@ -181,15 +181,15 @@ export const MultiSelect = React.forwardRef<
       onValueChange(newSelectedValues);
     };
 
-    const toggleAll = () => {
-      if (selectedValues.length === options.length) {
-        handleClear();
-      } else {
-        const allValues = options.map((option) => option.value);
-        setSelectedValues(allValues);
-        onValueChange(allValues);
-      }
-    };
+    // const toggleAll = () => {
+    //   if (selectedValues.length === options.length) {
+    //     handleClear();
+    //   } else {
+    //     const allValues = options.map((option) => option.value);
+    //     setSelectedValues(allValues);
+    //     onValueChange(allValues);
+    //   }
+    // };
 
     return (
       <Popover

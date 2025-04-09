@@ -54,8 +54,8 @@ export default function IssueDetailPage() {
         data,
       });
       toast.success("Issue updated successfully!");
-    } catch (err: any) {
-      toast.error(`Failed to update issue: ${err.message}`);
+    } catch (err) {
+      toast.error(`Failed to update issue`);
       throw err;
     }
   };
@@ -81,8 +81,8 @@ export default function IssueDetailPage() {
   const handleCreateComment = async (commentHtml: string) => {
     try {
       await createComment({ comment: commentHtml });
-    } catch (err: any) {
-      toast.error(`Failed to create comment: ${err.message}`);
+    } catch (err) {
+      toast.error(`Failed to create comment`);
       throw err;
     }
   };
@@ -91,8 +91,8 @@ export default function IssueDetailPage() {
     try {
       await deleteIssue({ projectId, issueNumber: issueNumberInt });
       router.push(`/projects/${projectId}/issues`);
-    } catch (err: any) {
-      toast.error(`Failed to delete issue: ${err.message}`);
+    } catch (err) {
+      toast.error(`Failed to delete issue`);
       throw err;
     }
   };
