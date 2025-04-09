@@ -20,76 +20,26 @@ import {
   CheckSquare,
   Loader2,
   Paperclip,
+  UploadCloud,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback, DragEvent } from "react";
 import api from "@/lib/api";
 
 interface MenuBarProps {
   editor: Editor | null;
+  handleFileUpload: (files: FileList | null) => void;
+  isUploading: boolean;
 }
 
-const MenuBar = ({ editor }: MenuBarProps) => {
+const MenuBar = ({ editor, handleFileUpload, isUploading }: MenuBarProps) => {
   if (!editor) return null;
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileSelect = async (
+  const handleFileInputChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const files = Array.from(event.target.files || []);
-    event.target.value = ""; // Reset file input
-
-    if (!files.length || !editor) return;
-
-    setIsUploading(true);
-    try {
-      for (const file of files) {
-        // 1. Generate a unique file key
-        const file_id = crypto.randomUUID();
-        const file_key = `user-attachments/${file_id}`;
-
-        // 2. Get presigned URL from backend
-        const presignResponse = await api.uploads.getPresignedUrl(
-          file.name,
-          file.type,
-          file.size,
-          file_key
-        );
-
-        const { url: uploadUrl } = presignResponse;
-        const viewUrl = `${api.baseUrl}/user-attachments/${file_id}`;
-
-        // 3. Upload file to S3 using the presigned URL
-        const uploadResponse = await fetch(uploadUrl, {
-          method: "PUT",
-          body: file,
-          headers: {
-            "Content-Type": file.type,
-          },
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error(
-            `Failed to upload file: ${uploadResponse.statusText}`
-          );
-        }
-
-        // 4. Insert file representation into editor
-        let contentToInsert = "";
-        if (file.type.startsWith("image/")) {
-          contentToInsert = `<img src="${viewUrl}" alt="${file.name}" style="max-width: 100%; height: auto; display: block; margin: 10px 0;" />`;
-        } else {
-          contentToInsert = `<p><a href="${viewUrl}" target="_blank" rel="noopener noreferrer" class="attachment-link">${file.name}</a></p>`;
-        }
-
-        editor.chain().focus().insertContent(contentToInsert).run();
-      }
-    } catch (error) {
-      console.error("File upload failed:", error);
-      // TODO: Show user-friendly error message
-    } finally {
-      setIsUploading(false);
-    }
+    handleFileUpload(event.target.files);
+    event.target.value = ""; // Reset file input after selection
   };
 
   const menuItems = [
@@ -174,7 +124,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
         type="file"
         multiple
         ref={fileInputRef}
-        onChange={handleFileSelect}
+        onChange={handleFileInputChange}
         style={{ display: "none" }}
         disabled={isUploading}
       />
@@ -205,6 +155,9 @@ export function IssueEditor({
   showControls = true,
   minHeight = "400px",
 }: IssueEditorProps) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -309,19 +262,154 @@ export function IssueEditor({
     editor?.commands.clearContent(true); // Clear content and trigger update
   };
 
+  // Refactored file upload logic
+  const handleFileUpload = useCallback(
+    async (files: FileList | null) => {
+      if (!files || !files.length || !editor) return;
+
+      setIsUploading(true);
+      try {
+        for (const file of Array.from(files)) {
+          // Iterate through FileList
+          // 1. Generate a unique file key
+          const file_id = crypto.randomUUID();
+          const file_key = `user-attachments/${file_id}`;
+
+          // 2. Get presigned URL from backend
+          const presignResponse = await api.uploads.getPresignedUrl(
+            file.name,
+            file.type,
+            file.size,
+            file_key
+          );
+
+          const { url: uploadUrl } = presignResponse;
+          // Construct viewUrl relative to the API base URL
+          const viewUrl = new URL(
+            `user-attachments/${file_id}`,
+            api.baseUrl
+          ).toString();
+
+          // 3. Upload file to S3 using the presigned URL
+          const uploadResponse = await fetch(uploadUrl, {
+            method: "PUT",
+            body: file,
+            headers: {
+              "Content-Type": file.type,
+            },
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error(
+              `Failed to upload file: ${uploadResponse.statusText}`
+            );
+          }
+
+          // 4. Insert file representation into editor
+          let contentToInsert = "";
+          if (file.type.startsWith("image/")) {
+            // Use viewUrl which is now absolute
+            contentToInsert = `<img src="${viewUrl}" alt="${file.name}" style="max-width: 100%; height: auto; display: block; margin: 10px 0;" />`;
+          } else {
+            // Use viewUrl which is now absolute
+            contentToInsert = `<p><a href="${viewUrl}" target="_blank" rel="noopener noreferrer" class="attachment-link">${file.name}</a></p>`;
+          }
+
+          editor.chain().focus().insertContent(contentToInsert).run();
+        }
+      } catch (error) {
+        console.error("File upload failed:", error);
+        // TODO: Show user-friendly error message
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [editor] // Add editor to dependency array
+  );
+
+  // Drag and Drop Handlers
+  const handleDragOver = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault(); // Necessary to allow drop
+      event.stopPropagation();
+      if (!isDragging) setIsDragging(true);
+    },
+    [isDragging]
+  );
+
+  const handleDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    // Check if the leave event is truly leaving the container
+    if (
+      event.relatedTarget instanceof Node &&
+      event.currentTarget.contains(event.relatedTarget)
+    ) {
+      return; // Still inside the container or its children
+    }
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDragging(false);
+
+      if (!editor || !editor.isEditable || isUploading) return; // Prevent drop if not editable or uploading
+
+      const files = event.dataTransfer.files;
+      if (files && files.length > 0) {
+        handleFileUpload(files); // Use the refactored upload function
+      }
+    },
+    [editor, handleFileUpload, isUploading] // Add dependencies
+  );
+
   return (
-    <div className={cn(isLoading && "opacity-70 cursor-not-allowed")}>
+    <div
+      className={cn(
+        isLoading && "opacity-70 cursor-not-allowed",
+        "relative" // Needed for positioning the overlay
+      )}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Apply border and focus styles to this inner div */}
       <div
         className={cn(
           "rounded-md border border-input bg-card",
           "ring-offset-background focus-within:outline-none focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-1",
-          "overflow-hidden" // Ensure border radius applies correctly to children
+          "overflow-hidden", // Ensure border radius applies correctly to children
+          isDragging && "border-primary ring-2 ring-primary ring-offset-2" // Highlight on drag over
         )}
       >
-        <MenuBar editor={editor} />
-        <div className="flex-grow overflow-auto p-3">
+        <MenuBar
+          editor={editor}
+          handleFileUpload={handleFileUpload}
+          isUploading={isUploading}
+        />
+        <div className="relative flex-grow overflow-auto p-3">
+          {" "}
+          {/* Added relative positioning */}
           <EditorContent editor={editor} />
+          {/* Drag and Drop Overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-primary/10 backdrop-blur-sm rounded-md border-2 border-dashed border-primary">
+              <UploadCloud className="h-12 w-12 text-primary mb-2" />
+              <p className="text-primary font-semibold">
+                Drop files here to upload
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
