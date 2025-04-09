@@ -258,10 +258,6 @@ export function IssueEditor({
     if (onSave) onSave(htmlContent === "<p></p>" ? "" : htmlContent);
   };
 
-  const resetContent = () => {
-    editor?.commands.clearContent(true); // Clear content and trigger update
-  };
-
   // Refactored file upload logic
   const handleFileUpload = useCallback(
     async (files: FileList | null) => {

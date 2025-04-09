@@ -13,9 +13,6 @@ export const useDeleteIssue = () => {
       api.issues.deleteIssue(projectId, issueNumber),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["issues"] });
-      queryClient.removeQueries({
-        queryKey: ["issue", variables.projectId, variables.issueNumber],
-      });
     },
   });
 };

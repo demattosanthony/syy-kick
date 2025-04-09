@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { IssueComment } from "../issues.types";
 import { useDeleteCommentMutation, useUpdateCommentMutation } from "../api";
 import { toast } from "sonner";
@@ -22,12 +22,12 @@ interface CommentItemProps {
   currentUserId?: string;
 }
 
-export default function CommentItem({
+const CommentItemComponent = ({
   comment,
   projectId,
   issueNumber,
   currentUserId,
-}: CommentItemProps) {
+}: CommentItemProps) => {
   const [isEditing, setIsEditing] = useState(false);
 
   const { mutate: updateComment, isPending: isUpdatingComment } =
@@ -141,4 +141,8 @@ export default function CommentItem({
       )}
     </div>
   );
-}
+};
+
+const CommentItem = memo(CommentItemComponent);
+
+export default CommentItem;

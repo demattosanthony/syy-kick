@@ -1,9 +1,9 @@
 "use client";
 
 import { useGetIssue } from "@/features/projects/issues/api/get-issue";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useUpdateIssue } from "@/features/projects/issues/api";
+import { useDeleteIssue, useUpdateIssue } from "@/features/projects/issues/api";
 import { toast } from "sonner";
 import { useCreateCommentMutation } from "@/features/projects/issues/api/create-comment";
 import { useMeQuery } from "@/features/user/api";
@@ -15,6 +15,7 @@ import { IssueCommentSection } from "@/features/projects/issues/components/issue
 import { UpdateIssueData } from "@/features/projects/issues/issues.types";
 
 export default function IssueDetailPage() {
+  const router = useRouter();
   const params = useParams<{
     projectId: string;
     issueNumber: string;
@@ -39,6 +40,8 @@ export default function IssueDetailPage() {
 
   const { mutateAsync: createComment, isPending: isCreatingComment } =
     useCreateCommentMutation(projectId, issueNumberInt);
+
+  const { mutateAsync: deleteIssue } = useDeleteIssue();
 
   // --- Handlers that call mutations ---
 
@@ -80,6 +83,16 @@ export default function IssueDetailPage() {
       await createComment({ comment: commentHtml });
     } catch (err: any) {
       toast.error(`Failed to create comment: ${err.message}`);
+      throw err;
+    }
+  };
+
+  const handleDeleteIssue = async () => {
+    try {
+      await deleteIssue({ projectId, issueNumber: issueNumberInt });
+      router.push(`/projects/${projectId}/issues`);
+    } catch (err: any) {
+      toast.error(`Failed to delete issue: ${err.message}`);
       throw err;
     }
   };
@@ -142,6 +155,7 @@ export default function IssueDetailPage() {
           isLoadingMembers={isLoadingMembers}
           isUpdating={isUpdating}
           onAssigneesChange={handleAssigneesChange}
+          onDeleteIssue={handleDeleteIssue}
         />
       </div>
     </div>
