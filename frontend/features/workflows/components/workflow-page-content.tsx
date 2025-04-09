@@ -126,15 +126,15 @@ export default function WorkflowPageContent({
       router.push(
         `/threads/${thread.id}?isNew=true&isWorkflow=true&workflowId=${workflowId}`
       );
-      setIsSubmitting(false);
     } catch (err) {
       console.error("Submission error:", err);
       setErrorDetails({
         type: "general",
         message: "An unexpected error occurred. Please try again.",
       });
-      setIsSubmitting(false);
     }
+
+    setIsSubmitting(false);
   };
 
   const workflowInputs = workflow?.inputs || [
