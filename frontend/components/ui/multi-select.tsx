@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Popover,
   PopoverContent,
@@ -32,7 +33,7 @@ import {
  * Uses class-variance-authority (cva) to define different styles based on "variant" prop.
  */
 const multiSelectVariants = cva(
-  "m-1 transition ease-in-out delay-150 hover:-translate-y-1 hover:scale-110 duration-300",
+  "m-1 transition ease-in-out delay-150 duration-300 shadow-none",
   {
     variants: {
       variant: {
@@ -68,6 +69,8 @@ interface MultiSelectProps
     value: string;
     /** Optional icon component to display alongside the option. */
     icon?: React.ComponentType<{ className?: string }>;
+    /** Optional avatar image URL for the option. */
+    avatar?: string;
   }[];
 
   /**
@@ -214,11 +217,23 @@ export const MultiSelect = React.forwardRef<
                       <Badge
                         key={value}
                         className={cn(
+                          "flex items-center",
                           isAnimating ? "animate-bounce" : "",
                           multiSelectVariants({ variant })
                         )}
                         style={{ animationDuration: `${animation}s` }}
                       >
+                        {option?.avatar && (
+                          <Avatar className="h-4 w-4 mr-1">
+                            <AvatarImage
+                              src={option.avatar}
+                              alt={option.label}
+                            />
+                            <AvatarFallback className="text-xs">
+                              {option.label.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
                         {IconComponent && (
                           <IconComponent className="h-4 w-4 mr-2" />
                         )}
@@ -279,7 +294,7 @@ export const MultiSelect = React.forwardRef<
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-auto p-0"
+          className="w-auto min-w-64 p-0"
           align="start"
           onEscapeKeyDown={() => setIsPopoverOpen(false)}
         >
@@ -291,23 +306,6 @@ export const MultiSelect = React.forwardRef<
             <CommandList>
               <CommandEmpty>No results found.</CommandEmpty>
               <CommandGroup>
-                <CommandItem
-                  key="all"
-                  onSelect={toggleAll}
-                  className="cursor-pointer"
-                >
-                  <div
-                    className={cn(
-                      "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                      selectedValues.length === options.length
-                        ? "bg-primary text-primary-foreground"
-                        : "opacity-50 [&_svg]:invisible"
-                    )}
-                  >
-                    <CheckIcon className="h-4 w-4" />
-                  </div>
-                  <span>(Select All)</span>
-                </CommandItem>
                 {options.map((option) => {
                   const isSelected = selectedValues.includes(option.value);
                   return (
@@ -326,6 +324,14 @@ export const MultiSelect = React.forwardRef<
                       >
                         <CheckIcon className="h-4 w-4" />
                       </div>
+                      {option.avatar && (
+                        <Avatar className="h-5 w-5 mr-2">
+                          <AvatarImage src={option.avatar} alt={option.label} />
+                          <AvatarFallback className="text-xs">
+                            {option.label.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
                       {option.icon && (
                         <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
                       )}

@@ -9,8 +9,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { IssueEditor } from "@/features/projects/issues/components/issue-editor";
 import { useProjectMembersQuery } from "@/features/projects/api/get-project-members";
-import { MultiSelect } from "@/components/ui/multi-select";
-import { User } from "lucide-react";
+import { AssigneeSelector } from "@/features/projects/issues/components/assignee-selector";
 
 export default function NewIssuePage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -25,6 +24,7 @@ export default function NewIssuePage() {
     membersQuery.data?.map((member) => ({
       label: member.name || member.email,
       value: member.id,
+      avatar: member.profilePicture,
     })) || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,21 +113,16 @@ export default function NewIssuePage() {
 
         <aside className="md:col-span-1 space-y-6">
           <div className="space-y-2 p-4">
-            <Label className="text-base font-semibold">Assignees</Label>
-            <p className="text-sm text-muted-foreground">
-              Select users to assign to this issue.
-            </p>
-            {membersQuery.isLoading ? (
-              <p>Loading members...</p>
-            ) : membersQuery.isError ? (
-              <p className="text-red-500">Error loading members</p>
+            {membersQuery.isError ? (
+              <p className="text-red-500">Error loading members.</p>
             ) : (
-              <MultiSelect
-                options={memberOptions}
-                onValueChange={setSelectedAssignees}
-                defaultValue={selectedAssignees}
-                placeholder="Select assignees..."
-                className="bg-background/50 w-full"
+              <AssigneeSelector
+                memberOptions={memberOptions}
+                isLoadingMembers={membersQuery.isLoading}
+                currentAssigneeIds={selectedAssignees}
+                onAssigneesChange={setSelectedAssignees}
+                isUpdating={createIssueMutation.isPending}
+                showSelectedInline={true}
               />
             )}
           </div>

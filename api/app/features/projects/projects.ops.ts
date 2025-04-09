@@ -461,31 +461,9 @@ export const projectsOps = {
     //   // e.g., fetch the owner user details and add them
     // }
 
-    const combinedMembers = Array.from(memberMap.values());
+    // Convert map to array
+    const membersArray = Array.from(memberMap.values());
 
-    // 3. Presign profile pictures
-    const membersWithProfilePicture = await Promise.all(
-      combinedMembers.map(async (member) => {
-        let presignedUrl: string | null = null;
-        if (member.profilePicture) {
-          try {
-            // Assuming s3.file().presign() returns a Promise<string>
-            presignedUrl = await s3
-              .file(member.profilePicture)
-              .presign({ expiresIn: 3600 });
-          } catch (error) {
-            console.error(
-              `Error presigning profile picture for user ${member.id}:`,
-              error
-            );
-            // Keep profilePicture as the key, but URL generation failed
-            presignedUrl = member.profilePicture; // Or set to null
-          }
-        }
-        return { ...member, profilePicture: presignedUrl };
-      })
-    );
-
-    return membersWithProfilePicture;
+    return membersArray;
   },
 };
