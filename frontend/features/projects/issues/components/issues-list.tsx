@@ -49,7 +49,7 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
     <div>
       <div className="divide-y divide-border border rounded-lg">
         {/* Filter Buttons Header */}
-        <div className="flex items-center px-4 bg-secondary rounded-t-lg h-12">
+        <div className="flex items-center px-4 bg-sidebar dark:bg-secondary rounded-t-lg h-12">
           <Button
             variant="ghost"
             className={`rounded-none  ${
