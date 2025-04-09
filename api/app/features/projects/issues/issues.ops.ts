@@ -63,7 +63,6 @@ export const issueOps = {
           .where(
             and(
               eq(issues.projectId, params.projectId),
-              // TODO: Verify 'open' is the correct status value from ISSUE_STATUS
               eq(issues.status, "open")
             )
           ),
@@ -74,7 +73,6 @@ export const issueOps = {
           .where(
             and(
               eq(issues.projectId, params.projectId),
-              // TODO: Verify 'closed' is the correct status value from ISSUE_STATUS
               eq(issues.status, "closed")
             )
           ),
@@ -98,16 +96,15 @@ export const issueOps = {
     });
 
     return {
-      // Assuming Issue type matches schema output; adjust if relations added
       data: issuesList as Issue[],
       pagination: {
         page,
         limit,
-        totalCount, // Filtered count
+        totalCount,
         totalPages: Math.ceil(totalCount / limit),
         hasMore: totalCount > page * limit,
-        totalOpen, // Added: Total open issues in the project
-        totalClosed, // Added: Total closed issues in the project
+        totalOpen,
+        totalClosed,
       },
     };
   },
@@ -213,7 +210,6 @@ export const issueOps = {
     // Validate input - ensure issueNumber is a positive integer
     if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
       console.error("Invalid issue number provided for update:", issueNumber);
-      // Decide on error handling: return, throw new Error, etc.
       throw new Error("Invalid issue number provided for update.");
     }
 
@@ -289,7 +285,6 @@ export const issueOps = {
     // Validate input - ensure issueNumber is a positive integer
     if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
       console.error("Invalid issue number provided for delete:", issueNumber);
-      // Decide on error handling: return, throw new Error, etc.
       throw new Error("Invalid issue number provided for delete.");
     }
 
@@ -315,7 +310,6 @@ export const issueOps = {
   }): Promise<{ id: string }> => {
     const validatedData = createCommentSchema.parse(data);
 
-    // Optional: Verify the issue exists before adding a comment
     const issueExists = await db.query.issues.findFirst({
       where: eq(issues.id, validatedData.issueId),
       columns: { id: true },

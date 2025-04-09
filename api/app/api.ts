@@ -6,7 +6,6 @@ import s3 from "./config/s3";
 import { getOrgIdOrUnedfined, handle } from "./utils";
 import { auth, checkSub } from "./middleware";
 import threadsOps from "./features/threads/threads.ops";
-import { Readable } from "stream";
 
 // Routes
 import authRoutes from "./features/auth";
@@ -132,26 +131,12 @@ export default Router()
         return;
       }
 
-      const stat = await s3.stat(file_key);
-      const contentType = stat.type || "application/octet-stream";
-
-      res.setHeader("Content-Type", contentType);
-      // Suggest inline display, browser will decide based on Content-Type
-      res.setHeader("Content-Disposition", `inline; filename="${file.name}"`);
-
-      // Get object stream
-      const webStream = file.stream();
-      const nodeStream = Readable.fromWeb(webStream);
-
-      // Handle stream errors
-      nodeStream.on("error", (error) => {
-        console.error("Stream error:", error);
-        if (!res.headersSent) {
-          res.status(500).json({ error: "Error streaming file" });
-        }
+      const presignedUrl = s3.file(file_key).presign({
+        expiresIn: 3600,
+        method: "GET",
       });
 
-      nodeStream.pipe(res);
+      return res.redirect(presignedUrl);
     } catch (error) {
       console.error("Error serving file:", error);
       if (!res.headersSent) {

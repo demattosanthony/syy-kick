@@ -12,7 +12,7 @@ export const issueHandlers = {
    */
   list: async (req: Request, res: Response) => {
     try {
-      const { projectId } = req.params; // Assuming projectId is in the route path
+      const { projectId } = req.params;
       if (!projectId) {
         res.status(400).json({ message: "Project ID is required" });
         return;
@@ -25,13 +25,6 @@ export const issueHandlers = {
         res.status(400).json({ message: "Invalid status filter" });
         return;
       }
-
-      console.log(
-        "Listing issues for project:",
-        projectId,
-        "with status:",
-        status
-      );
 
       const issues = await issueOps.getAllIssues({
         projectId: projectId,
@@ -78,13 +71,12 @@ export const issueHandlers = {
    */
   create: async (req: Request, res: Response) => {
     try {
-      const { projectId } = req.params; // Assuming projectId is in the route path
+      const { projectId } = req.params;
       if (!projectId) {
         res.status(400).json({ message: "Project ID is required" });
         return;
       }
 
-      // Assuming user ID comes from authentication middleware
       const creatorId = req.dbUser?.id;
       if (!creatorId) {
         res.status(401).json({ message: "Authentication required" });
@@ -100,7 +92,6 @@ export const issueHandlers = {
         assignees: req.body.assignees,
       };
 
-      // Validation happens within issueOps.createIssue
       const newIssue = await issueOps.createIssue({ data: issueData });
 
       res.status(201).json({
@@ -127,15 +118,13 @@ export const issueHandlers = {
     try {
       const { issueNumber, projectId } = req.params;
 
-      // Validation happens within issueOps.updateIssue
       await issueOps.updateIssue({
         issueNumber: Number(issueNumber),
         projectId: projectId,
-        data: req.body, // Pass the request body directly
+        data: req.body,
       });
 
       res.status(200).json({
-        // Changed to 200 for update confirmation
         message: "Issue updated successfully",
       });
     } catch (error) {
@@ -164,7 +153,6 @@ export const issueHandlers = {
       });
 
       res.status(200).json({
-        // Changed to 200 for delete confirmation
         message: "Issue deleted successfully",
       });
     } catch (error) {
@@ -188,7 +176,6 @@ export const issueHandlers = {
         return;
       }
 
-      // Get the internal issue ID from project ID and issue number
       const issue = await issueOps.getIssue({
         projectId,
         issueNumber: Number(issueNumber),
@@ -234,7 +221,6 @@ export const issueHandlers = {
       const { commentId } = req.params;
       const userId = req.dbUser?.id;
 
-      // Authorization check - does the user own the comment?
       const comment = await db.query.issueComments.findFirst({
         where: eq(issueComments.id, commentId),
       });
