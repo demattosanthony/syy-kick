@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, useCallback, DragEvent } from "react";
 import api from "@/lib/api";
+import { toast } from "sonner";
 
 interface MenuBarProps {
   editor: Editor | null;
@@ -212,7 +213,6 @@ export function IssueEditor({
         HTMLAttributes: {
           target: "_blank",
           rel: "noopener noreferrer",
-          // class: null, // To remove default classes if any
         },
         validate: (href: string) => /^https?:\/\//.test(href), // Basic validation for http/https <-- Add type string
       }),
@@ -328,7 +328,7 @@ export function IssueEditor({
         }
       } catch (error) {
         console.error("File upload failed:", error);
-        // TODO: Show user-friendly error message
+        toast.error("Failed to upload file");
       } finally {
         setIsUploading(false);
       }
@@ -375,10 +375,10 @@ export function IssueEditor({
 
       const files = event.dataTransfer.files;
       if (files && files.length > 0) {
-        handleFileUpload(files); // Use the refactored upload function
+        handleFileUpload(files);
       }
     },
-    [editor, handleFileUpload, isUploading] // Add dependencies
+    [editor, handleFileUpload, isUploading]
   );
 
   return (
@@ -398,7 +398,7 @@ export function IssueEditor({
           "rounded-md border border-input bg-card",
           "ring-offset-background focus-within:outline-none focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-1",
           "overflow-hidden", // Ensure border radius applies correctly to children
-          isDragging && "border-primary ring-2 ring-primary ring-offset-2" // Highlight on drag over
+          isDragging && "border-border border-2" // Highlight on drag over - Updated style
         )}
       >
         <MenuBar
@@ -407,14 +407,12 @@ export function IssueEditor({
           isUploading={isUploading}
         />
         <div className="relative flex-grow overflow-auto p-3">
-          {" "}
-          {/* Added relative positioning */}
           <EditorContent editor={editor} />
           {/* Drag and Drop Overlay */}
           {isDragging && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-primary/10 backdrop-blur-sm rounded-md border-2 border-dashed border-primary">
-              <UploadCloud className="h-12 w-12 text-primary mb-2" />
-              <p className="text-primary font-semibold">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-accent rounded-md border-2 border-dashed border-border">
+              <UploadCloud className="h-10 w-10 text-muted-foreground mb-2" />
+              <p className="text-muted-foreground font-medium">
                 Drop files here to upload
               </p>
             </div>
@@ -423,35 +421,32 @@ export function IssueEditor({
       </div>
 
       {/* Button container is now outside the bordered div */}
-      {editable &&
-        showControls && ( // Only show Save/Cancel controls now
-          // Added margin-top for spacing
-          <div className="flex justify-end gap-2 mt-3">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onCancel}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleInternalSave}
-              disabled={
-                isLoading ||
-                !editor?.isEditable ||
-                editor?.getHTML() === initialContent
-              }
-            >
-              {isLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              {isLoading ? "Saving..." : "Save"}
-            </Button>
-          </div>
-        )}
-      {/* Removed submit button logic previously here */}
+      {editable && showControls && (
+        <div className="flex justify-end gap-2 mt-3">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onCancel}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleInternalSave}
+            disabled={
+              isLoading ||
+              !editor?.isEditable ||
+              editor?.getHTML() === initialContent
+            }
+          >
+            {isLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
+            {isLoading ? "Saving..." : "Save"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

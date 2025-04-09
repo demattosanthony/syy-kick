@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,3 +118,6 @@ export function IssueHeader({
     </div>
   );
 }
+
+// Wrap the component with React.memo
+export const MemoizedIssueHeader = memo(IssueHeader);
