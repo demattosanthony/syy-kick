@@ -5,6 +5,7 @@ import { CircleDot, Settings, ChevronsLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useParams, usePathname } from "next/navigation";
+import { usePermissions } from "@/features/permissions/context";
 
 interface NavItem {
   label: string;
@@ -34,11 +35,19 @@ const navItems: NavItem[] = [
 export default function ProjectNavigationTabs() {
   const { projectId } = useParams<{ projectId: string }>();
   const pathname = usePathname();
+  const { canUpdateOrgProjects } = usePermissions();
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.label === "Settings") {
+      return canUpdateOrgProjects;
+    }
+    return true;
+  });
 
   return (
     <nav className="border-b w-full flex items-start">
       <div className="flex h-12 items-center gap-2 px-4 overflow-x-auto">
-        {navItems.map((item) => {
+        {filteredNavItems.map((item) => {
           const itemPath = `/projects/${projectId}${item.href}`;
           const isActive =
             item.href === ""

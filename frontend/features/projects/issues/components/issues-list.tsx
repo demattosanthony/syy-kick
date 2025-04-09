@@ -6,9 +6,10 @@ import { useGetIssues } from "../api";
 import React, { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { getRelativeTimeString } from "@/lib/utils";
-import { CheckCircle, CircleDot, Inbox } from "lucide-react";
+import { CheckCircle, CircleDot, Inbox, Loader2 } from "lucide-react";
 import { IssueStatus } from "../issues.types";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface IssuesListProps {
   projectId: string;
@@ -18,13 +19,11 @@ interface IssuesListProps {
 export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
   const [filterStatus, setFilterStatus] = useState<IssueStatus>("open");
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetIssues(
-    projectId,
-    {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+    useGetIssues(projectId, {
       status: filterStatus,
       searchTerm: searchTerm,
-    }
-  );
+    });
 
   // Setup Intersection Observer
   const { ref, inView } = useInView({
@@ -78,6 +77,23 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
               Be the first to create an issue for this project!
             </p>
           </div>
+        )}
+
+        {isLoading && (
+          <>
+            {[...Array(3)].map((_, index) => (
+              <div key={index} className="flex items-center gap-4 p-4">
+                <Skeleton className="h-4 w-4" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4 rounded-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
+            ))}
+          </>
         )}
 
         {data?.pages.map((page, i) => (
