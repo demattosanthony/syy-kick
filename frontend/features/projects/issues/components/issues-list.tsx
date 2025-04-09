@@ -6,7 +6,7 @@ import { useGetIssues } from "../api";
 import React, { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { getRelativeTimeString } from "@/lib/utils";
-import { CheckCircle, CircleDot, Inbox, Loader2 } from "lucide-react";
+import { CheckCircle, CircleDot, Inbox } from "lucide-react";
 import { IssueStatus } from "../issues.types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
