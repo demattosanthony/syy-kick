@@ -24,6 +24,7 @@ import { Workspace } from "../../../middleware";
 import { smallOpenaiEmbeddingModel } from "../../models";
 import { ALLOWED_UNSTRUCTURED_EXTENSIONS } from "../../../config/unstructured";
 import { queue } from "../../../doc-job-queue";
+import { DocumentSearchResult } from "./documents.types";
 
 export const documentsOps = {
   getProjectDocs: async (projectId: string, path: string = "") => {
@@ -251,8 +252,6 @@ export const documentsOps = {
       // 1. Normalize the incoming path
       const normalizedEntryPath = normalizePath(entry.path);
 
-      console.log("normalizedEntryPath", normalizedEntryPath);
-
       // 2. Combine with basePath if provided
       const fullPath = data.basePath
         ? normalizePath(`${data.basePath}/${normalizedEntryPath}`)
@@ -305,11 +304,11 @@ export const documentsOps = {
           projectId,
           ...(entry.type === "file"
             ? {
-              fileKey: entry.fileKey,
-              size: entry.size,
-              mimeType: entry.mimeType,
-              fileHash: entry.sha256,
-            }
+                fileKey: entry.fileKey,
+                size: entry.size,
+                mimeType: entry.mimeType,
+                fileHash: entry.sha256,
+              }
             : {}),
         })
         .returning();
@@ -343,9 +342,10 @@ export const documentsOps = {
     query: string;
     workspace: Workspace;
     projectIds?: string[];
+    documentId?: string;
     limit?: number;
-  }) => {
-    const { projectIds, query, limit = 20, workspace } = params;
+  }): Promise<DocumentSearchResult[]> => {
+    const { projectIds, query, limit = 20, workspace, documentId } = params;
     try {
       // If projectIds are provided, verify they exist
       if (projectIds && projectIds.length > 0) {
@@ -378,63 +378,107 @@ export const documentsOps = {
       }
 
       // Build the where clause based on provided parameters
+      const similarityThreshold = 0.45; // Define threshold
+      const similaritySql = sql<number>`1 - (${cosineDistance(
+        documentEmbeddings.embedding,
+        queryEmbedding
+      )})`;
       let whereClause;
-      if (projectIds && projectIds.length > 0) {
+      if (documentId) {
+        // Search within specific document
+        whereClause = and(
+          eq(documentEmbeddings.documentId, documentId),
+          sql`${similaritySql} > ${similarityThreshold}`
+        );
+      } else if (projectIds && projectIds.length > 0) {
         // Search within specific projects
         whereClause = and(
-          inArray(documents.projectId, projectIds),
-          sql`1 - (${cosineDistance(
-            documentEmbeddings.embedding,
-            queryEmbedding
-          )}) > 0.45`
+          inArray(documents.projectId, projectIds), // Filter on documents table
+          sql`${similaritySql} > ${similarityThreshold}`
         );
       } else if (workspace.type === "organization") {
-        // When workspace is an organization, projectIds should be provided
+        console.warn(
+          "Organization search requested without specific projectIds. Returning empty."
+        );
         return [];
       } else if (workspace.type === "personal") {
         // Search across all projects owned by the user
         whereClause = and(
           eq(projects.userId, workspace.id),
-          sql`1 - (${cosineDistance(
-            documentEmbeddings.embedding,
-            queryEmbedding
-          )}) > 0.45`
+          sql`${similaritySql} > ${similarityThreshold}`
         );
+      } else {
+        throw new Error("Invalid search scope configuration.");
       }
 
       // Search for similar documents using vector similarity
-      const results = await db
+      const chunkResults = await db
         .select({
-          documentId: documentEmbeddings.documentId,
-          text: documentEmbeddings.text,
-          metadata: documentEmbeddings.metadata,
-          fileKey: documents.fileKey,
-          similarity: sql<number>`1 - (${cosineDistance(
-            documentEmbeddings.embedding,
-            queryEmbedding
-          )})`.as("similarity"),
+          // Select chunk details explicitly
+          chunkText: documentEmbeddings.text,
+          chunkMetadata: documentEmbeddings.metadata,
+          similarity: similaritySql.as("similarity"),
+          // Select full related objects needed for grouping
           document: documents,
           project: projects,
         })
         .from(documentEmbeddings)
+        // Join documents first to filter by projectId or userId via projects
         .innerJoin(documents, eq(documents.id, documentEmbeddings.documentId))
         .innerJoin(projects, eq(projects.id, documents.projectId))
-        .where(whereClause)
-        .orderBy(
-          sql`1 - (${cosineDistance(
-            documentEmbeddings.embedding,
-            queryEmbedding
-          )}) DESC`
-        )
+        .where(whereClause) // Apply the constructed where clause
+        .orderBy(sql`${similaritySql} DESC`) // Order by similarity descending
         .limit(limit);
 
       console.log(
-        `Found ${results.length} documents matching query: "${query}"`
+        `Retrieved ${chunkResults.length} relevant document chunks for query: "${query}"`
       );
 
-      // Add presigned URLs for files that need them
+      if (chunkResults.length === 0) {
+        return [];
+      }
+
+      // --- Group Chunks by Document ---
+      const documentsMap = new Map<string, DocumentSearchResult>();
+
+      for (const chunk of chunkResults) {
+        const docId = chunk.document.id;
+        const currentChunkData = {
+          text: chunk.chunkText || "",
+          metadata: chunk.chunkMetadata as any,
+          similarity: chunk.similarity,
+        };
+
+        if (!documentsMap.has(docId)) {
+          // First time seeing this document, create a new entry
+          documentsMap.set(docId, {
+            document: chunk.document, // Store the full document object
+            project: chunk.project, // Store the full project object
+            chunks: [currentChunkData], // Start the chunks array
+            maxSimilarity: chunk.similarity, // Initial max similarity
+          });
+        } else {
+          // Document already exists, add the chunk and update max similarity
+          const existingEntry = documentsMap.get(docId)!; // Safe due to the check above
+          existingEntry.chunks.push(currentChunkData);
+          existingEntry.maxSimilarity = Math.max(
+            existingEntry.maxSimilarity,
+            chunk.similarity
+          );
+        }
+      }
+
+      // --- Sort Documents by Max Similarity ---
+      let groupedResults = Array.from(documentsMap.values()).sort(
+        (a, b) => b.maxSimilarity - a.maxSimilarity
+      );
+
+      // --- Add Presigned URLs ---
       const resultsWithUrls = await Promise.all(
-        results.map(async (result) => {
+        groupedResults.map(async (result) => {
+          // Sort chunks within each document by similarity descending (optional but good UX)
+          result.chunks.sort((a, b) => b.similarity - a.similarity);
+
           if (result.document.fileKey) {
             try {
               const url = s3.presign(result.document.fileKey, {
@@ -444,7 +488,7 @@ export const documentsOps = {
                 ...result,
                 document: {
                   ...result.document,
-                  url,
+                  url, // Add the presigned URL to the document object
                 },
               };
             } catch (error) {
@@ -452,18 +496,45 @@ export const documentsOps = {
                 `Failed to generate presigned URL for file ${result.document.fileKey}:`,
                 error
               );
-              // Return the result without URL rather than failing the entire operation
+              // Return the result without URL rather than failing
               return result;
             }
           }
-          return result;
+          return result; // Return as is if no fileKey
         })
       );
+
+      console.log(`Grouped into ${resultsWithUrls.length} unique documents.`);
 
       return resultsWithUrls;
     } catch (error) {
       console.error("Error in searchProjectDocuments:", error);
       throw error;
     }
+  },
+
+  getDocumentEmbeddings: async (projectId: string, path: string) => {
+    const document = await db.query.documents.findFirst({
+      where: and(eq(documents.projectId, projectId), eq(documents.path, path)),
+    });
+
+    if (!document) {
+      throw new Error(`Document not found at path: ${path}`);
+    }
+
+    if (document.type === "folder") {
+      throw new Error("Cannot read contents of a folder");
+    }
+
+    // Get all embeddings chunks for this document
+    const embeddings = await db.query.documentEmbeddings.findMany({
+      where: eq(documentEmbeddings.documentId, document.id),
+      orderBy: asc(documentEmbeddings.createdAt), // Maintain original text order
+    });
+
+    return {
+      document,
+      embeddings,
+    };
   },
 };

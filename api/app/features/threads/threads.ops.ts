@@ -18,9 +18,6 @@ import { embeddingModel } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
-  createKnowledgeBaseSearchTool,
-  createProjectSearchTool,
-  createWebSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
   maybeGenerateTitle,
@@ -28,6 +25,13 @@ import {
 } from "./threads.utils";
 import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
+import {
+  createFileReadTool,
+  createKnowledgeBaseSearchTool,
+  createListTool,
+  createProjectSearchTool,
+  createWebSearchTool,
+} from "./tools";
 import { markitdown, markitdownMimeTypes } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
 
@@ -389,17 +393,21 @@ const threadsOps = {
       // 5) Create tools for the assistant if project ID exists
       let tools = {
         web_search: createWebSearchTool(),
-        ...(thread.knowledgeBase === null && {
-          search_project_information: createProjectSearchTool(
-            modelConfig,
-            req.workspace!,
-            req.dbUser!,
-            thread.projectId || undefined
-          ),
-        }),
-        search_knowledge_base: createKnowledgeBaseSearchTool(
+        file_search: createProjectSearchTool(
           modelConfig,
-          thread.knowledgeBase || undefined
+          req.workspace!,
+          req.dbUser!,
+          thread.projectId || undefined
+        ),
+        list_files: createListTool(
+          req.workspace!,
+          req.dbUser!,
+          thread.project || undefined
+        ),
+        read_file: createFileReadTool(
+          req.workspace!,
+          req.dbUser!,
+          thread.project || undefined
         ),
       };
 
@@ -410,7 +418,7 @@ const threadsOps = {
       const result = streamText({
         model: modelConfig.model,
         messages: inferenceMsgs,
-        temperature: 0.6,
+        temperature: 0,
         tools: tools ? tools : undefined,
         maxSteps: tools ? 8 : undefined,
         toolChoice: "auto",

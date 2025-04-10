@@ -199,6 +199,7 @@ export const documents = pgTable(
     sql`CONSTRAINT project_or_knowledge_base CHECK ((project_id IS NOT NULL AND knowledge_base_id IS NULL) OR (project_id IS NULL AND knowledge_base_id IS NOT NULL))`,
   ]
 );
+export type Document = typeof documents.$inferSelect;
 
 export const documentProcessingJobs = pgTable("document_processing_jobs", {
   id: serial("id").primaryKey(),

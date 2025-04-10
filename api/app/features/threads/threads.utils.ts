@@ -1,12 +1,8 @@
-// External dependencies
-import { CoreMessage, generateText, tool } from "ai";
+import { CoreMessage } from "ai";
 import { and, eq } from "drizzle-orm";
-import { z } from "zod";
 
-// Internal configuration
 import { CONFIG } from "../../config/constants";
 import db from "../../config/db";
-import reranker from "../../config/reranker";
 import s3 from "../../config/s3";
 import {
   documentThumbnails,
@@ -19,23 +15,13 @@ import {
   toolCalls,
   User,
 } from "../../config/schema";
-import { Workspace } from "../../middleware";
 
-// Internal utilities
 import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
 
-// Feature imports
-import { ModelConfig, MODELS } from "../models";
-import {
-  DocumentSearchToolResult,
-  MyMessage,
-  ThreadWithMessages,
-} from "./threads.types";
+import { MODELS } from "../models";
+import { MyMessage, ThreadWithMessages } from "./threads.types";
+import { DocumentSearchResult } from "../projects/docs/documents.types";
 import { DbUser } from "../../createAuthToken";
-import { PermissionManager } from "../permissions/permissions.tools";
-import { Permissions } from "../permissions/permissions.types";
-import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases.ops";
-import { documentsOps } from "../projects/docs/documents.ops";
 import { markitdownMimeTypes } from "../../doc-processor-v2";
 
 /** Retrieve the model config. */
@@ -74,89 +60,99 @@ async function processAttachments(attachments: MessageAttachment[]) {
 }
 
 /** Converts reranked search results to XML format for AI consumption */
-function convertResultsToXml(docs: DocumentSearchToolResult[]): string {
-  return `<documents_context>${docs
-    .map(
-      (doc) => `
+function convertResultsToXml(docs: DocumentSearchResult[]): string {
+  return `<documents_context>
+${docs
+  .map(
+    (doc) => `
 <document>
-  <document_id>${doc.documentId}</document_id>
-  <source>${doc.documentName}</source>
-  <snippet>${doc.text}</snippet>
-  <score>${doc.similarity}</score>
-</document>`
+  <document_id>${doc.document.id}</document_id>
+  <name>${doc.document.name}</name>
+  <maxSimilarity>${doc.maxSimilarity}</maxSimilarity>
+
+  <project>
+    <id>${doc.project.id}</id>
+    <name>${doc.project.name}</name>
+    <number>${doc.project.projectNumber}</number>
+    <address>${doc.project.address} ${doc.project.city} ${doc.project.state} ${
+      doc.project.postalCode
+    }</address>
+  </project>
+
+  <relevant_chunks>
+  ${doc.chunks
+    .map(
+      (chunk) => `
+      <chunk>
+        <text>${chunk.text}</text>
+        ${
+          chunk.metadata?.page_number
+            ? `<page_number>${chunk.metadata.page_number}</page_number>`
+            : ""
+        }
+      </chunk>`
     )
-    .join("\n\n")}
+    .join("\n")}
+  </relevant_chunks>
+</document>`
+  )
+  .join("\n\n")}
 </documents_context>`;
 }
 
-/** Extracts unique documents, treating PDF pages as separate docs */
-function getUniqueDocuments(
-  docs: DocumentSearchToolResult[]
-): DocumentSearchToolResult[] {
-  const uniqueDocsMap = new Map<string, DocumentSearchToolResult>();
-  for (const doc of docs) {
-    const key = doc.pageNumber
-      ? `${doc.documentId}_page${doc.pageNumber}`
-      : doc.documentId;
-    if (!uniqueDocsMap.has(key)) {
-      uniqueDocsMap.set(key, doc);
-    }
-  }
-  return Array.from(uniqueDocsMap.values());
-}
-
 /** Processes a PDF document and returns its page as an image data URL */
-async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
+async function processPdfDocument(doc: DocumentSearchResult): Promise<{
   fileKey: string;
   imageData: string;
   mimeType: string;
 } | null> {
   try {
-    if (!doc.pageNumber || !doc.fileKey) {
-      return null;
-    }
+    return null; // Placeholder for PDF processing logic
+    // if (!doc.pageNumber || !doc.fileKey) {
+    //   return null;
+    // }
 
-    // Check if thumbnail already exists
-    const existingThumbnail = await db.query.documentThumbnails.findFirst({
-      where: and(
-        eq(documentThumbnails.documentId, doc.documentId),
-        eq(documentThumbnails.pageNumber, doc.pageNumber)
-      ),
-    });
+    // // Check if thumbnail already exists
+    // const existingThumbnail = await db.query.documentThumbnails.findFirst({
+    //   where: and(
+    //     eq(documentThumbnails.documentId, doc.documentId),
+    //     eq(documentThumbnails.pageNumber, doc.pageNumber)
+    //   ),
+    // });
 
-    if (existingThumbnail) {
-      // Return existing thumbnail
-      return {
-        fileKey: existingThumbnail.fileKey,
-        imageData: await generateAttachmentData(existingThumbnail.fileKey),
-        mimeType: "image/png",
-      };
-    }
+    // if (existingThumbnail) {
+    //   // Return existing thumbnail
+    //   return {
+    //     fileKey: existingThumbnail.fileKey,
+    //     imageData: await generateAttachmentData(existingThumbnail.fileKey),
+    //     mimeType: "image/png",
+    //   };
+    // }
 
-    // Fetch and convert PDF page to image
-    const pdfBytes = await s3.file(doc.fileKey).bytes();
-    const base64Image = await getPdfPageAsImage(pdfBytes, doc.pageNumber);
+    // // Fetch and convert PDF page to image
+    // const pdfBytes = await s3.file(doc.fileKey).bytes();
+    // const base64Image = await getPdfPageAsImage(pdfBytes, doc.pageNumber);
 
-    // Store converted image
-    const imageKey = `document-thumbnails/${doc.documentId}_page${doc.pageNumber}.png`;
-    await s3
-      .file(imageKey)
-      .write(Buffer.from(base64Image, "base64"), { type: "image/png" });
+    // // Store converted image
+    // const imageKey = `document-thumbnails/${doc.documentId}_page${doc.pageNumber}.png`;
+    // await s3
+    //   .file(imageKey)
+    //   .write(Buffer.from(base64Image, "base64"), { type: "image/png" });
 
-    // Save thumbnail reference in database
-    await db.insert(documentThumbnails).values({
-      documentId: doc.documentId,
-      pageNumber: doc.pageNumber,
-      fileKey: imageKey,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    // // Save thumbnail reference in database
+    // await db.insert(documentThumbnails).values({
+    //   documentId: doc.documentId,
+    //   pageNumber: doc.pageNumber,
+    //   fileKey: imageKey,
+    //   createdAt: new Date(),
+    //   updatedAt: new Date(),
+    // });
 
-    return {
-      fileKey: imageKey,
-      imageData: base64Image,
-      mimeType: "image/png",
-    };
+    // return {
+    //   fileKey: imageKey,
+    //   imageData: base64Image,
+    //   mimeType: "image/png",
+    // };
   } catch (error) {
     console.error("Error processing PDF document:", error);
     return null;
@@ -164,461 +160,69 @@ async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
 }
 
 /** Processes documents and returns image data URLs for supported types */
-async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
-  {
-    fileKey: string;
-    imageData: string;
-    mimeType: string;
-  }[]
+async function processDocumentImages(docs: DocumentSearchResult[]): Promise<
+  | {
+      fileKey: string;
+      imageData: string;
+      mimeType: string;
+    }[]
+  | null
 > {
   // Process all documents in parallel
-  const processingPromises = docs.map(async (doc) => {
-    try {
-      if (doc.mimeType === "application/pdf") {
-        return await processPdfDocument(doc);
-      } else if (
-        (doc.mimeType?.includes("image/png") ||
-          doc.mimeType?.includes("image/jpg") ||
-          doc.mimeType?.includes("image/jpeg")) &&
-        doc.fileKey
-      ) {
-        const imageData = await generateAttachmentData(doc.fileKey);
-        return {
-          fileKey: doc.fileKey,
-          imageData,
-          mimeType: doc.mimeType,
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error("Error processing document:", error);
-      return null;
-    }
-  });
+  //   const processingPromises = docs.map(async (doc) => {
+  //     try {
+  //       if (doc.mimeType === "application/pdf") {
+  //         return await processPdfDocument(doc);
+  //       } else if (
+  //         (doc.mimeType?.includes("image/png") ||
+  //           doc.mimeType?.includes("image/jpg") ||
+  //           doc.mimeType?.includes("image/jpeg")) &&
+  //         doc.fileKey
+  //       ) {
+  //         const imageData = await generateAttachmentData(doc.fileKey);
+  //         return {
+  //           fileKey: doc.fileKey,
+  //           imageData,
+  //           mimeType: doc.mimeType,
+  //         };
+  //       }
+  //       return null;
+  //     } catch (error) {
+  //       console.error("Error processing document:", error);
+  //       return null;
+  //     }
+  //   });
 
-  // Wait for all processing to complete and filter out nulls
-  const results = (await Promise.all(processingPromises)).filter(
-    (result): result is NonNullable<typeof result> => result !== null
-  );
+  //   // Wait for all processing to complete and filter out nulls
+  //   const results = (await Promise.all(processingPromises)).filter(
+  //     (result): result is NonNullable<typeof result> => result !== null
+  //   );
 
-  return results;
+  return null; // Placeholder for image processing logic
 }
 
-function formatDocumentSearchResults(
-  docs: DocumentSearchToolResult[],
-  images: { fileKey: string; imageData: string; mimeType: string }[]
+export function formatDocumentSearchResults(
+  docs: DocumentSearchResult[],
+  images?: { fileKey: string; imageData: string; mimeType: string }[]
 ) {
   const context = convertResultsToXml(docs);
+
   return {
     context,
-    docs,
-    images,
-    dataForFrontend: docs.map((doc) => ({
-      document_id: doc.documentId,
-      path: doc.path,
-      projectId: doc.projectId,
-      source: doc.documentName,
-      snippet: doc.text,
-      score: doc.similarity,
-      page: doc.pageNumber,
-      url: doc.fileKey
-        ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
-        : undefined,
-    })),
+    // dataForFrontend: docs.map((doc) => ({
+    //   document_id: doc.documentId,
+    //   path: doc.path,
+    //   projectId: doc.projectId,
+    //   source: doc.documentName,
+    //   snippet: doc.text,
+    //   score: doc.similarity,
+    //   page: doc.pageNumber,
+    //   url: doc.fileKey
+    //     ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+    //     : undefined,
+    // })),
   };
 }
-
-/** Tool to search all project information */
-const createProjectSearchTool = (
-  modelConfig: ModelConfig,
-  workspace: Workspace,
-  user: DbUser,
-  projectId?: string
-) =>
-  tool({
-    description: `Search project documents and retrieve relevant information.
-
-Usage:
-    1. Use when you need specific information from project documents not available in the conversation history.
-    2. Provide a clear, specific query to search across all project documents.
-    3. Best for technical details, specifications, or project-specific information.
-    4. Avoid using for general questions or when information is already in the conversation.
-
-Returns:
-    - Relevant document excerpts with context
-    - Document metadata (name, path, type)
-    - Visual previews for supported document types`,
-    parameters: z.object({
-      query: z.string(),
-    }),
-    execute: async ({ query }) => {
-      // Determine project IDs based on workspace type
-      let projectIds: string[] | undefined;
-
-      try {
-        // Handle organization workspace
-        if (workspace.type === "organization") {
-          if (projectId) {
-            // Check user's access to the specific project
-            const orgRole = await PermissionManager.getUserOrganisationRole(
-              user.id,
-              workspace.id
-            );
-
-            // Admins and managers have access to all projects
-            const isAdmin = [
-              Permissions.Roles.SUPER_ADMIN,
-              Permissions.Roles.ORGANIZATION_ADMIN,
-              Permissions.Roles.ORGANIZATION_MANAGER,
-            ].includes(orgRole?.role.name as Permissions.Roles);
-
-            if (isAdmin) {
-              projectIds = [projectId];
-            } else {
-              // Check regular member's access to the project
-              if (!orgRole) {
-                throw new Error("User is not a member of the organization");
-              }
-
-              const resourceId = await PermissionManager.getResourseId(
-                Permissions.Resources.ORGANIZATION_PROJECT_DOCS
-              );
-
-              if (!resourceId) {
-                throw new Error("Resource not found");
-              }
-
-              const hasAccess =
-                await PermissionManager.userHasAccessToRessource(
-                  orgRole,
-                  workspace.id,
-                  resourceId,
-                  Permissions.Actions.READ,
-                  projectId
-                );
-
-              if (!hasAccess) {
-                throw new Error("User does not have access to the project");
-              }
-
-              projectIds = [projectId];
-            }
-          } else {
-            // No specific project ID, get all accessible projects
-            projectIds = await PermissionManager.getUserOrgProjectsIds(
-              user.id,
-              workspace.id
-            );
-          }
-        } else if (projectId) {
-          // For non-organization workspaces with a projectId
-          projectIds = [projectId];
-        }
-      } catch (error) {
-        console.error("Error determining project IDs:", error);
-        return {
-          images: [],
-          context: "",
-          docs: [],
-          dataForFrontend: [],
-        };
-      }
-
-      try {
-        // Execute the search with the determined project IDs
-        const res = await documentsOps.searchProjectDocuments({
-          query,
-          workspace,
-          projectIds,
-          limit: 80,
-        });
-        console.log("Search results:", res.length);
-
-        // Rerank results
-        const rerankedResults = await reranker.rerank(
-          query,
-          res.map((r) => r.text || ""),
-          {
-            topN: 20,
-            returnDocuments: true,
-          }
-        );
-
-        // Create a map of text to original result for lookup
-        const textToResultMap = new Map(res.map((r) => [r.text, r]));
-
-        // Map reranked results to simplified schema
-        const simplifiedDocs: DocumentSearchToolResult[] =
-          rerankedResults.results?.map((reranked) => {
-            const originalDoc = textToResultMap.get(reranked.document.text)!;
-            return {
-              documentId: originalDoc.document.id,
-              projectId: originalDoc.document.projectId || projectId || "", // Fallback to parameter or empty string
-              path: originalDoc.document.path,
-              documentName: originalDoc.document.name,
-              text: originalDoc.text,
-              similarity: reranked.relevance_score,
-              pageNumber: (originalDoc.metadata as { page_number?: number })
-                ?.page_number,
-              mimeType: originalDoc.document.mimeType,
-              fileKey: originalDoc.document.fileKey,
-            };
-          });
-        console.log("Simplified docs length:", simplifiedDocs.length);
-
-        // Generate final output
-        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
-        const images =
-          modelConfig.model.modelId.includes("claude-3-7-sonnet") ||
-          modelConfig.model.modelId.includes("claude-3-5-sonnet")
-            ? await processDocumentImages(uniqueDocs)
-            : [];
-
-        return formatDocumentSearchResults(uniqueDocs, images);
-      } catch (error) {
-        console.error("Error searching project documents:", error);
-        return {
-          images: [],
-          context: "",
-          docs: [],
-          dataForFrontend: [],
-        };
-      }
-    },
-    experimental_toToolResultContent(result) {
-      if (!result) {
-        return [];
-      }
-      return [
-        ...result.images.map((image) => ({
-          type: "image" as const,
-          data: image.imageData,
-          mimeType: image.mimeType,
-        })),
-        {
-          type: "text",
-          text: result.context,
-        },
-      ];
-    },
-  });
-
-/** Tool to search knowledge base documents */
-const createKnowledgeBaseSearchTool = (
-  modelConfig: ModelConfig,
-  knowledgeBase?: KnowledgeBase
-) =>
-  tool({
-    description: `${
-      knowledgeBase
-        ? `This tool allows you to retrieve information from the "${knowledgeBase.name}" knowledge base.`
-        : `This tool allows you to retrieve information from a Knowledge Base.`
-    }
-
-Usage:
-    1. Use when you need information stored within a designated knowledge base.
-
-Returns:
-    - Relevant document excerpts with context
-    - Document metadata (name, path)
-    - Visual previews for supported document types`,
-    parameters: z.object({
-      query: z.string(),
-      ...(knowledgeBase
-        ? {}
-        : {
-            knowledgeBaseId: z
-              .string()
-              .describe("The ID of the knowledge base to search within."),
-          }),
-    }),
-    execute: async ({ query, knowledgeBaseId }) => {
-      const targetKnowledgeBaseId: string = knowledgeBase
-        ? knowledgeBase.id
-        : (knowledgeBaseId as string);
-
-      try {
-        // Execute the search within the specified knowledge base
-        const res = await searchKnowledgeBaseDocuments({
-          query,
-          knowledgeBaseId: targetKnowledgeBaseId,
-          limit: 80, // Same limit as project search for consistency
-        });
-        console.log(
-          `Knowledge base search results for KB ${knowledgeBaseId}:`,
-          res.length
-        );
-
-        // Rerank results
-        const rerankedResults = await reranker.rerank(
-          query,
-          res.map((r) => r.text || ""),
-          {
-            topN: 20, // Same topN as project search
-            returnDocuments: true,
-          }
-        );
-
-        // Create a map of text to original result for lookup
-        const textToResultMap = new Map(res.map((r) => [r.text, r]));
-
-        // Map reranked results to simplified schema
-        const simplifiedDocs: DocumentSearchToolResult[] =
-          rerankedResults.results?.map((reranked) => {
-            const originalDoc = textToResultMap.get(reranked.document.text)!;
-            return {
-              documentId: originalDoc.document.id,
-              // Knowledge bases don't have project IDs, set to null or undefined
-              projectId: undefined,
-              path: originalDoc.document.path,
-              documentName: originalDoc.document.name,
-              text: originalDoc.text,
-              similarity: reranked.relevance_score,
-              pageNumber: (originalDoc.metadata as { page_number?: number })
-                ?.page_number,
-              mimeType: originalDoc.document.mimeType,
-              fileKey: originalDoc.document.fileKey,
-              // Add knowledgeBaseId for frontend context if needed
-              knowledgeBaseId: targetKnowledgeBaseId,
-            };
-          }) ?? []; // Ensure it defaults to an empty array if results are null/undefined
-        console.log(
-          "Simplified knowledge base docs length:",
-          simplifiedDocs.length
-        );
-
-        // Generate final output
-        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
-        const images = modelConfig.model.modelId.includes("claude-3.7-sonnet")
-          ? await processDocumentImages(uniqueDocs)
-          : [];
-
-        return formatDocumentSearchResults(uniqueDocs, images);
-      } catch (error) {
-        console.error(
-          `Error searching knowledge base ${targetKnowledgeBaseId}:`,
-          error
-        );
-        // Return a structured error message
-        return {
-          images: [],
-          context: `Error searching knowledge base: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
-          docs: [],
-          dataForFrontend: [],
-        };
-      }
-    },
-    experimental_toToolResultContent(result) {
-      if (!result || !result.context || result.context.startsWith("Error:")) {
-        // Handle cases where execute returned an error or no result
-        return [{ type: "text", text: result?.context || "No results found." }];
-      }
-
-      return [
-        ...(result.images || []).map((image) => ({
-          type: "image" as const,
-          data: image.imageData,
-          mimeType: image.mimeType,
-        })),
-        {
-          type: "text",
-          text: result.context,
-        },
-      ];
-    },
-  });
-
-const createWebSearchTool = () =>
-  tool({
-    description: `Search the web for public information.
-
-When to use:
-- Product manuals and technical specifications
-- Industry standards and building codes
-- Manufacturer documentation
-- General knowledge questions
-
-When NOT to use:
-- Project-specific information (use search_project_information instead)
-- Information about your specific building or equipment
-- Content in your uploaded documents
-
-Tips:
-- Use specific search terms including manufacturer names and model numbers
-- Add "pdf" when looking for technical documents`,
-    parameters: z.object({
-      query: z.string(),
-    }),
-    execute: async ({ query }) => {
-      const { text, sources, providerMetadata } = await generateText({
-        model: MODELS["gemini-2.0-flash-online"].model,
-        prompt: `Search the web for information on "${query}"`,
-        maxTokens: 1200,
-        temperature: 0,
-      });
-
-      const metadata = providerMetadata?.google as
-        | Record<string, any>
-        | undefined;
-      const groundingMetadata = metadata?.groundingMetadata;
-      let formattedText = text;
-
-      // Add citations to text if groundingMetadata exists
-      if (groundingMetadata?.groundingSupports?.length) {
-        // Sort supports by startIndex descending to avoid position shifts
-        const supports = [...groundingMetadata.groundingSupports].sort(
-          (a, b) => (b.segment?.startIndex ?? 0) - (a.segment?.startIndex ?? 0)
-        );
-
-        for (const support of supports) {
-          const { segment, groundingChunkIndices } = support;
-          if (
-            segment?.endIndex != null &&
-            groundingChunkIndices?.length &&
-            groundingChunkIndices[0] < sources.length
-          ) {
-            // Insert citation at the end of the segment
-            const sourceIndex = groundingChunkIndices[0];
-            formattedText =
-              formattedText.substring(0, segment.endIndex) +
-              ` [${sourceIndex + 1}]` +
-              formattedText.substring(segment.endIndex);
-          }
-        }
-      }
-
-      // Process sources to resolve redirect URLs
-      const processedSources = await Promise.all(
-        sources.map(async (source) => {
-          if (
-            source.url?.includes(
-              "vertexaisearch.cloud.google.com/grounding-api-redirect"
-            )
-          ) {
-            try {
-              const response = await fetch(source.url, {
-                method: "HEAD",
-                redirect: "manual",
-              });
-              const location = response.headers.get("location");
-              if (location) return { ...source, url: location };
-            } catch (error) {
-              console.error("Error resolving redirect URL:", error);
-            }
-          }
-          return source;
-        })
-      );
-
-      return {
-        text: formattedText,
-        sources: processedSources,
-        queries: groundingMetadata?.webSearchQueries,
-      };
-    },
-  });
 
 async function processThreadMessages(thread: ThreadWithMessages | null) {
   if (!thread) return null;
@@ -626,34 +230,34 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
     msg.attachments = await processAttachments(msg.attachments);
 
     msg.toolCalls = msg.toolCalls?.map((call) => {
-      if (
-        (call.toolName === "search_project_information" ||
-          call.toolName === "search_projects_information" ||
-          call.toolName === "search_knowledge_base_information" ||
-          call.toolName === "search_documents") &&
-        call.result?.docs
-      ) {
-        const uniqueDocs = getUniqueDocuments(call.result.docs);
+      //   if (
+      //     (call.toolName === "search_project_information" ||
+      //       call.toolName === "search_projects_information" ||
+      //       call.toolName === "search_knowledge_base_information" ||
+      //       call.toolName === "search_documents") &&
+      //     call.result?.docs
+      //   ) {
+      //     const uniqueDocs = getUniqueDocuments(call.result.docs);
 
-        return {
-          ...call,
-          result: {
-            ...call.result, // Preserve existing result properties
-            dataForFrontend: uniqueDocs.map((doc) => ({
-              document_id: doc.documentId,
-              source: doc.documentName,
-              snippet: doc.text,
-              path: doc.path,
-              score: doc.similarity,
-              page: doc.pageNumber,
-              projectId: doc.projectId,
-              url: doc.fileKey
-                ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
-                : undefined,
-            })),
-          },
-        };
-      }
+      //     return {
+      //       ...call,
+      //       result: {
+      //         ...call.result, // Preserve existing result properties
+      //         dataForFrontend: uniqueDocs.map((doc) => ({
+      //           document_id: doc.documentId,
+      //           source: doc.documentName,
+      //           snippet: doc.text,
+      //           path: doc.path,
+      //           score: doc.similarity,
+      //           page: doc.pageNumber,
+      //           projectId: doc.projectId,
+      //           url: doc.fileKey
+      //             ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
+      //             : undefined,
+      //         })),
+      //       },
+      //     };
+      //   }
 
       // For other tool calls
       return call;
@@ -696,7 +300,6 @@ function buildSystemMessage(
   const projectSection = project
     ? `
     <current_project>
-        The user is currently looking at and working on the following project:
         <project_name>${project.name}</project_name>
         <project_context>Use the search_project_information tool to find relevant information before responding so that you have relevant information to answer the users questions. Unless they have provided enough context in the conversation to answer their question without using the tool.</project_context>
     </current_project>`
@@ -727,21 +330,70 @@ You aim to accelerate workflows and enhance productivity for engineering profess
 You, Syykick, are operating within a computational environment designed for interactive assistance. Your core operational context includes:
 
 1.  **Execution Platform:** You run on a server-based computer system managed by Syyclops.
-2.  **User Interface:** You interact with users exclusively through the current **chat session**.
-3.  **Project File Search:** You can search across project files for documents containing relevant information based on keywords or concepts. This should mostly be used when a user is working on a project.
-4.  **External Web Access:** You are connected to the internet and can utilize a **web search engine** (\`web_search\`) to retrieve publicly available information, standards, codes, and general knowledge.
-5.  **Session Context:** Your awareness is primarily focused on the **current chat session**. You track the conversation history within this session to understand context, maintain conversational flow, and reference previous exchanges. You may also operate within the context of a specific "current project" if selected by the user, which directs your file system tools.
+2.  **User Interface:** You interact with users exclusively through the current **chat session**. This interface functions similarly to modern messaging applications (like Slack or iMessage). User input arrives as individual messages, and your responses should be formatted conversationally within this chat flow.
+3.  **Response Style:** Aim for **concise, clear, and direct** responses suitable for a chat interface. **For longer or more complex information (e.g., detailed reports, code blocks, extensive file contents), you should utilize "artifacts"** (dedicated display elements separate from the main chat flow, to be detailed elsewhere) rather than embedding excessively long text directly into the chat response.
+4.  **Project File System Access:** You have integrated access to project-specific file systems. This access manifests through tools allowing you to:
+    - Navigate file and folder structures (\`list_files\`), similar to using a file explorer view.
+    - Search for files based on their content (\`file_search\`), akin to an indexed search within project data.
+    - Read the content of specific files (\`read_file\`).
+5.  **External Web Access:** You are connected to the internet and can utilize a **web search engine** (\`web_search\`) to retrieve publicly available information, standards, codes, and general knowledge.
+6.  **Session Context:** Your awareness is primarily focused on the **current chat session**. You track the conversation history within this session to understand context, maintain conversational flow, and reference previous exchanges. You may also operate within the context of a specific "current project" if selected by the user, which directs your file system tools.
 </environment>
 
 <instructions>
-1. Be Accurate and Honest: If you lack information or are unsure, state that clearly. Do not invent answers or provide speculative information.
-2. Follow Formatting Rules: Strictly avoid nested lists and combining ordered/unordered lists. Use bullet points sparingly and only when essential for clarity. Do not include URLs or resource identifiers (like project or document IDs) in your responses.
-3. Use Artifacts Appropriately: For substantial, self-contained content that the user might reuse or modify (e.g., code, data tables, long documents), create an artifact following the specific guidelines provided elsewhere. Prefer inline responses for simpler content.
-4. Use Tools Appropriately: Utilize search tools (Project, Knowledge Base, Web) **only when necessary** to gather information that is *not* readily available in the conversation history or required to adequately answer the user's query. Avoid unnecessary tool use if you already possess sufficient context.
-5. Maintain Professionalism: Adopt a helpful, collaborative, and professional tone suitable for building engineering contexts.
-6. Format for Clarity: Enhance readability by using formatting effectively. Organize structured data into Markdown tables when it improves clarity. Use emojis sparingly and appropriately to add visual emphasis or a touch of personality, maintaining a professional tone.
-7. Engage Proactively: When it makes sense after providing your main response, ask a relevant follow-up question to guide the user, suggest next steps, or prompt deeper consideration related to their query. Avoid asking this every time; only do so when it genuinely adds value and anticipates the user's likely path or needs.
+1. Keep responses short and simple, like text messages, unless the query requires a more detailed explanation.
+2. Use clear, professional language appropriate for the building engineering field.
+3. If you're unsure about an answer, state that you don't have enough information to provide a definitive response.
+4. Use clear, simple formatting in your responses. Avoid nested lists or combining ordered and unordered lists.
+5. For substantial content, create an artifact (explained later).
 </instructions>
+
+<tools>
+1. **File Search:**
+   - **Purpose:** To search across project files for documents containing relevant information based on keywords or concepts.
+   - **When to Use:** 
+     - When the answer is likely within project documents, but the specific file name or location is unknown.
+     - To find all mentions of a specific term or specification across project files.
+   - **Output:** Provides a list of relevant file paths, possibly with a short text snippet showing the context of the match.
+
+2. **List Files:**
+   - **Purpose:** To navigate and display the file and folder structure within a specific project.
+   - **When to Use:** 
+     - To see the contents of a specific folder.
+     - To understand the overall folder structure of the project.
+     - To locate a file with a known or suspected name.
+   - **Output:** Shows names and structure only, not file content.
+
+3. **Read File:**
+   - **Purpose:** To retrieve and read the entire text content of a specific, known file within a project.
+   - **When to Use:** 
+     - When explicitly asked to read a particular file identified by its path.
+     - After identifying a specific file of interest using other tools.
+   - **Output:** Returns the full text content of the specified file.
+
+4. **Web Search:**
+   - **Purpose:** To access external, publicly available information from the internet.
+   - **When to Use:** 
+     - For information not specific to the current project.
+     - For external products or data sheets not contained within project files.
+   - **Output:** Provides information found from web sources.
+
+**Strategic Tool Usage:**
+
+- **Identify the Information Source:**
+  - For content within project files, start with File Search.
+  - For the project's file/folder structure, use List Files.
+  - For the entire content of a specific file, use Read File.
+  - For external information, use Web Search.
+
+- **Typical Workflows:**
+  - **Discovery -> Retrieval:** Use File Search for general questions about project content, then present results. If a relevant file is identified, use Read File.
+  - **Browsing -> Retrieval:** Use List Files to explore, then use Read File for specific files of interest.
+
+- **Handling Ambiguity:** Clarify broad queries by asking if the user is looking for specific details in project files or general information.
+
+Tools can also be used in parallel. For example, maybe you want to read multiple files at once. You just need to return multiple tool calls in the same message. Then the tools will get executed and the results will be returned back to you.
+</tools>
 
 <restrictions>
 You must follow these rules and restrictions when responding to users. 
@@ -755,46 +407,6 @@ You must follow these rules and restrictions when responding to users.
 7. Don't include any resource identifiers or IDs in your responses. Such as project IDs, document IDs, or user IDs.
 8. Don't provide any templates unless explicitly requested.
 </restrictions>
-
-<knowledge_bases>
-A knowledge base is a collection of organized and curated information to support accurate and relevant responses. Available knowledge bases:
-
-${
-  knowledgeBase
-    ? `The user is currently focused on the "${knowledgeBase.name}". This knowledge base contains specific information that the user is interested in exploring. Prioritize searching and referencing this knowledge base when responding to user queries. Don't respond to the user first without checking this knowledge base for more context`
-    : knowledgeBases?.length
-    ? `Here are the following knowledge bases available for reference (use the ID when searching for information):
-${knowledgeBasesString}`
-    : ""
-}
-
-Do not mention knowledge base IDs to users; refer to them by name only.
-</knowledge_bases>
-
-<tools>
-1. **Project Search:**
-   - **Purpose:** To search across project files for documents containing relevant information based on keywords or concepts.
-   - **When to Use:** 
-     - When the answer is likely within project documents, but the specific file name or location is unknown.
-     - To find all mentions of a specific term or specification across project files.
-   - **Output:** Provides a list of relevant document chunks, text snippets, and images.
-
-2. **Web Search:**
-   - **Purpose:** To access external, publicly available information from the internet.
-   - **When to Use:** 
-     - For information not specific to the current project.
-     - For external products or data sheets not contained within project files.
-   - **Output:** Provides information found from web sources.
-
-3. **Knowledge Base Search:**
-   - **Purpose:** To search across the knowledge base for documents containing relevant information based on keywords or concepts.
-   - **When to Use:** 
-     - When the answer is likely within the knowledge base.
-     - To find all mentions of a specific term or specification across the knowledge base.
-   - **Output:** Provides a list of relevant document chunks, text snippets, and images.
-   
-Tools can also be used in parallel. For example, maybe you want to read multiple files at once. You just need to return multiple tool calls in the same message. Then the tools will get executed and the results will be returned back to you.
-</tools>
 
 <artifacts_info>
 You can create and reference artifacts during conversations. Artifacts are for substantial, self-contained content that users might modify or reuse, displayed in a separate UI window for clarity.
@@ -1063,6 +675,8 @@ session_context>
     ${userInstructionsSection}
 </session_context>`;
 
+  console.log(systemMsg);
+
   return systemMsg;
 }
 
@@ -1084,7 +698,7 @@ async function dbMessagesToInferenceMessages(
     supportedMimeTypes?: string[];
     supportsSystemMessages?: boolean;
   },
-  user: User,
+  user: DbUser,
   project?: Project,
   instructions?: string,
   knowledgeBase?: KnowledgeBase,
@@ -1376,9 +990,6 @@ export {
   generateAttachmentData,
   processAttachments,
   processThreadMessages,
-  createProjectSearchTool,
-  createWebSearchTool,
-  createKnowledgeBaseSearchTool,
   processDocumentImages,
   dbMessagesToInferenceMessages,
   maybeGenerateTitle,
