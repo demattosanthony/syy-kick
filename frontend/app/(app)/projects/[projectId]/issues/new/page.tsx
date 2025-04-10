@@ -62,7 +62,7 @@ export default function NewIssuePage() {
   return (
     <div className="container max-w-5xl py-8">
       <h1 className="text-xl font-bold mb-4">Create new issue</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-20">
         <form onSubmit={handleSubmit} className="md:col-span-2 space-y-8">
           <div className="space-y-4">
             <div className="space-y-2">
