@@ -26,5 +26,6 @@ export namespace Permissions {
     ORGANIZATION_PROJECT_MEMBERS = "org_project_members",
     ORGANIZATION_KNOWLEDGE_BASES = "org_knowledge_bases",
     ORGANIZATION_KNOWLEDGE_BASES_DOCS = "org_knowledge_bases_docs",
+    PROJECT_ISSUES = "project_issues",
   }
 }

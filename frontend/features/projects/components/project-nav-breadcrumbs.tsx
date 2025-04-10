@@ -125,12 +125,21 @@ const ResourceNavBreadcrumbs = ({
         )}
 
         {/* Resource name */}
-        {renderBreadcrumbItem(
-          resource?.name,
-          true,
-          `${resourcesPath}/${resource.id}`,
-          maxLength.resource
-        )}
+        {pathArray.length === 0
+          ? renderBreadcrumbItem(
+              resource?.name,
+              false, // Not a link
+              "", // No href
+              maxLength.resource,
+              true // Bold
+            )
+          : renderBreadcrumbItem(
+              resource?.name,
+              true, // Is a link
+              `${resourcesPath}/${resource.id}`,
+              maxLength.resource
+              // isBold defaults to false
+            )}
 
         {/* Path segments with max limit */}
         {pathArray.length > 0 && (

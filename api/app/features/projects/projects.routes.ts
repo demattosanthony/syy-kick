@@ -4,6 +4,7 @@ import { Permissions } from "../permissions/permissions.types";
 import { handlers } from "./projects.handlers";
 import { handlers as documentsHandlers } from "./docs/documents.handlers";
 import documentsRoutes from "./docs/documents.routes";
+import issuesRoutes from "./issues/issues.routes";
 
 export default Router()
   .post(
@@ -40,6 +41,7 @@ export default Router()
     handlers.deleteProject
   )
   .use("/:projectId/documents", documentsRoutes)
+  .use("/:projectId/issues", issuesRoutes)
   .get(
     "/:projectId/document",
     PermissionsMiddlewares.projects(
@@ -47,4 +49,12 @@ export default Router()
       Permissions.Actions.READ
     ),
     documentsHandlers.getDocument
+  )
+  .get(
+    "/:projectId/members",
+    PermissionsMiddlewares.projects(
+      Permissions.Resources.ORGANIZATION_PROJECTS,
+      Permissions.Actions.READ
+    ),
+    handlers.getProjectMembers
   );

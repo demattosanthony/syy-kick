@@ -14,7 +14,7 @@ export default function ProjectFooter({
   knowledgeBaseId,
 }: ProjectFooterProps) {
   return (
-    <footer className="absolute bottom-[72px] inset-x-0 w-full group">
+    <footer className="absolute bottom-[20px] inset-x-0 w-full group">
       <div className="w-full flex items-center justify-center transition-all duration-300 ease-in-out">
         <div className="w-full max-w-3xl px-4">
           <ProjectChatInput

@@ -22,7 +22,6 @@ const ProjectHeader = ({
   knowledgeBase,
 }: ProjectHeaderProps) => {
   const {
-    canUpdateOrgProjects,
     canCreateOrgProjectDocs,
     canUpdateOrgKnowledgeBases,
     canCreateOrgKnowledgeBaseDocs,
@@ -73,14 +72,6 @@ const ProjectHeader = ({
                 contentSource={type}
                 knowledgeBaseId={knowledgeBase?.id}
               />
-            )}
-
-            {type === "project" && project && canUpdateOrgProjects && (
-              <Link href={`/projects/${project.id}/settings`}>
-                <Button variant={"ghost"} size={"icon"}>
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </Link>
             )}
 
             {type === "knowledge-base" &&

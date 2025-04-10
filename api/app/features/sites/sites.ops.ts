@@ -2,13 +2,12 @@ import z from "zod";
 import { and, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import db from "../../config/db";
 import { PermissionManager } from "../permissions/permissions.tools";
-import { PaginatedSites, Site, SiteData } from "./sites.types";
+import { PaginatedSites, Site } from "./sites.types";
 import { formatSites, validationSchema } from "./sites.utils";
 import { sites } from "./sites.schema";
 import { documents, projects } from "../../config/schema";
 import { slugify } from "../../utils";
 import s3 from "../../config/s3";
-import { accessLogs } from "../../config/schema";
 
 export const sitesOps = {
   getAllSites: async (params: {
@@ -143,19 +142,23 @@ export const sitesOps = {
   },
 
   deleteSite: async ({ siteId }: { siteId: string }): Promise<void> => {
-    const projectsIds = await db.query.projects.findMany({
-      where: eq(projects.siteId, siteId),
-      columns: {
-        id: true,
-      }
-    }).then((projects) => projects.map((project) => project.id));
+    const projectsIds = await db.query.projects
+      .findMany({
+        where: eq(projects.siteId, siteId),
+        columns: {
+          id: true,
+        },
+      })
+      .then((projects) => projects.map((project) => project.id));
 
-    const fileKeys = await db.query.documents.findMany({
-      where: inArray(documents.projectId, projectsIds),
-      columns: {
-        fileKey: true,
-      },
-    }).then((docs) => docs.map((doc) => doc.fileKey));
+    const fileKeys = await db.query.documents
+      .findMany({
+        where: inArray(documents.projectId, projectsIds),
+        columns: {
+          fileKey: true,
+        },
+      })
+      .then((docs) => docs.map((doc) => doc.fileKey));
 
     for (const fileKey of fileKeys) {
       if (fileKey) {
@@ -195,11 +198,11 @@ export const sitesOps = {
     }
 
     if (userId) {
-      conditions.push(eq(sites.userId, userId))
+      conditions.push(eq(sites.userId, userId));
     }
 
     if (organizationId) {
-      conditions.push(eq(sites.organizationId, organizationId))
+      conditions.push(eq(sites.organizationId, organizationId));
     }
 
     if (placeId) {
@@ -207,7 +210,13 @@ export const sitesOps = {
     }
 
     if (address && postalCode && city) {
-      conditions.push(and(eq(sites.address, address), eq(sites.postalCode, postalCode), eq(sites.city, city)));
+      conditions.push(
+        and(
+          eq(sites.address, address),
+          eq(sites.postalCode, postalCode),
+          eq(sites.city, city)
+        )
+      );
     }
 
     const site = await db.query.sites.findFirst({

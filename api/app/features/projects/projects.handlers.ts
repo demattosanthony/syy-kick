@@ -81,4 +81,10 @@ export const handlers = {
       res.status(500).json({ error: "Failed to update project" });
     }
   },
+
+  getProjectMembers: async (req: Request, res: Response) => {
+    const { projectId } = req.params;
+    const members = await projectsOps.getProjectMembers(projectId);
+    res.json(members);
+  },
 };

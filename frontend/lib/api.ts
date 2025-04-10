@@ -38,6 +38,13 @@ const getCommonHeaders = () => ({
 });
 
 import { serverFetch } from "../app/actions";
+import {
+  CreateIssueData,
+  Issue,
+  IssueStatus,
+  PaginatedIssues,
+  UpdateIssueData,
+} from "@/features/projects/issues/issues.types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -75,8 +82,8 @@ async function clientFetch<T>(
     throw new ApiError(
       response.status,
       errorData?.message ||
-      errorData?.error ||
-      `Request failed with status ${response.status}`
+        errorData?.error ||
+        `Request failed with status ${response.status}`
     );
   }
 
@@ -575,7 +582,8 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -629,7 +637,8 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`,
       "DELETE"
     );
@@ -645,7 +654,8 @@ class ProjectsApi extends ApiRequest {
     }
 
     return await this.request(
-      `/projects/${projectId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -732,6 +742,10 @@ class ProjectsApi extends ApiRequest {
     } catch (error) {
       throw error;
     }
+  }
+
+  async getProjectMembers(projectId: string): Promise<User[]> {
+    return await this.request<User[]>(`/projects/${projectId}/members`);
   }
 }
 
@@ -1000,7 +1014,8 @@ export class KnowledgeBasesApi extends ApiRequest {
     const queryParams = new URLSearchParams();
     if (path) queryParams.append("path", path);
     return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/knowledge-bases/${knowledgeBaseId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -1055,6 +1070,155 @@ export class KnowledgeBasesApi extends ApiRequest {
 }
 
 /**
+ * Issues API Module
+ */
+class IssuesApi extends ApiRequest {
+  async listIssues(
+    projectId: string,
+    options?: {
+      status?: IssueStatus;
+      page?: number;
+      limit?: number;
+      searchTerm?: string;
+    }
+  ): Promise<PaginatedIssues> {
+    const queryParams = new URLSearchParams();
+    if (options?.status) {
+      queryParams.append("status", options.status);
+    }
+    if (options?.page !== undefined) {
+      queryParams.append("page", options.page.toString());
+    }
+    if (options?.limit !== undefined) {
+      queryParams.append("limit", options.limit.toString());
+    }
+    if (options?.searchTerm) {
+      queryParams.append("searchTerm", options.searchTerm);
+    }
+
+    const endpoint = `/projects/${projectId}/issues?${queryParams.toString()}`;
+    try {
+      return await this.request<PaginatedIssues>(endpoint, "GET");
+    } catch (error) {
+      console.error(`Failed to list issues for project ${projectId}:`, error);
+      throw error;
+    }
+  }
+
+  async createIssue(
+    projectId: string,
+    data: CreateIssueData
+  ): Promise<{ message: string; issueId: string }> {
+    try {
+      return await this.request<{ message: string; issueId: string }>(
+        `/projects/${projectId}/issues`,
+        "POST",
+        data
+      );
+    } catch (error) {
+      console.error(`Failed to create issue in project ${projectId}:`, error);
+      throw error;
+    }
+  }
+
+  async getIssue(projectId: string, issueNumber: number): Promise<Issue> {
+    try {
+      return await this.request<Issue>(
+        `/projects/${projectId}/issues/${issueNumber}`,
+        "GET"
+      );
+    } catch (error) {
+      console.error(`Failed to get issue ${issueNumber}:`, error);
+      throw error;
+    }
+  }
+
+  async updateIssue(
+    projectId: string,
+    issueNumber: number,
+    data: UpdateIssueData
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/projects/${projectId}/issues/${issueNumber}`,
+        "PATCH",
+        data
+      );
+    } catch (error) {
+      console.error(`Failed to update issue ${issueNumber}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteIssue(
+    projectId: string,
+    issueNumber: number
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/projects/${projectId}/issues/${issueNumber}`,
+        "DELETE"
+      );
+    } catch (error) {
+      console.error(`Failed to delete issue ${issueNumber}:`, error);
+      throw error;
+    }
+  }
+
+  // --- Comment API Methods ---
+  async createComment(
+    projectId: string,
+    issueNumber: number,
+    data: { comment: string }
+  ): Promise<{ message: string; commentId: string }> {
+    try {
+      return await this.request<{ message: string; commentId: string }>(
+        `/projects/${projectId}/issues/${issueNumber}/comments`,
+        "POST",
+        data
+      );
+    } catch (error) {
+      console.error(`Failed to add comment to issue ${issueNumber}:`, error);
+      throw error;
+    }
+  }
+
+  async updateComment(
+    projectId: string,
+    issueNumber: number,
+    commentId: string,
+    data: { comment: string }
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/projects/${projectId}/issues/${issueNumber}/comments/${commentId}`,
+        "PATCH",
+        data
+      );
+    } catch (error) {
+      console.error(`Failed to update comment ${commentId}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteComment(
+    projectId: string,
+    issueNumber: number,
+    commentId: string
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/projects/${projectId}/issues/${issueNumber}/comments/${commentId}`,
+        "DELETE"
+      );
+    } catch (error) {
+      console.error(`Failed to delete comment ${commentId}:`, error);
+      throw error;
+    }
+  }
+}
+
+/**
  *  Centralized ApiClient class that uses the modules
  */
 class ApiClient {
@@ -1070,6 +1234,7 @@ class ApiClient {
   permissions: PermissionsApi;
   sites: SitesApi;
   knowledgeBases: KnowledgeBasesApi;
+  issues: IssuesApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -1084,6 +1249,7 @@ class ApiClient {
     this.permissions = new PermissionsApi(baseUrl);
     this.sites = new SitesApi(baseUrl);
     this.knowledgeBases = new KnowledgeBasesApi(baseUrl);
+    this.issues = new IssuesApi(baseUrl);
   }
 }
 
