@@ -160,14 +160,13 @@ export function configurePassport() {
         clientID: process.env.MICROSOFT_CLIENT_ID!,
         clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
         callbackURL: process.env.MICROSOFT_FILES_CALLBACK_URL!,
-        tenant: "common",
-        scope: [
-          "Files.Read.All",
-          "Sites.Read.All",
-        ],
+        tenant: "organizations",
+        authorizationURL: "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize",
+        tokenURL: "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
+        scope: ["offline_access", "https://graph.microsoft.com/.default"],
       },
       async (accessToken: string, refreshToken: string, profile: any, done: VerifiedCallback) => {
-        const access = { accessToken, refreshToken };
+        const access = { accessToken, refreshToken, profile };
         done(null, access);
       }
     )

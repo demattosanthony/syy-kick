@@ -1,0 +1,2 @@
+getUploadToken: () => api.get<{ accessToken: string; baseUrl: string }>("/auth/me/upload-token"),
+getScopedToken: (scope: string) => api.get<{ accessToken: string }>(`/auth/microsoft-files/scoped-token?oauth_scope=${scope}`), 

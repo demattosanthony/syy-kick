@@ -462,6 +462,19 @@ export const accessLogs = pgTable("access_logs", {
 
 /** ---- End Permissions ---- */
 
+export const accessTokens = pgTable("access_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  provider: text("provider", { enum: ["google", "microsoft"] }).notNull(),
+  domain: text("domain"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   threads: many(threads),
@@ -469,6 +482,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   organizationMembers: many(organizationMembers),
   projects: many(projects),
   knowledgeBases: many(knowledgeBases),
+  accessTokens: many(accessTokens),
 }));
 
 export const threadsRelations = relations(threads, ({ one, many }) => ({
@@ -694,6 +708,13 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
   knowledgeBase: one(knowledgeBases, {
     fields: [accessLogs.knowledgeBaseId],
     references: [knowledgeBases.id],
+  }),
+}));
+
+export const accessTokensRelations = relations(accessTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [accessTokens.userId],
+    references: [users.id],
   }),
 }));
 

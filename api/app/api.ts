@@ -8,7 +8,7 @@ import { auth, checkSub } from "./middleware";
 import threadsOps from "./features/threads/threads.ops";
 
 // Routes
-import authRoutes from "./features/auth";
+import authRoutes from "./features/auth/auth.routes";
 import modelRoutes from "./features/models";
 import threadRoutes from "./features/threads/threads.routes";
 import paymentRoutes, { webhook } from "./features/payments";
@@ -64,9 +64,9 @@ export default Router()
 
       const logoUrl = invite.organization?.logo
         ? s3.presign(invite.organization.logo, {
-            expiresIn: 3600,
-            method: "GET",
-          })
+          expiresIn: 3600,
+          method: "GET",
+        })
         : null;
 
       return {

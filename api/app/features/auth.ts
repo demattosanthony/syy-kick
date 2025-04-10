@@ -4,6 +4,7 @@ import db from "../config/db";
 import { and, eq, inArray, isNull, name, or } from "drizzle-orm";
 import myPassport, { authenticateSaml } from "../config/passport";
 import {
+  accessTokens,
   memberRoles,
   organizationInvites,
   organizations,
@@ -328,10 +329,11 @@ export default Router()
     handlers.oauthCallback
   )
   .get("/microsoft-files", (req, res) => {
-    console.log("microsoft-files");
+
     myPassport.authenticate("microsoft-files", {
       session: false,
       failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
+      state: req.query.state as string,
     })(req, res);
   })
   .get(
@@ -342,8 +344,6 @@ export default Router()
     }),
     (req: Request, res: Response) => {
       const user = req.user as any;
-
-      console.log(user, '<---- user')
 
       res.send(`
         <script>

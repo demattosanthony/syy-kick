@@ -215,6 +215,22 @@ class AuthApi extends ApiRequest {
       return { success: false, error: errorMessage };
     }
   }
+
+  async getUploadToken() {
+    try {
+      return await this.request<{ accessToken: string, baseUrl: string }>(`/auth/me/upload-token`, "GET");
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getScopedToken(scope: string) {
+    try {
+      return await this.request<{ accessToken: string }>(`/auth/microsoft-files/scoped-token?oauth_scope=${scope}`, "GET");
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 /**
