@@ -203,7 +203,7 @@ export default function WorkflowPageContent({
                       key={input.id}
                       input={{
                         ...input,
-                        maxFileSize: 32 * 1024 * 1024 /* 32 MB */,
+                        maxFileSize: 50 * 1024 * 1024 /* 50 MB */,
                       }}
                       file={files[input.id]}
                       onFileChange={(file) =>

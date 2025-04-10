@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { ChevronDownIcon } from "@radix-ui/react-icons";
 
 export type ScrollButtonProps = {
-  scrollRef: React.RefObject<HTMLElement | null>;
   containerRef: React.RefObject<HTMLElement | null>;
   className?: string;
   threshold?: number;

@@ -4,17 +4,31 @@ import db from "../../config/db";
 import {
   accessLogs,
   documents,
+  memberRoles,
   organizations,
   projects,
+  roles,
   sites,
+  users,
 } from "../../config/schema";
-import { and, asc, desc, eq, ilike, inArray, SQL, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  SQL,
+  sql,
+} from "drizzle-orm";
 import { slugify } from "../../utils";
 import { PermissionManager } from "../permissions/permissions.tools";
 import PermissionsFactory from "../permissions/permissions.factory";
 import s3 from "../../config/s3";
 import { SortOption } from "./projects.types";
 import { formatSites } from "../sites/sites.utils";
+import { Permissions } from "../permissions/permissions.types";
 
 export const projectsOps = {
   createProject: async (
@@ -347,5 +361,109 @@ export const projectsOps = {
       .then((res) => res[0]);
 
     return updatedProject;
+  },
+
+  /** ---- Get Project Members ---- */
+  getProjectMembers: async (projectId: string) => {
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, projectId),
+      columns: {
+        organizationId: true,
+        userId: true, // Include userId for personal projects if needed
+      },
+    });
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    const { organizationId } = project;
+
+    // Map to store members, using userId as key for deduplication
+    const memberMap = new Map<
+      string,
+      {
+        id: string;
+        email: string;
+        profilePicture: string | null;
+        name: string | null;
+        role: typeof roles.$inferSelect;
+        createdAt: Date;
+      }
+    >();
+
+    // 1. Fetch project-specific members
+    const projectSpecificMembers = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        profilePicture: users.profilePicture,
+        name: users.name,
+        role: roles,
+        createdAt: memberRoles.createdAt,
+      })
+      .from(memberRoles)
+      .innerJoin(users, eq(users.id, memberRoles.userId))
+      .innerJoin(roles, eq(roles.id, memberRoles.roleId))
+      .where(eq(memberRoles.projectId, projectId));
+
+    // Add project-specific members to the map first
+    projectSpecificMembers.forEach((member) => {
+      memberMap.set(member.id, member);
+    });
+
+    // 2. If part of an organization, fetch org admins/managers
+    if (organizationId) {
+      const adminRoleId = await PermissionManager.getRoleId(
+        Permissions.Roles.ORGANIZATION_ADMIN
+      );
+      const managerRoleId = await PermissionManager.getRoleId(
+        Permissions.Roles.ORGANIZATION_MANAGER
+      );
+
+      const orgAdminManagerIds = [adminRoleId, managerRoleId].filter(
+        (id): id is string => !!id
+      );
+
+      if (orgAdminManagerIds.length > 0) {
+        const orgAdminsManagers = await db
+          .select({
+            id: users.id,
+            email: users.email,
+            profilePicture: users.profilePicture,
+            name: users.name,
+            role: roles,
+            createdAt: memberRoles.createdAt,
+          })
+          .from(memberRoles)
+          .innerJoin(users, eq(users.id, memberRoles.userId))
+          .innerJoin(roles, eq(roles.id, memberRoles.roleId))
+          .where(
+            and(
+              eq(memberRoles.organizationId, organizationId),
+              isNull(memberRoles.projectId), // Ensure it's an org-level role
+              inArray(memberRoles.roleId, orgAdminManagerIds)
+            )
+          );
+
+        // Add org admins/managers only if they aren't already in the map
+        // This prioritizes project-specific roles if assigned
+        orgAdminsManagers.forEach((member) => {
+          if (!memberMap.has(member.id)) {
+            memberMap.set(member.id, member);
+          }
+        });
+      }
+    }
+    // --- Potential addition for personal projects:
+    // else if (project.userId) {
+    //   // Handle personal project owner logic if needed
+    //   // e.g., fetch the owner user details and add them
+    // }
+
+    // Convert map to array
+    const membersArray = Array.from(memberMap.values());
+
+    return membersArray;
   },
 };

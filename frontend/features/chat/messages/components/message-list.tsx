@@ -199,7 +199,6 @@ const ChatMessagesList = React.memo(
             <div className="absolute right-0 bottom-0 pointer-events-auto">
               <ScrollButton
                 containerRef={chatContainerRef}
-                scrollRef={bottomRef}
                 className="shadow-sm"
                 variant={"outline"}
               />

@@ -1,11 +1,10 @@
-import { ProjectSettings } from "@/features/projects/components";
+"use client";
 
-export default async function ProjectSettingsPage({
-  params,
-}: {
-  params: Promise<{ projectId: string }>;
-}) {
-  const { projectId } = await params;
+import { ProjectSettings } from "@/features/projects/components";
+import { useParams } from "next/navigation";
+
+export default function ProjectSettingsPage() {
+  const { projectId } = useParams<{ projectId: string }>();
 
   return <ProjectSettings pid={projectId} />;
 }

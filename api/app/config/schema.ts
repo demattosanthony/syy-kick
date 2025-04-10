@@ -1,4 +1,4 @@
-import { or, relations, sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   index,
   integer,
@@ -41,6 +41,14 @@ export const bytea = customType<{
 });
 
 export { sites, sitesRelations } from "../features/sites/sites.schema";
+export {
+  issues,
+  issueAssignees,
+  issueComments,
+  issueAssigneesRelations,
+  issuesRelations,
+  issueCommentsRelations,
+} from "../features/projects/issues/issues.schema";
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
