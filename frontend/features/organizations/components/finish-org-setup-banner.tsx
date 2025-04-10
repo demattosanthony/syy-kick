@@ -10,7 +10,8 @@ const FinishOrgSetupBanner = () => {
 
   const showFinishOrganizationSetup =
     activeWorkspace?.type === "organization" &&
-    activeWorkspace?.subscriptionStatus !== "active";
+    activeWorkspace?.subscriptionStatus !== "active" &&
+    activeWorkspace?.subscriptionStatus !== "trialing";
 
   if (!showFinishOrganizationSetup) {
     return null;
@@ -27,6 +28,6 @@ const FinishOrgSetupBanner = () => {
       </Link>
     </div>
   );
-}
+};
 
 export default FinishOrgSetupBanner;
