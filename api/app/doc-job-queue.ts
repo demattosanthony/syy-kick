@@ -4,7 +4,7 @@ import db from "./config/db";
 import { processFile } from "./doc-processor";
 import { DocumentProcessor } from "./doc-processor-v2";
 
-const CONCURRENT_JOBS = 5;
+const CONCURRENT_JOBS = 1;
 const POLLING_INTERVAL = 10000; // 10 seconds
 const MAX_ATTEMPTS = 2;
 
@@ -95,7 +95,8 @@ async function processJob(job: typeof documentProcessingJobs.$inferSelect) {
       job.fileKey,
       job.fileName,
       job.mimeType,
-      job.documentId
+      job.documentId,
+      true
     );
     const result = await docProcessor.processAndEmbed();
     console.log(result);

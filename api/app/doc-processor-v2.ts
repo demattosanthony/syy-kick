@@ -1,4 +1,6 @@
 import os from "os";
+import path from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
 import {
   mistralAi,
   MODELS,
@@ -7,11 +9,11 @@ import {
 import s3 from "./config/s3";
 import { markitdownFileExtensions } from "./config/mime-types";
 import { embedMany, generateText } from "ai";
-import { fetch } from "bun";
 import { sanitizeText } from "./doc-processor";
-import { readdir } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { documentEmbeddings } from "./config/schema";
 import db from "./config/db";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 interface ExtractedData {
   rawMarkdown: string;
@@ -30,21 +32,61 @@ export class DocumentProcessor {
   private readonly mimeType: string;
   private readonly documentId?: string;
   private readonly fileExtension: string;
-
-  // Jina Segmentation API has a payload limit of 64k characters
-  private readonly JINA_PAYLOAD_LIMIT = 64_000;
+  private readonly debug: boolean;
+  private readonly debugDir?: string;
 
   constructor(
     fileKey: string,
     fileName: string,
     mimeType: string,
-    documentId?: string
+    documentId?: string,
+    debug: boolean = false
   ) {
     this.fileKey = fileKey;
     this.fileName = fileName;
     this.mimeType = mimeType;
     this.documentId = documentId;
     this.fileExtension = "." + (fileName.split(".").pop()?.toLowerCase() || "");
+    this.debug = debug;
+
+    if (this.debug) {
+      // Create a unique directory name for this run
+      const timestamp = Date.now();
+      const safeFileName = fileName.replace(/[^a-zA-Z0-9_.-]/g, "_"); // Sanitize filename
+      // Use a relative path instead of os.tmpdir()
+      this.debugDir = path.join(
+        "./debug_output",
+        `doc-processor-debug-${safeFileName}-${timestamp}`
+      );
+      console.log(
+        `Debugging enabled. Output will be saved to: ${this.debugDir}`
+      );
+    }
+  }
+
+  // --- Debug Helper ---
+
+  /**
+   * Writes content to a file within the debug directory.
+   * Creates the directory if it doesn't exist.
+   */
+  private async _writeDebugFile(
+    filePath: string,
+    content: string | Buffer
+  ): Promise<void> {
+    if (!this.debug || !this.debugDir) {
+      return;
+    }
+    try {
+      const fullPath = path.join(this.debugDir, filePath);
+      const dir = path.dirname(fullPath);
+      // Create directory recursively if it doesn't exist
+      await mkdir(dir, { recursive: true });
+      await writeFile(fullPath, content);
+      // console.log(`Debug file written: ${fullPath}`); // Optional: log each write
+    } catch (error) {
+      console.error(`Failed to write debug file ${filePath}:`, error);
+    }
   }
 
   // --- Public API Methods ---
@@ -54,7 +96,9 @@ export class DocumentProcessor {
    */
   public async getMarkdown(): Promise<string> {
     const { rawMarkdown, images } = await this._getRawData();
+    // Raw data debug writing moved to _getRawData
     const cleanedMarkdown = this._cleanMarkdown(rawMarkdown, images);
+    await this._writeDebugFile("2_cleaned_markdown.md", cleanedMarkdown);
     return cleanedMarkdown;
   }
 
@@ -63,26 +107,63 @@ export class DocumentProcessor {
    * generates embeddings (placeholder), and saves them (placeholder).
    */
   public async processAndEmbed(): Promise<object> {
-    const markdown = await this.getMarkdown();
+    console.log(`Processing and embedding ${this.fileName}`);
+    if (this.debug && this.debugDir) {
+      // Clear any previous debug dir for the same file run if needed (optional)
+      // await rm(this.debugDir, { recursive: true, force: true }).catch(() => {});
+      console.log(`Initializing debug directory: ${this.debugDir}`);
+      await this._ensureDebugDir(); // Ensure base debug dir exists
+    }
+
+    const markdown = await this.getMarkdown(); // This will call _getRawData and _cleanMarkdown, writing their debug files
     console.log(`Markdown length: ${markdown.length}`);
+
     const chunks = await this._segmentMarkdown(markdown);
     console.log(`Segmented into ${chunks.length} chunks`);
+    if (this.debug) {
+      for (let i = 0; i < chunks.length; i++) {
+        await this._writeDebugFile(
+          path.join("3_chunks", `chunk_${i}.txt`),
+          chunks[i]
+        );
+      }
+      await this._writeDebugFile(
+        "3_chunks_manifest.json",
+        JSON.stringify({ count: chunks.length }, null, 2)
+      );
+    }
+
     const embeddings = await this._generateEmbeddings(chunks);
     console.log(`Generated ${embeddings.length} embeddings`);
+
     const saveResult = await this._saveEmbeddings(embeddings, chunks);
 
-    // Clean up any temporary image files created during PDF processing
+    // Clean up any temporary image files created during PDF processing *unless* debugging
     await this._cleanupTempImages();
 
     return {
       markdownLength: markdown.length,
-      chunks,
+      chunkCount: chunks.length,
       embeddingCount: embeddings.length,
       saveResult,
+      debugPath: this.debug ? this.debugDir : undefined,
     };
   }
 
   // --- Internal Helper Methods ---
+
+  private async _ensureDebugDir(): Promise<void> {
+    if (this.debug && this.debugDir) {
+      try {
+        await mkdir(this.debugDir, { recursive: true });
+      } catch (error) {
+        console.error(
+          `Failed to create debug directory ${this.debugDir}:`,
+          error
+        );
+      }
+    }
+  }
 
   private async getFile(): Promise<Buffer> {
     const file = await s3.file(this.fileKey).arrayBuffer();
@@ -93,50 +174,103 @@ export class DocumentProcessor {
    * Fetches the file and extracts raw data based on the file type.
    */
   private async _getRawData(): Promise<ExtractedData> {
+    await this._ensureDebugDir(); // Ensure debug dir exists before potential writes
     const file = await this.getFile();
     const base64 = file.toString("base64"); // Common case
 
+    let result: ExtractedData;
+
     if (this.mimeType.startsWith("image/")) {
       const markdown = await this._processImage(base64, this.mimeType);
-      return { rawMarkdown: markdown, images: [] };
-    }
-
-    if (this.fileExtension === ".pdf") {
-      return this._processPdf(base64);
-    }
-
-    if (markitdownFileExtensions.includes(this.fileExtension)) {
+      result = { rawMarkdown: markdown, images: [] };
+    } else if (this.fileExtension === ".pdf") {
+      result = await this._processPdf(base64);
+    } else if (markitdownFileExtensions.includes(this.fileExtension)) {
       const markdown = await this._processWithMarkitdown(file);
-      return { rawMarkdown: markdown, images: [] };
+      result = { rawMarkdown: markdown, images: [] };
+    } else {
+      console.warn(
+        `Unsupported file type: ${this.mimeType} / ${this.fileExtension}`
+      );
+      result = { rawMarkdown: "", images: [] }; // Handle unsupported types gracefully
     }
 
-    console.warn(
-      `Unsupported file type: ${this.mimeType} / ${this.fileExtension}`
-    );
-    return { rawMarkdown: "", images: [] }; // Handle unsupported types gracefully
+    // Save raw data for debugging *after* processing attempt
+    if (this.debug) {
+      // Use a distinct name for the raw markdown from initial extraction step
+      await this._writeDebugFile(
+        "1_raw_extraction_markdown.md",
+        result.rawMarkdown
+      );
+      if (result.images.length > 0) {
+        await this._writeDebugFile(
+          "1_extracted_images_manifest.json",
+          JSON.stringify(
+            result.images.map((img) => ({
+              id: img.id,
+              fileName: img.fileName,
+              mimeType: img.mimeType,
+              description: img.description,
+            })),
+            null,
+            2
+          )
+        );
+        // Images themselves are saved during _processPdf if debugging
+      }
+    }
+
+    return result;
   }
 
   /**
    * Extracts raw markdown from Markitdown compatible files.
    */
   private async _processWithMarkitdown(file: Buffer): Promise<string> {
-    const tempFile = `/tmp/${Date.now()}-${this.fileName}`;
+    // Decide on temp file location based on debug flag
+    const tempFileName = `${Date.now()}-${this.fileName}`;
+    const tempBaseDir =
+      this.debug && this.debugDir
+        ? path.join(this.debugDir, "temp_files")
+        : "/tmp";
+    const tempFile = path.join(tempBaseDir, tempFileName);
+
+    // Ensure the directory exists (especially for debug)
+    if (this.debug && this.debugDir) {
+      await mkdir(path.dirname(tempFile), { recursive: true }).catch(
+        console.error
+      );
+    }
+
     await Bun.write(tempFile, file);
     const expandedPath = tempFile.replace(/^~(?=$|\/|\\)/, os.homedir());
 
     try {
       const proc = Bun.spawn(["markitdown", expandedPath]);
       const markdown = await new Response(proc.stdout).text();
+      await this._writeDebugFile("markitdown_output.md", markdown); // Debug output
       return markdown;
     } catch (error) {
       console.error("Error processing with markitdown:", error);
+      await this._writeDebugFile(
+        "markitdown_error.log",
+        error instanceof Error ? error.message : String(error)
+      );
       return ""; // Return empty string on error
     } finally {
-      // Ensure temp file is cleaned up
-      try {
-        await Bun.file(tempFile).delete();
-      } catch (cleanupError) {
-        console.warn(`Failed to delete temp file ${tempFile}:`, cleanupError);
+      // Clean up temp file only if *not* debugging
+      if (!this.debug) {
+        try {
+          // Use Bun.file with the original tempFile path
+          const fileHandle = Bun.file(tempFile);
+          if (await fileHandle.exists()) {
+            await rm(tempFile, { force: true }); // Use rm from fs/promises
+          }
+        } catch (cleanupError) {
+          console.warn(`Failed to delete temp file ${tempFile}:`, cleanupError);
+        }
+      } else {
+        console.log(`Debug mode: Preserving temp file: ${tempFile}`);
       }
     }
   }
@@ -174,9 +308,14 @@ export class DocumentProcessor {
           },
         ],
       });
+      await this._writeDebugFile("image_description.md", text);
       return text;
     } catch (error) {
       console.error("Error processing image:", error);
+      await this._writeDebugFile(
+        "image_description_error.log",
+        error instanceof Error ? error.message : String(error)
+      );
       return ""; // Return empty string on error
     }
   }
@@ -186,6 +325,7 @@ export class DocumentProcessor {
    */
   private async _processPdf(base64: string): Promise<ExtractedData> {
     // TODO: if there is more pages than are allowed by the API, we need to split the file into chunks
+    await this._ensureDebugDir(); // Ensure debug dir exists for saving images
     try {
       const result = await mistralAi.ocr.process({
         model: "mistral-ocr-latest",
@@ -198,6 +338,7 @@ export class DocumentProcessor {
 
       let markdown = "";
       const images: ExtractedData["images"] = [];
+      let imageIndex = 0; // For unique naming in debug dir
 
       for (const item of result.pages) {
         if (item.markdown) {
@@ -209,28 +350,50 @@ export class DocumentProcessor {
             continue;
           }
 
-          let imageBase64 = image.imageBase64;
-          if (imageBase64.includes(",")) {
-            imageBase64 = imageBase64.split(",", 2)[1];
+          let imageBase64Data = image.imageBase64;
+          if (imageBase64Data.includes(",")) {
+            imageBase64Data = imageBase64Data.split(",", 2)[1];
           }
 
-          // Store image temporarily locally - needed for potential later processing/upload
-          // We'll clean these up later in _cleanupTempImages
-          //   const imageBuffer = Buffer.from(imageBase64, "base64");
-          //   const tempImagePath = `./temp_img_${image.id}`; // Use a prefix for easy cleanup
-          //   await Bun.write(tempImagePath, imageBuffer);
+          const imageBuffer = Buffer.from(imageBase64Data, "base64");
+          // Assume jpeg, but try to get extension if possible (though OCR likely won't provide it)
+          const imageMimeType = "image/jpeg"; // Or infer if possible
+          const imageFileExt = ".jpg"; // Match assumed mime type
+          const imageFileName = `extracted_image_${imageIndex++}${imageFileExt}`;
 
-          images.push({
-            id: image.id, // Use the ID provided by the OCR
-            url: `data:image/jpeg;base64,${imageBase64}`, // Keep full data URL if needed elsewhere
-            fileName: image.id, // Store the temporary path
-            mimeType: "image/jpeg", // Assume jpeg for now, OCR might not provide type
-          });
+          // Save image to debug directory if debugging is enabled
+          if (this.debug && this.debugDir) {
+            const debugImageSubDir = "images"; // Define subdirectory for images
+            const debugImagePath = path.join(debugImageSubDir, imageFileName); // Path relative to debugDir
+            await this._writeDebugFile(debugImagePath, imageBuffer); // Use helper with relative path
+            images.push({
+              id: image.id, // Use the ID provided by the OCR
+              url: `debug://${debugImageSubDir}/${imageFileName}`, // Point to the debug file path (relative)
+              fileName: imageFileName, // Store the debug filename
+              mimeType: imageMimeType,
+              // Optionally generate description here if needed for manifest
+            });
+          } else {
+            // If not debugging, we don't need to store image data locally
+            // Just record minimal info if needed downstream, but URL/fileName become less relevant
+            images.push({
+              id: image.id,
+              url: `data:${imageMimeType};base64,...`, // Indicate data was present but not stored
+              fileName: `image_${image.id}`, // Placeholder name
+              mimeType: imageMimeType,
+            });
+          }
         }
       }
+      // Write the combined markdown from all pages
+      await this._writeDebugFile("pdf_ocr_combined_raw_markdown.md", markdown);
       return { rawMarkdown: markdown, images };
     } catch (error) {
       console.error("Error processing PDF:", error);
+      await this._writeDebugFile(
+        "pdf_ocr_error.log",
+        error instanceof Error ? error.message : String(error)
+      );
       return { rawMarkdown: "", images: [] }; // Return empty data on error
     }
   }
@@ -252,13 +415,14 @@ export class DocumentProcessor {
           line.trim()
         );
         // Additionally, check if the source references one of the extracted image IDs
-        // This helps avoid removing legitimate links that coincidentally look like image paths
+        // or the debug path URI we created
         if (isImageLine) {
           const imageSourceMatch = line.match(/\((.*?)\s*(".*")?\s*\)$/);
           if (imageSourceMatch && imageSourceMatch[1]) {
             const source = imageSourceMatch[1];
-            if (images.some((img) => source === img.id)) {
-              return false; // It's a markdown link pointing to an extracted image ID, remove it
+            if (images.some((img) => source === img.id || source === img.url)) {
+              // Check against ID or debug URL
+              return false; // It's a markdown link pointing to an extracted image ID or debug file, remove it
             }
           }
         }
@@ -273,102 +437,22 @@ export class DocumentProcessor {
   }
 
   /**
-   * Calls the Jina API to segment a given text content.
-   */
-  private async _callJinaApi(content: string): Promise<string[]> {
-    if (!content.trim()) {
-      return [];
-    }
-    try {
-      console.log(`Calling Jina API with payload size: ${content.length}`);
-      const response = await fetch("https://api.jina.ai/v1/segment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.JINA_API_KEY}`,
-        },
-        body: JSON.stringify({
-          content: content,
-          return_tokens: false,
-          return_chunks: true,
-          max_chunk_length: 1000, // Max length of each *output* segment
-        }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(
-          `Jina API request failed: ${response.status} ${response.statusText} - ${errorBody}`
-        );
-      }
-
-      const data = (await response.json()) as { chunks?: string[] };
-      console.log(`Jina returned ${data.chunks?.length ?? 0} segments.`);
-      return data.chunks || [];
-    } catch (error) {
-      console.error("Error segmenting markdown with Jina:", error);
-      // Fallback: return the input content as one chunk if API fails
-      return [content];
-    }
-  }
-
-  /**
-   * Segments markdown text into chunks, respecting Jina API payload limits.
+   * Segments markdown text into chunks by first splitting the text into payloads
+   * respecting Jina API limits, then calling the Jina API for each payload.
    */
   private async _segmentMarkdown(markdown: string): Promise<string[]> {
     if (!markdown.trim()) {
       return []; // Return empty array if markdown is empty
     }
 
-    const lines = markdown.split("\n");
-    const allSegments: string[] = [];
-    let currentPayloadLines: string[] = [];
-    let currentPayloadLength = 0;
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1200,
+      chunkOverlap: 200,
+    });
+    const segments = await textSplitter.splitText(markdown);
 
-    for (const line of lines) {
-      // Calculate length of the line plus a newline char if adding to existing lines
-      const lineLength = line.length + (currentPayloadLines.length > 0 ? 1 : 0);
-
-      // Check if adding this line would exceed the JINA_PAYLOAD_LIMIT
-      if (currentPayloadLength + lineLength > this.JINA_PAYLOAD_LIMIT) {
-        // If there's content in the current payload, send it to Jina
-        if (currentPayloadLines.length > 0) {
-          const payload = currentPayloadLines.join("\n");
-          const segments = await this._callJinaApi(payload);
-          allSegments.push(...segments);
-        }
-
-        // Start a new payload with the current line
-        // Check if the line *itself* is too long (edge case)
-        if (line.length > this.JINA_PAYLOAD_LIMIT) {
-          console.warn(
-            `Single line exceeds Jina payload limit (${line.length} > ${this.JINA_PAYLOAD_LIMIT}). Sending it as a separate request.`
-          );
-          const segments = await this._callJinaApi(line);
-          allSegments.push(...segments);
-          // Reset payload trackers as this line was processed separately
-          currentPayloadLines = [];
-          currentPayloadLength = 0;
-        } else {
-          // Start new payload normally
-          currentPayloadLines = [line];
-          currentPayloadLength = line.length; // Length calculation is simple for the first line
-        }
-      } else {
-        // Add the line to the current payload
-        currentPayloadLines.push(line);
-        currentPayloadLength += lineLength;
-      }
-    }
-
-    // Process any remaining lines in the last payload
-    if (currentPayloadLines.length > 0) {
-      const payload = currentPayloadLines.join("\n");
-      const segments = await this._callJinaApi(payload);
-      allSegments.push(...segments);
-    }
-
-    return allSegments;
+    console.log(`Total segments received from Jina: ${segments.length}`);
+    return segments;
   }
 
   /**
@@ -395,68 +479,87 @@ export class DocumentProcessor {
       return { count: 0 };
     }
     console.log(`Saving ${embeddings.length} embeddings to DB.`);
+    // Define subdirectory for embedding related debug files
+    const embeddingsDebugSubDir = "embeddings";
+
     if (!this.documentId) {
-      throw new Error("Document ID is required to save embeddings");
+      const errorMsg = "Document ID is missing, cannot save embeddings.";
+      // If debugging, log this error instead of throwing? Or allow proceeding without saving?
+      if (this.debug) {
+        console.error(errorMsg + " Continuing in debug mode.");
+        await this._writeDebugFile(
+          path.join(embeddingsDebugSubDir, "save_error.log"),
+          errorMsg
+        );
+        return { count: 0, error: "Missing documentId" };
+      }
+      throw new Error(errorMsg);
     }
     if (embeddings.length !== chunks.length) {
-      throw new Error(
-        `Mismatch between embeddings count (${embeddings.length}) and chunks count (${chunks.length})`
+      const errorMsg = `Mismatch between embeddings count (${embeddings.length}) and chunks count (${chunks.length})`;
+      await this._writeDebugFile(
+        path.join(embeddingsDebugSubDir, "save_error.log"),
+        errorMsg
       );
+      throw new Error(errorMsg);
     }
 
-    const result = await db
-      .insert(documentEmbeddings)
-      .values(
-        embeddings.map((embedding, index) => ({
-          documentId: this.documentId as string,
-          text: chunks[index],
-          embedding: embedding,
-          metadata: null,
-        }))
-      )
-      .returning({ count: documentEmbeddings.id }); // Modify if drizzle needs different return syntax
+    try {
+      const valuesToInsert = embeddings.map((embedding, index) => ({
+        documentId: this.documentId as string, // Cast safe due to check above (unless debugging)
+        text: chunks[index],
+        embedding: embedding,
+        metadata: null, // Add metadata if available/needed
+      }));
 
-    return { count: result.length };
+      // Write the data intended for DB insertion to a debug file
+      await this._writeDebugFile(
+        path.join(embeddingsDebugSubDir, "values_to_insert.json"),
+        JSON.stringify(valuesToInsert, null, 2)
+      );
+
+      const result = await db
+        .insert(documentEmbeddings)
+        .values(valuesToInsert)
+        .returning({ count: documentEmbeddings.id }); // Modify if drizzle needs different return syntax
+
+      await this._writeDebugFile(
+        path.join(embeddingsDebugSubDir, "save_success.json"),
+        JSON.stringify({ savedCount: result.length }, null, 2)
+      );
+      return { count: result.length };
+    } catch (error) {
+      console.error("Error saving embeddings to DB:", error);
+      await this._writeDebugFile(
+        path.join(embeddingsDebugSubDir, "save_db_error.log"),
+        error instanceof Error
+          ? error.message + (error.stack ? "\\n" + error.stack : "")
+          : String(error)
+      );
+      if (this.debug) {
+        return { count: 0, error: "DB insert failed" };
+      }
+      throw error; // Re-throw if not debugging
+    }
   }
 
   /**
    * Cleans up temporary image files created during PDF processing.
    */
   private async _cleanupTempImages(): Promise<void> {
-    // This assumes temp images were saved with a specific prefix or pattern
-    // For now, we look for files starting with 'temp_img_' in the current dir.
-    // A more robust solution would use a dedicated temp directory.
-    // Since we removed the temp image saving logic in _processPdf, this might not be needed
-    // unless other parts create temp files. Keeping it for now.
-    try {
-      const dirEntries = await readdir("./");
-      const tempImageFiles = dirEntries.filter((name: string) =>
-        name.startsWith("temp_img_")
-      );
-
-      if (tempImageFiles.length === 0) return; // Nothing to clean
-
-      console.log(
-        `Cleaning up ${tempImageFiles.length} temporary image files...`
-      );
-      for (const fileName of tempImageFiles) {
-        try {
-          await Bun.file(`./${fileName}`).delete();
-          // console.log(`Cleaned up temp image: ${fileName}`); // Keep commented out unless debugging
-        } catch (error) {
-          console.error(`Failed to delete temp image ${fileName}:`, error);
-        }
-      }
-    } catch (readDirError) {
-      // Ignore errors like directory not found if './' somehow becomes invalid
-      if (
-        readDirError instanceof Error &&
-        readDirError.message.includes("ENOENT")
-      ) {
-        console.warn("Directory '.' not found during cleanup, skipping.");
-        return;
-      }
-      console.error(`Failed to read directory for cleanup:`, readDirError);
+    if (this.debug) {
+      console.log("Debug mode: Skipping cleanup of temporary files/images.");
+      return;
     }
+
+    // Previous logic tried cleaning './temp_img_*'. This was potentially incorrect
+    // as _processPdf didn't save them unless debugging, and markitdown cleans its own file.
+    // So, in non-debug mode, there might be nothing standard to clean here anymore.
+    // If other processes *do* create temp files in a known location (like /tmp),
+    // cleanup logic for those could be added here.
+
+    console.log(
+      "Cleanup: No standard temporary files to remove in non-debug mode (markitdown handles its own)."
+    );
   }
 }

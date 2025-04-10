@@ -36,6 +36,7 @@
     "@ai-sdk/perplexity": "^0.0.7",
     "@ai-sdk/togetherai": "^0.1.9",
     "@ai-sdk/xai": "^1.1.8",
+    "@langchain/textsplitters": "^0.1.0",
     "@mistralai/mistralai": "^1.5.2",
     "ai": "^4.3.2",
     "cookie-parser": "^1.4.7",

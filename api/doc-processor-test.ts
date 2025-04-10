@@ -15,7 +15,9 @@ await s3.write(fileKey, file);
 const docProcessor = new DocumentProcessor(
   fileKey,
   "test.xlsx",
-  "application/xlsx"
+  "application/xlsx",
+  undefined,
+  true
 );
 
 docProcessor.getMarkdown().then((result) => {

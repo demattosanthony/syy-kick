@@ -180,3 +180,4 @@ files/
 ocr-results/
 debug-images/
 *.log
+debug_output/
