@@ -36,7 +36,7 @@ import { PermissionManager } from "../permissions/permissions.tools";
 import { Permissions } from "../permissions/permissions.types";
 import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases.ops";
 import { documentsOps } from "../projects/docs/documents.ops";
-import { markitdownMimeTypes } from "../../doc-processor-v2";
+import { markitdownMimeTypes } from "../../config/mime-types";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {

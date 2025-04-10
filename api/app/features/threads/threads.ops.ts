@@ -28,8 +28,8 @@ import {
 } from "./threads.utils";
 import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
-import { markitdown, markitdownMimeTypes } from "../../doc-processor-v2";
-import s3 from "../../config/s3";
+import { markitdownMimeTypes } from "../../config/mime-types";
+import { DocumentProcessor } from "../../doc-processor-v2";
 
 const threadsOps = {
   async createThread(
@@ -92,13 +92,13 @@ const threadsOps = {
         // convert attachment to markdown
         let markdown = null;
         if (markitdownMimeTypes.includes(attachment.contentType!)) {
-          const attachmentBuffer = await s3
-            .file(attachment.file_key)
-            .arrayBuffer();
-          markdown = await markitdown(
-            Buffer.from(attachmentBuffer),
-            attachment.name || ""
+          console.log(attachment);
+          const docProcessor = new DocumentProcessor(
+            attachment.file_key,
+            attachment.name || "",
+            attachment.contentType || ""
           );
+          markdown = await docProcessor.getMarkdown();
         }
 
         await db.insert(messageAttachments).values({

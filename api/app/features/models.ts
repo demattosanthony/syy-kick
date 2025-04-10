@@ -12,7 +12,7 @@ import { createPerplexity } from "@ai-sdk/perplexity";
 import { mistral } from "@ai-sdk/mistral";
 import { wrapLanguageModel, extractReasoningMiddleware } from "ai";
 import { Mistral as MistralAi } from "@mistralai/mistralai";
-import { markitdownMimeTypes } from "../doc-processor-v2";
+import { markitdownMimeTypes } from "../config/mime-types";
 
 const perplexity = createPerplexity({
   apiKey: process.env.PPLX_API_KEY ?? "",
@@ -245,7 +245,7 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsSystemMessages: true,
       supportedMimeTypes: [...markitdownMimeTypes],
       description:
-        "Grok is an AI modeled after the Hitchhiker’s Guide to the Galaxy. It is intended to answer almost anything and, far harder, even suggest what questions to ask!",
+        "Grok is an AI modeled after the Hitchhiker's Guide to the Galaxy. It is intended to answer almost anything and, far harder, even suggest what questions to ask!",
     },
     "grok-2-vision": {
       model: xai("grok-2-vision-1212"),
@@ -289,7 +289,7 @@ export const togetherAiModels = (
       supportedMimeTypes,
       provider: "deepseek",
       supportsSystemMessages: true,
-      description: `DeepSeek-V3 is an open-source large language model that builds upon LLaMA (Meta’s foundational language model) to enable versatile functionalities such as text generation, code completion, and more. The model is hosted on Together AI and running on USA servers, no data gets shared with DeepSeek or china.`,
+      description: `DeepSeek-V3 is an open-source large language model that builds upon LLaMA (Meta's foundational language model) to enable versatile functionalities such as text generation, code completion, and more. The model is hosted on Together AI and running on USA servers, no data gets shared with DeepSeek or china.`,
     },
     "llama-3.1-405B": {
       model: togetherai("meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"),
