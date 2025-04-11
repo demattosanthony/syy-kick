@@ -182,12 +182,12 @@ export default function ThreadPage({
     });
 
     // Reset attachments after submit
-    // setUploads([]);
-    // setSelectedProjectDocs([]);
-    // setWorkflowInput({
-    //   attachments: [],
-    //   input: "",
-    // });
+    setUploads([]);
+    setSelectedProjectDocs([]);
+    setWorkflowInput({
+      attachments: [],
+      input: "",
+    });
   }
 
   useEffect(() => {
