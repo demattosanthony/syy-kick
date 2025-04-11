@@ -29,6 +29,7 @@ import {
 import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
 import s3 from "../../config/s3";
+import workflowHandlers from "../workflows/workflows.handlers";
 import { ACCEPTED_DOC_PROCESSING_EXTENSIONS } from "../../doc-processor";
 import { markitdown } from "../../doc-processor";
 
@@ -322,9 +323,13 @@ const threadsOps = {
 
     try {
       const { threadId } = req.params;
-      const { model, maxTokens, instructions, message } = req.body as z.infer<
-        typeof inferenceSchema
-      >;
+      const { model, maxTokens, instructions, message, workflowId } =
+        req.body as z.infer<typeof inferenceSchema>;
+
+      // If its a inital workflow run, reroute to the workflow handler
+      if (workflowId) {
+        return await workflowHandlers.run(req, res);
+      }
 
       // 1) Store the user message
       if (message) {
