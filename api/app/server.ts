@@ -20,8 +20,10 @@ async function main() {
   }
 
   // Start the document job queue
+  //   if (CONFIG.__prod__) {
   console.log("Starting document job queue...");
   startQueue();
+  //   }
 
   const app = Express();
 

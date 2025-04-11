@@ -34,13 +34,7 @@ interface DocumentChunk {
   metadata?: {
     page_number?: number;
   };
-  images?: {
-    id: string;
-    url: string;
-    fileName: string;
-    mimeType: string;
-    description?: string;
-  }[];
+  imageFileKey?: string;
 }
 
 interface ProcessFileOptions {
@@ -85,6 +79,9 @@ const ACCEPTED_DOC_PROCESSING_EXTENSIONS = [
   ".tiff",
   ".ico",
   ".heic",
+  ".md",
+  ".txt",
+  ".rtf",
 ];
 export async function processFile({
   fileKey,
@@ -132,25 +129,43 @@ export async function processFile({
           Buffer.from(fileContent).toString("base64"),
           mimeType
         );
-        // For each page, get the markdown and split the text
+        let markdown = "";
         for (const page of result.pages) {
-          const chunks = await textSplitter.splitText(page.markdown || "");
-          documentChunks.push(
-            ...chunks.map((chunk) => ({
-              markdown: sanitizeText(chunk),
-              metadata: {
-                page_number: page.index,
-              },
-            }))
-          );
+          markdown += page.markdown || "";
+
+          for (const image of page.images) {
+            if (!image.imageBase64) {
+              continue;
+            }
+
+            const imageFileKey = `${fileKey}-${Date.now()}.jpeg`;
+            await s3.write(imageFileKey, Buffer.from(image.imageBase64));
+            const imageMarkdown = await imageToMarkdown(
+              image.imageBase64,
+              "image/jpeg"
+            );
+            documentChunks.push({
+              markdown: imageMarkdown,
+              imageFileKey,
+            });
+          }
         }
+        const chunks = await textSplitter.splitText(markdown);
+        documentChunks.push(
+          ...chunks.map((chunk) => ({
+            markdown: sanitizeText(chunk),
+          }))
+        );
       } else if (mimeType.startsWith("image/")) {
         const markdown = await imageToMarkdown(
           Buffer.from(fileContent).toString("base64"),
           mimeType
         );
+        const imageFileKey = `${fileKey}-${Date.now()}.${extension}`;
+        await s3.write(imageFileKey, Buffer.from(fileContent));
         documentChunks.push({
           markdown,
+          imageFileKey,
         });
       } else {
         const text = await markitdown(fileContent, fileName);
@@ -246,6 +261,7 @@ export async function processFile({
               contextualSummary: chunk.contextualSummary,
               embedding: allEmbeddings[index],
               metadata: chunk.metadata,
+              imageFileKey: chunk.imageFileKey,
             }))
           );
         } catch (error) {

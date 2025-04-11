@@ -164,6 +164,8 @@ export const documentEmbeddings = pgTable("document_embeddings", {
   text: text("text"),
   contextualSummary: text("contextual_summary"),
   metadata: jsonb("metadata"),
+  type: text("type", { enum: ["text", "image"] }),
+  imageFileKey: text("image_file_key"),
   embedding: vector("embedding", { dimensions: 768 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -202,6 +204,7 @@ export const documents = pgTable(
   ]
 );
 export type Document = typeof documents.$inferSelect;
+
 export const documentProcessingJobs = pgTable("document_processing_jobs", {
   id: serial("id").primaryKey(),
   documentId: uuid("document_id")
