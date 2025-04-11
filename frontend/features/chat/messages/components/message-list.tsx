@@ -62,8 +62,7 @@ const MessageBubble = ({
 
 import ChatAttachment from "./chat-attachment";
 
-const UserMessage = ({ message }: { message: Message }) => {
-  // Removed React.memo
+const UserMessage = React.memo(({ message }: { message: Message }) => {
   const [copied, setCopied] = React.useState<boolean>(false);
 
   const handleCopy = () => {
@@ -97,7 +96,9 @@ const UserMessage = ({ message }: { message: Message }) => {
       )}
     </div>
   );
-};
+});
+
+UserMessage.displayName = "UserMessage";
 
 import { MessageRole } from "@/types/chat";
 import { cn } from "@/lib/utils";

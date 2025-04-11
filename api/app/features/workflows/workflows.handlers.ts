@@ -59,9 +59,8 @@ const workflowHandlers = {
 
   // Using the ai sdk data stream protocol to send updates to the client: https://sdk.vercel.ai/docs/ai-sdk-ui/stream-protocol#data-stream-protocol
   run: async (req: Request, res: Response) => {
-    const { workflowId } = req.params;
-    const { message } = req.body;
-    const { threadId } = req.query;
+    const { threadId } = req.params;
+    const { message, workflowId } = req.body;
 
     const workflow = getWorkflowDefinition(workflowId as any);
     if (!workflow) {
