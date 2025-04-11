@@ -50,7 +50,6 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-microsoft": "^2.1.0",
     "passport-saml": "^3.2.4",
-    "passport-sharepoint": "^0.2.12",
     "pg": "^8.13.1",
     "resend": "^4.1.2",
     "stripe": "^17.6.0",
