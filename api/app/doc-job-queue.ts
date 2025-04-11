@@ -95,6 +95,7 @@ async function processJob(job: typeof documentProcessingJobs.$inferSelect) {
       mimeType: job.mimeType,
       documentId: job.documentId,
       debug: process.env.NODE_ENV !== "production",
+      addContextualSummaries: false,
     });
 
     // Mark as completed

@@ -46,6 +46,7 @@ interface ProcessFileOptions {
   mimeType: string;
   documentId: string;
   debug?: boolean;
+  addContextualSummaries?: boolean;
 }
 
 export const ACCEPTED_DOC_PROCESSING_EXTENSIONS = [
@@ -92,6 +93,7 @@ export async function processFile({
   mimeType,
   documentId,
   debug = false,
+  addContextualSummaries = true,
 }: ProcessFileOptions) {
   try {
     const extension = "." + (fileName.split(".").pop()?.toLowerCase() || "");
@@ -125,6 +127,9 @@ export async function processFile({
       chunkSize: 1024,
       chunkOverlap: 20,
     });
+
+    // If we want to switch to unstructured, uncomment this and comment out the below document processing
+    // documentChunks = await processUnstructured(fileContent, fileName);
 
     // Process different file types
     try {
@@ -225,28 +230,48 @@ export async function processFile({
       console.log("Number of super chunks:", superChunks.length);
     }
 
-    let contextualizedChunks;
-    try {
-      contextualizedChunks = await addContextToChunks(
-        superChunks,
-        documentChunks
-      );
-    } catch (error) {
-      throw new Error(
-        `Failed to add context to chunks: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
+    let contextualizedChunks: DocumentChunk[] = [];
+
+    if (addContextualSummaries) {
+      try {
+        contextualizedChunks = await addContextToChunks(
+          superChunks,
+          documentChunks
+        );
+      } catch (error) {
+        console.warn(
+          `Failed to add context to chunks, proceeding without contextual summaries: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        // Fallback: Use original chunks without context
+        contextualizedChunks = documentChunks.map((chunk) => ({
+          ...chunk,
+          contextualSummary: undefined,
+        }));
+      }
+    } else {
+      // If not adding context, use the original chunks directly
+      contextualizedChunks = documentChunks.map((chunk) => ({
+        ...chunk,
+        contextualSummary: undefined,
+      }));
+      if (debug) {
+        console.log(
+          "Skipping contextual summary generation as per configuration."
+        );
+      }
     }
 
     if (debug) {
       console.log("Contextualized chunks:", contextualizedChunks);
     }
 
-    // Generate embeddings for the chunk + contextual summary
+    // Generate embeddings for the chunk (+ contextual summary if available)
     // Do this in batches because of API rate limits
     const values = contextualizedChunks.map(
-      (c) => c.markdown + "\n\n" + c.contextualSummary
+      (c) =>
+        c.markdown + (c.contextualSummary ? "\n\n" + c.contextualSummary : "")
     );
     let allEmbeddings = [];
 
@@ -314,18 +339,22 @@ export async function processFile({
   }
 }
 
+/**
+ * Process a pdf file with unstructured
+ * @param fileContent - The file content as an ArrayBuffer
+ * @param fileName - The name of the file
+ */
 async function processUnstructured(
   fileContent: ArrayBuffer,
-  fileName: string,
-  mimeType: string
-) {
+  fileName: string
+): Promise<DocumentChunk[]> {
   const response = await unstructured.general.partition({
     partitionParameters: {
       files: {
         content: fileContent,
         fileName: fileName,
       },
-      strategy: CONFIG.__prod__ ? Strategy.HiRes : Strategy.Fast,
+      strategy: Strategy.HiRes,
       splitPdfPage: true,
       splitPdfAllowFailed: true,
       splitPdfConcurrencyLevel: 5,
@@ -338,7 +367,14 @@ async function processUnstructured(
     },
   });
 
-  return response;
+  const chunks = response.elements?.map((element) => ({
+    markdown: element.text || "",
+    metadata: {
+      page_number: element.metadata?.page_number,
+    },
+  }));
+
+  return chunks || [];
 }
 
 /**
@@ -357,7 +393,7 @@ async function mistralOcr(
         documentUrl: `data:${mimeType};base64,${base64}`,
         type: "document_url",
       },
-      includeImageBase64: false,
+      includeImageBase64: true,
     });
 
     if (!result) {
@@ -421,13 +457,14 @@ async function imageToMarkdown(
     const { text } = await generateText({
       model: MODELS["gpt-4o-mini"].model,
       temperature: 0,
+      maxTokens: 2000,
       messages: [
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: "You are an advanced OCR and image analysis model. Your task is to meticulously analyze the provided image and extract ALL information present, including text, numbers, and structural elements like tables. Format the extracted information strictly as markdown. If the image contains tables, represent them accurately using markdown table syntax. If the image depicts an object (e.g., equipment, a scene), describe it in detail, identifying specific components, labels, text, and potentially assessing its condition based on visual evidence. Output ONLY the markdown representation of the image content. Do not include any introductory phrases, explanations, or text like 'Here is the markdown representation' or 'The image contains...'. DO NOT wrap the markdown in ```markdown tags, just output the markdown.",
+              text: "You are an advanced OCR and image analysis model. Your task is to analyze the provided image and extract ONLY the information explicitly visible within it, such as text, numbers, and structural elements like tables. Do not infer, guess, or add any information not directly present in the image. Format the extracted information strictly as markdown. If the image contains tables, represent them accurately using markdown table syntax based ONLY on the visible table structure and content. If the image depicts an object, describe only its visible components, labels, and text. Do not assess its condition or make assumptions about its function unless explicitly stated in the image. Output ONLY the markdown representation of the visible image content. Do not include any introductory phrases, explanations, or text like 'Here is the markdown representation' or 'The image contains...'. DO NOT wrap the markdown in ```markdown tags, just output the markdown.",
             },
             {
               image: base64,
