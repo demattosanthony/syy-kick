@@ -45,7 +45,7 @@ interface ProcessFileOptions {
   debug?: boolean;
 }
 
-const ACCEPTED_DOC_PROCESSING_EXTENSIONS = [
+export const ACCEPTED_DOC_PROCESSING_EXTENSIONS = [
   ".pdf",
   ".docx",
   ".doc",

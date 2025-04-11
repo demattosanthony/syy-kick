@@ -28,8 +28,8 @@ import {
 } from "./threads.utils";
 import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
-import { MARKITDOWN_MIME_TYPES } from "../../config/mime-types";
 import s3 from "../../config/s3";
+import { ACCEPTED_DOC_PROCESSING_EXTENSIONS } from "../../doc-processor";
 import { markitdown } from "../../doc-processor";
 
 const threadsOps = {
@@ -92,7 +92,9 @@ const threadsOps = {
       for (const attachment of message.experimental_attachments) {
         // convert attachment to markdown
         let markdown = null;
-        if (MARKITDOWN_MIME_TYPES.includes(attachment.contentType!)) {
+        if (
+          ACCEPTED_DOC_PROCESSING_EXTENSIONS.includes(attachment.contentType!)
+        ) {
           console.log(attachment);
           const fileContent = await s3.file(attachment.file_key).arrayBuffer();
           markdown = await markitdown(fileContent, attachment.name || "");
