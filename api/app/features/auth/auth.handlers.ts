@@ -153,6 +153,7 @@ export const handlers = {
     },
 
     getUploadToken: async (req: Request, res: Response) => {
+
         const user = req.dbUser;
 
         if (!user) {
@@ -177,7 +178,7 @@ export const handlers = {
             const graphToken = await microsoftGraph.getAccessToken("graph", "graph.microsoft.com");
             const pickerToken = await microsoftPicker.getAccessToken("picker");
 
-            if (graphToken && pickerToken && !microsoftGraph.isAccessTokenExpired() && !microsoftPicker.isAccessTokenExpired()) {
+            if (graphToken && pickerToken && !microsoftGraph.isAccessTokenExpired(graphToken.accessToken) && !microsoftPicker.isAccessTokenExpired(pickerToken.accessToken)) {
                 result.accessToken = graphToken.accessToken;
                 result.pickerToken = pickerToken.accessToken;
                 result.baseUrl = pickerToken.baseUrl;
@@ -249,23 +250,23 @@ export const handlers = {
             return;
         }
 
-        const microsoftGraph = new MicrosoftAPI({ userId });
+        const microsoftApi = new MicrosoftAPI({ userId });
 
         try {
-            const tokenData = await microsoftGraph.getMicrosoftToken("login.microsoftonline.com/organizations", {
+            // Generate 
+            const tokenData = await microsoftApi.getMicrosoftToken("login.microsoftonline.com/organizations", {
                 code: code as string,
                 grant_type: "authorization_code",
                 redirect_uri: process.env.MICROSOFT_FILES_CALLBACK_URL!,
                 scope: "https://graph.microsoft.com/.default",
             })
 
-            await microsoftGraph.saveToken(
+            await microsoftApi.saveToken(
                 tokenData.access_token,
                 tokenData.refresh_token,
                 "graph.microsoft.com",
                 "graph"
             );
-            console.log("tokenData", tokenData);
 
             if (!tokenData.access_token) {
                 res.status(500).json({ error: "Token exchange failed", detail: tokenData });
@@ -275,25 +276,20 @@ export const handlers = {
             const { access_token } = tokenData as any;
             const jwt: any = jwtDecode(access_token);
 
-            console.log("access_token", access_token);
-
-            microsoftGraph.setAccessToken(access_token);
-
             let refreshedToken: MicrosoftRefreshTokenResponse;
 
-            if (microsoftGraph.isAccessTokenExpired()) {
-                refreshedToken = await microsoftGraph.refreshTokenSilently("graph.microsoft.com", tokenData.refresh_token);
+            // Refresh token if expired
+            if (microsoftApi.isAccessTokenExpired(access_token)) {
+                refreshedToken = await microsoftApi.refreshTokenSilently("graph.microsoft.com", tokenData.refresh_token);
             } else {
                 refreshedToken = tokenData;
             }
 
-            const site = await microsoftGraph.getSite();
+            // Get site
+            const site = await microsoftApi.getSite(access_token);
 
-            console.log("site", site);
-
-            const microsoftPicker = new MicrosoftAPI({ userId });
-
-            const tokenForSharepointData = await microsoftPicker.getMicrosoftToken(
+            // Get token for sharepoint picker
+            const tokenForSharepointData = await microsoftApi.getMicrosoftToken(
                 `login.microsoftonline.com/${jwt.tid}`,
                 {
                     grant_type: "refresh_token",
@@ -301,7 +297,7 @@ export const handlers = {
                     scope: `https://${site.siteCollection.hostname}/.default`,
                 });
 
-            await microsoftPicker.saveToken(
+            await microsoftApi.saveToken(
                 tokenForSharepointData.access_token,
                 tokenForSharepointData.refresh_token,
                 site.siteCollection.hostname,

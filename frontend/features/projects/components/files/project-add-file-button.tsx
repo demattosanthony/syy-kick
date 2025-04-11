@@ -28,7 +28,11 @@ const ProjectAddFileButton = ({
 }: UploadButtonsProps) => {
   const [open, setOpen] = React.useState(false);
 
-  const { openPicker, pickerSelectionsToFiles, loading: isMicrosoftPickerLoading } = useMicrosoftPicker({
+  const {
+    openPicker,
+    pickerSelectionsToFiles,
+    loading: isMicrosoftPickerLoading
+  } = useMicrosoftPicker({
     onFilesSelected: async (files: SharePointFile[]) => {
       const filesToUpload = await pickerSelectionsToFiles(files);
       console.log(filesToUpload);
@@ -187,12 +191,12 @@ const ProjectAddFileButton = ({
             variant="ghost"
             onClick={() => openPicker({ mode: "files" })}
             className="w-full justify-start gap-2 text-sm cursor-pointer"
-            disabled={isMicrosoftPickerLoading}
+            disabled={isMicrosoftPickerLoading || isPending}
           >
-            {isMicrosoftPickerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image src="/logos/sharepoint.svg" alt="Sharepoint" width={16} height={16} />}
+            {isMicrosoftPickerLoading || isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image src="/logos/sharepoint.svg" alt="Sharepoint" width={16} height={16} />}
             Upload files
           </Button>
-          <Button
+          {/* <Button
             variant="ghost"
             onClick={() => openPicker({ mode: "folder" })}
             className="w-full justify-start gap-2 text-sm cursor-pointer"
@@ -200,7 +204,7 @@ const ProjectAddFileButton = ({
           >
             {isMicrosoftPickerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image src="/logos/sharepoint.svg" alt="Sharepoint" width={16} height={16} />}
             Upload folder
-          </Button>
+          </Button> */}
 
         </PopoverContent>
       </Popover>

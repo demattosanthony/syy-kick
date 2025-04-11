@@ -1,7 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
-import { Filter, Clock, ArrowUp, ArrowDown, Calendar } from "lucide-react";
+import { Clock, ArrowUp, ArrowDown, Calendar, FilterIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -55,7 +55,7 @@ export default function ProjectsFilters() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild className="flex items-center gap-2 w-34">
         <Button variant="outline">
-          <Filter className="h-4 w-4" />
+          <FilterIcon className="h-4 w-4" />
           {getActiveFilterLabel()}
         </Button>
       </PopoverTrigger>
