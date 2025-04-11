@@ -145,6 +145,14 @@ export const documentsOps = {
           )
         );
 
+      // Delete all document embeddings for these documents
+      await db.delete(documentEmbeddings).where(
+        inArray(
+          documentEmbeddings.documentId,
+          docsToDelete.map((doc) => doc.id)
+        )
+      );
+
       return true;
     } catch (error: any) {
       console.error("Delete content error:", error);
@@ -305,11 +313,11 @@ export const documentsOps = {
           projectId,
           ...(entry.type === "file"
             ? {
-              fileKey: entry.fileKey,
-              size: entry.size,
-              mimeType: entry.mimeType,
-              fileHash: entry.sha256,
-            }
+                fileKey: entry.fileKey,
+                size: entry.size,
+                mimeType: entry.mimeType,
+                fileHash: entry.sha256,
+              }
             : {}),
         })
         .returning();
@@ -369,7 +377,7 @@ export const documentsOps = {
       let queryEmbedding;
       try {
         const { embeddings } = await smallOpenaiEmbeddingModel.doEmbed({
-          values: [query],
+          values: [query.toLowerCase()],
         });
         queryEmbedding = embeddings[0];
       } catch (error) {

@@ -374,6 +374,8 @@ Returns:
             ? await processDocumentImages(uniqueDocs)
             : [];
 
+        console.log(formatDocumentSearchResults(uniqueDocs, images));
+
         return formatDocumentSearchResults(uniqueDocs, images);
       } catch (error) {
         console.error("Error searching project documents:", error);

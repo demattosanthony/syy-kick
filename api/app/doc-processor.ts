@@ -23,9 +23,12 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 // Types and constants
 import { OCRResponse } from "@mistralai/mistralai/models/components";
 import { encoding_for_model } from "tiktoken";
+import unstructured from "./config/unstructured";
+import { Strategy } from "unstructured-client/sdk/models/shared";
+import { CONFIG } from "./config/constants";
 
 // Define constants
-const SUPER_CHUNK_SIZE = 500_000;
+const SUPER_CHUNK_SIZE = 105_000;
 const EMBEDDING_BATCH_SIZE = 100;
 
 interface DocumentChunk {
@@ -95,6 +98,7 @@ export async function processFile({
 
     if (debug) {
       console.log("Processing file:", fileName);
+      console.log("Mime type:", mimeType);
     }
 
     // Check if we can process the file
@@ -133,21 +137,41 @@ export async function processFile({
         for (const page of result.pages) {
           markdown += page.markdown || "";
 
-          for (const image of page.images) {
-            if (!image.imageBase64) {
-              continue;
-            }
+          // Process images in batches of 5
+          const batchSize = 5;
+          for (let i = 0; i < page.images.length; i += batchSize) {
+            const batch = page.images.slice(i, i + batchSize);
+            const batchResults = await Promise.all(
+              batch.map(async (image) => {
+                if (!image.imageBase64) {
+                  return null;
+                }
 
-            const imageFileKey = `${fileKey}-${Date.now()}.jpeg`;
-            await s3.write(imageFileKey, Buffer.from(image.imageBase64));
-            const imageMarkdown = await imageToMarkdown(
-              image.imageBase64,
-              "image/jpeg"
+                const imageFileKey = `${fileKey}-${Date.now()}.jpeg`;
+                await s3.write(imageFileKey, Buffer.from(image.imageBase64));
+                const imageMarkdown = await imageToMarkdown(
+                  image.imageBase64,
+                  "image/jpeg"
+                );
+
+                if (debug) {
+                  console.log("Image markdown:", imageMarkdown);
+                }
+
+                return {
+                  markdown: sanitizeText(imageMarkdown),
+                  imageFileKey,
+                };
+              })
             );
-            documentChunks.push({
-              markdown: imageMarkdown,
-              imageFileKey,
-            });
+
+            // Filter out nulls and add to documentChunks
+            documentChunks.push(...batchResults.filter((r) => r !== null));
+
+            // Add delay between batches except for last batch
+            if (i + batchSize < page.images.length) {
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
           }
         }
         const chunks = await textSplitter.splitText(markdown);
@@ -164,7 +188,7 @@ export async function processFile({
         const imageFileKey = `${fileKey}-${Date.now()}.${extension}`;
         await s3.write(imageFileKey, Buffer.from(fileContent));
         documentChunks.push({
-          markdown,
+          markdown: sanitizeText(markdown),
           imageFileKey,
         });
       } else {
@@ -290,6 +314,33 @@ export async function processFile({
   }
 }
 
+async function processUnstructured(
+  fileContent: ArrayBuffer,
+  fileName: string,
+  mimeType: string
+) {
+  const response = await unstructured.general.partition({
+    partitionParameters: {
+      files: {
+        content: fileContent,
+        fileName: fileName,
+      },
+      strategy: CONFIG.__prod__ ? Strategy.HiRes : Strategy.Fast,
+      splitPdfPage: true,
+      splitPdfAllowFailed: true,
+      splitPdfConcurrencyLevel: 5,
+      maxCharacters: 2000,
+      combineUnderNChars: 500,
+      overlap: 200,
+      coordinates: true,
+      includeOrigElements: false,
+      chunkingStrategy: "by_title",
+    },
+  });
+
+  return response;
+}
+
 /**
  * Process a pdf file with mistral ocr
  * @param base64 - The base64 encoded file content
@@ -306,7 +357,7 @@ async function mistralOcr(
         documentUrl: `data:${mimeType};base64,${base64}`,
         type: "document_url",
       },
-      includeImageBase64: true,
+      includeImageBase64: false,
     });
 
     if (!result) {
@@ -368,7 +419,7 @@ async function imageToMarkdown(
 ): Promise<string> {
   try {
     const { text } = await generateText({
-      model: MODELS["gemini-2.0-flash"].model,
+      model: MODELS["gpt-4o-mini"].model,
       temperature: 0,
       messages: [
         {
@@ -376,7 +427,7 @@ async function imageToMarkdown(
           content: [
             {
               type: "text",
-              text: "You are a machine learning model trained to analyze images and describe them in detail. You will be given an image and you will need to describe it in detail. The description should be in markdown format. The description should only be around a paragraph or two long. ONLY output the markdown description, nothing else. Do not include any text like 'Here is the description of the image', 'This image is of a ...', or anything like that. Just output the markdown description.",
+              text: "You are an advanced OCR and image analysis model. Your task is to meticulously analyze the provided image and extract ALL information present, including text, numbers, and structural elements like tables. Format the extracted information strictly as markdown. If the image contains tables, represent them accurately using markdown table syntax. If the image depicts an object (e.g., equipment, a scene), describe it in detail, identifying specific components, labels, text, and potentially assessing its condition based on visual evidence. Output ONLY the markdown representation of the image content. Do not include any introductory phrases, explanations, or text like 'Here is the markdown representation' or 'The image contains...'. DO NOT wrap the markdown in ```markdown tags, just output the markdown.",
             },
             {
               image: base64,
@@ -529,7 +580,7 @@ async function addContextToChunks(
           );
 
           const { text: context } = await generateText({
-            model: MODELS["gemini-2.0-flash-lite"].model,
+            model: MODELS["gpt-4o-mini"].model,
             temperature: 0,
             messages: [
               {
@@ -598,6 +649,9 @@ export function sanitizeText(text: string): string {
 
   // Remove any markdown images
   text = text.replace(/\!\[.*?\]\(.*?\)/g, "");
+
+  // Lowercase the text
+  text = text.toLowerCase();
 
   return text.trim();
 }
