@@ -237,8 +237,8 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
   return {
-    "grok-2": {
-      model: xai("grok-2-1212"),
+    "grok-3-beta": {
+      model: xai("grok-3-beta"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "xai",
@@ -247,16 +247,16 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "Grok is an AI modeled after the Hitchhiker’s Guide to the Galaxy. It is intended to answer almost anything and, far harder, even suggest what questions to ask!",
     },
-    "grok-2-vision": {
-      model: xai("grok-2-vision-1212"),
+    "grok-3-mini-beta": {
+      model: xai("grok-3-mini-beta"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: ["image/jpeg", "image/png"],
+      supportedMimeTypes: [...markitdownMimeTypes],
       maxImageSize: 10 * 1024 * 1024, // 10MB
       description:
-        "In addition to Grok's strong text capabilities, this multimodal model can now process a wide variety of visual information, including documents, diagrams, charts, screenshots, and photographs.",
+        "Grok 3 Mini is a smaller, faster version of Grok 3 that is optimized for speed and cost-effectiveness. It is suitable for tasks that require quick responses and low resource usage.",
     },
   };
 };
