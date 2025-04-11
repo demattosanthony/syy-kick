@@ -329,7 +329,6 @@ const threadsOps = {
 
       // If its a inital workflow run, reroute to the workflow handler
       if (workflowId) {
-        console.log("Running workflow");
         return await workflowHandlers.run(req, res);
       }
 
