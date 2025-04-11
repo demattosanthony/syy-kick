@@ -16,7 +16,7 @@ export default function ProjectsHeader() {
   const { data: project } = useProjectQuery(pid);
 
   return (
-    <div className="h-14 flex items-center justify-between w-full px-4">
+    <div className="h-12 flex items-center justify-between w-full px-4">
       <div>{project && <ProjectNavBreadcrumbs project={project} />}</div>
 
       {!isProjectSettingsPage && pathname !== `/projects/${pid}` && (

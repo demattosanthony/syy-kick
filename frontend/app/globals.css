@@ -308,3 +308,8 @@ button.mapboxgl-ctrl-attrib-button {
 .mapboxgl-ctrl-attrib-inner {
   display: none !important;
 }
+
+/* Add custom styles for the attachment link */
+.attachment-link {
+  @apply text-blue-600 underline hover:text-blue-800;
+}

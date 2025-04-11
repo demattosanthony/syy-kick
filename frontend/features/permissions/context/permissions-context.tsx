@@ -36,6 +36,10 @@ type PermissionsContextType = {
   canReadOrgKnowledgeBaseDocs: boolean;
   canUpdateOrgKnowledgeBaseDocs: boolean;
   canDeleteOrgKnowledgeBaseDocs: boolean;
+  canCreateProjectIssues: boolean;
+  canReadProjectIssues: boolean;
+  canUpdateProjectIssues: boolean;
+  canDeleteProjectIssues: boolean;
   isLoading: boolean;
 };
 
@@ -91,9 +95,17 @@ export const PermissionsProvider = ({
     canReadOrgKnowledgeBaseDocs,
     canUpdateOrgKnowledgeBaseDocs,
     canDeleteOrgKnowledgeBaseDocs,
+    canCreateProjectIssues,
+    canReadProjectIssues,
+    canUpdateProjectIssues,
+    canDeleteProjectIssues,
   ] = useMemo(() => {
     if (userId === orgId) {
       return [
+        true,
+        true,
+        true,
+        true,
         true,
         true,
         true,
@@ -132,6 +144,10 @@ export const PermissionsProvider = ({
 
     if (!userPermissions) {
       return [
+        false,
+        false,
+        false,
+        false,
         false,
         false,
         false,
@@ -295,6 +311,22 @@ export const PermissionsProvider = ({
         Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
         Permissions.Actions.DELETE
       ),
+      userPermissions.hasAccess(
+        Permissions.Resources.PROJECT_ISSUES,
+        Permissions.Actions.CREATE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.PROJECT_ISSUES,
+        Permissions.Actions.READ
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.PROJECT_ISSUES,
+        Permissions.Actions.UPDATE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.PROJECT_ISSUES,
+        Permissions.Actions.DELETE
+      ),
     ];
   }, [userPermissions, userId, orgId]);
 
@@ -333,6 +365,10 @@ export const PermissionsProvider = ({
         canReadOrgKnowledgeBaseDocs,
         canUpdateOrgKnowledgeBaseDocs,
         canDeleteOrgKnowledgeBaseDocs,
+        canCreateProjectIssues,
+        canReadProjectIssues,
+        canUpdateProjectIssues,
+        canDeleteProjectIssues,
         isLoading,
       }}
     >
@@ -377,6 +413,10 @@ export const usePermissions = () => {
       canReadOrgKnowledgeBaseDocs: false,
       canUpdateOrgKnowledgeBaseDocs: false,
       canDeleteOrgKnowledgeBaseDocs: false,
+      canCreateProjectIssues: false,
+      canReadProjectIssues: false,
+      canUpdateProjectIssues: false,
+      canDeleteProjectIssues: false,
       isLoading: true,
     };
   }

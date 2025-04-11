@@ -96,6 +96,7 @@ export default Router()
       const viewUrl = s3.file(file_key).presign({
         expiresIn: 3600,
         method: "GET",
+        type: mime_type,
       });
 
       return {
@@ -110,6 +111,42 @@ export default Router()
       };
     })
   )
+  .get("/user-attachments/:file_id", async (req, res) => {
+    try {
+      const { file_id } = req.params;
+
+      if (!file_id) {
+        res.status(400).json({ error: "File key is required" });
+        return;
+      }
+
+      const file_key = `user-attachments/${file_id}`;
+      const file = s3.file(file_key);
+
+      // Check if file exists
+      try {
+        await file.exists();
+      } catch (error) {
+        res.status(404).json({ error: "File not found" });
+        return;
+      }
+
+      const presignedUrl = s3.file(file_key).presign({
+        expiresIn: 3600,
+        method: "GET",
+      });
+
+      return res.redirect(presignedUrl);
+    } catch (error) {
+      console.error("Error serving file:", error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error:
+            error instanceof Error ? error.message : "Internal server error",
+        });
+      }
+    }
+  })
   .use("/permissions", auth, permissionsRoutes)
   .use("/analytics", analyticsRoutes)
 

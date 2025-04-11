@@ -55,3 +55,20 @@ export function getRelativeTimeString(date: string | Date): string {
     return `${diffInMonths} ${diffInMonths === 1 ? "month" : "months"} ago`;
   return `${diffInYears} ${diffInYears === 1 ? "year" : "years"} ago`;
 }
+
+export const getInitials = (
+  name?: string | null,
+  email?: string | null
+): string => {
+  if (name) {
+    const names = name.split(" ");
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  }
+  if (email) {
+    return email.substring(0, 2).toUpperCase();
+  }
+  return "??";
+};

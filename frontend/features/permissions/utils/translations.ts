@@ -51,6 +51,7 @@ export const editRoleTranslations: Record<string, string> = Object.freeze({
     "Organization Knowledge Bases",
   [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS]:
     "Organization Knowledge Bases Docs",
+  [Permissions.Resources.PROJECT_ISSUES]: "Project Issues",
 });
 
 export const editRoleActions: Record<string, string> = Object.freeze({
