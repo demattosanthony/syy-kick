@@ -1,8 +1,13 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
-import { useRouter } from 'next/compat/router'
-import { useSearchParams } from 'next/navigation'
+import { SharePointFile } from "../types";
+
+interface SharePointLibrary {
+    id: string;
+    name: string;
+    webUrl: string;
+}
 
 declare global {
     interface Window {
@@ -13,57 +18,106 @@ declare global {
 export function useMicrosoftPicker({
     onFilesSelected,
 }: {
-    onFilesSelected: (files: any) => void;
+    onFilesSelected: (files: SharePointFile[]) => void;
 }) {
-
-    const router = useRouter();
-    const searchParams = useSearchParams();
-
-    useEffect(() => {
-        if (router && !router.isReady) return;
-
-        // router?.push("/auth/microsoft-files");
-
-        // (async () => {
-        //     const userToken = await api.auth.getUploadToken();
-        //     if (userToken.accessToken) {
-        //         setToken(userToken);
-        //     }
-        // })();
-    }, [router, searchParams]);
 
     const [token, setToken] = useState<{
         accessToken: string;
+        pickerToken: string;
         baseUrl: string;
     } | null>(null);
 
-    useEffect(() => {
-        (async () => {
-            const userToken = await api.auth.getUploadToken();
-            if (userToken.accessToken) {
-                setToken(userToken);
+    const [loading, setLoading] = useState(false);
+
+    const getOrgDriveUrl = useCallback(async (accessToken: string): Promise<string> => {
+        try {
+            const response = await fetch('https://graph.microsoft.com/v1.0/me/drive', {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'omit'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch org drive URL');
             }
-        })();
+            
+            const data = await response.json();
+            return data.webUrl;
+        } catch (error) {
+            console.error('Error fetching org drive URL:', error);
+            return '';
+        }
     }, []);
 
-    console.log(token, '<--- token');
+    const getSharePointLibraries = useCallback(async (accessToken: string): Promise<SharePointLibrary[]> => {
+        try {
+            const response = await fetch('https://graph.microsoft.com/v1.0/sites/root/drives', {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
 
-    const openPicker = useCallback(async () => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch SharePoint libraries');
+            }
 
-        if (!token) {
-            const state = {
-                redirectUrl: window.location.href,
-            };
-            const encodedState = btoa(JSON.stringify(state));
-            window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/microsoft-files?state=${encodedState}`;
+            const data = await response.json();
+
+            console.log(JSON.stringify(data), '<---- data')
+            return data.value;
+        } catch (error) {
+            console.error('Error fetching SharePoint libraries:', error);
+            return [];
+        }
+    }, []);
+
+    const openPicker = useCallback(async (options: {
+        mode: "files" | "folder";
+    }) => {
+        const redirectUri = encodeURIComponent(window.location.href);
+
+        const userToken = await api.auth.getUploadToken(redirectUri);
+
+        console.log("userToken", userToken);
+        console.log(!userToken.accessToken, '<--- condition')
+
+        if (!userToken.accessToken) {
+            const authUrl = await api.auth.getMicrosoftFilesInit(redirectUri);
+
+            window.location.href = authUrl.url;
             return;
         }
 
+        setToken(userToken);
+
+        setLoading(true);
+        if (!userToken.accessToken || !userToken.pickerToken || !userToken.baseUrl) {
+            const initRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/microsoft-files/init?redirectUrl=${redirectUri}`);
+            const { url } = await initRes.json();
+
+            window.location.href = url;
+            return;
+        }
+
+        let sharePointConfig = {};
+        if (options.mode === "folder") {
+            const orgDriveUrl = await getOrgDriveUrl(userToken.accessToken);
+            if (orgDriveUrl) {
+                sharePointConfig = {
+                    byPath: {
+                        list: orgDriveUrl
+                    }
+                };
+            }
+        }
+
         const channelId = crypto.randomUUID();
-        const options = {
+        const pickerOptions = {
             sdk: "8.0",
             entry: {
-                sharePoint: {},
+                sharePoint: sharePointConfig,
             },
             authentication: {},
             messaging: {
@@ -74,7 +128,7 @@ export function useMicrosoftPicker({
                 mode: "multiple",
             },
             typesAndSources: {
-                mode: "files",
+                mode: options.mode,
             },
             search: {
                 enabled: true,
@@ -84,13 +138,10 @@ export function useMicrosoftPicker({
         const iframe = document.getElementById("microsoft-picker-iframe") as HTMLIFrameElement;
         if (!iframe?.contentWindow) return;
 
-        const tenant = token?.baseUrl?.split(".")[0];
+        const tenant = userToken?.baseUrl?.split(".")[0];
 
-        console.log("tenant------- ", tenant);
+        const pickerUrl = `https://${tenant}-my.sharepoint.com/_layouts/15/FilePicker.aspx?filePicker=${encodeURIComponent(JSON.stringify(pickerOptions))}&locale=en-us`;
 
-        const pickerUrl = `https://${tenant}-my.sharepoint.com/_layouts/15/FilePicker.aspx?filePicker=${encodeURIComponent(JSON.stringify(options))}&locale=en-us`;
-
-        console.log("pickerUrl", pickerUrl);
         // Display the picker
         iframe.style.display = "block";
 
@@ -102,13 +153,65 @@ export function useMicrosoftPicker({
         const tokenInput = document.createElement("input");
         tokenInput.setAttribute("type", "hidden");
         tokenInput.setAttribute("name", "access_token");
-        tokenInput.setAttribute("value", token.accessToken);
+        tokenInput.setAttribute("value", userToken.pickerToken);
         form.appendChild(tokenInput);
 
         document.body.appendChild(form);
         form.submit();
         document.body.removeChild(form);
-    }, [onFilesSelected, token]);
+        setLoading(false);
+    }, [onFilesSelected]);
+
+    const pickerSelectionsToFiles = useCallback(
+        async (pickerFiles: SharePointFile[]): Promise<File[]> => {
+            if (!token) return [];
+
+            const results: File[] = [];
+
+            for (const pickerObj of pickerFiles) {
+                const { parentReference, id, name } = pickerObj;
+
+                if (!parentReference?.driveId || !id) {
+                    console.warn("Missing driveId or id, skipping:", pickerObj);
+                    continue;
+                }
+
+                try {
+                    const response = await fetch(
+                        `https://graph.microsoft.com/v1.0/drives/${parentReference.driveId}/items/${id}`,
+                        {
+                            credentials: "omit",
+                            headers: {
+                                Authorization: "Bearer " + token.accessToken,
+                            },
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(`Graph request failed: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const downloadUrl = data["@microsoft.graph.downloadUrl"];
+
+                    if (!downloadUrl) {
+                        throw new Error("No download URL found in Graph response");
+                    }
+
+                    const blobResponse = await fetch(downloadUrl);
+                    const blob = await blobResponse.blob();
+                    const type = blobResponse.headers.get("Content-Type") || "application/octet-stream";
+
+                    results.push(new File([blob], name, { type }));
+                } catch (err) {
+                    console.warn("❌ Error processing picker file:", pickerObj.name, err);
+                }
+            }
+
+            return results;
+        },
+        [token]
+    );
 
 
     useEffect(() => {
@@ -130,19 +233,22 @@ export function useMicrosoftPicker({
                             });
                         }
 
-                        // 👉 Fournir un token ici si le picker le redemande
                         port.postMessage({
                             type: "result",
                             id: message.data.id,
                             data: {
                                 result: "token",
-                                token: token?.accessToken, // stocke dans closure si besoin
+                                token: token?.pickerToken,
                             },
                         });
                     }
 
                     if (payload.type === "command" && payload.data?.command === "pick") {
                         onFilesSelected(payload.data?.items || []);
+
+                        const iframe = document.getElementById("microsoft-picker-iframe") as HTMLIFrameElement;
+                        iframe.style.display = "none";
+
                         port.postMessage({
                             type: "result",
                             id: message.data.id,
@@ -151,8 +257,6 @@ export function useMicrosoftPicker({
                     }
 
                     if (payload.type === "command" && payload.data?.command === "close") {
-                        // TODO: close the picker
-                        console.log("close picker");
                         const iframe = document.getElementById("microsoft-picker-iframe") as HTMLIFrameElement;
                         iframe.style.display = "none";
 
@@ -168,10 +272,10 @@ export function useMicrosoftPicker({
         return () => window.removeEventListener("message", listener);
     }, [token]);
 
-
-
     return {
         openPicker,
+        pickerSelectionsToFiles,
+        loading,
     };
 }
 

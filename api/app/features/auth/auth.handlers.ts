@@ -5,7 +5,10 @@ import db from "../../config/db";
 import { memberRoles, organizationInvites, organizations } from "../../config/schema";
 import { and, eq } from "drizzle-orm";
 import { CONFIG } from "../../config/constants";
-import { MicrosoftGraph, MicrosoftRefreshTokenError } from "../../config/microsoft";
+import { MicrosoftAPI, MicrosoftRefreshTokenError, MicrosoftRefreshTokenResponse } from "../../config/microsoft";
+import { generateStateEntry, getStateEntry } from "./auth.utils";
+import myPassport from "../../config/passport";
+import { jwtDecode } from "jwt-decode";
 export const handlers = {
     oauthCallback: async (req: Request, res: Response) => {
         const user = req.user as DbUser;
@@ -157,23 +160,158 @@ export const handlers = {
             return;
         }
 
-        const microsoftGraph = new MicrosoftGraph({ userId: user.id });
+        const microsoftGraph = new MicrosoftAPI({ userId: user.id });
+        const microsoftPicker = new MicrosoftAPI({ userId: user.id });
+
+        const result = {
+            accessToken: null,
+            pickerToken: null,
+            baseUrl: null,
+        } as {
+            accessToken: string | null;
+            pickerToken: string | null;
+            baseUrl: string | null;
+        };
 
         try {
-            const token = await microsoftGraph.getAccessToken();
+            const graphToken = await microsoftGraph.getAccessToken("graph", "graph.microsoft.com");
+            const pickerToken = await microsoftPicker.getAccessToken("picker");
 
-            console.log("token", token);
-
-            if (token) {
-                res.json(token);
-                return;
+            if (graphToken && pickerToken && !microsoftGraph.isAccessTokenExpired() && !microsoftPicker.isAccessTokenExpired()) {
+                result.accessToken = graphToken.accessToken;
+                result.pickerToken = pickerToken.accessToken;
+                result.baseUrl = pickerToken.baseUrl;
             }
 
-            res.json({ error: "no_token_found" });
+            res.json(result);
         } catch (error) {
             const microsoftError = error as MicrosoftRefreshTokenError;
 
             res.json({ error: microsoftError.error });
+        }
+    },
+
+    microsoftFilesInit: async (req: Request, res: Response) => {
+        const redirectUrl = req.query.redirectUrl as string;
+
+        const origin = new URL(redirectUrl).origin;
+        if (origin !== process.env.FRONTEND_URL) {
+            res.status(403).send("Redirect not allowed");
+            return;
+        }
+
+        const state = generateStateEntry(redirectUrl);
+
+        const authUrl = new URL("https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize");
+        authUrl.searchParams.set("client_id", process.env.MICROSOFT_CLIENT_ID!);
+        authUrl.searchParams.set("response_type", "code");
+        authUrl.searchParams.set("redirect_uri", process.env.MICROSOFT_FILES_CALLBACK_URL!);
+        authUrl.searchParams.set("scope", "openid offline_access https://graph.microsoft.com/.default");
+        authUrl.searchParams.set("state", state);
+
+        res.json({ url: authUrl.toString() });
+    },
+
+    microsoftFilesAuth: async (req: Request, res: Response) => {
+        myPassport.authenticate("microsoft-files", {
+            session: false,
+            failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
+            state: req.query.state as string,
+        })(req, res);
+    },
+
+    microsoftFilesCallback: async (req: Request, res: Response) => {
+        const { code, state } = req.query;
+        const { id, rid } = req.cookies;
+        const { userId } = await checkTokens(id, rid);
+
+        const stateEntry = getStateEntry(state as string);
+
+        if (!stateEntry) {
+            res.status(400).send("Invalid state");
+            return;
+        }
+
+        const { redirectUrl } = stateEntry;
+
+        if (!redirectUrl) {
+            res.status(400).send("Missing redirectUrl");
+            return;
+        }
+
+        if (!userId) {
+            res.status(401).send("Unauthorized");
+            return;
+        }
+
+        if (!code) {
+            res.status(400).send("Missing code");
+            return;
+        }
+
+        const microsoftGraph = new MicrosoftAPI({ userId });
+
+        try {
+            const tokenData = await microsoftGraph.getMicrosoftToken("login.microsoftonline.com/organizations", {
+                code: code as string,
+                grant_type: "authorization_code",
+                redirect_uri: process.env.MICROSOFT_FILES_CALLBACK_URL!,
+                scope: "https://graph.microsoft.com/.default",
+            })
+
+            await microsoftGraph.saveToken(
+                tokenData.access_token,
+                tokenData.refresh_token,
+                "graph.microsoft.com",
+                "graph"
+            );
+            console.log("tokenData", tokenData);
+
+            if (!tokenData.access_token) {
+                res.status(500).json({ error: "Token exchange failed", detail: tokenData });
+                return;
+            }
+
+            const { access_token } = tokenData as any;
+            const jwt: any = jwtDecode(access_token);
+
+            console.log("access_token", access_token);
+
+            microsoftGraph.setAccessToken(access_token);
+
+            let refreshedToken: MicrosoftRefreshTokenResponse;
+
+            if (microsoftGraph.isAccessTokenExpired()) {
+                refreshedToken = await microsoftGraph.refreshTokenSilently("graph.microsoft.com", tokenData.refresh_token);
+            } else {
+                refreshedToken = tokenData;
+            }
+
+            const site = await microsoftGraph.getSite();
+
+            console.log("site", site);
+
+            const microsoftPicker = new MicrosoftAPI({ userId });
+
+            const tokenForSharepointData = await microsoftPicker.getMicrosoftToken(
+                `login.microsoftonline.com/${jwt.tid}`,
+                {
+                    grant_type: "refresh_token",
+                    refresh_token: refreshedToken.refresh_token,
+                    scope: `https://${site.siteCollection.hostname}/.default`,
+                });
+
+            await microsoftPicker.saveToken(
+                tokenForSharepointData.access_token,
+                tokenForSharepointData.refresh_token,
+                site.siteCollection.hostname,
+                "picker"
+            );
+
+            res.redirect(`${redirectUrl}?syy-connector=microsoft-files&oauth_success=true`);
+        } catch (err) {
+            console.error("Fetch error", err);
+            res.redirect(`${redirectUrl}?syy-connector=microsoft-files&oauth_success=false`);
         }
     }
 }

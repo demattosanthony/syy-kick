@@ -25,21 +25,6 @@ export default function ProjectPage() {
         <ProjectSidebar project={project} type="project" />
       </ProjectLayout>
       <ProjectFooter projectId={pid} type="project" />
-      <iframe
-        id="microsoft-picker-iframe"
-        style={{ 
-          width: "70%", 
-          height: "600px", 
-          border: "none", 
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: 1000,
-          display: "none"
-        }}
-        name="microsoftPickerFrame"
-      />
     </>
   );
 }

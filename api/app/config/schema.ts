@@ -471,6 +471,7 @@ export const accessTokens = pgTable("access_tokens", {
   refreshToken: text("refresh_token").notNull(),
   provider: text("provider", { enum: ["google", "microsoft"] }).notNull(),
   domain: text("domain"),
+  type: text("type", { enum: ["picker", "graph"] }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

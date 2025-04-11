@@ -5,6 +5,7 @@ CREATE TABLE "access_tokens" (
 	"refresh_token" text NOT NULL,
 	"provider" text NOT NULL,
 	"domain" text,
+	"type" text NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );

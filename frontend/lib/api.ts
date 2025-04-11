@@ -216,17 +216,17 @@ class AuthApi extends ApiRequest {
     }
   }
 
-  async getUploadToken() {
+  async getMicrosoftFilesInit(redirectUri: string) {
     try {
-      return await this.request<{ accessToken: string, baseUrl: string }>(`/auth/me/upload-token`, "GET");
+      return await this.request<{ url: string }>(`/auth/microsoft-files/init?redirectUrl=${redirectUri}`, "GET");
     } catch (error) {
       throw error;
     }
   }
 
-  async getScopedToken(scope: string) {
+  async getUploadToken(redirectUri: string) {
     try {
-      return await this.request<{ accessToken: string }>(`/auth/microsoft-files/scoped-token?oauth_scope=${scope}`, "GET");
+      return await this.request<{ accessToken: string, baseUrl: string, pickerToken: string }>(`/auth/me/upload-token?redirectUrl=${redirectUri}`, "GET");
     } catch (error) {
       throw error;
     }

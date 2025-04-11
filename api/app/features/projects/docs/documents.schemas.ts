@@ -16,4 +16,8 @@ export const documentsSchemas = {
     basePath: z.string(),
     organizationId: z.string().optional(),
   }),
+
+  connectorUpload: z.object({
+    files: z.array(z.string()),
+  }),
 };

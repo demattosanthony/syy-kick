@@ -5,3 +5,8 @@ export type Workspace = {
     name: string;
     type: "personal" | "organization";
   };
+
+export type StateEntry = {
+    redirectUrl: string;
+    expiresAt: number;
+};

@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, FolderClosed, File } from "lucide-react";
+import { Plus, FolderClosed, File, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -13,6 +13,7 @@ import { useUploadDocsMutation } from "../../api";
 import { useUploadKnowledgeBaseFiles } from "@/features/knowledge-bases/api";
 import Image from "next/image";
 import useMicrosoftPicker from "../../hooks/use-microsoft-picker";
+import { SharePointFile } from "../../types";
 
 interface UploadButtonsProps {
   projectId?: string;
@@ -27,9 +28,24 @@ const ProjectAddFileButton = ({
 }: UploadButtonsProps) => {
   const [open, setOpen] = React.useState(false);
 
-  const { openPicker } = useMicrosoftPicker({
-    onFilesSelected: (files) => {
-      console.log(files, '<---- files')
+  const { openPicker, pickerSelectionsToFiles, loading: isMicrosoftPickerLoading } = useMicrosoftPicker({
+    onFilesSelected: async (files: SharePointFile[]) => {
+      const filesToUpload = await pickerSelectionsToFiles(files);
+      console.log(filesToUpload);
+
+      if (contentSource === "project") {
+        await uploadProjectFiles({
+          projectId: contentId as string,
+          files: filesToUpload,
+        });
+      }
+
+      if (contentSource === "knowledge-base") {
+        await uploadKnowledgeBaseFiles({
+          knowledgeBaseId: contentId as string,
+          files: filesToUpload,
+        });
+      }
     }
   });
 
@@ -169,18 +185,20 @@ const ProjectAddFileButton = ({
           </div>
           <Button
             variant="ghost"
-            onClick={() => openPicker()}
+            onClick={() => openPicker({ mode: "files" })}
             className="w-full justify-start gap-2 text-sm cursor-pointer"
+            disabled={isMicrosoftPickerLoading}
           >
-            <Image src="/logos/msft.svg" alt="Microsoft" width={16} height={16} />
+            {isMicrosoftPickerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image src="/logos/sharepoint.svg" alt="Sharepoint" width={16} height={16} />}
             Upload files
           </Button>
           <Button
             variant="ghost"
-            onClick={() => openPicker()}
+            onClick={() => openPicker({ mode: "folder" })}
             className="w-full justify-start gap-2 text-sm cursor-pointer"
+            disabled={isMicrosoftPickerLoading}
           >
-            <Image src="/logos/msft.svg" alt="Microsoft" width={16} height={16} />
+            {isMicrosoftPickerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image src="/logos/sharepoint.svg" alt="Sharepoint" width={16} height={16} />}
             Upload folder
           </Button>
 

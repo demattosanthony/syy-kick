@@ -3,8 +3,9 @@ import db from "./db";
 import { and, eq } from "drizzle-orm";
 import { accessTokens } from "./schema";
 
-export class MicrosoftGraph {
+export class MicrosoftAPI {
     private accessToken?: string;
+    private refreshToken?: string;
     private payload: any;
     private userId: string;
     private domain?: string | null;
@@ -23,44 +24,46 @@ export class MicrosoftGraph {
         return await response.json() as MicrosoftSite;
     }
 
-    async saveToken(accessToken: string, refreshToken: string, domain: string) {
+    async saveToken(accessToken: string, refreshToken: string, domain: string, type: "picker" | "graph") {
 
         const existingToken = await db.query.accessTokens.findFirst({
             where: and(
                 eq(accessTokens.userId, this.userId),
                 eq(accessTokens.provider, "microsoft"),
+                eq(accessTokens.type, type)
             )
         });
 
         if (existingToken) {
-            this.accessToken = accessToken;
-
             await db.update(accessTokens).set({
                 accessToken,
                 refreshToken,
                 domain,
+                type,
                 updatedAt: new Date()
             }).where(eq(accessTokens.id, existingToken.id));
         } else {
-            this.accessToken = accessToken;
-
             await db.insert(accessTokens).values({
                 userId: this.userId,
                 provider: "microsoft",
                 accessToken,
                 refreshToken,
                 domain,
+                type
             });
         }
 
         this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
         this.payload = jwtDecode(accessToken);
     }
 
-    async getAccessToken(): Promise<{ accessToken: string, baseUrl: string | null } | undefined> {
+    async getAccessToken(type: "picker" | "graph", domain?: string,): Promise<{ accessToken: string, baseUrl: string | null } | undefined> {
+
+        let token = undefined;
 
         if (!this.accessToken) {
-            const userToken = await this.getUserToken();
+            const userToken = await this.getUserToken(type);
             if (!userToken) {
                 return undefined;
             }
@@ -70,25 +73,39 @@ export class MicrosoftGraph {
             this.accessToken = userToken.accessToken;
             this.payload = jwtDecode(userToken.accessToken);
             this.domain = userToken.domain;
+
+            token = {
+                accessToken: this.accessToken,
+                baseUrl: this.domain ?? null
+            };
         }
 
-        if (this.isAccessTokenExpired()) {
-            await this.refreshTokenSilently();
+        if (this.isAccessTokenExpired() && this.refreshToken) {
+            const jwt = jwtDecode(this.accessToken) as any;
+
+            if (!jwt.tid) {
+                throw new Error("Invalid access token");
+            }
+
+            const newToken = await this.refreshTokenSilently(domain ?? `login.microsoftonline.com/${jwt.tid}`, this.refreshToken);
+
+            token = {
+                accessToken: newToken.access_token,
+                baseUrl: this.domain ?? null
+            };
         }
 
-        return {
-            accessToken: this.accessToken,
-            baseUrl: this.domain ?? null
-        };
+        return token;
     }
 
-    async getUserToken(): Promise<typeof accessTokens.$inferSelect | undefined> {
+    async getUserToken(type: "picker" | "graph"): Promise<typeof accessTokens.$inferSelect | undefined> {
         const accessToken = await db.query.accessTokens.findFirst({
             where: and(
                 eq(accessTokens.userId, this.userId),
                 eq(accessTokens.provider, "microsoft"),
+                eq(accessTokens.type, type)
             )
-        })
+        });
 
         return accessToken;
     }
@@ -103,14 +120,42 @@ export class MicrosoftGraph {
         return this.payload.exp < currentTime;
     }
 
-    async refreshTokenSilently(): Promise<void> {
+    async getMicrosoftToken(domain: string, options: {
+        refresh_token?: string;
+        code?: string;
+        grant_type: "refresh_token" | "authorization_code";
+        redirect_uri?: string;
+        scope: string;
+    }): Promise<MicrosoftRefreshTokenResponse> {
+        const params = new URLSearchParams({
+            client_id: process.env.MICROSOFT_CLIENT_ID!,
+            client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
+            ...options
+        });
+
+        console.log("params", params);
+
+        const response = await fetch(`https://${domain}/oauth2/v2.0/token`, {
+            method: "POST",
+            body: params,
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        });
+
+        const data = await response.json() as MicrosoftRefreshTokenResponse;
+
+        return data;
+    }
+
+    async refreshTokenSilently(domain: string, refreshToken: string): Promise<MicrosoftRefreshTokenResponse> {
         const params = new URLSearchParams({
             client_id: process.env.MICROSOFT_CLIENT_ID!,
             client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
             grant_type: "refresh_token",
-            refresh_token: this.payload.refresh_token,
+            refresh_token: refreshToken,
             redirect_uri: process.env.MICROSOFT_FILES_CALLBACK_URL!,
-            scope: `https://${this.domain}/.default`
+            scope: `https://${domain}/.default`
         });
 
         try {
@@ -126,6 +171,8 @@ export class MicrosoftGraph {
 
             this.accessToken = data.access_token;
             this.payload = jwtDecode(data.access_token);
+
+            return data;
 
         } catch (error) {
             console.error(error);
@@ -154,7 +201,7 @@ type MicrosoftSite = {
     }
 }
 
-type MicrosoftRefreshTokenResponse = {
+export type MicrosoftRefreshTokenResponse = {
     access_token: string;
     token_type: string;
     expires_in: number;
