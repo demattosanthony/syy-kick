@@ -4,7 +4,10 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 // Internal configuration
-import { CONFIG } from "../../config/constants";
+import {
+  ACCEPTED_DOC_PROCESSING_MIME_TYPES,
+  CONFIG,
+} from "../../config/constants";
 import db from "../../config/db";
 import reranker from "../../config/reranker";
 import s3 from "../../config/s3";
@@ -36,7 +39,6 @@ import { PermissionManager } from "../permissions/permissions.tools";
 import { Permissions } from "../permissions/permissions.types";
 import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases.ops";
 import { documentsOps } from "../projects/docs/documents.ops";
-import { ACCEPTED_DOC_PROCESSING_EXTENSIONS } from "../../doc-processor";
 
 /** Retrieve the model config. */
 async function getModelConfig(model: string) {
@@ -1319,7 +1321,7 @@ async function createAttachmentMessages(
   for (const att of attachments) {
     const data = await generateAttachmentData(att.fileKey, att.mimeType!, true);
 
-    if (ACCEPTED_DOC_PROCESSING_EXTENSIONS.includes(att.mimeType!)) {
+    if (ACCEPTED_DOC_PROCESSING_MIME_TYPES.includes(att.mimeType!)) {
       chunks.push({
         type: "text",
         text: `<file_attachment>

@@ -2,6 +2,7 @@ import { eq, and, lte, inArray } from "drizzle-orm";
 import { documentProcessingJobs } from "./config/schema";
 import db from "./config/db";
 import { processFile } from "./doc-processor";
+import { CONFIG } from "./config/constants";
 
 const CONCURRENT_JOBS = 5;
 const POLLING_INTERVAL = 10000; // 10 seconds
@@ -94,8 +95,8 @@ async function processJob(job: typeof documentProcessingJobs.$inferSelect) {
       fileName: job.fileName,
       mimeType: job.mimeType,
       documentId: job.documentId,
-      debug: process.env.NODE_ENV !== "production",
-      addContextualSummaries: false,
+      debug: !CONFIG.__prod__,
+      addContextualSummaries: CONFIG.__prod__,
     });
 
     // Mark as completed

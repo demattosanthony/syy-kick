@@ -30,8 +30,8 @@ import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
 import s3 from "../../config/s3";
 import workflowHandlers from "../workflows/workflows.handlers";
-import { ACCEPTED_DOC_PROCESSING_EXTENSIONS } from "../../doc-processor";
 import { markitdown } from "../../doc-processor";
+import { ACCEPTED_DOC_PROCESSING_MIME_TYPES } from "../../config/constants";
 
 const threadsOps = {
   async createThread(
@@ -94,9 +94,8 @@ const threadsOps = {
         // convert attachment to markdown
         let markdown = null;
         if (
-          ACCEPTED_DOC_PROCESSING_EXTENSIONS.includes(attachment.contentType!)
+          ACCEPTED_DOC_PROCESSING_MIME_TYPES.includes(attachment.contentType!)
         ) {
-          console.log(attachment);
           const fileContent = await s3.file(attachment.file_key).arrayBuffer();
           markdown = await markitdown(fileContent, attachment.name || "");
         }

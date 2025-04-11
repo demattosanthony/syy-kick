@@ -1,6 +1,7 @@
 // Node built-ins
 import os from "os";
 import path from "node:path";
+import crypto from "node:crypto";
 
 // Database and schema
 import db from "./config/db";
@@ -25,11 +26,13 @@ import { OCRResponse } from "@mistralai/mistralai/models/components";
 import { encoding_for_model } from "tiktoken";
 import unstructured from "./config/unstructured";
 import { Strategy } from "unstructured-client/sdk/models/shared";
-import { CONFIG } from "./config/constants";
+import { ACCEPTED_DOC_PROCESSING_EXTENSIONS, CONFIG } from "./config/constants";
 
 // Define constants
 const SUPER_CHUNK_SIZE = 105_000;
 const EMBEDDING_BATCH_SIZE = 100;
+const PDF_IMAGE_PROCESSING_BATCH_SIZE = 5;
+const PDF_IMAGE_PROCESSING_DELAY_MS = 1000;
 
 interface DocumentChunk {
   markdown: string;
@@ -38,6 +41,8 @@ interface DocumentChunk {
     page_number?: number;
   };
   imageFileKey?: string;
+  debug?: boolean;
+  addContextualSummaries?: boolean;
 }
 
 interface ProcessFileOptions {
@@ -49,44 +54,157 @@ interface ProcessFileOptions {
   addContextualSummaries?: boolean;
 }
 
-export const ACCEPTED_DOC_PROCESSING_EXTENSIONS = [
-  ".pdf",
-  ".docx",
-  ".doc",
-  ".xls",
-  ".xlsx",
-  ".pptx",
-  ".ppt",
-  ".html",
-  ".csv",
-  ".json",
-  ".xml",
-  ".zip",
-  ".mp3",
-  ".wav",
-  ".ogg",
-  ".aac",
-  ".mid",
-  ".midi",
-  ".mp4",
-  ".avi",
-  ".mov",
-  ".wmv",
-  ".flv",
-  ".mpeg",
-  ".mpg",
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".bmp",
-  ".tiff",
-  ".ico",
-  ".heic",
-  ".md",
-  ".txt",
-  ".rtf",
+type FileProcessor = (params: {
+  fileContent: ArrayBuffer;
+  fileName: string;
+  fileKey: string;
+  mimeType: string;
+  extension: string;
+  textSplitter: RecursiveCharacterTextSplitter;
+  debug: boolean;
+}) => Promise<DocumentChunk[]>;
+
+// Processor for PDF files
+const processPdf: FileProcessor = async ({
+  fileContent,
+  fileKey,
+  mimeType,
+  textSplitter,
+  debug,
+}) => {
+  let documentChunks: DocumentChunk[] = [];
+  const base64 = Buffer.from(fileContent).toString("base64");
+
+  const result = await mistralOcr({
+    base64,
+    mimeType,
+    includeImages: false,
+  });
+
+  let combinedMarkdown = "";
+  for (const page of result.pages) {
+    combinedMarkdown += page.markdown || "";
+
+    // Process images in batches
+    for (
+      let i = 0;
+      i < page.images.length;
+      i += PDF_IMAGE_PROCESSING_BATCH_SIZE
+    ) {
+      const batch = page.images.slice(i, i + PDF_IMAGE_PROCESSING_BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (image) => {
+          if (!image.imageBase64) return null;
+
+          const imageFileKey = `${fileKey}-img-${crypto.randomUUID()}.jpeg`;
+          await s3.write(
+            imageFileKey,
+            Buffer.from(image.imageBase64, "base64")
+          );
+          const imageMarkdown = await imageToMarkdown(
+            image.imageBase64,
+            "image/jpeg"
+          );
+
+          if (debug) {
+            console.log("(PDF Image) Image markdown:", imageMarkdown);
+          }
+
+          // Explicitly return type compatible with DocumentChunk
+          const chunkData: DocumentChunk = {
+            markdown: sanitizeText(imageMarkdown),
+            imageFileKey,
+          };
+          return chunkData;
+        })
+      );
+
+      documentChunks.push(
+        ...batchResults.filter((r): r is DocumentChunk => r !== null)
+      );
+
+      // Add delay between batches except for last batch
+      if (i + PDF_IMAGE_PROCESSING_BATCH_SIZE < page.images.length) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, PDF_IMAGE_PROCESSING_DELAY_MS)
+        );
+      }
+    }
+  }
+
+  const textChunks = await textSplitter.splitText(combinedMarkdown);
+  documentChunks.push(
+    ...textChunks.map((chunk) => ({
+      markdown: sanitizeText(chunk),
+    }))
+  );
+
+  return documentChunks;
+};
+
+// Processor for Image files
+const processImage: FileProcessor = async ({
+  fileContent,
+  fileName,
+  fileKey,
+  mimeType,
+  extension,
+  debug,
+}) => {
+  const base64 = Buffer.from(fileContent).toString("base64");
+  const markdown = await imageToMarkdown(base64, mimeType);
+  const imageFileKey = `${fileKey}-img-${crypto.randomUUID()}${extension}`;
+
+  // Save the original image file to S3 associated with the chunk
+  await s3.write(imageFileKey, Buffer.from(fileContent));
+
+  if (debug) {
+    console.log("(Image File) Image markdown:", markdown);
+  }
+
+  return [
+    {
+      markdown: sanitizeText(markdown),
+      imageFileKey,
+    },
+  ];
+};
+
+// Processor for Generic files (using markitdown)
+const processGeneric: FileProcessor = async ({
+  fileContent,
+  fileName,
+  textSplitter,
+  debug,
+}) => {
+  if (debug) {
+    console.log(`Processing generic file ${fileName} with markitdown`);
+  }
+  const text = await markitdown(fileContent, fileName);
+  const chunks = await textSplitter.splitText(text);
+  return chunks.map((chunk) => ({
+    markdown: sanitizeText(chunk),
+  }));
+};
+
+// Map of processors
+const fileProcessors: [(mime: string) => boolean, FileProcessor][] = [
+  [(mime) => mime === "application/pdf", processPdf],
+  [(mime) => mime.startsWith("image/"), processImage],
+  [(mime) => true, processGeneric],
 ];
+
+// Function to get the appropriate processor
+function getProcessor(mimeType: string): FileProcessor {
+  for (const [predicate, processor] of fileProcessors) {
+    if (predicate(mimeType)) {
+      return processor;
+    }
+  }
+  // Should theoretically be unreachable due to the default processor
+  return processGeneric;
+}
+
 export async function processFile({
   fileKey,
   fileName,
@@ -101,9 +219,10 @@ export async function processFile({
     if (debug) {
       console.log("Processing file:", fileName);
       console.log("Mime type:", mimeType);
+      console.log("Extension:", extension);
     }
 
-    // Check if we can process the file
+    // Check if we can process the file extension
     if (!ACCEPTED_DOC_PROCESSING_EXTENSIONS.includes(extension)) {
       console.log(`Skipping unsupported file extension: ${extension}`);
       throw new Error(`Unsupported file extension: ${extension}`);
@@ -121,100 +240,35 @@ export async function processFile({
       );
     }
 
-    let documentChunks: DocumentChunk[] = [];
-
     const textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 1024,
       chunkOverlap: 20,
     });
 
-    // If we want to switch to unstructured, uncomment this and comment out the below document processing
-    // documentChunks = await processUnstructured(fileContent, fileName);
+    let documentChunks: DocumentChunk[] = [];
 
-    // Process different file types
+    // Process file content using the appropriate processor
     try {
-      if (mimeType === "application/pdf") {
-        const result = await mistralOcr(
-          Buffer.from(fileContent).toString("base64"),
-          mimeType
-        );
-        let markdown = "";
-        for (const page of result.pages) {
-          markdown += page.markdown || "";
-
-          // Process images in batches of 5
-          const batchSize = 5;
-          for (let i = 0; i < page.images.length; i += batchSize) {
-            const batch = page.images.slice(i, i + batchSize);
-            const batchResults = await Promise.all(
-              batch.map(async (image) => {
-                if (!image.imageBase64) {
-                  return null;
-                }
-
-                const imageFileKey = `${fileKey}-${Date.now()}.jpeg`;
-                await s3.write(imageFileKey, Buffer.from(image.imageBase64));
-                const imageMarkdown = await imageToMarkdown(
-                  image.imageBase64,
-                  "image/jpeg"
-                );
-
-                if (debug) {
-                  console.log("Image markdown:", imageMarkdown);
-                }
-
-                return {
-                  markdown: sanitizeText(imageMarkdown),
-                  imageFileKey,
-                };
-              })
-            );
-
-            // Filter out nulls and add to documentChunks
-            documentChunks.push(...batchResults.filter((r) => r !== null));
-
-            // Add delay between batches except for last batch
-            if (i + batchSize < page.images.length) {
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-            }
-          }
-        }
-        const chunks = await textSplitter.splitText(markdown);
-        documentChunks.push(
-          ...chunks.map((chunk) => ({
-            markdown: sanitizeText(chunk),
-          }))
-        );
-      } else if (mimeType.startsWith("image/")) {
-        const markdown = await imageToMarkdown(
-          Buffer.from(fileContent).toString("base64"),
-          mimeType
-        );
-        const imageFileKey = `${fileKey}-${Date.now()}.${extension}`;
-        await s3.write(imageFileKey, Buffer.from(fileContent));
-        documentChunks.push({
-          markdown: sanitizeText(markdown),
-          imageFileKey,
-        });
-      } else {
-        const text = await markitdown(fileContent, fileName);
-        const chunks = await textSplitter.splitText(text);
-        documentChunks.push(
-          ...chunks.map((chunk) => ({
-            markdown: sanitizeText(chunk),
-          }))
-        );
-      }
+      const processor = getProcessor(mimeType);
+      documentChunks = await processor({
+        fileContent,
+        fileName,
+        fileKey,
+        mimeType,
+        extension,
+        textSplitter,
+        debug,
+      });
     } catch (error) {
       throw new Error(
-        `Failed to process file content: ${
+        `Failed to process file content using ${mimeType} processor: ${
           error instanceof Error ? error.message : String(error)
         }`
       );
     }
 
     if (debug) {
-      console.log("Document chunks:", documentChunks);
+      console.log("Initial document chunks count:", documentChunks.length);
     }
 
     if (documentChunks.length === 0) {
@@ -354,7 +408,7 @@ async function processUnstructured(
         content: fileContent,
         fileName: fileName,
       },
-      strategy: Strategy.HiRes,
+      strategy: CONFIG.__prod__ ? Strategy.HiRes : Strategy.Fast,
       splitPdfPage: true,
       splitPdfAllowFailed: true,
       splitPdfConcurrencyLevel: 5,
@@ -377,15 +431,21 @@ async function processUnstructured(
   return chunks || [];
 }
 
+interface MistralOcrInput {
+  base64: string;
+  mimeType: string;
+  includeImages?: boolean;
+}
+
 /**
  * Process a pdf file with mistral ocr
- * @param base64 - The base64 encoded file content
- * @param mimeType - The mime type of the file
+ * @param input - The input parameters for OCR processing
  */
-async function mistralOcr(
-  base64: string,
-  mimeType: string
-): Promise<OCRResponse> {
+async function mistralOcr({
+  base64,
+  mimeType,
+  includeImages = true,
+}: MistralOcrInput): Promise<OCRResponse> {
   try {
     const result = await mistralAi.ocr.process({
       model: "mistral-ocr-latest",
@@ -393,7 +453,7 @@ async function mistralOcr(
         documentUrl: `data:${mimeType};base64,${base64}`,
         type: "document_url",
       },
-      includeImageBase64: true,
+      includeImageBase64: includeImages,
     });
 
     if (!result) {
