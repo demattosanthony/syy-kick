@@ -51,28 +51,6 @@ export function useMicrosoftPicker({
         }
     }, []);
 
-    const getSharePointLibraries = useCallback(async (accessToken: string): Promise<SharePointLibrary[]> => {
-        try {
-            const response = await fetch('https://graph.microsoft.com/v1.0/sites/root/drives', {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch SharePoint libraries');
-            }
-
-            const data = await response.json();
-
-            console.log(JSON.stringify(data), '<---- data')
-            return data.value;
-        } catch (error) {
-            console.error('Error fetching SharePoint libraries:', error);
-            return [];
-        }
-    }, []);
-
     const openPicker = useCallback(async (options: {
         mode: "files" | "folder";
     }) => {
