@@ -4,6 +4,7 @@ import { useThreadQuery } from "@/features/chat/threads/api";
 import { ChatThread } from "@/features/chat/threads/components";
 import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
 import { useParams, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 export default function ThreadsPage() {
   const params = useParams<{
@@ -16,8 +17,10 @@ export default function ThreadsPage() {
   const workflowId = searchParams.get("workflowId") || "";
   const threadId = params.threadId;
 
+  const [skipFirstFetch] = useState(isNew || isWorkflow);
+
   // Only fetch the thread if it's not a new thread
-  const { data: thread } = useThreadQuery(threadId, isNew || isWorkflow);
+  const { data: thread } = useThreadQuery(threadId, skipFirstFetch);
 
   const initialMessages =
     isNew || !thread ? [] : mapThreadMessagesToMessages(thread);

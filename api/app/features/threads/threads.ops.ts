@@ -30,6 +30,7 @@ import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
 import { markitdown, markitdownMimeTypes } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
+import workflowHandlers from "../workflows/workflows.handlers";
 
 const threadsOps = {
   async createThread(
@@ -323,9 +324,14 @@ const threadsOps = {
 
     try {
       const { threadId } = req.params;
-      const { model, maxTokens, instructions, message } = req.body as z.infer<
-        typeof inferenceSchema
-      >;
+      const { model, maxTokens, instructions, message, workflowId } =
+        req.body as z.infer<typeof inferenceSchema>;
+
+      // If its a inital workflow run, reroute to the workflow handler
+      if (workflowId) {
+        console.log("Running workflow");
+        return await workflowHandlers.run(req, res);
+      }
 
       // 1) Store the user message
       if (message) {
