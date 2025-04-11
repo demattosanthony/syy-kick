@@ -12,7 +12,7 @@ import { createPerplexity } from "@ai-sdk/perplexity";
 import { mistral } from "@ai-sdk/mistral";
 import { wrapLanguageModel, extractReasoningMiddleware } from "ai";
 import { Mistral as MistralAi } from "@mistralai/mistralai";
-import { markitdownMimeTypes } from "../config/mime-types";
+import { MARKITDOWN_MIME_TYPES } from "../config/mime-types";
 
 const perplexity = createPerplexity({
   apiKey: process.env.PPLX_API_KEY ?? "",
@@ -45,7 +45,7 @@ export const anthropicModels = (
     "image/webp",
     "image/gif",
     "application/pdf",
-    ...markitdownMimeTypes,
+    ...MARKITDOWN_MIME_TYPES,
   ];
 
   return {
@@ -95,7 +95,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
     "image/webp",
     "image/gif",
     "application/pdf",
-    ...markitdownMimeTypes,
+    ...MARKITDOWN_MIME_TYPES,
   ];
 
   return {
@@ -188,7 +188,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
     "text/properties",
     "text/conf",
     "text/log",
-    ...markitdownMimeTypes,
+    ...MARKITDOWN_MIME_TYPES,
   ];
 
   return {
@@ -206,6 +206,18 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
     },
     "gemini-2.0-flash": {
       model: google("gemini-2.0-flash"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "google",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 2 * 1024 * 1024 * 1024, //
+      maxFileSize: 50 * 1024 * 1024, // 50MB
+      description:
+        "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
+    },
+    "gemini-2.0-flash-lite": {
+      model: google("gemini-2.0-flash-lite"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "google",
@@ -243,7 +255,7 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: [...markitdownMimeTypes],
+      supportedMimeTypes: [...MARKITDOWN_MIME_TYPES],
       description:
         "Grok is an AI modeled after the Hitchhiker's Guide to the Galaxy. It is intended to answer almost anything and, far harder, even suggest what questions to ask!",
     },
@@ -266,7 +278,7 @@ export const togetherAiModels = (
 ): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
-  const supportedMimeTypes = [...markitdownMimeTypes];
+  const supportedMimeTypes = [...MARKITDOWN_MIME_TYPES];
 
   return {
     "deepseek-r1": {
@@ -313,7 +325,7 @@ export const groqModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsToolUse: true,
       supportsStreaming: true,
       supportsSystemMessages: true,
-      supportedMimeTypes: [...markitdownMimeTypes],
+      supportedMimeTypes: [...MARKITDOWN_MIME_TYPES],
       provider: "meta",
       description:
         "The Meta Llama 3.3 multilingual large language model (LLM) is a pretrained and instruction tuned generative model in 70B (text in/text out). The Llama 3.3 instruction tuned text only model is optimized for multilingual dialogue use cases and outperforms many of the available open source and closed chat models on common industry benchmarks.",

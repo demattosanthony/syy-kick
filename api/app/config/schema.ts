@@ -162,11 +162,13 @@ export const documentEmbeddings = pgTable("document_embeddings", {
     .notNull()
     .references(() => documents.id, { onDelete: "cascade" }),
   text: text("text"),
+  contextualSummary: text("contextual_summary"),
   metadata: jsonb("metadata"),
   embedding: vector("embedding", { dimensions: 768 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+export type DocumentEmbedding = typeof documentEmbeddings.$inferSelect;
 
 export const documents = pgTable(
   "documents",
@@ -199,7 +201,7 @@ export const documents = pgTable(
     sql`CONSTRAINT project_or_knowledge_base CHECK ((project_id IS NOT NULL AND knowledge_base_id IS NULL) OR (project_id IS NULL AND knowledge_base_id IS NOT NULL))`,
   ]
 );
-
+export type Document = typeof documents.$inferSelect;
 export const documentProcessingJobs = pgTable("document_processing_jobs", {
   id: serial("id").primaryKey(),
   documentId: uuid("document_id")

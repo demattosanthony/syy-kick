@@ -1,0 +1,1 @@
+ALTER TABLE "document_embeddings" ADD COLUMN "contextual_summary" text;

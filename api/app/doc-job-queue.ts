@@ -2,9 +2,8 @@ import { eq, and, lte, inArray } from "drizzle-orm";
 import { documentProcessingJobs } from "./config/schema";
 import db from "./config/db";
 import { processFile } from "./doc-processor";
-import { DocumentProcessor } from "./doc-processor-v2";
 
-const CONCURRENT_JOBS = 1;
+const CONCURRENT_JOBS = 5;
 const POLLING_INTERVAL = 10000; // 10 seconds
 const MAX_ATTEMPTS = 2;
 
@@ -90,16 +89,13 @@ async function processNextBatch() {
 
 async function processJob(job: typeof documentProcessingJobs.$inferSelect) {
   try {
-    // await processFile(job.fileKey, job.fileName, job.mimeType, job.documentId);
-    const docProcessor = new DocumentProcessor(
-      job.fileKey,
-      job.fileName,
-      job.mimeType,
-      job.documentId,
-      true
-    );
-    const result = await docProcessor.processAndEmbed();
-    console.log(result);
+    await processFile({
+      fileKey: job.fileKey,
+      fileName: job.fileName,
+      mimeType: job.mimeType,
+      documentId: job.documentId,
+      debug: process.env.NODE_ENV !== "production",
+    });
 
     // Mark as completed
     await db

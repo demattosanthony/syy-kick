@@ -1,4 +1,4 @@
-export const markitdownMimeTypes = [
+export const MARKITDOWN_MIME_TYPES = [
   //   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/msword",
@@ -28,7 +28,7 @@ export const markitdownMimeTypes = [
   "video/mpeg",
 ];
 
-export const markitdownFileExtensions = [
+export const MARKITDOWN_FILE_EXTENSIONS = [
   ".pdf",
   ".docx",
   ".doc",
