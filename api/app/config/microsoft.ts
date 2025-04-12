@@ -140,7 +140,7 @@ export class MicrosoftAPI {
         });
 
         try {
-            const response = await fetch(`https://${this.domain}/oauth2/v2.0/token`, {
+            const response = await fetch(`https://${domain}/oauth2/v2.0/token`, {
                 method: "POST",
                 body: params,
                 headers: {
