@@ -10,8 +10,10 @@ interface Token {
     baseUrl: string;
 }
 
-interface PickerOptions {
+export interface PickerOptions {
     mode: "files" | "folder";
+    selectionMode?: "single" | "multiple" | "pick";
+    mimeTypes?: string[];
 }
 
 export class MicrosoftPicker {
@@ -74,8 +76,24 @@ export class MicrosoftPicker {
         return {};
     }
 
+
     private createPickerOptions(options: PickerOptions, sharePointConfig: object): object {
         const channelId = crypto.randomUUID();
+        
+        const getExtFilter = (mimeType: string) => {
+            if (mimeType.startsWith('image/')) return ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+            if (mimeType.startsWith('video/')) return ['.mp4', '.mov', '.avi', '.wmv', '.flv'];
+            if (mimeType.startsWith('audio/')) return ['.mp3', '.wav', '.ogg', '.m4a'];
+            if (mimeType === 'application/pdf') return ['.pdf'];
+            if (mimeType === 'application/msword') return ['.doc'];
+            if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return ['.docx'];
+            if (mimeType === 'application/vnd.ms-excel') return ['.xls'];
+            if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return ['.xlsx'];
+            if (mimeType === 'application/vnd.ms-powerpoint') return ['.ppt'];
+            if (mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') return ['.pptx'];
+            return ['.*'];
+        };
+
         return {
             sdk: "8.0",
             entry: {
@@ -87,10 +105,11 @@ export class MicrosoftPicker {
                 channelId,
             },
             selection: {
-                mode: "multiple",
+                mode: options.selectionMode || "multiple",
             },
             typesAndSources: {
                 mode: options.mode,
+                filters: options?.mimeTypes?.map(getExtFilter).flat() || undefined,
             },
             search: {
                 enabled: true,

@@ -121,6 +121,21 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
+        <iframe
+          id="microsoft-picker-iframe"
+          style={{
+            width: "70%",
+            height: "600px",
+            border: "none",
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 1000,
+            display: "none"
+          }}
+          name="microsoftPickerFrame"
+        />
       </body>
     </html>
   );

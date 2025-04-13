@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 
 /** Utils */
 import { toast } from "sonner";
-import { MicrosoftPicker } from "../utils/microsoft-picker";
+import { MicrosoftPicker, PickerOptions } from "../utils/microsoft-picker";
 
 /** Types */
 import { SharePointFile } from "../types";
@@ -46,9 +46,7 @@ export function useMicrosoftPicker({
         return () => window.removeEventListener("message", listener);
     }, [microsoftPicker]);
 
-    const openPicker = useCallback(async (options: {
-        mode: "files" | "folder";
-    }) => {
+    const openPicker = useCallback(async (options: PickerOptions) => {
         setLoading(true);
         await microsoftPicker.openPicker(options);
         setLoading(microsoftPicker.getLoadingState());
