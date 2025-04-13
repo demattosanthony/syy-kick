@@ -44,6 +44,15 @@ const CreateProjectDialog = ({ trigger, organizationId, siteId }: CreateProjectD
     projectNumber: "",
     estimatedStartDate: "",
     estimatedEndDate: "",
+    location: {
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+      postalCode: "",
+      latitude: "",
+      longitude: "",
+    }
   });
 
   const createProjectMutation = useCreateProjectMutation();
@@ -76,6 +85,15 @@ const CreateProjectDialog = ({ trigger, organizationId, siteId }: CreateProjectD
         projectNumber: "",
         estimatedStartDate: "",
         estimatedEndDate: "",
+        location: {
+          address: "",
+          city: "",
+          state: "",
+          country: "",
+          postalCode: "",
+          latitude: "",
+          longitude: "",
+        },
       });
       setOpen(false);
       router.push(`/projects/${project.id}`);

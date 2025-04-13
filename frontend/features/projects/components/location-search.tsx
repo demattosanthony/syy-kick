@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Command,
   CommandEmpty,
@@ -15,12 +15,18 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, MapPin, Plus } from "lucide-react";
+import { Check, MapPin, MapPinIcon, Plus } from "lucide-react";
 import { useLoadScript, Libraries } from "@react-google-maps/api";
+import { useGetSitesQuery } from "@/features/sites/api";
+import { Site } from "@/features/sites/types/sites";
+import useInfiniteGetSitesQuery from "@/features/sites/api/get-sites";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 const libraries: Libraries = ["places"];
 
 type LocationData = {
+  siteId?: string;
   address: string;
   city: string;
   state: string;
@@ -44,6 +50,7 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
   >([]);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualLocation, setManualLocation] = useState<LocationData>({
+    siteId: undefined,
     address: "",
     city: "",
     state: "",
@@ -53,6 +60,9 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
     latitude: undefined,
     longitude: undefined,
   });
+
+  const [selectedSite, setSelectedSite] = useState<string | null>(null);
+  const [showSites, setShowSites] = useState(false);
   const autocompleteService =
     useRef<google.maps.places.AutocompleteService | null>(null);
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
@@ -82,7 +92,7 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
     if (value.address && input === "") {
       setInput(value.address);
     }
-  }, [value.address]);
+  }, [value?.address]);
 
   useEffect(() => {
     // Initialize manual location with current values when toggling to manual entry
@@ -208,11 +218,21 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
     );
   };
 
+  const handleSelectSite = useCallback((site: Site) => {
+    console.log(site, '<--- SITE')
+    onChange({
+      siteId: site.id,
+      ...site.address,
+    })
+    setSelectedSite(site.id);
+    setOpen(false);
+  }, [onChange]);
+
   const displayValue = value.address
     ? value.address +
-      (value.city ? `, ${value.city}` : "") +
-      (value.state ? `, ${value.state}` : "") +
-      (value.postalCode ? `, ${value.postalCode}` : "")
+    (value.city ? `, ${value.city}` : "") +
+    (value.state ? `, ${value.state}` : "") +
+    (value.postalCode ? `, ${value.postalCode}` : "")
     : "";
 
   return (
@@ -244,7 +264,14 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
           className="p-0 overflow-visible w-[400px] pointer-events-auto"
           align="start"
         >
-          {!showManualEntry ? (
+          {showSites && (
+            <SitesLocationSearch
+              value={selectedSite}
+              onSelect={handleSelectSite}
+              onGoBack={() => setShowSites(false)}
+            />
+          )}
+          {!showSites && !showManualEntry && (
             <Command className="pointer-events-auto">
               <CommandInput
                 placeholder="Search for address..."
@@ -274,20 +301,31 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
                     </CommandItem>
                   ))}
                 </CommandGroup>
-                <div className="border-t p-2 text-center">
+                <div className="border-t p-2 text-center flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full flex items-center justify-center gap-2 py-2"
+                    className="flex-1 flex items-center justify-center gap-2 py-2"
                     onClick={() => setShowManualEntry(true)}
                   >
                     <Plus className="h-3 w-3" />
                     <span>Enter location manually</span>
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 ${selectedSite ? 'bg-accent text-accent-foreground' : ''}`}
+                    onClick={() => setShowSites(true)}
+                  >
+                    <MapPinIcon className="h-3 w-3" />
+                    <span>Existing location</span>
+                  </Button>
                 </div>
               </CommandList>
             </Command>
-          ) : (
+          )}
+
+          {!showSites && showManualEntry && (
             <div className="p-4 space-y-3">
               <h3 className="font-medium">Manual Location Entry</h3>
               <div className="space-y-2">
@@ -396,3 +434,111 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
 };
 
 export default LocationSearch;
+
+
+const SitesLocationSearch = ({
+  value,
+  onSelect,
+  onGoBack,
+}: {
+  value: string | null;
+  onSelect: (site: Site) => void;
+  onGoBack: () => void;
+}) => {
+  const [search, setSearch] = useState("");
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+    useInfiniteGetSitesQuery({ search, limit: 5 });
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = scrollRef.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) observer.unobserve(currentTarget);
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const sites = useMemo(() => {
+    return data?.pages.flatMap((page) => page.data);
+  }, [data]);
+
+  const handleSelectSite = useCallback((site: Site) => {
+    onSelect(site);
+    onGoBack();
+  }, [onSelect, onGoBack]);
+
+  if (!sites) return null;
+
+  console.log(value, '<--- VALUE')
+
+  return (
+    <div className="flex flex-col w-full maxm-w-full p-4 space-y-3 max-h-[450px] overflow-y-auto">
+      <Command>
+        <CommandInput
+          placeholder="Search for site..."
+          className="pointer-events-auto"
+          value={search}
+          onValueChange={setSearch}
+        />
+        <CommandList>
+          {sites.map((site: Site) => (
+            <CommandItem
+              key={site.id}
+              value={site.name}
+              onSelect={() => handleSelectSite(site)}
+              className={`cursor-pointer ${value === site.id ? 'bg-accent text-accent-foreground' : ''}`}
+            >
+              <MapPin className="mr-2 h-4 w-4" />
+              <div className="flex flex-col">
+                <span>{site.name}</span>
+                <span className="text-sm text-muted-foreground">{site.address.address}, {site.address.city}, {site.address.state}, {site.address.postalCode}</span>
+              </div>
+            </CommandItem>
+          ))}
+        </CommandList>
+        <div ref={scrollRef} className="h-10">
+          {(isFetchingNextPage || isLoading) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SitesSkeleton key={i} />
+              ))}
+            </div>
+          )}
+        </div>
+      </Command>
+      <div className="flex justify-between pt-2">
+        <Button variant="outline" size="sm" onClick={onGoBack}>
+          Back to Search
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+function SitesSkeleton() {
+  return (
+    <div className="p-4">
+      <div className="flex items-start gap-4">
+        <Skeleton className="w-6 h-6 rounded flex-shrink-0" />
+        <div className="flex-1">
+          <Skeleton className="h-5 w-1/3 mb-2" />
+          <Skeleton className="h-3 w-1/4" />
+        </div>
+      </div>
+    </div>
+  );
+}

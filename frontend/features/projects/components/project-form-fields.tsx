@@ -16,15 +16,25 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { DialogFooter } from "../../../components/ui/dialog";
 import { SitesSelector } from "@/features/sites/components";
+import LocationSearch from "./location-search";
 
 export interface ProjectFormData {
-  siteId: string;
+  siteId?: string;
   organizationId?: string;
   name: string;
   description: string;
   projectNumber: string;
   estimatedStartDate: string;
   estimatedEndDate: string;
+  location: {
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    postalCode: string;
+    latitude: string;
+    longitude: string;
+  };
 }
 
 interface ProjectFormFieldsProps {
@@ -59,7 +69,7 @@ const ProjectFormFields = ({
         />
       </div>
 
-      {showSiteSelector && (
+      {/* {showSiteSelector && (
         <div className="space-y-2">
           <Label htmlFor="siteId">
             Site <span className="text-red-500">*</span>
@@ -72,7 +82,30 @@ const ProjectFormFields = ({
             disabled={isSubmitting}
           />
         </div>
-      )}
+      )} */}
+      <div className="space-y-2">
+        <Label htmlFor="location">
+          Location <span className="text-red-500">*</span>
+        </Label>
+        <LocationSearch
+          value={formData.location}
+          onChange={(locationData) =>
+            setFormData((prev) => ({
+              ...prev,
+              location: {
+                siteId: locationData.siteId,
+                address: locationData.address || "",
+                city: locationData.city || "",
+                state: locationData.state || "",
+                country: locationData.country || "",
+                postalCode: locationData.postalCode || "",
+                latitude: locationData.latitude || "",
+                longitude: locationData.longitude || "",
+              },
+            }))
+          }
+        />
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="projectNumber">Project Number</Label>
