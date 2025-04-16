@@ -44,7 +44,7 @@ export default function ProjectsPage() {
                 <Slash className="w-4 h-4" />
               </BreadcrumbSeparator>
               <BreadcrumbItem>
-                <span className="font-bold">{site?.name}</span>
+                <span className="font-bold">{site?.address} {site?.city}, {site?.state}, {site?.postalCode}</span>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -58,7 +58,7 @@ export default function ProjectsPage() {
         {siteId && site && (
           <CreateProjectDialog
             trigger={<Button>Create Project</Button>}
-            siteId={siteId}
+            site={site}
             organizationId={site.organizationId}
           />
         )}

@@ -16,14 +16,6 @@ export interface Project {
   projectNumber?: string;
   estimatedStartDate?: string;
   estimatedEndDate?: string;
-
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  postalCode?: string;
-  latitude?: string;
-  longitude?: string;
   site?: Site;
 }
 

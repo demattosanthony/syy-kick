@@ -13,8 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { useWorkspace } from "./workspace-context";
 import { CreateOrgForm } from "@/features/organizations/components";
-import { CreateProjectDialog } from "@/features/projects/components";
-import SiteDialog from "@/features/sites/components/site-mutation-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Workspace } from "@/types/workspace";
 
@@ -30,7 +28,6 @@ export function MobileWorkspaceSwitcher() {
     null
   );
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
-  const [siteDialogOpen, setSiteDialogOpen] = useState(false);
 
   const [workspaceSearch, setWorkspaceSearch] = useState("");
   const [siteSearch, setSiteSearch] = useState("");
@@ -46,7 +43,7 @@ export function MobileWorkspaceSwitcher() {
 
   const filteredSites =
     selectedWorkspace?.sites.filter((s) =>
-      s.name.toLowerCase().includes(siteSearch.toLowerCase())
+      s.address.toLowerCase().includes(siteSearch.toLowerCase())
     ) || [];
 
   const filteredProjects =
@@ -190,20 +187,9 @@ export function MobileWorkspaceSwitcher() {
                     setSiteSearch("");
                   }}
                 >
-                  {site.name}
+                  {site.address}
                 </button>
               ))}
-
-              <SiteDialog
-                mode="create"
-                organizationId={
-                  selectedWorkspace?.type === "organization"
-                    ? selectedWorkspace.id
-                    : undefined
-                }
-                showDialog={siteDialogOpen}
-                setShowDialog={setSiteDialogOpen}
-              />
             </>
           )}
 
@@ -223,21 +209,6 @@ export function MobileWorkspaceSwitcher() {
                   {project.name}
                 </button>
               ))}
-
-              <CreateProjectDialog
-                siteId={selectedSite.id}
-                organizationId={
-                  selectedWorkspace?.type === "organization"
-                    ? selectedWorkspace.id
-                    : undefined
-                }
-                trigger={
-                  <Button variant="outline" className="w-full gap-2">
-                    <Plus className="h-4 w-4" />
-                    Create Project
-                  </Button>
-                }
-              />
             </>
           )}
         </div>

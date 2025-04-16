@@ -15,8 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Calendar, Clock, MapPin } from "lucide-react";
-import { usePermissions } from "@/features/permissions/context";
-import { SiteDropdownActions } from ".";
 
 const SitesList = ({
   onSiteHover,
@@ -28,8 +26,6 @@ const SitesList = ({
     () => searchParams.get("search") || "",
     [searchParams]
   );
-
-  const { canUpdateOrgSites, canDeleteOrgSites } = usePermissions();
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -90,8 +86,6 @@ const SitesList = ({
               <Link href={`/projects?siteId=${site.id}`}>
                 <SiteItem
                   site={site}
-                  canUpdate={canUpdateOrgSites}
-                  canDelete={canDeleteOrgSites}
                 />
               </Link>
             </div>
@@ -129,18 +123,14 @@ function SitesSkeleton() {
 
 function SiteItem({
   site,
-  canUpdate,
-  canDelete,
 }: {
   site: Site;
-  canUpdate: boolean;
-  canDelete: boolean;
 }) {
-  const { name, description, address, createdAt, updatedAt } = site;
+  const { address, city, state, postalCode, country, createdAt, updatedAt } = site;
   const formattedAddress = useMemo(
     () =>
-      `${address.address}, ${address.city}, ${address.state} ${address.postalCode}, ${address.country}`,
-    [address]
+      `${address}, ${city}, ${state} ${postalCode}, ${country}`,
+    [address, city, state, postalCode, country]
   );
 
   const createdDate = new Date(createdAt);
@@ -176,25 +166,11 @@ function SiteItem({
   }, [updatedDate]);
 
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-md p-2 h-[180px]">
-      <CardHeader className="py-2">
-        <div className="flex items-start justify-between">
-          <div className="max-w-[80%]">
-            <CardTitle className="text-xl font-bold truncate">{name}</CardTitle>
-            {description && (
-              <CardDescription className="mt-1 line-clamp-1">
-                {description}
-              </CardDescription>
-            )}
-          </div>
-          <SiteDropdownActions
-            site={site}
-            canUpdateOrgSites={canUpdate}
-            canDeleteOrgSites={canDelete}
-          />
-        </div>
+    <Card className="overflow-hidden transition-all hover:shadow-md flex flex-col items-start">
+      <CardHeader className="p-5 pt-2 pb-0">
+        <CardTitle className="text-xl font-bold truncate">{site.city}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="w-full p-5">
         <div className="space-y-3">
           <div className="flex items-start gap-2">
             <MapPin className="mt-0.5 h-4 w-4 text-muted-foreground shrink-0" />

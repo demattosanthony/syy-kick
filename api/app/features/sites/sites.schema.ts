@@ -4,9 +4,6 @@ import { relations } from "drizzle-orm";
 
 export const sites = pgTable("sites", {
   id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 255 }).notNull(),
-  slug: varchar("slug", { length: 255 }).notNull(),
-  description: text("description"),
   address: text("address").notNull(),
   city: varchar("city", { length: 100 }).notNull(),
   state: varchar("state", { length: 100 }).notNull(),

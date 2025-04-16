@@ -40,7 +40,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { membersTableTranslations } from "@/features/permissions/utils";
 import useDeleteOrgInvitationsMutation from "@/features/permissions/api/organizations/delete-org-invitations";

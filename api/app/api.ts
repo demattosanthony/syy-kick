@@ -149,28 +149,4 @@ export default Router()
   })
   .use("/permissions", auth, permissionsRoutes)
   .use("/analytics", analyticsRoutes)
-
-  // Temporary (projects with no site associated)
-  .get("/unlinked-projects", auth, async (req: Request, res: Response) => {
-    const orgId = getOrgIdOrUnedfined(req.workspace);
-
-    const conditions = [isNull(projects.siteId)];
-
-    if (orgId && req.dbUser!.id) {
-      const orgProjectsIds = await PermissionManager.getUserOrgProjectsIds(
-        req.dbUser!.id,
-        orgId
-      );
-
-      conditions.push(inArray(projects.id, orgProjectsIds));
-    } else if (req.dbUser!.id) {
-      conditions.push(eq(projects.userId, req.dbUser!.id));
-    }
-
-    const projectsList = await db.query.projects.findMany({
-      where: and(...conditions),
-      orderBy: (projects, { desc }) => [desc(projects.createdAt)],
-    });
-
-    res.json(projectsList);
-  });
+;

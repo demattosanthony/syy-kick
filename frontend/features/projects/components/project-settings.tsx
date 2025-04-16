@@ -30,7 +30,7 @@ import {
 } from "../api";
 
 // Custom component imports
-import ProjectFormFields from "./project-form-fields";
+import ProjectFormFields, { ProjectFormData } from "./project-form-fields";
 import { usePermissions } from "@/features/permissions/context";
 
 const ProjectSettings = ({ pid }: { pid: string }) => {
@@ -43,13 +43,21 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
   const updateProjectMutation = useUpdateProjectMutation();
   const deleteProjectMutation = useDeleteProjectMutation();
 
-  const [formData, setFormData] = useState({
-    siteId: "",
+  const [formData, setFormData] = useState<ProjectFormData>({
+    site: undefined,
     name: "",
-    description: "",
-    projectNumber: "",
-    estimatedStartDate: "",
-    estimatedEndDate: "",
+    location: {
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+      postalCode: "",
+      placeId: "",
+    },
+    description: project?.description || "",
+    projectNumber: project?.projectNumber || "",
+    estimatedStartDate: project?.estimatedStartDate || "",
+    estimatedEndDate: project?.estimatedEndDate || "",
   });
 
   // Handle form submission
@@ -59,7 +67,16 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
       await updateProjectMutation.mutateAsync({
         projectId: pid,
         data: {
-          siteId: formData.siteId,
+          organizationId: project?.organizationId,
+          siteId: formData.site?.id,
+          address: formData.location.address,
+          city: formData.location.city,
+          state: formData.location.state,
+          country: formData.location.country,
+          postalCode: formData.location.postalCode,
+          latitude: formData.location.latitude,
+          longitude: formData.location.longitude,
+          placeId: formData.location.placeId,
           name: formData.name,
           description: formData.description,
           project_number: formData.projectNumber || undefined,
@@ -93,12 +110,22 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
   useEffect(() => {
     if (project) {
       setFormData({
-        siteId: project.siteId ?? "",
-        name: project.name,
+        site: project.site,
+        location: {
+          address: "",
+          city: "",
+          state: "",
+          country: "",
+          postalCode: "",
+          latitude: undefined,
+          longitude: undefined,
+          placeId: "",
+        },
+        name: project.name || "",
         description: project.description || "",
-        estimatedEndDate: project.estimatedEndDate || "",
-        estimatedStartDate: project.estimatedStartDate || "",
         projectNumber: project.projectNumber || "",
+        estimatedStartDate: project.estimatedStartDate || "",
+        estimatedEndDate: project.estimatedEndDate || "",
       });
     }
   }, [project]);
@@ -128,7 +155,6 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
                         ? "Saving..."
                         : "Save Changes"
                     }
-                    showSiteSelector={false}
                   />
                 </form>
               </Card>

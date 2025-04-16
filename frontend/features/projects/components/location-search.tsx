@@ -17,32 +17,32 @@ import {
 import { Button } from "@/components/ui/button";
 import { Check, MapPin, MapPinIcon, Plus } from "lucide-react";
 import { useLoadScript, Libraries } from "@react-google-maps/api";
-import { useGetSitesQuery } from "@/features/sites/api";
 import { Site } from "@/features/sites/types/sites";
 import useInfiniteGetSitesQuery from "@/features/sites/api/get-sites";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
+import useDebounce from "@/hooks/use-debounce";
 
 const libraries: Libraries = ["places"];
 
 type LocationData = {
-  siteId?: string;
   address: string;
   city: string;
   state: string;
   country: string;
   postalCode: string;
   placeId?: string;
-  latitude?: string;
-  longitude?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 type LocationSearchProps = {
   value: LocationData;
   onChange: (value: LocationData) => void;
+  site?: Site;
+  onSiteSelect?: (site: Site) => void;
 };
 
-const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
+const LocationSearch = ({ value, onChange, site, onSiteSelect }: LocationSearchProps) => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [predictions, setPredictions] = useState<
@@ -50,7 +50,6 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
   >([]);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualLocation, setManualLocation] = useState<LocationData>({
-    siteId: undefined,
     address: "",
     city: "",
     state: "",
@@ -61,7 +60,6 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
     longitude: undefined,
   });
 
-  const [selectedSite, setSelectedSite] = useState<string | null>(null);
   const [showSites, setShowSites] = useState(false);
   const autocompleteService =
     useRef<google.maps.places.AutocompleteService | null>(null);
@@ -191,8 +189,8 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
           // Use the extracted street address instead of the full formatted address
           placeId: placeId,
           address: streetAddress,
-          latitude: place.geometry?.location?.lat().toString(),
-          longitude: place.geometry?.location?.lng().toString(),
+          latitude: place.geometry?.location?.lat(),
+          longitude: place.geometry?.location?.lng(),
         };
 
         // Extract other address components
@@ -219,21 +217,22 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
   };
 
   const handleSelectSite = useCallback((site: Site) => {
-    console.log(site, '<--- SITE')
-    onChange({
-      siteId: site.id,
-      ...site.address,
-    })
-    setSelectedSite(site.id);
+    onSiteSelect?.(site);
     setOpen(false);
-  }, [onChange]);
+  }, [onSiteSelect]);
 
-  const displayValue = value.address
-    ? value.address +
-    (value.city ? `, ${value.city}` : "") +
-    (value.state ? `, ${value.state}` : "") +
-    (value.postalCode ? `, ${value.postalCode}` : "")
-    : "";
+  const displayValue = useMemo(() => {
+    if (site) {
+      return `${site.address}, ${site.city}, ${site.state}, ${site.postalCode}`;
+    }
+
+    return value.address
+      ? value.address +
+      (value.city ? `, ${value.city}` : "") +
+      (value.state ? `, ${value.state}` : "") +
+      (value.postalCode ? `, ${value.postalCode}` : "")
+      : "";
+  }, [site, value])
 
   return (
     <div className="flex flex-col w-full maxm-w-full">
@@ -260,72 +259,27 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
             </div>
           </Button>
         </PopoverTrigger>
-        <PopoverContent
-          className="p-0 overflow-visible w-[400px] pointer-events-auto"
-          align="start"
-        >
-          {showSites && (
+
+        {/* Sites selection */}
+        {showSites && (
+          <PopoverContent
+            className="p-0 overflow-visible w-[400px] pointer-events-auto"
+            align="start"
+          >
             <SitesLocationSearch
-              value={selectedSite}
+              value={site?.id || null}
               onSelect={handleSelectSite}
               onGoBack={() => setShowSites(false)}
             />
-          )}
-          {!showSites && !showManualEntry && (
-            <Command className="pointer-events-auto">
-              <CommandInput
-                placeholder="Search for address..."
-                className="pointer-events-auto"
-                value={input}
-                onValueChange={handleInputChange}
-                disabled={!isLoaded}
-              />
-              <CommandList>
-                <CommandEmpty>
-                  <div className="py-2 px-4 text-center">
-                    <p>No results found.</p>
-                  </div>
-                </CommandEmpty>
-                <CommandGroup>
-                  {predictions.map((prediction) => (
-                    <CommandItem
-                      key={prediction.place_id}
-                      value={prediction.description}
-                      onSelect={() => handleSelectPlace(prediction.place_id)}
-                    >
-                      <MapPin className="mr-2 h-4 w-4" />
-                      <span>{prediction.description}</span>
-                      {prediction.description === displayValue && (
-                        <Check className="ml-auto h-4 w-4" />
-                      )}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-                <div className="border-t p-2 text-center flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 flex items-center justify-center gap-2 py-2"
-                    onClick={() => setShowManualEntry(true)}
-                  >
-                    <Plus className="h-3 w-3" />
-                    <span>Enter location manually</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 ${selectedSite ? 'bg-accent text-accent-foreground' : ''}`}
-                    onClick={() => setShowSites(true)}
-                  >
-                    <MapPinIcon className="h-3 w-3" />
-                    <span>Existing location</span>
-                  </Button>
-                </div>
-              </CommandList>
-            </Command>
-          )}
+          </PopoverContent>
+        )}
 
-          {!showSites && showManualEntry && (
+        {/* Manual entry */}
+        {showManualEntry && (
+          <PopoverContent
+            className="p-0 overflow-visible w-[400px] pointer-events-auto"
+            align="start"
+          >
             <div className="p-4 space-y-3">
               <h3 className="font-medium">Manual Location Entry</h3>
               <div className="space-y-2">
@@ -426,8 +380,70 @@ const LocationSearch = ({ value, onChange }: LocationSearchProps) => {
                 </Button>
               </div>
             </div>
-          )}
-        </PopoverContent>
+          </PopoverContent>
+        )}
+
+        {/* Search address */}
+        {
+          !showSites && !showManualEntry && (
+            <PopoverContent
+              className="p-0 overflow-visible w-[400px] pointer-events-auto"
+              align="start"
+            >
+              <Command className="pointer-events-auto">
+                <CommandInput
+                  placeholder="Search for address..."
+                  className="pointer-events-auto"
+                  value={input}
+                  onValueChange={handleInputChange}
+                  disabled={!isLoaded}
+                />
+                <CommandList>
+                  <CommandEmpty>
+                    <div className="py-2 px-4 text-center">
+                      <p>No results found.</p>
+                    </div>
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {predictions.map((prediction) => (
+                      <CommandItem
+                        key={prediction.place_id}
+                        value={prediction.description}
+                        onSelect={() => handleSelectPlace(prediction.place_id)}
+                      >
+                        <MapPin className="mr-2 h-4 w-4" />
+                        <span>{prediction.description}</span>
+                        {prediction.description === displayValue && (
+                          <Check className="ml-auto h-4 w-4" />
+                        )}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                  <div className="border-t p-2 text-center flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 flex items-center justify-center gap-2 py-2"
+                      onClick={() => setShowManualEntry(true)}
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span>Enter location manually</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`flex-1 flex items-center justify-center gap-2 py-2 ${site?.id ? 'bg-accent text-accent-foreground' : ''}`}
+                      onClick={() => setShowSites(true)}
+                    >
+                      <MapPinIcon className="h-3 w-3" />
+                      <span>Existing location</span>
+                    </Button>
+                  </div>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          )
+        }
       </Popover>
     </div>
   );
@@ -446,11 +462,23 @@ const SitesLocationSearch = ({
   onGoBack: () => void;
 }) => {
   const [search, setSearch] = useState("");
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteGetSitesQuery({ search, limit: 5 });
-
   const scrollRef = useRef<HTMLDivElement>(null);
+  const debouncedSearch = useDebounce(search, 300);
+
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage
+  } = useInfiniteGetSitesQuery({
+    search: debouncedSearch,
+    limit: 50
+  });
+
+  const sites = useMemo(() => {
+    return data?.pages?.[0]?.data || [];
+  }, [data]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -459,34 +487,23 @@ const SitesLocationSearch = ({
           fetchNextPage();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.5 }
     );
 
-    const currentTarget = scrollRef.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
+    if (scrollRef.current) {
+      observer.observe(scrollRef.current);
     }
 
-    return () => {
-      if (currentTarget) observer.unobserve(currentTarget);
-    };
+    return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const sites = useMemo(() => {
-    return data?.pages.flatMap((page) => page.data);
-  }, [data]);
 
   const handleSelectSite = useCallback((site: Site) => {
     onSelect(site);
     onGoBack();
   }, [onSelect, onGoBack]);
 
-  if (!sites) return null;
-
-  console.log(value, '<--- VALUE')
-
   return (
-    <div className="flex flex-col w-full maxm-w-full p-4 space-y-3 max-h-[450px] overflow-y-auto">
+    <div className="flex flex-col w-full maxm-w-full p-4 space-y-3 max-h-[400px] overflow-y-auto">
       <Command>
         <CommandInput
           placeholder="Search for site..."
@@ -494,19 +511,17 @@ const SitesLocationSearch = ({
           value={search}
           onValueChange={setSearch}
         />
+        <CommandEmpty>No sites found.</CommandEmpty>
         <CommandList>
           {sites.map((site: Site) => (
             <CommandItem
               key={site.id}
-              value={site.name}
+              value={`${site.address}, ${site.city}, ${site.state}, ${site.postalCode}`}
               onSelect={() => handleSelectSite(site)}
               className={`cursor-pointer ${value === site.id ? 'bg-accent text-accent-foreground' : ''}`}
             >
               <MapPin className="mr-2 h-4 w-4" />
-              <div className="flex flex-col">
-                <span>{site.name}</span>
-                <span className="text-sm text-muted-foreground">{site.address.address}, {site.address.city}, {site.address.state}, {site.address.postalCode}</span>
-              </div>
+              <span>{site.address}, {site.city}, {site.state}, {site.postalCode}</span>
             </CommandItem>
           ))}
         </CommandList>
@@ -534,10 +549,7 @@ function SitesSkeleton() {
     <div className="p-4">
       <div className="flex items-start gap-4">
         <Skeleton className="w-6 h-6 rounded flex-shrink-0" />
-        <div className="flex-1">
-          <Skeleton className="h-5 w-1/3 mb-2" />
-          <Skeleton className="h-3 w-1/4" />
-        </div>
+        <div className="flex-1"></div>
       </div>
     </div>
   );

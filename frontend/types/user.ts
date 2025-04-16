@@ -1,4 +1,5 @@
 import { Role } from "@/features/permissions/types";
+import { WorkspaceSite } from "./workspace";
 
 export interface User {
   id: string;
@@ -18,19 +19,6 @@ export interface User {
   stripeCustomerId?: string;
   systemRole?: "super_admin";
   organizations: Organization[];
-}
-
-export interface Site {
-  id: string;
-  name: string;
-  slug: string;
-  projects: Project[];
-}
-
-export interface Project {
-  id: string;
-  name: string;
-  slug: string;
 }
 
 export interface Organization {
@@ -59,5 +47,5 @@ export interface Organization {
     cert: string;
   };
   role: Role;
-  sites: Site[];
+  sites: WorkspaceSite[];
 }

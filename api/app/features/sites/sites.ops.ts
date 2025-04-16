@@ -5,9 +5,7 @@ import { PermissionManager } from "../permissions/permissions.tools";
 import { PaginatedSites, Site } from "./sites.types";
 import { formatSites, validationSchema } from "./sites.utils";
 import { sites } from "./sites.schema";
-import { documents, projects } from "../../config/schema";
-import { slugify } from "../../utils";
-import s3 from "../../config/s3";
+import { projects } from "../../config/schema";
 
 export const sitesOps = {
   getAllSites: async (params: {
@@ -37,9 +35,11 @@ export const sitesOps = {
     if (params.search) {
       conditions.push(
         or(
-          ilike(sites.name, `%${params.search}%`),
           ilike(sites.address, `%${params.search}%`),
-          ilike(sites.city, `%${params.search}%`)
+          ilike(sites.city, `%${params.search}%`),
+          ilike(sites.state, `%${params.search}%`),
+          ilike(sites.postalCode, `%${params.search}%`),
+          ilike(sites.country, `%${params.search}%`)
         )
       );
     }
@@ -95,83 +95,23 @@ export const sitesOps = {
     data: z.infer<typeof validationSchema.create>;
     organizationId?: string;
     userId?: string;
-  }): Promise<void> => {
+  }): Promise<Site> => {
     const siteData = {
-      name: data.name,
-      slug: slugify(data.name),
-      description: data.description,
-      address: data.address.address,
-      city: data.address.city,
-      state: data.address.state,
-      postalCode: data.address.postalCode,
-      country: data.address.country,
-      placeId: data.address.placeId,
-      latitude: data.address.latitude?.toString() ?? null,
-      longitude: data.address.longitude?.toString() ?? null,
+      address: data.address,
+      city: data.city,
+      state: data.state,
+      postalCode: data.postalCode,
+      country: data.country,
+      placeId: data.placeId,
+      latitude: data.latitude?.toString() ?? null,
+      longitude: data.longitude?.toString() ?? null,
       organizationId,
       userId,
     };
 
-    await db.insert(sites).values(siteData);
-  },
+    const [site] = await db.insert(sites).values(siteData).returning();
 
-  updateSite: async ({
-    siteId,
-    data,
-  }: {
-    siteId: string;
-    data: z.infer<typeof validationSchema.update>;
-  }): Promise<void> => {
-    const siteUpdates = {
-      name: data.name ?? sites.name,
-      slug: slugify(data.name ?? sites.name),
-      description: data.description ?? sites.description,
-      address: data.address.address ?? sites.address,
-      city: data.address.city ?? sites.city,
-      state: data.address.state ?? sites.state,
-      postalCode: data.address.postalCode ?? sites.postalCode,
-      country: data.address.country ?? sites.country,
-      placeId: data.address.placeId ?? sites.placeId,
-      latitude: data.address.latitude ? data.address.latitude.toString() : null,
-      longitude: data.address.longitude
-        ? data.address.longitude.toString()
-        : null,
-    };
-
-    await db.update(sites).set(siteUpdates).where(eq(sites.id, siteId));
-  },
-
-  deleteSite: async ({ siteId }: { siteId: string }): Promise<void> => {
-    const projectsIds = await db.query.projects
-      .findMany({
-        where: eq(projects.siteId, siteId),
-        columns: {
-          id: true,
-        },
-      })
-      .then((projects) => projects.map((project) => project.id));
-
-    const fileKeys = await db.query.documents
-      .findMany({
-        where: inArray(documents.projectId, projectsIds),
-        columns: {
-          fileKey: true,
-        },
-      })
-      .then((docs) => docs.map((doc) => doc.fileKey));
-
-    for (const fileKey of fileKeys) {
-      if (fileKey) {
-        await s3.delete(fileKey);
-      }
-    }
-
-    // Delete all documents and the project from the database
-    await db.delete(documents).where(inArray(documents.projectId, projectsIds));
-    await db.delete(projects).where(inArray(projects.id, projectsIds));
-
-    // Delete the site from the database
-    await db.delete(sites).where(eq(sites.id, siteId));
+    return site;
   },
 
   siteExists: async ({
@@ -190,7 +130,7 @@ export const sitesOps = {
     address?: string;
     postalCode?: string;
     city?: string;
-  }): Promise<boolean> => {
+  }): Promise<Site | undefined> => {
     const conditions = [];
 
     if (siteId) {
@@ -223,22 +163,6 @@ export const sitesOps = {
       where: and(...conditions),
     });
 
-    return !!site;
-  },
-
-  // Temporary
-  linkProjects: async ({
-    siteId,
-    projectsIds,
-  }: {
-    siteId: string;
-    projectsIds: string[];
-  }) => {
-    await db
-      .update(projects)
-      .set({
-        siteId: siteId,
-      })
-      .where(inArray(projects.id, projectsIds));
+    return site;
   },
 };
