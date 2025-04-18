@@ -5,10 +5,6 @@
 - better QA QC processes
 - automated workflows
 
-### Big lofty goals
-
-- text -> BIM model -> energy simulation model -> handover drawings set
-
 ## Get started
 
 1. Install Bun js runtime: https://bun.sh/docs/installation
