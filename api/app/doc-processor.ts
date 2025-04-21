@@ -441,7 +441,7 @@ interface MistralOcrInput {
  * Process a pdf file with mistral ocr
  * @param input - The input parameters for OCR processing
  */
-async function mistralOcr({
+export async function mistralOcr({
   base64,
   mimeType,
   includeImages = true,
@@ -515,9 +515,9 @@ async function imageToMarkdown(
 ): Promise<string> {
   try {
     const { text } = await generateText({
-      model: MODELS["gpt-4o-mini"].model,
+      model: MODELS["gpt-4.1-mini"].model,
       temperature: 0,
-      maxTokens: 2000,
+      maxTokens: 1024,
       messages: [
         {
           role: "user",
@@ -677,7 +677,7 @@ async function addContextToChunks(
           );
 
           const { text: context } = await generateText({
-            model: MODELS["gpt-4o-mini"].model,
+            model: MODELS["gpt-4.1-mini"].model,
             temperature: 0,
             messages: [
               {

@@ -14,6 +14,7 @@ import { PDFDocument } from "pdf-lib";
 import { getPdfPageAsImage } from "../../utils";
 import { z } from "zod";
 import { Jimp } from "jimp";
+import { mistralOcr } from "../../doc-processor";
 
 export const executeLLMStep: StepExecutorFunction = async ({
   step,
@@ -354,13 +355,10 @@ export const documentOcrStep: StepExecutorFunction = async ({
   }
 
   // Run OCR
-  const result = await mistralAi.ocr.process({
-    model: "mistral-ocr-latest",
-    document: {
-      documentUrl: `data:${documentFileData.mimeType};base64,${documentFileData.url}`,
-      type: "document_url",
-    },
-    includeImageBase64: true,
+  const result = await mistralOcr({
+    base64: documentFileData.url,
+    mimeType: "application/pdf",
+    includeImages: true,
   });
 
   let markdown = "";

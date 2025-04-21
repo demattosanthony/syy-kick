@@ -254,7 +254,7 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: [...markitdownMimeTypes],
+      supportedMimeTypes: [...ACCEPTED_DOC_PROCESSING_MIME_TYPES],
       maxImageSize: 10 * 1024 * 1024, // 10MB
       description:
         "xAI's lightweight model that thinks before responding. Great for simple or logic-based tasks that do not require deep domain knowledge. The raw thinking traces are accessible.",
