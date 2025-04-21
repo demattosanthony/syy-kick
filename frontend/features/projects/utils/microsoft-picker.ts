@@ -157,7 +157,8 @@ export class MicrosoftPicker {
     const iframe = document.getElementById(
       "microsoft-picker-iframe"
     ) as HTMLIFrameElement;
-    if (!iframe?.contentWindow) return;
+    const overlay = document.getElementById("microsoft-picker-overlay");
+    if (!iframe?.contentWindow || !overlay) return;
 
     const tenant = userToken?.baseUrl?.split(".")[0];
     const pickerUrl = `https://${tenant}-my.sharepoint.com/_layouts/15/FilePicker.aspx?filePicker=${encodeURIComponent(
@@ -165,6 +166,7 @@ export class MicrosoftPicker {
     )}&locale=en-us`;
 
     iframe.style.display = "block";
+    overlay.classList.remove("hidden");
 
     const form = document.createElement("form");
     form.setAttribute("method", "POST");
@@ -295,7 +297,9 @@ export class MicrosoftPicker {
     const iframe = document.getElementById(
       "microsoft-picker-iframe"
     ) as HTMLIFrameElement;
-    iframe.style.display = "none";
+    const overlay = document.getElementById("microsoft-picker-overlay");
+    if (iframe) iframe.style.display = "none";
+    if (overlay) overlay.classList.add("hidden");
 
     port.postMessage({
       type: "result",
@@ -308,6 +312,11 @@ export class MicrosoftPicker {
     const iframe = document.getElementById(
       "microsoft-picker-iframe"
     ) as HTMLIFrameElement;
-    iframe.style.display = "none";
+    const overlay = document.getElementById("microsoft-picker-overlay");
+    if (iframe) {
+      iframe.style.display = "none";
+      iframe.src = "about:blank";
+    }
+    if (overlay) overlay.classList.add("hidden");
   }
 }
