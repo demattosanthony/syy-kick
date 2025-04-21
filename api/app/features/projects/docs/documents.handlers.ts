@@ -82,21 +82,4 @@ export const handlers = {
     );
     res.json({ success: true });
   },
-
-  documentsConnector: async (req: Request, res: Response) => {
-    const { projectId } = req.params;
-    if (!projectId) {
-      res.status(400).json({ error: "Project ID is required" });
-      return;
-    }
-
-    // we have a list of files URL to download
-    const { files } = req.body;
-
-    // we need to download the files and save them in the project
-    // we need to save the files in the project
-    // we need to save the files in the project
-    
-    
-  },
 };

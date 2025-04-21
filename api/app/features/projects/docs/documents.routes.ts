@@ -27,5 +27,4 @@ export default Router({ mergeParams: true })
       Permissions.Actions.DELETE
     ),
     handlers.deleteContents
-  )
-;
+  );
