@@ -152,10 +152,10 @@ function ProjectCard({ project }: ProjectCardProps) {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
     // Default to a generic location if coordinates aren't available
-    const hasLocation = project.address;
+    const hasLocation = project.site?.address;
     // Default to a view of ocean water if coordinates aren't available
-    const lat = hasLocation ? project.site?.address?.latitude : "28.4595";
-    const lng = hasLocation ? project.site?.address?.longitude : "-80.5327";
+    const lat = hasLocation ? project.site?.latitude : "28.4595";
+    const lng = hasLocation ? project.site?.longitude : "-80.5327";
 
     return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=17&size=400x200&maptype=satellite&key=${apiKey}`;
   }, [project]);
@@ -208,15 +208,11 @@ function ProjectCard({ project }: ProjectCardProps) {
         <div className="flex items-center justify-between mt-1">
           <p className="text-xs text-muted-foreground">
             {project.site?.address
-              ? project.site?.address?.address +
-                (project.site?.address?.city
-                  ? `, ${project.site?.address?.city}`
-                  : "") +
-                (project.site?.address?.state
-                  ? `, ${project.site?.address?.state}`
-                  : "") +
-                (project.site?.address?.postalCode
-                  ? `, ${project.site?.address?.postalCode}`
+              ? project.site?.address +
+                (project.site?.city ? `, ${project.site?.city}` : "") +
+                (project.site?.state ? `, ${project.site?.state}` : "") +
+                (project.site?.postalCode
+                  ? `, ${project.site?.postalCode}`
                   : "")
               : "No location"}
           </p>

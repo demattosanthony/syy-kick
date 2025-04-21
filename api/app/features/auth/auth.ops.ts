@@ -127,8 +127,7 @@ export const ops = {
           .filter((s) => s.organizationId === o.organizationId)
           .map((s) => ({
             id: s.id,
-            name: s.name,
-            slug: s.slug,
+            address: `${s.address}, ${s.city}, ${s.state} ${s.postalCode}`,
             projects: s.projects.map((p) => ({
               id: p.id,
               name: p.name,
@@ -148,8 +147,7 @@ export const ops = {
       slug: user.username,
       sites: personalSites.map((s) => ({
         id: s.id,
-        name: s.name,
-        slug: s.slug,
+        address: `${s.address}, ${s.city}, ${s.state} ${s.postalCode}`,
         projects: s.projects.map((p) => ({
           id: p.id,
           name: p.name,

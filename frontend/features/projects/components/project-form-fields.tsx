@@ -15,16 +15,27 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { DialogFooter } from "../../../components/ui/dialog";
-import { SitesSelector } from "@/features/sites/components";
+import LocationSearch from "./location-search";
+import { Site } from "@/features/sites/types/sites";
 
 export interface ProjectFormData {
-  siteId: string;
+  site?: Site;
   organizationId?: string;
   name: string;
   description: string;
   projectNumber: string;
   estimatedStartDate: string;
   estimatedEndDate: string;
+  location: {
+    placeId?: string;
+    address: string;
+    city: string;
+    state: string;
+    country: string;
+    postalCode: string;
+    latitude?: number;
+    longitude?: number;
+  };
 }
 
 interface ProjectFormFieldsProps {
@@ -32,7 +43,6 @@ interface ProjectFormFieldsProps {
   setFormData: React.Dispatch<React.SetStateAction<ProjectFormData>>;
   isSubmitting: boolean;
   submitButtonText: string;
-  showSiteSelector: boolean;
 }
 
 const ProjectFormFields = ({
@@ -40,7 +50,6 @@ const ProjectFormFields = ({
   setFormData,
   isSubmitting,
   submitButtonText,
-  showSiteSelector = false,
 }: ProjectFormFieldsProps) => {
   return (
     <>
@@ -58,21 +67,51 @@ const ProjectFormFields = ({
           required
         />
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="location">
+          Location <span className="text-red-500">*</span>
+        </Label>
+        <LocationSearch
+          value={formData.location}
+          onChange={(locationData) => {
+            setFormData((prev) => ({
+              ...prev,
+              location: {
+                placeId: locationData.placeId || "",
+                address: locationData.address || "",
+                city: locationData.city || "",
+                state: locationData.state || "",
+                country: locationData.country || "",
+                postalCode: locationData.postalCode || "",
+                latitude: locationData.latitude,
+                longitude: locationData.longitude,
+              },
+            }));
 
-      {showSiteSelector && (
-        <div className="space-y-2">
-          <Label htmlFor="siteId">
-            Site <span className="text-red-500">*</span>
-          </Label>
-          <SitesSelector
-            value={formData.siteId}
-            onValueChange={(value) =>
-              setFormData((prev) => ({ ...prev, siteId: value }))
+            if (formData.site) {
+              setFormData((prev) => ({
+                ...prev,
+                site: undefined,
+              }));
             }
-            disabled={isSubmitting}
-          />
-        </div>
-      )}
+          }}
+          onSiteSelect={(site) =>
+            setFormData((prev) => ({
+              ...prev,
+              site: site,
+              location: {
+                address: "",
+                city: "",
+                state: "",
+                country: "",
+                postalCode: "",
+                placeId: "",
+              },
+            }))
+          }
+          site={formData.site}
+        />
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="projectNumber">Project Number</Label>
