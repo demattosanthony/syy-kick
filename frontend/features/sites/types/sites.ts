@@ -1,4 +1,5 @@
-export type Address = {
+export type Site = {
+  id: string;
   address: string;
   city: string;
   state: string;
@@ -7,14 +8,6 @@ export type Address = {
   placeId?: string;
   latitude?: string;
   longitude?: string;
-};
-
-export type Site = {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  address: Address;
   organizationId?: string;
   userId?: string;
   createdAt: string;
@@ -23,8 +16,5 @@ export type Site = {
 
 export type MutationSiteData = Omit<
   Site,
-  "id" | "createdAt" | "updatedAt" | "slug"
-> & {
-  organizationId?: string;
-  type: "organization" | "personal";
-};
+  "id" | "createdAt" | "updatedAt"
+>;

@@ -17,7 +17,10 @@ interface BaseResource {
   name: string;
   siteId?: string;
   site?: {
-    name: string;
+    address: string;
+    city: string;
+    state: string;
+    postalCode: string;
   };
 }
 
@@ -47,7 +50,7 @@ const ResourceNavBreadcrumbs = ({
   // Set up config based on resource type
   const config = {
     project: {
-      rootLabel: resource.site?.name ? resource.site.name : "Projects",
+      rootLabel: resource.site?.address ? resource.site.address : "Projects",
       rootHref: "/projects?siteId=" + resource?.siteId,
       parentLabel: "Sites",
       parentHref: "/sites",
@@ -117,7 +120,7 @@ const ResourceNavBreadcrumbs = ({
       <BreadcrumbList className="flex items-center w-full overflow-x-auto whitespace-nowrap scrollbar-hide">
         {renderBreadcrumbItem(parentLabel, true, parentHref)}
         {renderSeparator()}
-        {contentType === "project" && resource.site?.name && (
+        {contentType === "project" && resource.site?.address && (
           <>
             {renderBreadcrumbItem(rootLabel, true, rootHref)}
             {renderSeparator()}

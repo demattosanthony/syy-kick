@@ -29,7 +29,7 @@ import { Strategy } from "unstructured-client/sdk/models/shared";
 import { ACCEPTED_DOC_PROCESSING_EXTENSIONS, CONFIG } from "./config/constants";
 
 // Define constants
-const SUPER_CHUNK_SIZE = 105_000;
+const SUPER_CHUNK_SIZE = 400_000;
 const EMBEDDING_BATCH_SIZE = 100;
 const PDF_IMAGE_PROCESSING_BATCH_SIZE = 5;
 const PDF_IMAGE_PROCESSING_DELAY_MS = 1000;

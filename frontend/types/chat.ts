@@ -58,10 +58,12 @@ export type ChatMessage = {
   reasoning?: string;
 };
 
+export type FileUploadMimeType = "image" | "pdf";
+
 export type FileUpload = {
   file: File;
   preview: string;
-  type: "image" | "pdf";
+  type: FileUploadMimeType;
   inputId?: string;
 };
 

@@ -27,6 +27,7 @@ const SitesMap: React.FC<SitesMapProps> = ({
   const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
 
+  console.log(sites);
   // 1. Initialize map once
   useEffect(() => {
     try {
@@ -88,7 +89,7 @@ const SitesMap: React.FC<SitesMapProps> = ({
 
       // Helper to open a popup for a given site
       const openPopupForSite = (site: Site) => {
-        if (!site.address?.latitude || !site.address?.longitude) return;
+        if (!site.latitude || !site.longitude) return;
         popupRef.current?.remove(); // remove any open popup
 
         popupRef.current = new mapboxgl.Popup({
@@ -98,7 +99,7 @@ const SitesMap: React.FC<SitesMapProps> = ({
           offset: [0, -10],
           className: "shadcn-card-popup",
         })
-          .setLngLat([+site.address.longitude, +site.address.latitude])
+          .setLngLat([+site.longitude, +site.latitude])
           .setDOMContent(document.createElement("div")) // We'll render content in effect #3
           .addTo(map.current!);
 
@@ -107,8 +108,8 @@ const SitesMap: React.FC<SitesMapProps> = ({
 
       // Create markers
       sites.forEach((site) => {
-        const lat = site.address?.latitude;
-        const lng = site.address?.longitude;
+        const lat = site.latitude;
+        const lng = site.longitude;
         if (lat == null || lng == null) return;
 
         const color = site.id === hoveredSiteId ? "#ff6f09" : "#000000";
@@ -159,20 +160,17 @@ const SitesMap: React.FC<SitesMapProps> = ({
         "bg-card text-card-foreground rounded-lg border shadow-md w-64";
       rootDiv.innerHTML = `
         <a href="/projects?siteId=${siteId}" class="block cursor-pointer">
-          <div class="p-4 pb-2 flex flex-col space-y-1.5">
-            <h3 class="text-lg font-semibold">${site.name}</h3>
-          </div>
-          <div class="p-4 pt-0 pb-2">
+          <div class="p-4 pb-2">
             ${
-              site.address?.address
-                ? `<p class="text-sm text-muted-foreground">${site.address.address}</p>`
+              site.address
+                ? `<p class="text-sm text-muted-foreground">${site.address}</p>`
                 : ""
             }
             ${
-              site.address?.city
+              site.city
                 ? `<p class="text-sm text-muted-foreground">
-                     ${site.address.city}, ${site.address.state || ""} ${
-                    site.address.postalCode || ""
+                     ${site.city}, ${site.state || ""} ${
+                    site.postalCode || ""
                   }
                    </p>`
                 : ""

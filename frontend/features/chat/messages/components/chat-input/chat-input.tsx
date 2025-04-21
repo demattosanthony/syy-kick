@@ -55,6 +55,10 @@ function ChatInputForm(
     focusTextArea: () => textAreaRef.current?.focus(),
   }));
 
+  const handleFileUploadComplete = () => {
+    textAreaRef.current?.focus();
+  };
+
   const handleKeyDown = async (
     event: React.KeyboardEvent<HTMLTextAreaElement>
   ) => {
@@ -193,6 +197,7 @@ function ChatInputForm(
             selectedModel={selectedModel}
             fileInputRef={fileInputRef}
             handleFiles={handleFiles}
+            onFileUploadComplete={handleFileUploadComplete}
           />
         </form>
       </Card>

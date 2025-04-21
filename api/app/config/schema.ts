@@ -145,13 +145,6 @@ export const projects = pgTable("projects", {
     .notNull(),
   estimatedStartDate: timestamp("estimated_start_date"),
   estimatedEndDate: timestamp("estimated_end_date"),
-  address: text("address"),
-  city: varchar("city", { length: 100 }),
-  state: varchar("state", { length: 100 }),
-  country: varchar("country", { length: 100 }),
-  postalCode: varchar("postal_code", { length: 20 }),
-  latitude: text("latitude"),
-  longitude: text("longitude"),
   siteId: uuid("site_id").references(() => sites.id, { onDelete: "cascade" }),
   organizationId: uuid("organization_id").references(() => organizations.id, {
     onDelete: "cascade",
@@ -467,6 +460,20 @@ export const accessLogs = pgTable("access_logs", {
 
 /** ---- End Permissions ---- */
 
+export const accessTokens = pgTable("access_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  provider: text("provider", { enum: ["google", "microsoft"] }).notNull(),
+  domain: text("domain"),
+  type: text("type", { enum: ["picker", "graph"] }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   threads: many(threads),
@@ -474,6 +481,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   organizationMembers: many(organizationMembers),
   projects: many(projects),
   knowledgeBases: many(knowledgeBases),
+  accessTokens: many(accessTokens),
 }));
 
 export const threadsRelations = relations(threads, ({ one, many }) => ({
@@ -699,6 +707,13 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
   knowledgeBase: one(knowledgeBases, {
     fields: [accessLogs.knowledgeBaseId],
     references: [knowledgeBases.id],
+  }),
+}));
+
+export const accessTokensRelations = relations(accessTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [accessTokens.userId],
+    references: [users.id],
   }),
 }));
 

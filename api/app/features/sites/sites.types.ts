@@ -19,19 +19,14 @@ export type PaginatedSites = {
 
 export type FormattedSite = {
   id: string;
-  name: string;
-  description?: string | null;
-  slug: string;
-  address: {
-    address: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-    placeId?: string | null;
-    latitude?: number | null;
-    longitude?: number | null;
-  };
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  placeId?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   createdAt: Date;
   updatedAt?: Date | null;
 };
