@@ -7,13 +7,7 @@ import useInfiniteGetSitesQuery from "../api/get-sites";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Site } from "../types/sites";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Clock, MapPin } from "lucide-react";
 
 const SitesList = ({
@@ -84,9 +78,7 @@ const SitesList = ({
               onMouseLeave={handleMouseLeave}
             >
               <Link href={`/projects?siteId=${site.id}`}>
-                <SiteItem
-                  site={site}
-                />
+                <SiteItem site={site} />
               </Link>
             </div>
           ))}
@@ -121,15 +113,11 @@ function SitesSkeleton() {
   );
 }
 
-function SiteItem({
-  site,
-}: {
-  site: Site;
-}) {
-  const { address, city, state, postalCode, country, createdAt, updatedAt } = site;
+function SiteItem({ site }: { site: Site }) {
+  const { address, city, state, postalCode, country, createdAt, updatedAt } =
+    site;
   const formattedAddress = useMemo(
-    () =>
-      `${address}, ${city}, ${state} ${postalCode}, ${country}`,
+    () => `${address}, ${city}, ${state} ${postalCode}, ${country}`,
     [address, city, state, postalCode, country]
   );
 
@@ -168,7 +156,9 @@ function SiteItem({
   return (
     <Card className="overflow-hidden transition-all hover:shadow-md flex flex-col items-start">
       <CardHeader className="p-5 pt-2 pb-0">
-        <CardTitle className="text-xl font-bold truncate">{site.city}</CardTitle>
+        <CardTitle className="text-xl font-bold truncate">
+          {site.address}
+        </CardTitle>
       </CardHeader>
       <CardContent className="w-full p-5">
         <div className="space-y-3">

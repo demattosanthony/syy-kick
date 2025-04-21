@@ -86,13 +86,13 @@ const ProjectFormFields = ({
                 latitude: locationData.latitude,
                 longitude: locationData.longitude,
               },
-            }))
+            }));
 
             if (formData.site) {
               setFormData((prev) => ({
                 ...prev,
-                site: undefined
-              }))
+                site: undefined,
+              }));
             }
           }}
           onSiteSelect={(site) =>

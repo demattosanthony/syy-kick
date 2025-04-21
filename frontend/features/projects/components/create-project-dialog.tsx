@@ -1,7 +1,7 @@
 "use client";
 
 // React and Next.js imports
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 // Third-party utility imports
@@ -35,7 +35,11 @@ interface CreateProjectDialogProps {
   site?: Site;
 }
 
-const CreateProjectDialog = ({ trigger, organizationId, site }: CreateProjectDialogProps) => {
+const CreateProjectDialog = ({
+  trigger,
+  organizationId,
+  site,
+}: CreateProjectDialogProps) => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<ProjectFormData>({
@@ -55,8 +59,30 @@ const CreateProjectDialog = ({ trigger, organizationId, site }: CreateProjectDia
       postalCode: "",
       latitude: undefined,
       longitude: undefined,
-    }
+    },
   });
+
+  // Effect to update formData when the site prop changes after initial mount
+  useEffect(() => {
+    if (site) {
+      setFormData((prev) => ({
+        ...prev,
+        site: site, // Update the site field
+        location: {
+          // Update location based on the new site
+          placeId: site.placeId || "",
+          address: site.address || "",
+          city: site.city || "",
+          state: site.state || "",
+          country: site.country || "",
+          postalCode: site.postalCode || "",
+          latitude: site.latitude ? parseFloat(site.latitude) : undefined,
+          longitude: site.longitude ? parseFloat(site.longitude) : undefined,
+        },
+      }));
+    }
+    // Only run this effect if the site prop itself changes
+  }, [site]);
 
   const createProjectMutation = useCreateProjectMutation();
   const { canCreateOrgProjects } = usePermissions();
@@ -64,7 +90,13 @@ const CreateProjectDialog = ({ trigger, organizationId, site }: CreateProjectDia
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.site?.id && (!formData.location.address || !formData.location.city || !formData.location.postalCode || !formData.location.country)) {
+    if (
+      !formData.site?.id &&
+      (!formData.location.address ||
+        !formData.location.city ||
+        !formData.location.postalCode ||
+        !formData.location.country)
+    ) {
       toast.error("Please select a site or enter a location");
       return;
     }
@@ -86,6 +118,9 @@ const CreateProjectDialog = ({ trigger, organizationId, site }: CreateProjectDia
         postalCode: formData.location.postalCode,
       });
 
+      setOpen(false);
+      router.push(`/projects/${project.id}`);
+
       setFormData({
         site: undefined,
         organizationId,
@@ -105,8 +140,6 @@ const CreateProjectDialog = ({ trigger, organizationId, site }: CreateProjectDia
           longitude: undefined,
         },
       });
-      setOpen(false);
-      router.push(`/projects/${project.id}`);
     } catch (error: unknown) {
       if (error instanceof ApiError) {
         console.log(error.status);

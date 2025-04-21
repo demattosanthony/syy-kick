@@ -16,6 +16,7 @@ import Link from "next/link";
 import { Slash } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useGetSiteQuery } from "@/features/sites/api";
+import { useWorkspace } from "@/components/sidebar/workspace-context";
 
 export default function ProjectsPage() {
   const searchParams = useSearchParams();
@@ -25,6 +26,7 @@ export default function ProjectsPage() {
   const { data: site } = useGetSiteQuery({
     siteId,
   });
+  const { activeWorkspace } = useWorkspace();
 
   return (
     <main className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">
@@ -44,7 +46,7 @@ export default function ProjectsPage() {
                 <Slash className="w-4 h-4" />
               </BreadcrumbSeparator>
               <BreadcrumbItem>
-                <span className="font-bold">{site?.address} {site?.city}, {site?.state}, {site?.postalCode}</span>
+                <span className="font-bold">{site?.address}</span>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -55,13 +57,15 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between mb-6 mt-6">
         <h1 className="text-2xl font-bold ">Projects</h1>
 
-        {siteId && site && (
-          <CreateProjectDialog
-            trigger={<Button>Create Project</Button>}
-            site={site}
-            organizationId={site.organizationId}
-          />
-        )}
+        <CreateProjectDialog
+          trigger={<Button>Create Project</Button>}
+          site={site}
+          organizationId={
+            activeWorkspace?.type === "organization"
+              ? activeWorkspace.id
+              : undefined
+          }
+        />
       </div>
       <div className="flex items-center justify-between mb-6 mt-6 gap-2">
         <SearchBar initialSearch={search} className="flex-1" />
