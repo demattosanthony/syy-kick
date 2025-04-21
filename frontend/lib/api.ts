@@ -8,7 +8,7 @@ import {
   TransferableRolesPermissions,
   UpdateOrgMemberRoleRequest,
 } from "@/features/permissions/types";
-import { MutationSiteData, Site } from "@/features/sites/types/sites";
+import { Site } from "@/features/sites/types/sites";
 import { Workflow } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";

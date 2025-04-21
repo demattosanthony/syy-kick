@@ -47,12 +47,14 @@ const ProjectHeader = ({
                 )}
               </div>
 
-              {type === "project" && project?.address && (
+              {type === "project" && project?.site?.address && (
                 <span className="text-sm text-muted-foreground">
-                  {project.address}
-                  {project.city ? `, ${project.city}` : ""}
-                  {project.state ? `, ${project.state}` : ""}
-                  {project.postalCode ? `, ${project.postalCode}` : ""}
+                  {project.site.address}
+                  {project.site.city ? `, ${project.site.city}` : ""}
+                  {project.site.state ? `, ${project.site.state}` : ""}
+                  {project.site.postalCode
+                    ? `, ${project.site.postalCode}`
+                    : ""}
                 </span>
               )}
 
