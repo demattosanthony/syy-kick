@@ -34,7 +34,7 @@ const SUPER_CHUNK_SIZE = 400_000;
 const EMBEDDING_BATCH_SIZE = 100;
 const PDF_IMAGE_PROCESSING_BATCH_SIZE = 5;
 const PDF_IMAGE_PROCESSING_DELAY_MS = 1000;
-const MAX_PAGES_PER_OCR_CHUNK = 1000; // Max pages per Mistral OCR call (limit is 1000)
+const MAX_PAGES_PER_OCR_CHUNK = 25; // Send 25 pages at a time to Mistral OCR. actual limit is 1000
 const MAX_SIZE_PER_OCR_CHUNK_MB = 50; // Max size per Mistral OCR call in MB (limit is 50MB)
 const MAX_SIZE_PER_OCR_CHUNK_BYTES = MAX_SIZE_PER_OCR_CHUNK_MB * 1024 * 1024;
 
@@ -128,7 +128,7 @@ const processPdf: FileProcessor = async ({
       const result = await mistralOcr({
         base64,
         mimeType,
-        includeImages: false, // Keep false as per original logic, reduces payload
+        includeImages: false,
       });
       console.log(
         `Mistral OCR finished for chunk (pages ${startPage + 1}-${endPage}). Found ${result.pages.length} pages in response.`
@@ -161,6 +161,8 @@ const processPdf: FileProcessor = async ({
   for (const page of allOcrPages) {
     combinedMarkdown += (page.markdown || "") + "\n\n"; // Add newline between pages
 
+    // TODO: Re-enable image processing. Too slow, expensive, and in accurate to use VLM for this.
+
     // Process images (if includeImages was true in mistralOcr)
     // if (page.images && page.images.length > 0) {
     //   console.log(
@@ -182,17 +184,13 @@ const processPdf: FileProcessor = async ({
     //           imageFileKey,
     //           Buffer.from(image.imageBase64, "base64")
     //         );
-    //         // Note: Image processing might be less effective if `includeImages` is false in mistralOcr call
     //         const imageMarkdown = await imageToMarkdown(
     //           image.imageBase64,
     //           "image/jpeg"
     //         );
 
     //         if (debug) {
-    //           console.log(
-    //             `(PDF Image Chunk) Image markdow:`,
-    //             imageMarkdown
-    //           );
+    //           console.log(`(PDF Image Chunk) Image markdow:`, imageMarkdown);
     //         }
 
     //         const chunkData: DocumentChunk = {
@@ -627,7 +625,7 @@ async function imageToMarkdown(
           content: [
             {
               type: "text",
-              text: "You are an advanced OCR and image analysis model. Your task is to analyze the provided image and extract ONLY the information explicitly visible within it, such as text, numbers, and structural elements like tables. Do not infer, guess, or add any information not directly present in the image. Format the extracted information strictly as markdown. If the image contains tables, represent them accurately using markdown table syntax based ONLY on the visible table structure and content. If the image depicts an object, describe only its visible components, labels, and text. Do not assess its condition or make assumptions about its function unless explicitly stated in the image. Output ONLY the markdown representation of the visible image content. Do not include any introductory phrases, explanations, or text like 'Here is the markdown representation' or 'The image contains...'. DO NOT wrap the markdown in ```markdown tags, just output the markdown.",
+              text: "You are an advanced OCR and image analysis model. Your task is to analyze the provided image and extract ONLY the information explicitly visible within it, such as text, numbers, and structural elements like tables. Do not infer, guess, or add any information not directly present in the image. Format the extracted information strictly as markdown. If the image contains tables, represent them accurately using markdown table syntax based ONLY on the visible table structure and content. If the image depicts an object, describe only its visible components, labels, and text. Do not assess its condition or make assumptions about its function unless explicitly stated in the image. Output ONLY the markdown representation of the visible image content. Do not include any introductory phrases, explanations, or text like 'Here is the markdown representation' or 'The image contains...'. DO NOT wrap the markdown in ```markdown tags, just output the markdown. If any of the text is not visible in the image, do not include it in the output. If there is no text in the image, output a description of the image.",
             },
             {
               image: base64,
