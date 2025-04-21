@@ -32,6 +32,7 @@ const ProjectAddFileButton = ({
     openPicker,
     pickerSelectionsToFiles,
     loading: isMicrosoftPickerLoading,
+    isProcessingFiles,
   } = useMicrosoftPicker({
     onFilesSelected: async (files: SharePointFile[]) => {
       const filesToUpload = await pickerSelectionsToFiles(files);
@@ -65,8 +66,12 @@ const ProjectAddFileButton = ({
     progress: knowledgeBaseUploadProgress,
   } = useUploadKnowledgeBaseFiles();
 
-  const isPending =
-    contentSource === "project" ? isProjectUploading : isKnowledgeBaseUploading;
+  const isAnyLoading =
+    isMicrosoftPickerLoading ||
+    isProcessingFiles ||
+    (contentSource === "project"
+      ? isProjectUploading
+      : isKnowledgeBaseUploading);
   const progress =
     contentSource === "project"
       ? projectUploadProgress
@@ -191,9 +196,9 @@ const ProjectAddFileButton = ({
             variant="ghost"
             onClick={() => openPicker({ mode: "files" })}
             className="w-full justify-start gap-2 text-sm cursor-pointer"
-            disabled={isMicrosoftPickerLoading || isPending}
+            disabled={isAnyLoading}
           >
-            {isMicrosoftPickerLoading || isPending ? (
+            {isAnyLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Image
@@ -217,7 +222,7 @@ const ProjectAddFileButton = ({
         </PopoverContent>
       </Popover>
 
-      {isPending && (
+      {isAnyLoading && (
         <div className="w-48">
           <Progress value={progress} className="h-2" />
           <p className="text-xs text-muted-foreground mt-1">

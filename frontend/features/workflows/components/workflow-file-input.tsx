@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import useMicrosoftPicker from "@/features/projects/hooks/use-microsoft-picker";
 import { SharePointFile } from "@/features/projects/types";
 import { cn } from "@/lib/utils";
-import { File } from "lucide-react";
+import { File, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -33,12 +33,13 @@ function FileUploadInput({
   const {
     openPicker,
     pickerSelectionsToFiles,
-    loading: isMicrosoftPickerLoading
+    loading: isMicrosoftPickerLoading,
+    isProcessingFiles,
   } = useMicrosoftPicker({
     onFilesSelected: async (files: SharePointFile[]) => {
       const filesToUpload = await pickerSelectionsToFiles(files);
-      onFileChange(filesToUpload[0])
-    }
+      onFileChange(filesToUpload[0]);
+    },
   });
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -123,11 +124,30 @@ function FileUploadInput({
         }
       >
         {isHovering && (
-          <Button variant="outline" size="icon" className="absolute top-2 right-2" onClick={(e) => {
-            e.stopPropagation();
-            openPicker({ mode: "files", selectionMode: "single", mimeTypes: input.acceptedFileTypes?.split(",") ?? [] });
-          }}>
-            <Image src={"/logos/sharepoint.svg"} alt="Sharepoint" width={20} height={20} />
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute top-2 right-2"
+            onClick={(e) => {
+              e.stopPropagation();
+              openPicker({
+                mode: "files",
+                selectionMode: "single",
+                mimeTypes: input.acceptedFileTypes?.split(",") ?? [],
+              });
+            }}
+            disabled={isMicrosoftPickerLoading}
+          >
+            {isMicrosoftPickerLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Image
+                src={"/logos/sharepoint.svg"}
+                alt="Sharepoint"
+                width={20}
+                height={20}
+              />
+            )}
           </Button>
         )}
         <input
@@ -138,47 +158,59 @@ function FileUploadInput({
           onChange={handleFileSelect}
         />
         <div className="text-center space-y-4">
-          <div
-            className={cn(
-              "w-16 h-16 mx-auto rounded-full flex items-center justify-center",
-              file ? "bg-primary/10" : "bg-muted/30"
-            )}
-          >
-            <File
-              className={cn(
-                "h-8 w-8",
-                file ? "text-primary" : "text-muted-foreground"
-              )}
-            />
-          </div>
-          <div>
-            <p className="text-lg font-medium mb-1">
-              {file ? file.name : "Drop your file here"}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {file
-                ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${file.type.includes("pdf")
-                  ? "PDF"
-                  : file.type.split("/")[1].toUpperCase()
-                }`
-                : "or click to browse"}
-            </p>
-            {file && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onFileChange(null);
-                  const fileInput = document.getElementById(
-                    `file-input-${input.id}`
-                  ) as HTMLInputElement;
-                  if (fileInput) fileInput.value = "";
-                }}
-                className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center justify-center mx-auto"
+          {isProcessingFiles ? (
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-lg font-medium text-muted-foreground">
+                Processing file...
+              </p>
+            </div>
+          ) : (
+            <>
+              <div
+                className={cn(
+                  "w-16 h-16 mx-auto rounded-full flex items-center justify-center",
+                  file ? "bg-primary/10" : "bg-muted/30"
+                )}
               >
-                <span className="mr-1">×</span> Remove file
-              </button>
-            )}
-          </div>
+                <File
+                  className={cn(
+                    "h-8 w-8",
+                    file ? "text-primary" : "text-muted-foreground"
+                  )}
+                />
+              </div>
+              <div>
+                <p className="text-lg font-medium mb-1">
+                  {file ? file.name : "Drop your file here"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {file
+                    ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${
+                        file.type.includes("pdf")
+                          ? "PDF"
+                          : file.type.split("/")[1].toUpperCase()
+                      }`
+                    : "or click to browse"}
+                </p>
+                {file && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFileChange(null);
+                      const fileInput = document.getElementById(
+                        `file-input-${input.id}`
+                      ) as HTMLInputElement;
+                      if (fileInput) fileInput.value = "";
+                    }}
+                    className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center justify-center mx-auto"
+                  >
+                    <span className="mr-1">×</span> Remove file
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -192,8 +224,9 @@ function FileUploadInput({
 
       {input.required && (
         <p
-          className={`text-xs mt-2 ${file ? "text-muted-foreground" : "text-red-500"
-            }`}
+          className={`text-xs mt-2 ${
+            file ? "text-muted-foreground" : "text-red-500"
+          }`}
         >
           {file ? "✓ Required file uploaded" : "* Required"}
         </p>
