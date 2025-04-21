@@ -170,12 +170,12 @@ function SiteItem({ site }: { site: Site }) {
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-1 truncate">
               <Calendar className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Created {createdTimeAgo}</span>
+              <span className="truncate">{createdTimeAgo}</span>
             </div>
             {updatedAt && (
               <div className="flex items-center gap-1 truncate">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">Updated {updatedTimeAgo}</span>
+                <span className="truncate">{updatedTimeAgo}</span>
               </div>
             )}
           </div>
