@@ -11,7 +11,7 @@ import unstructured, {
 import { encoding_for_model } from "tiktoken";
 
 // Define constants
-const SUPER_CHUNK_SIZE = 95_000;
+const SUPER_CHUNK_SIZE = 400_000;
 
 export async function processFile(
   fileKey: string,
@@ -161,7 +161,7 @@ async function addContextToChunks(
           );
 
           const { text: context } = await generateText({
-            model: MODELS["gpt-4o-mini"].model,
+            model: MODELS["gpt-4.1-mini"].model,
             messages: [
               {
                 role: "user",

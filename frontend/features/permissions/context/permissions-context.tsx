@@ -24,10 +24,6 @@ type PermissionsContextType = {
   canCreateOrgProjectDocs: boolean;
   canUpdateOrgProjectDocs: boolean;
   canDeleteOrgProjectDocs: boolean;
-  canCreateOrgSites: boolean;
-  canUpdateOrgSites: boolean;
-  canDeleteOrgSites: boolean;
-  canReadOrgSites: boolean;
   canCreateOrgKnowledgeBases: boolean;
   canReadOrgKnowledgeBases: boolean;
   canUpdateOrgKnowledgeBases: boolean;
@@ -83,10 +79,6 @@ export const PermissionsProvider = ({
     canCreateOrgProjectDocs,
     canUpdateOrgProjectDocs,
     canDeleteOrgProjectDocs,
-    canCreateOrgSites,
-    canUpdateOrgSites,
-    canDeleteOrgSites,
-    canReadOrgSites,
     canCreateOrgKnowledgeBases,
     canReadOrgKnowledgeBases,
     canUpdateOrgKnowledgeBases,
@@ -135,19 +127,11 @@ export const PermissionsProvider = ({
         true,
         true,
         true,
-        true,
-        true,
-        true,
-        true,
       ];
     }
 
     if (!userPermissions) {
       return [
-        false,
-        false,
-        false,
-        false,
         false,
         false,
         false,
@@ -264,22 +248,6 @@ export const PermissionsProvider = ({
         Permissions.Actions.DELETE
       ),
       userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_SITES,
-        Permissions.Actions.CREATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_SITES,
-        Permissions.Actions.UPDATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_SITES,
-        Permissions.Actions.DELETE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_SITES,
-        Permissions.Actions.READ
-      ),
-      userPermissions.hasAccess(
         Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
         Permissions.Actions.CREATE
       ),
@@ -353,10 +321,6 @@ export const PermissionsProvider = ({
         canCreateOrgProjectDocs,
         canUpdateOrgProjectDocs,
         canDeleteOrgProjectDocs,
-        canCreateOrgSites,
-        canUpdateOrgSites,
-        canDeleteOrgSites,
-        canReadOrgSites,
         canCreateOrgKnowledgeBases,
         canReadOrgKnowledgeBases,
         canUpdateOrgKnowledgeBases,
@@ -401,10 +365,6 @@ export const usePermissions = () => {
       canCreateOrgProjectDocs: false,
       canUpdateOrgProjectDocs: false,
       canDeleteOrgProjectDocs: false,
-      canCreateOrgSites: false,
-      canUpdateOrgSites: false,
-      canDeleteOrgSites: false,
-      canReadOrgSites: false,
       canCreateOrgKnowledgeBases: false,
       canReadOrgKnowledgeBases: false,
       canUpdateOrgKnowledgeBases: false,

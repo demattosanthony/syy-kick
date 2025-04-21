@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,10 +50,13 @@ export function WorkSpaceSwitcher({
     (s) => s.id === hoveredSiteId
   );
 
-  const filteredSites =
-    hoveredWorkspace?.sites.filter((s) =>
-      s.name.toLowerCase().includes(siteSearch.toLowerCase())
-    ) || [];
+  const filteredSites = useMemo(() => {
+    if (!hoveredWorkspace) return [];
+
+    return hoveredWorkspace?.sites.filter((s) =>
+      s.address?.toLowerCase().includes(siteSearch.toLowerCase())
+    );
+  }, [hoveredWorkspace, siteSearch]);
 
   const filteredProjects =
     hoveredSite?.projects.filter((p) =>
@@ -204,7 +207,7 @@ export function WorkSpaceSwitcher({
                   onMouseEnter={() => setHoveredSiteId(site.id)}
                   onClick={() => onSiteSelect(site.id)}
                 >
-                  {site.name}
+                  <span className="line-clamp-1">{site.address}</span>
                 </div>
               ))}
               {filteredSites.length === 0 && (

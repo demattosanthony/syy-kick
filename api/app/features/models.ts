@@ -99,38 +99,39 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
-    // "gpt-4.5-preview": {
-    //   model: openai("gpt-4.5-preview"),
-    //   supportsToolUse: true,
-    //   supportsStreaming: true,
-    //   supportsSystemMessages: true,
-    //   provider: "openai",
-    //   supportedMimeTypes,
-    //   description:
-    //     "GPT-4.5 is OpenAI's largest and best model for chat yet, representing a significant advancement in scaling unsupervised learning. It features broader knowledge, improved ability to follow user intent, and greater emotional intelligence. GPT-4.5 excels at creative tasks, writing, and problem-solving while demonstrating reduced hallucinations and more natural conversation. It supports tool use, streaming, system messages, and image inputs.",
-    // },
-    o1: {
-      model: openai.responses("o1"),
+    "o4-mini": {
+      model: openai.responses("o4-mini-2025-04-16"),
       supportsToolUse: true,
       supportsStreaming: true,
       supportsSystemMessages: true,
       provider: "openai",
       supportedMimeTypes,
       description:
-        "o1 is a versatile model from OpenAI, capable of handling a wide range of tasks with good performance. It supports tool use, streaming, system messages, and image inputs, making it a solid all-around choice.",
+        "OpenAI's o4-mini delivers fast, cost-efficient reasoning with exceptional performance for its size, particularly excelling in math (best-performing on AIME benchmarks), coding, and visual tasks.",
+    },
+    o3: {
+      model: openai.responses("o3-2025-04-16"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      supportsSystemMessages: true,
+      provider: "openai",
+      supportedMimeTypes,
+      description:
+        "OpenAI's o3 is their most powerful reasoning model, setting new state-of-the-art benchmarks in coding, math, science, and visual perception. It excels at complex queries requiring multi-faceted analysis, with particular strength in analyzing images, charts, and graphics.",
     },
     "o3-mini": {
       model: openai.responses("o3-mini"),
       supportsToolUse: true,
       supportsStreaming: true,
       supportsSystemMessages: true,
+      supportedMimeTypes,
       provider: "openai",
       maxImageSize: 20 * 1024 * 1024, // 20MB
       description:
-        "o3-mini is a smaller, more efficient version of o3, designed for faster responses and lower resource usage. It's suitable for tasks where speed and cost-effectiveness are priorities, while still offering good performance and supporting tool use, streaming, system messages, and image inputs.",
+        "o3-mini is OpenAI's most recent small reasoning model, providing high intelligence at the same cost and latency targets of o1-mini.",
     },
-    "gpt-4o": {
-      model: openai.responses("gpt-4o"),
+    "gpt-4.1": {
+      model: openai.responses("gpt-4.1"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "openai",
@@ -138,10 +139,10 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       maxImageSize: 20 * 1024 * 1024, // 20MB
       supportedMimeTypes,
       description:
-        "GPT-4o from OpenAI has broad general knowledge and domain expertise allowing it to follow complex instructions in natural language and solve difficult problems accurately. It matches GPT-4 Turbo performance with a faster and cheaper API.",
+        "GPT 4.1 is OpenAI's flagship model for complex tasks. It is well suited for problem solving across domains.",
     },
-    "gpt-4o-mini": {
-      model: openai.responses("gpt-4o-mini"),
+    "gpt-4.1-mini": {
+      model: openai.responses("gpt-4.1-mini"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "openai",
@@ -149,7 +150,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       maxImageSize: 20 * 1024 * 1024, // 20MB
       supportedMimeTypes,
       description:
-        "GPT-4o mini from OpenAI is their most advanced and cost-efficient small model. It is multi-modal (accepting text or image inputs and outputting text) and has higher intelligence than gpt-3.5-turbo but is just as fast.",
+        "GPT 4.1 mini provides a balance between intelligence, speed, and cost that makes it an attractive model for many use cases.",
     },
   };
 };
@@ -202,22 +203,22 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       maxImageSize: 2 * 1024 * 1024 * 1024,
       maxFileSize: 50 * 1024 * 1024, // 50MB
       description:
-        "Gemini 2.5 is a thinking model, designed to tackle increasingly complex problems. Google's first 2.5 model, Gemini 2.5 Pro Experimental, leads common benchmarks by meaningful margins and showcases strong reasoning and code capabilities.",
+        "Gemini 2.5 Pro Experimental is Google's state-of-the-art thinking model, capable of reasoning over complex problems in code, math, and STEM, as well as analyzing large datasets, codebases, and documents using long context.",
     },
-    "gemini-2.0-flash": {
-      model: google("gemini-2.0-flash"),
+    "gemini-2.5-flash-preview": {
+      model: google("gemini-2.5-flash-preview-04-17"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "google",
       supportsSystemMessages: true,
       supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, //
+      maxImageSize: 2 * 1024 * 1024 * 1024,
       maxFileSize: 50 * 1024 * 1024, // 50MB
       description:
-        "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
+        "Gemini 2.5 Flash is Google's first fully hybrid reasoning model, giving developers the ability to turn thinking on or off. The model also allows developers to set thinking budgets to find the right tradeoff between quality, cost, and latency.",
     },
-    "gemini-2.0-flash-online": {
-      model: google("gemini-2.0-flash", {
+    "gemini-2.5-flash-online": {
+      model: google("gemini-2.5-flash-online-04-25", {
         useSearchGrounding: true,
       }),
       supportsToolUse: true,
@@ -228,7 +229,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       maxImageSize: 2 * 1024 * 1024 * 1024, //
       maxFileSize: 50 * 1024 * 1024, // 50MB
       description:
-        "Gemini 2.0 Flash delivers next-gen features and improved capabilities, including superior speed, native tool use, multimodal generation, and a 1M token context window.",
+        "Gemini 2.5 Flash is Google's first fully hybrid reasoning model, giving developers the ability to turn thinking on or off. The model also allows developers to set thinking budgets to find the right tradeoff between quality, cost, and latency.",
     },
   };
 };
@@ -237,26 +238,26 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
   return {
-    "grok-2": {
-      model: xai("grok-2-1212"),
+    "grok-3-beta": {
+      model: xai("grok-3-beta"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
       supportedMimeTypes: [...markitdownMimeTypes],
       description:
-        "Grok is an AI modeled after the Hitchhiker’s Guide to the Galaxy. It is intended to answer almost anything and, far harder, even suggest what questions to ask!",
+        "xAI's flagship model that excels at enterprise use cases like data extraction, coding, and text summarization. Possesses deep domain knowledge in finance, healthcare, law, and science.",
     },
-    "grok-2-vision": {
-      model: xai("grok-2-vision-1212"),
+    "grok-3-mini-beta": {
+      model: xai("grok-3-mini-beta"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: ["image/jpeg", "image/png"],
+      supportedMimeTypes: [...markitdownMimeTypes],
       maxImageSize: 10 * 1024 * 1024, // 10MB
       description:
-        "In addition to Grok's strong text capabilities, this multimodal model can now process a wide variety of visual information, including documents, diagrams, charts, screenshots, and photographs.",
+        "xAI's lightweight model that thinks before responding. Great for simple or logic-based tasks that do not require deep domain knowledge. The raw thinking traces are accessible.",
     },
   };
 };

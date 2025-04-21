@@ -8,7 +8,7 @@ import {
   TransferableRolesPermissions,
   UpdateOrgMemberRoleRequest,
 } from "@/features/permissions/types";
-import { MutationSiteData, Site } from "@/features/sites/types/sites";
+import { Site } from "@/features/sites/types/sites";
 import { Workflow } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
@@ -213,6 +213,29 @@ class AuthApi extends ApiRequest {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       return { success: false, error: errorMessage };
+    }
+  }
+
+  async getMicrosoftFilesInit(redirectUri: string) {
+    try {
+      return await this.request<{ url: string }>(
+        `/auth/microsoft-files/init?redirectUrl=${redirectUri}`,
+        "GET"
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getUploadToken(redirectUri: string) {
+    try {
+      return await this.request<{
+        accessToken: string;
+        baseUrl: string;
+        pickerToken: string;
+      }>(`/auth/me/upload-token?redirectUrl=${redirectUri}`, "GET");
+    } catch (error) {
+      throw error;
     }
   }
 }
@@ -560,7 +583,7 @@ class ProjectsApi extends ApiRequest {
   private fileUploadMixin = new FileUploadMixin();
 
   async createProject(data: {
-    siteId: string;
+    siteId?: string;
     organizationId?: string | null;
     name: string;
     description?: string;
@@ -569,8 +592,8 @@ class ProjectsApi extends ApiRequest {
     state?: string;
     country?: string;
     postalCode?: string;
-    latitude?: string;
-    longitude?: string;
+    latitude?: number;
+    longitude?: number;
     project_number?: string;
     estimated_start_date?: string;
     estimated_end_date?: string;
@@ -685,14 +708,18 @@ class ProjectsApi extends ApiRequest {
       state?: string | null;
       country?: string | null;
       postalCode?: string | null;
-      latitude?: string | null;
-      longitude?: string | null;
+      latitude?: number;
+      longitude?: number;
       project_number?: string;
       estimated_start_date?: string;
       estimated_end_date?: string;
     }
   ): Promise<Project> {
-    return await this.request(`/projects/${projectId}`, "PATCH", data);
+    try {
+      return await this.request(`/projects/${projectId}`, "PATCH", data);
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**
@@ -730,15 +757,6 @@ class ProjectsApi extends ApiRequest {
 
       // Make the actual API request with the prepared data
       return this.request(`/projects/${projectId}/documents`, "POST", payload);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Temporary
-  async getUnlinkedProjects() {
-    try {
-      return await this.request<Project[]>(`/unlinked-projects`, "GET");
     } catch (error) {
       throw error;
     }
@@ -889,59 +907,9 @@ class SitesApi extends ApiRequest {
     return await this.request(`/sites?${queryParams.toString()}`);
   }
 
-  async createSite(data: MutationSiteData): Promise<{ message: string }> {
-    try {
-      return await this.request<{ message: string }>("/sites", "POST", data);
-    } catch (error) {
-      throw error;
-    }
-  }
-
   async getSite(siteId: string): Promise<Site> {
     try {
       return await this.request<Site>(`/sites/${siteId}`);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async updateSite(
-    siteId: string,
-    data: MutationSiteData
-  ): Promise<{ message: string }> {
-    try {
-      return await this.request<{ message: string }>(
-        `/sites/${siteId}`,
-        "PUT",
-        data
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async deleteSite(siteId: string): Promise<{ message: string }> {
-    try {
-      return await this.request<{ message: string }>(
-        `/sites/${siteId}`,
-        "DELETE"
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Temporary
-  async linkProjects(
-    siteId: string,
-    data: { projectsIds: string[] }
-  ): Promise<{ message: string }> {
-    try {
-      return await this.request<{ message: string }>(
-        `/sites/${siteId}/link-projects`,
-        "PUT",
-        data
-      );
     } catch (error) {
       throw error;
     }
@@ -1253,7 +1221,63 @@ class ApiClient {
   }
 }
 
+class MicrosoftGraphApi {
+  async getFile(driveId: string, fileId: string, accessToken: string) {
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`,
+      {
+        credentials: "omit",
+        headers: {
+          Authorization: "Bearer " + accessToken,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Graph request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return data;
+  }
+
+  async getOrgDrive(accessToken: string): Promise<{ webUrl: string }> {
+    try {
+      const response = await fetch(
+        "https://graph.microsoft.com/v1.0/me/drive",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "omit",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch org drive URL");
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching org drive URL:", error);
+      return { webUrl: "" };
+    }
+  }
+}
+
+class MicrosoftApi {
+  graph: MicrosoftGraphApi;
+
+  constructor() {
+    this.graph = new MicrosoftGraphApi();
+  }
+}
+
 // Initialize ApiClient with base URL
 const api = new ApiClient(process.env.NEXT_PUBLIC_API_URL!);
+export const microsoftApi = new MicrosoftApi();
 
 export default api;

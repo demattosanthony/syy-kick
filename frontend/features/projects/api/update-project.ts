@@ -11,20 +11,21 @@ export function useUpdateProjectMutation() {
     }: {
       projectId: string;
       data: {
-        siteId: string;
+        siteId?: string;
+        organizationId?: string;
         name?: string;
         description?: string;
         project_number?: string;
         estimated_start_date?: string;
         estimated_end_date?: string;
-        // New location fields
         address?: string | null;
         city?: string | null;
         state?: string | null;
         country?: string | null;
         postalCode?: string | null;
-        latitude?: string | null;
-        longitude?: string | null;
+        latitude?: number;
+        longitude?: number;
+        placeId?: string | null;
       };
     }) => api.projects.updateProject(projectId, data),
     onSuccess: (_, { projectId }) => {

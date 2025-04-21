@@ -1,5 +1,9 @@
+import { Button } from "@/components/ui/button";
+import useMicrosoftPicker from "@/features/projects/hooks/use-microsoft-picker";
+import { SharePointFile } from "@/features/projects/types";
 import { cn } from "@/lib/utils";
 import { File } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 interface FileUploadInputProps {
@@ -24,6 +28,18 @@ function FileUploadInput({
 }: FileUploadInputProps & { setInput: (value: string) => void }) {
   const [isDragging, setIsDragging] = useState(false);
   const [sizeError, setSizeError] = useState<string | null>(null);
+  const [isHovering, setIsHovering] = useState(false);
+
+  const {
+    openPicker,
+    pickerSelectionsToFiles,
+    loading: isMicrosoftPickerLoading
+  } = useMicrosoftPicker({
+    onFilesSelected: async (files: SharePointFile[]) => {
+      const filesToUpload = await pickerSelectionsToFiles(files);
+      onFileChange(filesToUpload[0])
+    }
+  });
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -92,11 +108,13 @@ function FileUploadInput({
       <h3 className="text-lg font-bold mb-2">{input.title}</h3>
       <div
         className={cn(
-          "border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center",
+          "border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center relative",
           isDragging
             ? "border-primary bg-primary/5"
             : "border-muted hover:border-primary/50 hover:bg-muted/10"
         )}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -104,6 +122,14 @@ function FileUploadInput({
           document.getElementById(`file-input-${input.id}`)?.click()
         }
       >
+        {isHovering && (
+          <Button variant="outline" size="icon" className="absolute top-2 right-2" onClick={(e) => {
+            e.stopPropagation();
+            openPicker({ mode: "files", selectionMode: "single", mimeTypes: input.acceptedFileTypes?.split(",") ?? [] });
+          }}>
+            <Image src={"/logos/sharepoint.svg"} alt="Sharepoint" width={20} height={20} />
+          </Button>
+        )}
         <input
           type="file"
           id={`file-input-${input.id}`}
@@ -131,11 +157,10 @@ function FileUploadInput({
             </p>
             <p className="text-sm text-muted-foreground">
               {file
-                ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${
-                    file.type.includes("pdf")
-                      ? "PDF"
-                      : file.type.split("/")[1].toUpperCase()
-                  }`
+                ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${file.type.includes("pdf")
+                  ? "PDF"
+                  : file.type.split("/")[1].toUpperCase()
+                }`
                 : "or click to browse"}
             </p>
             {file && (
@@ -167,9 +192,8 @@ function FileUploadInput({
 
       {input.required && (
         <p
-          className={`text-xs mt-2 ${
-            file ? "text-muted-foreground" : "text-red-500"
-          }`}
+          className={`text-xs mt-2 ${file ? "text-muted-foreground" : "text-red-500"
+            }`}
         >
           {file ? "✓ Required file uploaded" : "* Required"}
         </p>

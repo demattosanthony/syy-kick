@@ -3,6 +3,7 @@ import { schemas } from "./projects.schemas";
 import { projectsOps } from "./projects.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
 import { SortOption } from "./projects.types";
+import { sitesOps } from "../sites/sites.ops";
 
 export const handlers = {
   createProject: async (req: Request, res: Response) => {
@@ -18,9 +19,42 @@ export const handlers = {
       return;
     }
 
-    if (!req.body.siteId) {
-      res.status(400).json({ error: "Please select a site" });
+    if (!req.body.siteId && !req.body.address && !req.body.postalCode && !req.body.city && !req.body.state && !req.body.country) {
+      res.status(400).json({ error: "Please select a site or provide a location" });
       return;
+    }
+
+    // Check if site exists, if not create it
+    if (!req.body.siteId) {
+      const site = await sitesOps.siteExists({
+        userId: !req.body.organizationId ? req.dbUser?.id : undefined,
+        organizationId: req.body.organizationId ? orgId : undefined,
+        placeId: req.body.placeId,
+        address: req.body.address,
+        postalCode: req.body.postalCode,
+        city: req.body.city,
+      });
+
+      if (site) {
+        data.siteId = site.id;
+      } else {
+        const newSite = await sitesOps.createSite({
+          data: {
+            address: req.body.address,
+            city: req.body.city,
+            state: req.body.state,
+            postalCode: req.body.postalCode,
+            country: req.body.country,
+            placeId: req.body.placeId,
+            latitude: req.body.latitude,
+            longitude: req.body.longitude,
+          },
+          organizationId: req.body.organizationId ? orgId : undefined,
+          userId: !req.body.organizationId ? req.dbUser?.id : undefined,
+        });
+
+        data.siteId = newSite.id;
+      }
     }
 
     const validatedData = schemas.createProject.parse(data);
@@ -68,16 +102,53 @@ export const handlers = {
     try {
       const { projectId } = req.params;
       const userId = req.dbUser?.id;
+      const orgId = getOrgIdOrUnedfined(req.workspace);
 
       if (!userId) {
+        console.log("Unauthorized");
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
+      if (!req.body.siteId) {
+        const site = await sitesOps.siteExists({
+          userId: !req.body.organizationId ? req.dbUser?.id : undefined,
+          organizationId: req.body.organizationId ? orgId : undefined,
+          placeId: req.body.placeId,
+          address: req.body.address,
+          postalCode: req.body.postalCode,
+          city: req.body.city,
+        });
+
+        if (site) {
+          req.body.siteId = site.id;
+        } else {
+          const newSite = await sitesOps.createSite({
+            data: {
+              address: req.body.address,
+              city: req.body.city,
+              state: req.body.state,
+              postalCode: req.body.postalCode,
+              country: req.body.country,
+              placeId: req.body.placeId,
+              latitude: req.body.latitude ? parseFloat(req.body.latitude) : null,
+              longitude: req.body.longitude ? parseFloat(req.body.longitude) : null,
+            },
+            organizationId: req.body.organizationId ? orgId : undefined,
+            userId: !req.body.organizationId ? req.dbUser?.id : undefined,
+          });
+
+          req.body.siteId = newSite.id;
+        }
+      }     
+      
       const validatedData = schemas.updateProject.parse(req.body);
+
+
       const project = await projectsOps.updateProject(projectId, validatedData);
       res.json(project);
     } catch (error: any) {
+      console.log(error);
       res.status(500).json({ error: "Failed to update project" });
     }
   },
