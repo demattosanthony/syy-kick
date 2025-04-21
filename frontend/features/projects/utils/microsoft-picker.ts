@@ -127,6 +127,9 @@ export class MicrosoftPicker {
     return {
       sdk: "8.0",
       entry: {
+        oneDrive: {
+          business: {},
+        },
         sharePoint: sharePointConfig,
       },
       authentication: {},
