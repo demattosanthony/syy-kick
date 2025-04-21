@@ -81,7 +81,7 @@ export const SONAR_PRO_CONFIG = {
 
 // Persistent atoms
 export const modelAtom = atomWithStorage<Model>(
-  "selectedAiModel-v2.1",
+  "selectedAiModel-v2.2",
   AUTO_MODEL_CONFIG
 );
 export const temperatureAtom = atomWithStorage("chatTemp", 0.5);
