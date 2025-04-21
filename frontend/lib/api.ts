@@ -215,6 +215,29 @@ class AuthApi extends ApiRequest {
       return { success: false, error: errorMessage };
     }
   }
+
+  async getMicrosoftFilesInit(redirectUri: string) {
+    try {
+      return await this.request<{ url: string }>(
+        `/auth/microsoft-files/init?redirectUrl=${redirectUri}`,
+        "GET"
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getUploadToken(redirectUri: string) {
+    try {
+      return await this.request<{
+        accessToken: string;
+        baseUrl: string;
+        pickerToken: string;
+      }>(`/auth/me/upload-token?redirectUrl=${redirectUri}`, "GET");
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 /**
@@ -1198,7 +1221,63 @@ class ApiClient {
   }
 }
 
+class MicrosoftGraphApi {
+  async getFile(driveId: string, fileId: string, accessToken: string) {
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`,
+      {
+        credentials: "omit",
+        headers: {
+          Authorization: "Bearer " + accessToken,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Graph request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return data;
+  }
+
+  async getOrgDrive(accessToken: string): Promise<{ webUrl: string }> {
+    try {
+      const response = await fetch(
+        "https://graph.microsoft.com/v1.0/me/drive",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "omit",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch org drive URL");
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching org drive URL:", error);
+      return { webUrl: "" };
+    }
+  }
+}
+
+class MicrosoftApi {
+  graph: MicrosoftGraphApi;
+
+  constructor() {
+    this.graph = new MicrosoftGraphApi();
+  }
+}
+
 // Initialize ApiClient with base URL
 const api = new ApiClient(process.env.NEXT_PUBLIC_API_URL!);
+export const microsoftApi = new MicrosoftApi();
 
 export default api;
