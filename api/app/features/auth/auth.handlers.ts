@@ -208,7 +208,7 @@ export const handlers = {
     const redirectUrl = req.query.redirectUrl as string;
 
     const origin = new URL(redirectUrl).origin;
-    if (origin !== process.env.FRONTEND_URL) {
+    if (!CONFIG.CORS_ORIGINS.includes(origin)) {
       res.status(403).send("Redirect not allowed");
       return;
     }
