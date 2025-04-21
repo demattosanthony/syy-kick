@@ -104,11 +104,11 @@ export function IssueCommentSection({
               >
                 {isUpdatingIssue &&
                 issueStatus === (issueStatus === "open" ? "closed" : "open") ? ( // Show loader only for this specific action
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : issueStatus === "open" ? (
-                  <CircleCheck className="h-4 w-4 text-purple-500 mr-2" />
+                  <CircleCheck className="h-4 w-4 text-purple-500" />
                 ) : (
-                  <RefreshCcwDot className="h-4 w-4 text-green-500 mr-2" />
+                  <RefreshCcwDot className="h-4 w-4 text-green-500" />
                 )}
                 {issueStatus === "open" ? "Close issue" : "Reopen issue"}
               </Button>
@@ -124,7 +124,7 @@ export function IssueCommentSection({
                 }
               >
                 {isCreatingComment ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : null}
                 Comment
               </Button>
