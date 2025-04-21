@@ -218,7 +218,10 @@ class AuthApi extends ApiRequest {
 
   async getMicrosoftFilesInit(redirectUri: string) {
     try {
-      return await this.request<{ url: string }>(`/auth/microsoft-files/init?redirectUrl=${redirectUri}`, "GET");
+      return await this.request<{ url: string }>(
+        `/auth/microsoft-files/init?redirectUrl=${redirectUri}`,
+        "GET"
+      );
     } catch (error) {
       throw error;
     }
@@ -226,7 +229,11 @@ class AuthApi extends ApiRequest {
 
   async getUploadToken(redirectUri: string) {
     try {
-      return await this.request<{ accessToken: string, baseUrl: string, pickerToken: string }>(`/auth/me/upload-token?redirectUrl=${redirectUri}`, "GET");
+      return await this.request<{
+        accessToken: string;
+        baseUrl: string;
+        pickerToken: string;
+      }>(`/auth/me/upload-token?redirectUrl=${redirectUri}`, "GET");
     } catch (error) {
       throw error;
     }
@@ -1270,7 +1277,6 @@ class ApiClient {
 }
 
 class MicrosoftGraphApi {
-
   async getFile(driveId: string, fileId: string, accessToken: string) {
     const response = await fetch(
       `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`,
@@ -1291,25 +1297,28 @@ class MicrosoftGraphApi {
     return data;
   }
 
-  async getOrgDrive(accessToken: string): Promise<any> {
+  async getOrgDrive(accessToken: string): Promise<{ webUrl: string }> {
     try {
-      const response = await fetch('https://graph.microsoft.com/v1.0/me/drive', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'omit'
-      });
+      const response = await fetch(
+        "https://graph.microsoft.com/v1.0/me/drive",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "omit",
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch org drive URL');
+        throw new Error("Failed to fetch org drive URL");
       }
 
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Error fetching org drive URL:', error);
-      return '';
+      console.error("Error fetching org drive URL:", error);
+      return { webUrl: "" };
     }
   }
 }
@@ -1320,7 +1329,6 @@ class MicrosoftApi {
   constructor() {
     this.graph = new MicrosoftGraphApi();
   }
-
 }
 
 // Initialize ApiClient with base URL
