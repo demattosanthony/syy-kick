@@ -42,6 +42,7 @@ export function ActionButtons({
     openPicker,
     pickerSelectionsToFiles,
     loading: isMicrosoftPickerLoading,
+    isProcessingFiles,
   } = useMicrosoftPicker({
     onFilesSelected: async (files: SharePointFile[]) => {
       const filesToUpload = await pickerSelectionsToFiles(files);
@@ -57,6 +58,9 @@ export function ActionButtons({
       onFileUploadComplete?.();
     },
   });
+
+  const isAnyLoading = isMicrosoftPickerLoading || isProcessingFiles;
+
   return (
     <div className="w-full flex justify-between items-center px-1 pb-1">
       <div>
@@ -110,9 +114,9 @@ export function ActionButtons({
                     variant="ghost"
                     onClick={() => openPicker({ mode: "files" })}
                     className="w-full justify-start gap-2 text-sm cursor-pointer"
-                    disabled={isMicrosoftPickerLoading}
+                    disabled={isAnyLoading}
                   >
-                    {isMicrosoftPickerLoading ? (
+                    {isAnyLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Image
