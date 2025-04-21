@@ -31,12 +31,12 @@ const ProjectAddFileButton = ({
   const {
     openPicker,
     pickerSelectionsToFiles,
-    loading: isMicrosoftPickerLoading
+    loading: isMicrosoftPickerLoading,
   } = useMicrosoftPicker({
     onFilesSelected: async (files: SharePointFile[]) => {
       const filesToUpload = await pickerSelectionsToFiles(files);
-      console.log(filesToUpload);
 
+      setOpen(false);
       if (contentSource === "project") {
         await uploadProjectFiles({
           projectId: contentId as string,
@@ -50,7 +50,7 @@ const ProjectAddFileButton = ({
           files: filesToUpload,
         });
       }
-    }
+    },
   });
 
   const {
@@ -149,7 +149,7 @@ const ProjectAddFileButton = ({
             Add file
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-48 p-1">
+        <PopoverContent className="w-52 p-1">
           <div className="flex flex-col gap-1">
             <Button
               variant="ghost"
@@ -193,8 +193,17 @@ const ProjectAddFileButton = ({
             className="w-full justify-start gap-2 text-sm cursor-pointer"
             disabled={isMicrosoftPickerLoading || isPending}
           >
-            {isMicrosoftPickerLoading || isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image src="/logos/sharepoint.svg" alt="Sharepoint" width={16} height={16} />}
-            Upload files
+            {isMicrosoftPickerLoading || isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Image
+                src="/logos/sharepoint.svg"
+                alt="Sharepoint"
+                width={16}
+                height={16}
+              />
+            )}
+            Add from SharePoint
           </Button>
           {/* <Button
             variant="ghost"
@@ -205,7 +214,6 @@ const ProjectAddFileButton = ({
             {isMicrosoftPickerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image src="/logos/sharepoint.svg" alt="Sharepoint" width={16} height={16} />}
             Upload folder
           </Button> */}
-
         </PopoverContent>
       </Popover>
 

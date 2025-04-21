@@ -15,7 +15,6 @@ export default function ProjectPageLayout({
       <div className="pt-2 w-full flex flex-1 justify-center overflow-y-auto">
         {children}
       </div>
-      {children}
     </div>
   );
 }

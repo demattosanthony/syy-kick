@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, File, Loader2, Paperclip, Square } from "lucide-react";
 import ModelSelector from "../model-selector";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useState } from "react";
 import useMicrosoftPicker from "@/features/projects/hooks/use-microsoft-picker";
 import { SharePointFile } from "@/features/projects/types";
@@ -18,6 +22,7 @@ interface ActionButtonsProps {
   selectedModel: { supportedMimeTypes?: string[] };
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onFileUploadComplete?: () => void;
 }
 
 export function ActionButtons({
@@ -28,6 +33,7 @@ export function ActionButtons({
   selectedModel,
   fileInputRef,
   handleFiles,
+  onFileUploadComplete,
 }: ActionButtonsProps) {
   const [uploads, setUploads] = useAtom(uploadsAtom);
 
@@ -35,17 +41,21 @@ export function ActionButtons({
   const {
     openPicker,
     pickerSelectionsToFiles,
-    loading: isMicrosoftPickerLoading
+    loading: isMicrosoftPickerLoading,
   } = useMicrosoftPicker({
     onFilesSelected: async (files: SharePointFile[]) => {
       const filesToUpload = await pickerSelectionsToFiles(files);
       const fileUploads = filesToUpload.map((file) => ({
         file: file,
         preview: URL.createObjectURL(file),
-        type: file.type.startsWith("image/") ? "image" : "pdf" as FileUploadMimeType,
+        type: file.type.startsWith("image/")
+          ? "image"
+          : ("pdf" as FileUploadMimeType),
       }));
       setUploads([...uploads, ...fileUploads]);
-    }
+      setOpen(false);
+      onFileUploadComplete?.();
+    },
   });
   return (
     <div className="w-full flex justify-between items-center px-1 pb-1">
@@ -56,7 +66,6 @@ export function ActionButtons({
         {selectedModel.supportedMimeTypes &&
           selectedModel.supportedMimeTypes.length > 0 && (
             <>
-
               <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -71,7 +80,7 @@ export function ActionButtons({
                     <Paperclip className="w-4 h-4" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-48 p-1">
+                <PopoverContent className="w-52 p-1">
                   <label>
                     <input
                       type="file"
@@ -83,6 +92,7 @@ export function ActionButtons({
                         e.preventDefault();
                         handleFiles(e);
                         setOpen(false);
+                        onFileUploadComplete?.();
                       }}
                     />
                     <Button
@@ -102,11 +112,19 @@ export function ActionButtons({
                     className="w-full justify-start gap-2 text-sm cursor-pointer"
                     disabled={isMicrosoftPickerLoading}
                   >
-                    {isMicrosoftPickerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image src="/logos/sharepoint.svg" alt="Sharepoint" width={16} height={16} />}
-                    Upload files
+                    {isMicrosoftPickerLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Image
+                        src="/logos/sharepoint.svg"
+                        alt="Sharepoint"
+                        width={16}
+                        height={16}
+                      />
+                    )}
+                    Add from SharePoint
                   </Button>
                 </PopoverContent>
-
               </Popover>
             </>
           )}
