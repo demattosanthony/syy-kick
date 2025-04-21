@@ -118,9 +118,6 @@ const CreateProjectDialog = ({
         postalCode: formData.location.postalCode,
       });
 
-      setOpen(false);
-      router.push(`/projects/${project.id}`);
-
       setFormData({
         site: undefined,
         organizationId,
@@ -140,6 +137,9 @@ const CreateProjectDialog = ({
           longitude: undefined,
         },
       });
+
+      setOpen(false);
+      router.push(`/projects/${project.id}`);
     } catch (error: unknown) {
       if (error instanceof ApiError) {
         console.log(error.status);
