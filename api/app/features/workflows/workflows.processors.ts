@@ -358,12 +358,11 @@ export const documentOcrStep: StepExecutorFunction = async ({
   debug,
 }: StepExecutorInput): Promise<StepOutputData> => {
   const stepConfig = step.config as DocumentOCRStepConfig["config"];
-  const chunkSize = 25; // Define chunk size
 
   if (debug) {
     console.log(`[${step.id}] Inputs:`, {
       documentDataSource: stepConfig.documentDataSource,
-      chunkSize,
+
     });
   }
 
