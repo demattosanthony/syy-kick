@@ -146,8 +146,30 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
     );
   }
 
+  // In prod, the PDF is a presigned URL, so we need to fetch it
+  // Otherwise, it's already a base64 string
+  let pdfBase64: string;
+  try {
+    const url = pdfFileInfo.url;
+    if (CONFIG.__prod__) {
+      // Fetch the PDF content from the URL (it's a pre-signed URL in prod)
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch PDF from URL: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      pdfBase64 = Buffer.from(arrayBuffer).toString("base64");
+    } else {
+      pdfBase64 = url;
+    }
+  } catch (error) {
+    throw new Error(
+      `Failed to get PDF data from '${stepConfig.pdfDataSource}' in step ${step.id}: ${error}`
+    );
+  }
+
   // Load and validate PDF
-  const pdfDoc = await PDFDocument.load(pdfFileInfo.url);
+  const pdfDoc = await PDFDocument.load(pdfBase64);
   if (pageNumber > pdfDoc.getPageCount()) {
     throw new Error(
       `Page ${pageNumber} exceeds PDF page count (${pdfDoc.getPageCount()})`
@@ -336,9 +358,12 @@ export const documentOcrStep: StepExecutorFunction = async ({
   debug,
 }: StepExecutorInput): Promise<StepOutputData> => {
   const stepConfig = step.config as DocumentOCRStepConfig["config"];
+  const chunkSize = 25; // Define chunk size
+
   if (debug) {
     console.log(`[${step.id}] Inputs:`, {
-      imageDataSource: stepConfig.documentDataSource,
+      documentDataSource: stepConfig.documentDataSource,
+      chunkSize,
     });
   }
 
@@ -348,7 +373,7 @@ export const documentOcrStep: StepExecutorFunction = async ({
   ) as FileData | undefined;
 
   // Validate input
-  if (!documentFileData) {
+  if (!documentFileData?.url || !documentFileData.fileName) {
     throw new Error(
       `Invalid document at '${stepConfig.documentDataSource}' in step ${step.id}`
     );
@@ -361,47 +386,79 @@ export const documentOcrStep: StepExecutorFunction = async ({
     includeImages: true,
   });
 
-  let markdown = "";
-  let images = [];
+      // Process results for the chunk
+      for (const [pageIndexInChunk, item] of result.pages.entries()) {
+        const absolutePageIndex = startPage + pageIndexInChunk; // Calculate absolute page index
 
-  for (const [pageIndex, item] of result.pages.entries()) {
-    if (item.markdown) {
-      markdown += item.markdown + "\n\n";
-    }
+        if (item.markdown) {
+          combinedMarkdown += item.markdown + "\n\n";
+        }
 
-    for (let imageIndex = 0; imageIndex < item.images.length; imageIndex++) {
-      const image = item.images[imageIndex];
-      if (!image.imageBase64) {
-        continue;
-      }
+        for (
+          let imageIndex = 0;
+          imageIndex < item.images.length;
+          imageIndex++
+        ) {
+          const image = item.images[imageIndex];
+          if (!image.imageBase64) {
+            continue;
+          }
 
-      // Extract base64 data, removing any prefix if present
-      let imageBase64 = image.imageBase64;
-      if (imageBase64.includes(",")) {
-        imageBase64 = imageBase64.split(",", 2)[1];
-      }
+          // Extract base64 data, removing any prefix if present
+          let imageBase64 = image.imageBase64;
+          if (imageBase64.includes(",")) {
+            imageBase64 = imageBase64.split(",", 2)[1];
+          }
 
-      images.push({
-        url: imageBase64,
-        fileName: image.id,
-        mimeType: "image/jpeg",
-      });
+          // Use absolute page index in file name
+          const fileName = `page_${absolutePageIndex}_image_${image.id}`;
+          combinedImages.push({
+            url: imageBase64,
+            fileName: fileName,
+            mimeType: "image/jpeg", // Assuming JPEG, adjust if needed
+          });
 
-      if (debug) {
-        try {
-          const imageFilePath = `./debug-images/${step.id}_page_${pageIndex}_image_${imageIndex}.jpeg`;
-          await Bun.write(imageFilePath, Buffer.from(imageBase64, "base64"));
-          console.log(`Saved image: ${imageFilePath}`);
-        } catch (error) {
-          console.error(`Failed to process image ${imageIndex}:`, error);
+          if (debug) {
+            try {
+              const imageFilePath = `./debug-images/${step.id}_${fileName}.jpeg`;
+              await Bun.write(
+                imageFilePath,
+                Buffer.from(imageBase64, "base64")
+              );
+              console.log(
+                `[${step.id}] Saved image from page ${
+                  absolutePageIndex + 1
+                }: ${imageFilePath}`
+              );
+            } catch (error) {
+              console.error(
+                `[${step.id}] Failed to save debug image ${fileName}:`,
+                error
+              );
+            }
+          }
         }
       }
+    } catch (error) {
+      console.error(
+        `[${step.id}] OCR failed for chunk pages ${startPage + 1}-${endPage}:`,
+        error
+      );
+      // Decide if we should continue with other chunks or throw
+      // For now, let's log and continue, potentially returning partial results
+      // Alternatively: throw new Error(`OCR failed for chunk pages ${startPage + 1}-${endPage}: ${error}`);
     }
+  } // End chunk loop
+
+  if (debug) {
+    console.log(
+      `[${step.id}] Finished processing all chunks. Total images extracted: ${combinedImages.length}`
+    );
   }
 
   return {
-    markdown,
-    images,
+    markdown: combinedMarkdown.trim(), // Trim trailing newlines
+    images: combinedImages,
   };
 };
 

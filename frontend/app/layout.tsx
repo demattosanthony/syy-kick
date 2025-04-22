@@ -121,6 +121,11 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
+        <div
+          id="microsoft-picker-overlay"
+          className="fixed inset-0 bg-black/80 hidden"
+          style={{ zIndex: 999 }}
+        />
         <iframe
           id="microsoft-picker-iframe"
           style={{
@@ -132,7 +137,7 @@ export default function RootLayout({
             left: "50%",
             transform: "translate(-50%, -50%)",
             zIndex: 1000,
-            display: "none"
+            display: "none",
           }}
           name="microsoftPickerFrame"
         />

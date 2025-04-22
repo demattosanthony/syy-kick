@@ -32,8 +32,6 @@ import { ACCEPTED_DOC_PROCESSING_EXTENSIONS, CONFIG } from "./config/constants";
 // Define constants
 const SUPER_CHUNK_SIZE = 400_000;
 const EMBEDDING_BATCH_SIZE = 100;
-const PDF_IMAGE_PROCESSING_BATCH_SIZE = 5;
-const PDF_IMAGE_PROCESSING_DELAY_MS = 1000;
 const MAX_PAGES_PER_OCR_CHUNK = 25; // Send 25 pages at a time to Mistral OCR. actual limit is 1000
 const MAX_SIZE_PER_OCR_CHUNK_MB = 50; // Max size per Mistral OCR call in MB (limit is 50MB)
 const MAX_SIZE_PER_OCR_CHUNK_BYTES = MAX_SIZE_PER_OCR_CHUNK_MB * 1024 * 1024;
@@ -77,166 +75,57 @@ const processPdf: FileProcessor = async ({
   debug,
 }) => {
   let documentChunks: DocumentChunk[] = [];
-  const allOcrPages: OCRResponse["pages"] = [];
+  let allOcrPages: OCRResponse["pages"] = [];
 
   try {
-    const pdfDoc = await PDFDocument.load(fileContent);
-    const totalPages = pdfDoc.getPageCount();
-    console.log(`Processing PDF with ${totalPages} pages.`);
-
-    // Process pages in chunks
-    for (let i = 0; i < totalPages; i += MAX_PAGES_PER_OCR_CHUNK) {
-      const startPage = i;
-      const endPage = Math.min(i + MAX_PAGES_PER_OCR_CHUNK, totalPages);
-      const numPagesInChunk = endPage - startPage;
-
-      console.log(
-        `Processing chunk: pages ${startPage + 1} to ${endPage} (${numPagesInChunk} pages)`
-      );
-
-      // Create a new PDF document for the chunk
-      const chunkPdfDoc = await PDFDocument.create();
-      const copiedPages = await chunkPdfDoc.copyPages(
-        pdfDoc,
-        Array.from({ length: numPagesInChunk }, (_, k) => startPage + k)
-      );
-      copiedPages.forEach((page) => chunkPdfDoc.addPage(page));
-
-      const chunkPdfBytes = await chunkPdfDoc.save();
-
-      // Check if chunk size exceeds limit
-      if (chunkPdfBytes.byteLength > MAX_SIZE_PER_OCR_CHUNK_BYTES) {
-        // This basic chunking by page count wasn't enough.
-        // Ideally, we'd re-chunk based on size, but that's complex.
-        // For now, we'll log a warning and proceed, hoping the API handles it gracefully or throws an error.
-        console.warn(
-          `PDF chunk (pages ${startPage + 1}-${endPage}) exceeds size limit (${MAX_SIZE_PER_OCR_CHUNK_MB}MB). Size: ${(
-            chunkPdfBytes.byteLength /
-            1024 /
-            1024
-          ).toFixed(2)}MB. Attempting OCR anyway.`
-        );
-        // Or potentially throw an error:
-        // throw new Error(`PDF chunk (pages ${startPage + 1}-${endPage}) exceeds size limit (${MAX_SIZE_PER_OCR_CHUNK_MB}MB)`);
-      }
-
-      const base64 = Buffer.from(chunkPdfBytes).toString("base64");
-
-      console.log(
-        `Calling Mistral OCR for chunk (pages ${startPage + 1}-${endPage})...`
-      );
-      const result = await mistralOcr({
-        base64,
-        mimeType,
-        includeImages: false,
-      });
-      console.log(
-        `Mistral OCR finished for chunk (pages ${startPage + 1}-${endPage}). Found ${result.pages.length} pages in response.`
-      );
-
-      // Add page numbers relative to the original document for metadata/debugging if needed
-      // Note: Mistral might not return page numbers reliably, this assumes the order is preserved
-      //   result.pages.forEach((page, pageIndexInChunk) => {
-      //     // if (!page.) page.metadata = {};
-      //     // page.metadata.original_page_number = startPage + 1 + pageIndexInChunk;
-      //   });
-
-      allOcrPages.push(...result.pages);
-
-      // Optional: Add delay between API calls if hitting rate limits
-      if (endPage < totalPages) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-    }
+    // Call the modified mistralOcr which handles chunking internally
+    console.log(`Calling mistralOcr for the entire PDF...`);
+    const result = await mistralOcr({
+      base64: Buffer.from(fileContent).toString("base64"),
+      mimeType,
+      includeImages: false, // Keep image processing separate for now
+    });
+    console.log(
+      `mistralOcr finished processing PDF. Found ${result.pages.length} pages in response.`
+    );
+    allOcrPages = result.pages;
   } catch (error) {
     throw new Error(
-      `Failed during PDF loading or chunked OCR processing: ${
-        error instanceof Error ? error.message : String(error)
-      }`
+      `Failed during PDF OCR processing: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 
-  // Now process the combined results from all chunks
-  let combinedMarkdown = "";
+  // Process each page individually to retain page numbers
   for (const page of allOcrPages) {
-    combinedMarkdown += (page.markdown || "") + "\n\n"; // Add newline between pages
+    const pageMarkdown = page.markdown || "";
+    if (pageMarkdown.trim().length === 0) {
+      continue; // Skip empty pages
+    }
 
-    // TODO: Re-enable image processing. Too slow, expensive, and in accurate to use VLM for this.
+    // TODO: Store images and descriptions of those images associated with the page number.
 
-    // Process images (if includeImages was true in mistralOcr)
-    // if (page.images && page.images.length > 0) {
-    //   console.log(
-    //     `Processing ${page.images.length} images for original page ${(page as any).metadata?.original_page_number || "unknown"}`
-    //   );
-    //   // Process images in batches (as per original logic)
-    //   for (
-    //     let i = 0;
-    //     i < page.images.length;
-    //     i += PDF_IMAGE_PROCESSING_BATCH_SIZE
-    //   ) {
-    //     const batch = page.images.slice(i, i + PDF_IMAGE_PROCESSING_BATCH_SIZE);
-    //     const batchResults = await Promise.all(
-    //       batch.map(async (image) => {
-    //         if (!image.imageBase64) return null;
-
-    //         const imageFileKey = `${fileKey}-img-${crypto.randomUUID()}.jpeg`;
-    //         await s3.write(
-    //           imageFileKey,
-    //           Buffer.from(image.imageBase64, "base64")
-    //         );
-    //         const imageMarkdown = await imageToMarkdown(
-    //           image.imageBase64,
-    //           "image/jpeg"
-    //         );
-
-    //         if (debug) {
-    //           console.log(`(PDF Image Chunk) Image markdow:`, imageMarkdown);
-    //         }
-
-    //         const chunkData: DocumentChunk = {
-    //           markdown: sanitizeText(imageMarkdown),
-    //           imageFileKey,
-    //           metadata: {
-    //             // Add original page number if available
-    //             page_number: (page as any).metadata?.original_page_number as
-    //               | number
-    //               | undefined,
-    //           },
-    //         };
-    //         return chunkData;
-    //       })
-    //     );
-
-    //     documentChunks.push(
-    //       ...batchResults.filter((r): r is DocumentChunk => r !== null)
-    //     );
-
-    //     if (i + PDF_IMAGE_PROCESSING_BATCH_SIZE < page.images.length) {
-    //       await new Promise((resolve) =>
-    //         setTimeout(resolve, PDF_IMAGE_PROCESSING_DELAY_MS)
-    //       );
-    //     }
-    //   }
-    // }
+    const textChunks = await textSplitter.splitText(pageMarkdown.trim());
+    documentChunks.push(
+      ...textChunks.map((chunk) => ({
+        markdown: sanitizeText(chunk),
+        metadata: {
+          // Use the 'index' property from the OCR response page object
+          page_number: page.index,
+        },
+      }))
+    );
   }
 
-  // Split the combined text markdown
-  const textChunks = await textSplitter.splitText(combinedMarkdown.trim());
-  documentChunks.push(
-    ...textChunks.map((chunk) => ({
-      markdown: sanitizeText(chunk),
-      // We lose specific page number association here for text chunks split from combined markdown
-    }))
-  );
-
   // Remove duplicates just in case splitting/image processing created identical chunks
+  // Note: This simple duplicate removal might remove legitimate duplicates from different pages.
+  // Consider a more sophisticated approach if needed, e.g., checking page number as well.
   documentChunks = Array.from(
     new Map(documentChunks.map((item) => [item.markdown, item])).values()
   );
 
   if (debug) {
     console.log(
-      `Total document chunks after processing all PDF chunks: ${documentChunks.length}`
+      `Total document chunks after processing all PDF pages individually: ${documentChunks.length}`
     );
   }
 
@@ -494,44 +383,6 @@ export async function processFile({
   }
 }
 
-/**
- * Process a pdf file with unstructured
- * @param fileContent - The file content as an ArrayBuffer
- * @param fileName - The name of the file
- */
-async function processUnstructured(
-  fileContent: ArrayBuffer,
-  fileName: string
-): Promise<DocumentChunk[]> {
-  const response = await unstructured.general.partition({
-    partitionParameters: {
-      files: {
-        content: fileContent,
-        fileName: fileName,
-      },
-      strategy: CONFIG.__prod__ ? Strategy.HiRes : Strategy.Fast,
-      splitPdfPage: true,
-      splitPdfAllowFailed: true,
-      splitPdfConcurrencyLevel: 5,
-      maxCharacters: 2000,
-      combineUnderNChars: 500,
-      overlap: 200,
-      coordinates: true,
-      includeOrigElements: false,
-      chunkingStrategy: "by_title",
-    },
-  });
-
-  const chunks = response.elements?.map((element) => ({
-    markdown: element.text || "",
-    metadata: {
-      page_number: element.metadata?.page_number,
-    },
-  }));
-
-  return chunks || [];
-}
-
 interface MistralOcrInput {
   base64: string;
   mimeType: string;
@@ -539,7 +390,7 @@ interface MistralOcrInput {
 }
 
 /**
- * Process a pdf file with mistral ocr
+ * Process a pdf file with mistral ocr, handling chunking internally.
  * @param input - The input parameters for OCR processing
  */
 export async function mistralOcr({
@@ -547,24 +398,152 @@ export async function mistralOcr({
   mimeType,
   includeImages = true,
 }: MistralOcrInput): Promise<OCRResponse> {
-  try {
-    const result = await mistralAi.ocr.process({
-      model: "mistral-ocr-latest",
-      document: {
-        documentUrl: `data:${mimeType};base64,${base64}`,
-        type: "document_url",
-      },
-      includeImageBase64: includeImages,
-    });
+  const allOcrPages: OCRResponse["pages"] = [];
 
-    if (!result) {
-      throw new Error("OCR processing returned no result");
+  // Check if it's a PDF, otherwise process directly
+  if (mimeType !== "application/pdf") {
+    // For non-PDFs, process the whole file at once
+    console.log(
+      `Processing non-PDF file (${mimeType}) with Mistral OCR directly.`
+    );
+    try {
+      const result = await mistralAi.ocr.process({
+        model: "mistral-ocr-latest",
+        document: {
+          documentUrl: `data:${mimeType};base64,${base64}`,
+          type: "document_url",
+        },
+        includeImageBase64: includeImages,
+      });
+
+      if (!result) {
+        throw new Error("OCR processing returned no result for non-PDF");
+      }
+      return result;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Mistral OCR processing failed for non-PDF: ${errorMessage}`
+      );
+    }
+  }
+
+  // Handle PDF chunking
+  console.log("Processing PDF with chunking inside mistralOcr.");
+  let firstChunkResult: OCRResponse | null = null; // To store metadata from the first successful chunk
+
+  try {
+    const pdfDoc = await PDFDocument.load(base64);
+    const totalPages = pdfDoc.getPageCount();
+    console.log(`PDF has ${totalPages} pages. Chunking for Mistral OCR...`);
+
+    // Process pages in chunks
+    for (let i = 0; i < totalPages; i += MAX_PAGES_PER_OCR_CHUNK) {
+      const startPage = i;
+      const endPage = Math.min(i + MAX_PAGES_PER_OCR_CHUNK, totalPages);
+      const numPagesInChunk = endPage - startPage;
+
+      console.log(
+        `Processing chunk: pages ${startPage + 1} to ${endPage} (${numPagesInChunk} pages)`
+      );
+
+      // Create a new PDF document for the chunk
+      const chunkPdfDoc = await PDFDocument.create();
+      const copiedPages = await chunkPdfDoc.copyPages(
+        pdfDoc,
+        Array.from({ length: numPagesInChunk }, (_, k) => startPage + k)
+      );
+      copiedPages.forEach((page) => chunkPdfDoc.addPage(page));
+
+      const chunkPdfBytes = await chunkPdfDoc.save();
+
+      // Check if chunk size exceeds limit
+      if (chunkPdfBytes.byteLength > MAX_SIZE_PER_OCR_CHUNK_BYTES) {
+        console.warn(
+          `PDF chunk (pages ${startPage + 1}-${endPage}) exceeds size limit (${MAX_SIZE_PER_OCR_CHUNK_MB}MB). Size: ${(
+            chunkPdfBytes.byteLength /
+            1024 /
+            1024
+          ).toFixed(2)}MB. Attempting OCR anyway.`
+        );
+        // Or potentially throw an error:
+        // throw new Error(`PDF chunk (pages ${startPage + 1}-${endPage}) exceeds size limit (${MAX_SIZE_PER_OCR_CHUNK_MB}MB)`);
+      }
+
+      const base64 = Buffer.from(chunkPdfBytes).toString("base64");
+
+      console.log(
+        `Calling Mistral OCR API for chunk (pages ${startPage + 1}-${endPage})...`
+      );
+      const result = await mistralAi.ocr.process({
+        model: "mistral-ocr-latest",
+        document: {
+          documentUrl: `data:${mimeType};base64,${base64}`,
+          type: "document_url",
+        },
+        includeImageBase64: includeImages,
+      });
+      console.log(
+        `Mistral OCR API finished for chunk (pages ${startPage + 1}-${endPage}). Found ${result.pages.length} pages in response.`
+      );
+
+      // Store the result and potentially grab metadata from the first chunk
+      if (allOcrPages.length === 0 && result.pages.length > 0) {
+        // Keep track of the first successful chunk's result for metadata
+        // This assumes OCRResponse has model and usageInfo
+        firstChunkResult = result;
+      }
+
+      // Adjust page indices relative to the original document
+      const adjustedPages = result.pages.map((page) => ({
+        ...page,
+        // startPage is 0-based, page.index is 1-based from the chunk
+        index: startPage + page.index,
+      }));
+
+      allOcrPages.push(...adjustedPages);
+
+      // Optional: Add delay between API calls if hitting rate limits
+      if (endPage < totalPages) {
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Consider making delay configurable
+      }
     }
 
-    return result;
+    // Construct the final OCRResponse object
+    if (allOcrPages.length === 0) {
+      // Handle case where no pages were extracted from any chunk
+      console.warn("OCR processing yielded no pages after chunking.");
+      // Return an empty but valid OCRResponse
+      return {
+        pages: [],
+        model: firstChunkResult?.model || "mistral-ocr-latest", // Use first chunk model or default
+        usageInfo: {
+          pagesProcessed: 0,
+          docSizeBytes: 0,
+        },
+      };
+    }
+
+    const combinedResponse: OCRResponse = {
+      pages: allOcrPages,
+      // Use model and usageInfo from the first chunk that returned pages
+      model: firstChunkResult?.model || "mistral-ocr-latest", // Default if firstChunkResult is somehow null
+      usageInfo: firstChunkResult?.usageInfo || {
+        pagesProcessed: 0,
+        docSizeBytes: 0,
+      },
+    };
+
+    console.log(
+      `Combined OCR results from ${allOcrPages.length} pages across all chunks.`
+    );
+    return combinedResponse;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Mistral OCR processing failed: ${errorMessage}`);
+    throw new Error(
+      `Mistral OCR processing failed during PDF chunking: ${errorMessage}`
+    );
   }
 }
 
@@ -852,4 +831,43 @@ export function sanitizeText(text: string): string {
   text = text.toLowerCase();
 
   return text.trim();
+}
+
+// LEGACY
+/**
+ * Process a pdf file with unstructured
+ * @param fileContent - The file content as an ArrayBuffer
+ * @param fileName - The name of the file
+ */
+async function processUnstructured(
+  fileContent: ArrayBuffer,
+  fileName: string
+): Promise<DocumentChunk[]> {
+  const response = await unstructured.general.partition({
+    partitionParameters: {
+      files: {
+        content: fileContent,
+        fileName: fileName,
+      },
+      strategy: CONFIG.__prod__ ? Strategy.HiRes : Strategy.Fast,
+      splitPdfPage: true,
+      splitPdfAllowFailed: true,
+      splitPdfConcurrencyLevel: 5,
+      maxCharacters: 2000,
+      combineUnderNChars: 500,
+      overlap: 200,
+      coordinates: true,
+      includeOrigElements: false,
+      chunkingStrategy: "by_title",
+    },
+  });
+
+  const chunks = response.elements?.map((element) => ({
+    markdown: element.text || "",
+    metadata: {
+      page_number: element.metadata?.page_number,
+    },
+  }));
+
+  return chunks || [];
 }

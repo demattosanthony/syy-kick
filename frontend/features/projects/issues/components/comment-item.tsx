@@ -117,7 +117,7 @@ const CommentItemComponent = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                    <Pencil className="mr-2 h-4 w-4" />
+                    <Pencil className="h-4 w-4" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -126,7 +126,7 @@ const CommentItemComponent = ({
                     className="text-red-600 focus:text-red-600 focus:bg-red-100"
                     disabled={isDeletingComment}
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>

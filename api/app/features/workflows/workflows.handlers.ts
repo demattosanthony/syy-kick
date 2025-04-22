@@ -59,6 +59,8 @@ const workflowHandlers = {
 
   // Using the ai sdk data stream protocol to send updates to the client: https://sdk.vercel.ai/docs/ai-sdk-ui/stream-protocol#data-stream-protocol
   run: async (req: Request, res: Response) => {
+    req.setTimeout(0); // Disable the timeout for this long-running request
+
     const { threadId } = req.params;
     const { message, workflowId } = req.body;
 
@@ -77,7 +79,15 @@ const workflowHandlers = {
     res.setHeader("x-vercel-ai-data-stream", "v1");
     res.flushHeaders();
 
+    let keepAliveInterval: ReturnType<typeof setInterval> | null = null; // Keep track of the interval
+
     try {
+      // Start keep-alive ping, need this in prod to prevent the connection from timing out
+      keepAliveInterval = setInterval(() => {
+        // Use the 2:[...] format for data messages as requested
+        res.write('2:[{"type":"keepalive"}]\n');
+      }, 25000); // Send every 25 seconds
+
       await db
         .update(threads)
         .set({
@@ -128,7 +138,7 @@ const workflowHandlers = {
             url: await generateAttachmentData(
               attachment.file_key,
               attachment.contentType || "application/pdf",
-              false
+              CONFIG.__prod__
             ),
           };
         })
@@ -251,6 +261,14 @@ const workflowHandlers = {
     } catch (error) {
       console.error("Error running workflow:", error);
       res.status(500).json({ error: "Failed to process workflow" });
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+      }
+    } finally {
+      // Ensure the keep-alive interval is cleared
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+      }
     }
   },
 };
