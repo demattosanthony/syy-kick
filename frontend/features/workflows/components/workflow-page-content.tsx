@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Attachment } from "ai";
 import api from "@/lib/api";
 import ErrorDisplay from "./workflow-error-display";
-import FileUploadInput, { ProjectFile } from "./workflow-file-input";
-import { Workflow } from "../workflows.types";
+import FileUploadInput from "./workflow-file-input";
+import { Workflow, WorkflowProjectFile } from "../workflows.types";
 import { useAtom } from "jotai";
 import { initalInputAtom, workflowInputAtom } from "@/atoms/chat";
 import { ThreadsList } from "@/features/chat/threads/components";
@@ -28,9 +28,9 @@ export default function WorkflowPageContent({
   workflow?: Workflow;
 }) {
   const router = useRouter();
-  const [files, setFiles] = useState<Record<string, File | ProjectFile | null>>(
-    {}
-  );
+  const [files, setFiles] = useState<
+    Record<string, File | WorkflowProjectFile | null>
+  >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorDetails, setErrorDetails] = useState<{
     type: "upload" | "processing" | "general" | "network";
@@ -43,7 +43,8 @@ export default function WorkflowPageContent({
   // Initialize files state based on workflow inputs
   useEffect(() => {
     if (workflow?.inputs) {
-      const initialFiles: Record<string, File | ProjectFile | null> = {};
+      const initialFiles: Record<string, File | WorkflowProjectFile | null> =
+        {};
       workflow.inputs.forEach((input) => (initialFiles[input.id] = null));
       setFiles(initialFiles);
     }
@@ -52,7 +53,7 @@ export default function WorkflowPageContent({
   // Reset workflow state and reload page
   const resetWorkflow = () => {
     if (workflow?.inputs) {
-      const resetFiles: Record<string, File | ProjectFile | null> = {};
+      const resetFiles: Record<string, File | WorkflowProjectFile | null> = {};
       workflow.inputs.forEach((input) => {
         resetFiles[input.id] = null;
         const fileInput = document.getElementById(

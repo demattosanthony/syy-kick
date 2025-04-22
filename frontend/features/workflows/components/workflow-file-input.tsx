@@ -16,16 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ProjectFileExplorer } from "@/features/projects/components";
 import { DocumentContent } from "@/types/project";
 import { toast } from "sonner";
-
-// Add ProjectFile interface
-export interface ProjectFile {
-  source: "project";
-  name: string;
-  type: string;
-  url: string;
-  size: number; // Assuming DocumentContent has size
-  file_key: string; // Assuming DocumentContent has file_key
-}
+import { WorkflowProjectFile } from "../workflows.types";
 
 interface FileUploadInputProps {
   input: {
@@ -36,10 +27,8 @@ interface FileUploadInputProps {
     required?: boolean;
     maxFileSize?: number;
   };
-  // Update file type
-  file: File | ProjectFile | null;
-  // Update onFileChange type
-  onFileChange: (file: File | ProjectFile | null) => void;
+  file: File | WorkflowProjectFile | null;
+  onFileChange: (file: File | WorkflowProjectFile | null) => void;
   projectId?: string;
 }
 
@@ -54,7 +43,6 @@ function FileUploadInput({
   const [sizeError, setSizeError] = useState<string | null>(null);
   const [isHovering, setIsHovering] = useState(false);
   const [showProjectExplorer, setShowProjectExplorer] = useState(false);
-  const [isFetchingProjectFile, setIsFetchingProjectFile] = useState(false);
 
   const {
     openPicker,
@@ -139,7 +127,7 @@ function FileUploadInput({
   };
 
   const handleProjectFileSelect = async (item: DocumentContent) => {
-    // Add check for item.file_key - essential for skipping upload
+    // Check if item is a file and has all required information
     if (
       item.type !== "file" ||
       !projectId ||
@@ -182,7 +170,7 @@ function FileUploadInput({
     }
 
     // 3. Create ProjectFile Object - No download needed
-    const projectFile: ProjectFile = {
+    const projectFile: WorkflowProjectFile = {
       source: "project",
       name: item.name,
       type: item.mimeType,
@@ -265,14 +253,9 @@ function FileUploadInput({
               e.stopPropagation();
               setShowProjectExplorer(true);
             }}
-            disabled={isFetchingProjectFile}
             title="Select file from project"
           >
-            {isFetchingProjectFile ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Folder className="h-4 w-4" />
-            )}
+            <Folder className="h-4 w-4" />
           </Button>
         )}
         <input
