@@ -63,11 +63,11 @@ export const billOfMaterialsWorkflow: Workflow = {
         outputSchema: z.object({
           bom: z.string(),
         }),
-        promptTemplate: `You are an expert electrical controls engineer tasked with extracting a comprehensive Bill of Materials (BOM) from a control system drawing. The drawing could be a wiring schematic, panel layout, or similar technical document. Your goal is to create a structured BOM that can be easily understood and exported to Excel.
+        promptTemplate: `You are an expert controls engineer tasked with extracting a comprehensive Bill of Materials (BOM) from a control system drawing. The drawing could be a wiring schematic, panel layout, or similar technical document. Your goal is to create a structured BOM that can be easily understood and exported to Excel.
 
 First, carefully examine the attached control system drawing.
 
-Using your expertise as an electrical controls engineer, analyze the drawing and extract all relevant components to create a Bill of Materials. Follow these steps:
+Using your expertise as an controls engineer, analyze the drawing and extract all relevant components to create a Bill of Materials. Follow these steps:
 
 1. Identify each unique component in the drawing.
 2. For each component, determine the following information:
