@@ -31,12 +31,32 @@ export const billOfMaterialsWorkflow: Workflow = {
   },
   steps: [
     {
+      id: "doc-ocr",
+      processingMessage: "Performing Optical Character Recognition (OCR)...",
+      processedMessage:
+        "Optical Character Recognition (OCR) completed successfully.",
+      type: "document_ocr",
+      config: {
+        documentDataSource: "workflowInput.controls-drawings",
+        outputSchema: z.object({
+          markdown: z.string(),
+          images: z.array(
+            z.object({
+              url: z.string(),
+              fileName: z.string(),
+              mimeType: z.string(),
+            })
+          ),
+        }),
+      },
+    },
+    {
       id: "controls-bom",
       processingMessage: "Generating Bill of Materials...",
       processedMessage: "Bill of Materials generated successfully.",
       type: "llm",
       inputMapping: {
-        file: "workflowInput.controls-drawings",
+        file: "doc-ocr.images",
       },
       config: {
         modelName: "gemini-2.5-pro-preview",
@@ -92,7 +112,7 @@ CSV Formatting Rules:
 2. For measurements containing inches ("), add an additional " before the inches: "8'-0"""
 3. Separate fields with single commas (no spaces): "field1","field2"
 4. Each schedule should start with its title on a separate line
-5. Headers should be quoted: "Item","Height","Width","Area (sq ft)"A
+5. Headers should be quoted: "Item","Height","Width","Area (sq ft)"
 
 Your final output should consist only of the BOM table and should not duplicate or rehash any of the work you did in the thinking block.`,
       },
