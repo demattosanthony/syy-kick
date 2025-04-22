@@ -137,6 +137,7 @@ export default function WorkflowPageContent({
 
       const thread = await api.threads.createThread({
         workflowId,
+        projectId,
       });
       router.push(
         `/threads/${thread.id}?isNew=true&isWorkflow=true&workflowId=${workflowId}`
