@@ -112,8 +112,7 @@ function FileUploadInput({
             input.maxFileSize
           )}`
         );
-        // Reset the input value if size check fails
-        e.target.value = "";
+
         onFileChange(null);
         return;
       }
@@ -264,8 +263,6 @@ function FileUploadInput({
           className="hidden"
           accept={input.acceptedFileTypes}
           onChange={handleFileSelect}
-          // Reset value if file state becomes null externally (e.g., removing project file)
-          value={file && !("source" in file) ? undefined : ""}
         />
         <div className="text-center space-y-4">
           {isProcessingFiles ? (
@@ -292,18 +289,12 @@ function FileUploadInput({
               </div>
               <div>
                 <p className="text-lg font-medium mb-1">
-                  {/* Adjust display based on file type */}
                   {file ? file.name : "Drop your file here"}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {/* Adjust display based on file type */}
                   {file
-                    ? `${formatFileSize(file.size)} · ${
-                        "source" in file && file.source === "project"
-                          ? `Project File (${file.type
-                              .split("/")[1]
-                              .toUpperCase()})`
-                          : file.type.includes("pdf")
+                    ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${
+                        file.type.includes("pdf")
                           ? "PDF"
                           : file.type.split("/")[1].toUpperCase()
                       }`
