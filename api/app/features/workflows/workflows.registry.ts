@@ -1,5 +1,6 @@
 import {
   basisOfDesignGenWorkflow,
+  billOfMaterialsWorkflow,
   equipmentServingListWorkflow,
   rfpEvalWorkflow,
   windowDoorScheduleGenWorkflow,
@@ -11,6 +12,7 @@ const workflows: Workflow[] = [
   windowDoorScheduleGenWorkflow,
   equipmentServingListWorkflow,
   basisOfDesignGenWorkflow,
+  billOfMaterialsWorkflow,
 ];
 
 const workflowRegistry = new Map<string, Workflow>();

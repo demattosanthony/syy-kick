@@ -18,10 +18,32 @@ export const config = {
     "/settings",
     "/threads",
     "/projects",
+
+    // Threads
+    "/threads",
     "/threads/:threadId",
+
+    // Sites
+    "/sites",
+
+    // Projects
     "/projects/:projectId",
     "/projects/:projectId/settings",
     "/projects/:projectId/blob/:path",
     "/projects/:projectId/tree/:path",
+    "/projects/:projectId/issues",
+    "/projects/:projectId/issues/new",
+    "/projects/:projectId/issues/:issueNumber",
+
+    // Knowledge Bases
+    "/knowledge-bases",
+    "/knowledge-bases/:kbId",
+    "/knowledge-bases/:kbId/blob/:path",
+    "/knowledge-bases/:kbId/tree/:path",
+    "/knowledge-bases/:kbId/settings",
+
+    // Workflows
+    "/workflows",
+    "/workflows/:workflowId",
   ],
 };
