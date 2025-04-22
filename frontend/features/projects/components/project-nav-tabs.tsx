@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CircleDot, Settings, ChevronsLeftRight } from "lucide-react";
+import { CircleDot, Settings, ChevronsLeftRight, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useParams, usePathname } from "next/navigation";
@@ -26,6 +26,11 @@ const navItems: NavItem[] = [
     icon: <CircleDot className="h-4 w-4" />,
   },
   {
+    label: "Workflows",
+    href: "/workflows",
+    icon: <Workflow className="h-4 w-4" />,
+  },
+  {
     label: "Settings",
     href: "/settings",
     icon: <Settings className="h-4 w-4" />,
@@ -46,7 +51,7 @@ export default function ProjectNavigationTabs() {
 
   return (
     <nav className="border-b w-full flex items-start">
-      <div className="flex h-12 items-center gap-2 px-4 overflow-x-auto">
+      <div className="flex h-12 items-center gap-1 px-4 overflow-x-auto">
         {filteredNavItems.map((item) => {
           const itemPath = `/projects/${projectId}${item.href}`;
           const isActive =
