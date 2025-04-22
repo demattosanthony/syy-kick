@@ -15,6 +15,7 @@ import { getPdfPageAsImage } from "../../utils";
 import { z } from "zod";
 import { Jimp } from "jimp";
 import { CONFIG } from "../../config/constants";
+import s3 from "../../config/s3";
 
 export const executeLLMStep: StepExecutorFunction = async ({
   step,
@@ -146,8 +147,30 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
     );
   }
 
+  // In prod, the PDF is a presigned URL, so we need to fetch it
+  // Otherwise, it's already a base64 string
+  let pdfBase64: string;
+  try {
+    const url = pdfFileInfo.url;
+    if (CONFIG.__prod__) {
+      // Fetch the PDF content from the URL (it's a pre-signed URL in prod)
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch PDF from URL: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
+      pdfBase64 = Buffer.from(arrayBuffer).toString("base64");
+    } else {
+      pdfBase64 = url;
+    }
+  } catch (error) {
+    throw new Error(
+      `Failed to get PDF data from '${stepConfig.pdfDataSource}' in step ${step.id}: ${error}`
+    );
+  }
+
   // Load and validate PDF
-  const pdfDoc = await PDFDocument.load(pdfFileInfo.url);
+  const pdfDoc = await PDFDocument.load(pdfBase64);
   if (pageNumber > pdfDoc.getPageCount()) {
     throw new Error(
       `Page ${pageNumber} exceeds PDF page count (${pdfDoc.getPageCount()})`
