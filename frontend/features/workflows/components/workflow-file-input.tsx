@@ -2,9 +2,30 @@ import { Button } from "@/components/ui/button";
 import useMicrosoftPicker from "@/features/projects/hooks/use-microsoft-picker";
 import { SharePointFile } from "@/features/projects/types";
 import { cn } from "@/lib/utils";
-import { File, Loader2 } from "lucide-react";
+import { FileIcon, Loader2, Folder } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ProjectFileExplorer } from "@/features/projects/components";
+import { DocumentContent } from "@/types/project";
+import { toast } from "sonner";
+
+// Add ProjectFile interface
+export interface ProjectFile {
+  source: "project";
+  name: string;
+  type: string;
+  url: string;
+  size: number; // Assuming DocumentContent has size
+  file_key: string; // Assuming DocumentContent has file_key
+}
 
 interface FileUploadInputProps {
   input: {
@@ -15,8 +36,11 @@ interface FileUploadInputProps {
     required?: boolean;
     maxFileSize?: number;
   };
-  file: File | null;
-  onFileChange: (file: File | null) => void;
+  // Update file type
+  file: File | ProjectFile | null;
+  // Update onFileChange type
+  onFileChange: (file: File | ProjectFile | null) => void;
+  projectId?: string;
 }
 
 /** FileUploadInput: Handles file selection for a single workflow input */
@@ -24,11 +48,13 @@ function FileUploadInput({
   input,
   file,
   onFileChange,
-  setInput,
-}: FileUploadInputProps & { setInput: (value: string) => void }) {
+  projectId,
+}: FileUploadInputProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [sizeError, setSizeError] = useState<string | null>(null);
   const [isHovering, setIsHovering] = useState(false);
+  const [showProjectExplorer, setShowProjectExplorer] = useState(false);
+  const [isFetchingProjectFile, setIsFetchingProjectFile] = useState(false);
 
   const {
     openPicker,
@@ -38,7 +64,21 @@ function FileUploadInput({
   } = useMicrosoftPicker({
     onFilesSelected: async (files: SharePointFile[]) => {
       const filesToUpload = await pickerSelectionsToFiles(files);
-      onFileChange(filesToUpload[0]);
+      if (filesToUpload.length > 0) {
+        // Check size before setting
+        const selectedFile = filesToUpload[0];
+        if (input.maxFileSize && selectedFile.size > input.maxFileSize) {
+          setSizeError(
+            `File is too large. Maximum size is ${formatFileSize(
+              input.maxFileSize
+            )}`
+          );
+          onFileChange(null); // Clear any previous selection
+        } else {
+          setSizeError(null);
+          onFileChange(selectedFile);
+        }
+      }
     },
   });
 
@@ -70,7 +110,6 @@ function FileUploadInput({
 
       setSizeError(null);
       onFileChange(droppedFile);
-      setInput(droppedFile.name);
     }
   };
 
@@ -85,13 +124,78 @@ function FileUploadInput({
             input.maxFileSize
           )}`
         );
+        // Reset the input value if size check fails
+        e.target.value = "";
+        onFileChange(null);
         return;
       }
 
       setSizeError(null);
       onFileChange(selectedFile);
-      setInput(selectedFile.name);
+    } else {
+      // Handle case where user cancels file selection
+      onFileChange(null);
     }
+  };
+
+  const handleProjectFileSelect = async (item: DocumentContent) => {
+    // Add check for item.file_key - essential for skipping upload
+    if (
+      item.type !== "file" ||
+      !projectId ||
+      !item.fileKey ||
+      !item.size ||
+      !item.url ||
+      !item.mimeType
+    ) {
+      toast.error(
+        `Selected item is missing required information (key, size, url, or mimeType). Cannot use this file.`
+      );
+      console.error("Missing required info in DocumentContent:", item);
+      return;
+    }
+
+    // 1. Check Mime Type
+    if (
+      input.acceptedFileTypes &&
+      !input.acceptedFileTypes
+        .split(",")
+        .some((type) => type.trim() === item.mimeType)
+    ) {
+      toast.error(
+        `File type (${item.mimeType}) is not accepted for this input.`
+      );
+      return;
+    }
+
+    // 2. Validate Size (using item.size)
+    if (input.maxFileSize && item.size > input.maxFileSize) {
+      setSizeError(
+        `Selected project file is too large. Maximum size is ${formatFileSize(
+          input.maxFileSize
+        )}. File size: ${formatFileSize(item.size)}`
+      );
+      toast.error(sizeError);
+      setShowProjectExplorer(false); // Close dialog even on error
+      onFileChange(null); // Ensure state is cleared
+      return;
+    }
+
+    // 3. Create ProjectFile Object - No download needed
+    const projectFile: ProjectFile = {
+      source: "project",
+      name: item.name,
+      type: item.mimeType,
+      url: item.url, // Use the existing URL
+      size: item.size,
+      file_key: item.fileKey, // Use the existing file_key
+    };
+
+    // 4. Update State and Close
+    setSizeError(null);
+    onFileChange(projectFile); // Pass the ProjectFile object
+    toast.success(`Selected "${item.name}" from project.`);
+    setShowProjectExplorer(false);
   };
 
   // Helper function to format file size
@@ -120,6 +224,8 @@ function FileUploadInput({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() =>
+          // Don't open file dialog if a project file is selected
+          !(file && "source" in file && file.source === "project") &&
           document.getElementById(`file-input-${input.id}`)?.click()
         }
       >
@@ -150,12 +256,33 @@ function FileUploadInput({
             )}
           </Button>
         )}
+        {isHovering && projectId && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute top-2 right-14"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowProjectExplorer(true);
+            }}
+            disabled={isFetchingProjectFile}
+            title="Select file from project"
+          >
+            {isFetchingProjectFile ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Folder className="h-4 w-4" />
+            )}
+          </Button>
+        )}
         <input
           type="file"
           id={`file-input-${input.id}`}
           className="hidden"
           accept={input.acceptedFileTypes}
           onChange={handleFileSelect}
+          // Reset value if file state becomes null externally (e.g., removing project file)
+          value={file && !("source" in file) ? undefined : ""}
         />
         <div className="text-center space-y-4">
           {isProcessingFiles ? (
@@ -173,7 +300,7 @@ function FileUploadInput({
                   file ? "bg-primary/10" : "bg-muted/30"
                 )}
               >
-                <File
+                <FileIcon
                   className={cn(
                     "h-8 w-8",
                     file ? "text-primary" : "text-muted-foreground"
@@ -182,12 +309,18 @@ function FileUploadInput({
               </div>
               <div>
                 <p className="text-lg font-medium mb-1">
+                  {/* Adjust display based on file type */}
                   {file ? file.name : "Drop your file here"}
                 </p>
                 <p className="text-sm text-muted-foreground">
+                  {/* Adjust display based on file type */}
                   {file
-                    ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${
-                        file.type.includes("pdf")
+                    ? `${formatFileSize(file.size)} · ${
+                        "source" in file && file.source === "project"
+                          ? `Project File (${file.type
+                              .split("/")[1]
+                              .toUpperCase()})`
+                          : file.type.includes("pdf")
                           ? "PDF"
                           : file.type.split("/")[1].toUpperCase()
                       }`
@@ -228,9 +361,38 @@ function FileUploadInput({
             file ? "text-muted-foreground" : "text-red-500"
           }`}
         >
-          {file ? "✓ Required file uploaded" : "* Required"}
+          {/* Adjust message based on file type */}
+          {file
+            ? `✓ Required file ${
+                "source" in file && file.source === "project"
+                  ? "selected"
+                  : "uploaded"
+              }`
+            : "* Required"}
         </p>
       )}
+
+      <Dialog open={showProjectExplorer} onOpenChange={setShowProjectExplorer}>
+        <DialogContent className="max-w-[500px] h-auto max-h-[600px] md:max-w-[650px] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Select file from project</DialogTitle>
+            <DialogDescription>
+              Choose a file from the project to use as input for "{input.title}
+              ".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 h-[500px]">
+            <ScrollArea className="h-full w-full">
+              <ProjectFileExplorer
+                projectId={projectId}
+                contentSource="project"
+                variant="compact"
+                onFileSelect={handleProjectFileSelect}
+              />
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

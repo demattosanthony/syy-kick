@@ -11,6 +11,7 @@ import { Workflow } from "../workflows.types";
 
 interface WorkflowsListProps {
   initalData?: Workflow[];
+  projectId?: string;
 }
 
 export default function WorkflowsList(props: WorkflowsListProps) {
@@ -35,7 +36,11 @@ export default function WorkflowsList(props: WorkflowsListProps) {
         </div>
       ) : (
         filteredWorkflows?.map((workflow, i) => (
-          <WorkflowItem key={i} workflow={workflow} />
+          <WorkflowItem
+            key={i}
+            workflow={workflow}
+            projectId={props.projectId}
+          />
         ))
       )}
 
@@ -52,11 +57,21 @@ export default function WorkflowsList(props: WorkflowsListProps) {
   );
 }
 
-function WorkflowItem({ workflow }: { workflow: Workflow }) {
+function WorkflowItem({
+  workflow,
+  projectId,
+}: {
+  workflow: Workflow;
+  projectId?: string;
+}) {
   return (
     <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full group relative">
       <Link
-        href={`/workflows/${workflow.id}`}
+        href={
+          projectId
+            ? `/projects/${projectId}/workflows/${workflow.id}`
+            : `/workflows/${workflow.id}`
+        }
         prefetch={false}
         className="block"
       >
