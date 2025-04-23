@@ -32,7 +32,7 @@ import { ACCEPTED_DOC_PROCESSING_EXTENSIONS, CONFIG } from "./config/constants";
 // Define constants
 const SUPER_CHUNK_SIZE = 400_000;
 const EMBEDDING_BATCH_SIZE = 100;
-const MAX_PAGES_PER_OCR_CHUNK = 25; // Send 25 pages at a time to Mistral OCR. actual limit is 1000
+const MAX_PAGES_PER_OCR_CHUNK = 15; // Send 15 pages at a time to Mistral OCR. actual limit is 1000
 const MAX_SIZE_PER_OCR_CHUNK_MB = 50; // Max size per Mistral OCR call in MB (limit is 50MB)
 const MAX_SIZE_PER_OCR_CHUNK_BYTES = MAX_SIZE_PER_OCR_CHUNK_MB * 1024 * 1024;
 
@@ -42,9 +42,6 @@ interface DocumentChunk {
   metadata?: {
     page_number?: number;
   };
-  imageFileKey?: string;
-  debug?: boolean;
-  addContextualSummaries?: boolean;
 }
 
 interface ProcessFileOptions {
@@ -69,7 +66,6 @@ type FileProcessor = (params: {
 // Processor for PDF files
 const processPdf: FileProcessor = async ({
   fileContent,
-  fileKey,
   mimeType,
   textSplitter,
   debug,
@@ -78,16 +74,11 @@ const processPdf: FileProcessor = async ({
   let allOcrPages: OCRResponse["pages"] = [];
 
   try {
-    // Call the modified mistralOcr which handles chunking internally
-    console.log(`Calling mistralOcr for the entire PDF...`);
     const result = await mistralOcr({
       base64: Buffer.from(fileContent).toString("base64"),
       mimeType,
       includeImages: false, // Keep image processing separate for now
     });
-    console.log(
-      `mistralOcr finished processing PDF. Found ${result.pages.length} pages in response.`
-    );
     allOcrPages = result.pages;
   } catch (error) {
     throw new Error(
@@ -109,7 +100,6 @@ const processPdf: FileProcessor = async ({
       ...textChunks.map((chunk) => ({
         markdown: sanitizeText(chunk),
         metadata: {
-          // Use the 'index' property from the OCR response page object
           page_number: page.index,
         },
       }))
@@ -354,7 +344,6 @@ export async function processFile({
               contextualSummary: chunk.contextualSummary,
               embedding: allEmbeddings[index],
               metadata: chunk.metadata,
-              imageFileKey: chunk.imageFileKey,
             }))
           );
         } catch (error) {

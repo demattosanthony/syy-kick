@@ -96,7 +96,7 @@ async function processJob(job: typeof documentProcessingJobs.$inferSelect) {
       mimeType: job.mimeType,
       documentId: job.documentId,
       debug: !CONFIG.__prod__,
-      addContextualSummaries: CONFIG.__prod__,
+      addContextualSummaries: true,
     });
 
     // Mark as completed

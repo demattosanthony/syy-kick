@@ -378,9 +378,23 @@ export const documentOcrStep: StepExecutorFunction = async ({
     );
   }
 
+  // Doc url is a presigned url in prod, so we need to fetch it
+  let documentBase64: string;
+  if (CONFIG.__prod__) {
+    const response = await fetch(documentFileData.url);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch document from URL: ${response.statusText}`
+      );
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    documentBase64 = Buffer.from(arrayBuffer).toString("base64");
+  } else {
+    documentBase64 = documentFileData.url;
+  }
   // Run OCR
   const result = await mistralOcr({
-    base64: documentFileData.url,
+    base64: documentBase64,
     mimeType: "application/pdf",
     includeImages: true,
   });
