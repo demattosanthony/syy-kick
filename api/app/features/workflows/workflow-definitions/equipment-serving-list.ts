@@ -11,7 +11,7 @@ export const equipmentServingListWorkflow: Workflow = {
     "a5b8c99d-9e1d-42a9-8473-b52471932d51",
     "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
     "282c0c89-85d7-4b94-bd31-6e87b0637cc1",
-    "99b93b8d-0360-47af-bd74-0fd099f07c4e"
+    "99b93b8d-0360-47af-bd74-0fd099f07c4e",
   ],
   inputs: [
     {
@@ -43,7 +43,7 @@ export const equipmentServingListWorkflow: Workflow = {
         promptTemplate:
           "Find the page containing mechanical schedules in the provided PDF.",
         outputSchema: z.object({
-          pageNumber: z.number(),
+          pageNumbers: z.array(z.number()),
         }),
       },
     },
@@ -54,7 +54,7 @@ export const equipmentServingListWorkflow: Workflow = {
       processedMessage: "Mechanical schedules page extracted.",
       config: {
         pdfDataSource: "workflowInput.mechanicalDrawings",
-        pageNumberSource: "find-schedules-page.pageNumber",
+        pageNumbersSource: "find-schedules-page.pageNumbers",
       },
     },
     {
@@ -63,7 +63,7 @@ export const equipmentServingListWorkflow: Workflow = {
       processingMessage: "Detecting schedule tables in the extracted page...",
       processedMessage: "Schedule tables detected successfully.",
       config: {
-        imageDataSource: "extract-pdf-page.imageBase64",
+        imageDataSource: "extract-pdf-page.extractedImagesBase64",
         model: "gemini-2.5-pro-preview",
         promptTemplate: `Detect all engineering equipment schedule tables, with no more than 20 items. Each schedule table bounding box should contain the table title and all the rows of the table.
 Output the bounding boxes in the [y_min, x_min, y_max, x_max] format.

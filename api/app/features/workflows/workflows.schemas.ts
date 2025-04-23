@@ -67,11 +67,11 @@ export const PdfPageExtractStepSchema = BaseStepSchema.extend({
       .string()
       .min(1)
       .describe("Path to the FileData object (e.g., 'workflowInput.rfpDoc')"),
-    pageNumberSource: z
+    pageNumbersSource: z
       .string()
       .min(1)
       .describe(
-        "Path to the page number (e.g., 'find-page-step.output.pageNumber')"
+        "Path to the page numbers (e.g., 'find-page-step.output.pageNumbers')"
       ),
     scale: z.number().positive().optional(),
   }),

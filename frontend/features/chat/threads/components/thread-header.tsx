@@ -31,6 +31,7 @@ const workflowNameMap = {
   "equipment-serving-builder": "Equipment Serving List Builder",
   "rfp-evaluator": "RFP Evaluator",
   "window-door-schedule-gen": "Window and Door Schedule Generator",
+  "controls-bom": "Controls BOM Builder",
 } as const;
 
 export default function ThreadHeader() {
