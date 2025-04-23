@@ -52,7 +52,7 @@ export {
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 255 }),
+  name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).unique(), // for subdomains or URLs
   domain: varchar("domain", { length: 255 }), // for email matching & auto-assignment
   logo: varchar("logo", { length: 255 }), // file key for s3
@@ -112,7 +112,7 @@ export const users = pgTable("users", {
     .primaryKey()
     .default(sql`uuid_generate_v4()`),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  name: varchar("name", { length: 255 }),
+  name: varchar("name", { length: 255 }).notNull(),
   username: varchar("username", { length: 255 }),
   googleId: varchar("google_id", { length: 255 }).unique(),
   microsoftId: varchar("microsoft_id", { length: 255 }).unique(),

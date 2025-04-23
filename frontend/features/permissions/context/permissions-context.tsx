@@ -15,6 +15,7 @@ type PermissionsContextType = {
   canCreateOrgInvitations: boolean;
   canUpdateOrgInvitations: boolean;
   canDeleteOrgInvitations: boolean;
+  canReadOrgAccessLogs: boolean;
   canCreateOrgProjects: boolean;
   canUpdateOrgProjects: boolean;
   canDeleteOrgProjects: boolean;
@@ -70,6 +71,7 @@ export const PermissionsProvider = ({
     canCreateOrgInvitations,
     canUpdateOrgInvitations,
     canDeleteOrgInvitations,
+    canReadOrgAccessLogs,
     canCreateOrgProjects,
     canUpdateOrgProjects,
     canDeleteOrgProjects,
@@ -127,11 +129,13 @@ export const PermissionsProvider = ({
         true,
         true,
         true,
+        true,
       ];
     }
 
     if (!userPermissions) {
       return [
+        false,
         false,
         false,
         false,
@@ -210,6 +214,10 @@ export const PermissionsProvider = ({
       userPermissions.hasAccess(
         Permissions.Resources.ORGANIZATION_INVITATIONS,
         Permissions.Actions.DELETE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_ACCESS_LOGS,
+        Permissions.Actions.READ
       ),
       userPermissions.hasAccess(
         Permissions.Resources.ORGANIZATION_PROJECTS,
@@ -312,6 +320,7 @@ export const PermissionsProvider = ({
         canCreateOrgInvitations,
         canUpdateOrgInvitations,
         canDeleteOrgInvitations,
+        canReadOrgAccessLogs,
         canCreateOrgProjects,
         canUpdateOrgProjects,
         canDeleteOrgProjects,
@@ -356,6 +365,7 @@ export const usePermissions = () => {
       canCreateOrgInvitations: false,
       canUpdateOrgInvitations: false,
       canDeleteOrgInvitations: false,
+      canReadOrgAccessLogs: false,
       canCreateOrgProjects: false,
       canUpdateOrgProjects: false,
       canDeleteOrgProjects: false,

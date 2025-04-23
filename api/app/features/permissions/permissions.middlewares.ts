@@ -151,6 +151,7 @@ export default class PermissionsMiddlewares {
           Permissions.Status.UNAUTHORIZED,
           {
             projectId,
+            organizationId: orgId,
           }
         );
         res
@@ -186,6 +187,7 @@ export default class PermissionsMiddlewares {
           Permissions.Status.AUTHORIZED,
           {
             projectId,
+            organizationId: orgId,
           }
         );
         next();
@@ -217,6 +219,7 @@ export default class PermissionsMiddlewares {
           Permissions.Status.UNAUTHORIZED,
           {
             projectId,
+            organizationId: orgId,
           }
         );
         res
@@ -232,6 +235,7 @@ export default class PermissionsMiddlewares {
         Permissions.Status.AUTHORIZED,
         {
           projectId,
+          organizationId: orgId,
         }
       );
 
@@ -279,6 +283,7 @@ export default class PermissionsMiddlewares {
           Permissions.Status.UNAUTHORIZED,
           {
             knowledgeBaseId,
+            organizationId: orgId,
           }
         );
         res
@@ -309,6 +314,7 @@ export default class PermissionsMiddlewares {
           Permissions.Status.AUTHORIZED,
           {
             knowledgeBaseId,
+            organizationId: orgId,
           }
         );
         next();
@@ -332,6 +338,7 @@ export default class PermissionsMiddlewares {
         Permissions.Status.AUTHORIZED,
         {
           knowledgeBaseId,
+          organizationId: orgId,
         }
       );
 

@@ -17,6 +17,7 @@ import { Organization, User } from "@/types/user";
 import { FileUploadMixin } from "./file-upload-mixin";
 import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
 import { SortOption } from "@/features/projects/types";
+import { AccessLogsResponse } from "@/features/organizations/types/access-logs";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -82,8 +83,8 @@ async function clientFetch<T>(
     throw new ApiError(
       response.status,
       errorData?.message ||
-        errorData?.error ||
-        `Request failed with status ${response.status}`
+      errorData?.error ||
+      `Request failed with status ${response.status}`
     );
   }
 
@@ -411,6 +412,31 @@ class OrganizationApi extends ApiRequest {
       throw error;
     }
   }
+
+  async getAccessLogs(
+    organizationId: string,
+    page: number = 1,
+    limit: number = 10,
+    filters: {
+      search: string;
+      resource: string;
+      action: string;
+      status: string;
+    }
+  ): Promise<AccessLogsResponse> {
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(filters.search && { search: filters.search }),
+      ...(filters.resource !== "all" && { resource: filters.resource }),
+      ...(filters.action !== "all" && { action: filters.action }),
+      ...(filters.status !== "all" && { status: filters.status }),
+    });
+
+    return await this.request(
+      `/organizations/${organizationId}/access-logs?${queryParams.toString()}`
+    );
+  }
 }
 
 /**
@@ -605,8 +631,7 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -660,8 +685,7 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`,
       "DELETE"
     );
@@ -677,8 +701,7 @@ class ProjectsApi extends ApiRequest {
     }
 
     return await this.request(
-      `/projects/${projectId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -982,8 +1005,7 @@ export class KnowledgeBasesApi extends ApiRequest {
     const queryParams = new URLSearchParams();
     if (path) queryParams.append("path", path);
     return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/knowledge-bases/${knowledgeBaseId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }

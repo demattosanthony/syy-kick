@@ -6,6 +6,7 @@ const {
     ORGANIZATION_INVITATIONS,
     ORGANIZATION_MEMBERS,
     ORGANIZATION_SEATS,
+    ORGANIZATION_ACCESS_LOGS,
     ORGANIZATION_PROJECTS,
     ORGANIZATION_PROJECT_DOCS,
     ORGANIZATION_PROJECT_INVITATIONS,
@@ -34,6 +35,7 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_SEATS]: [CREATE, READ, UPDATE, DELETE],
+      [ORGANIZATION_ACCESS_LOGS]: [READ],
       [ORGANIZATION_PROJECTS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_DOCS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
@@ -47,6 +49,7 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_SEATS]: [READ],
+      [ORGANIZATION_ACCESS_LOGS]: [READ],
       [ORGANIZATION_PROJECTS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_DOCS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
@@ -60,6 +63,7 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [], // No access
       [ORGANIZATION_MEMBERS]: [], // No access
       [ORGANIZATION_SEATS]: [], // No access
+      [ORGANIZATION_ACCESS_LOGS]: [], // No access
       [ORGANIZATION_PROJECTS]: [READ], // Config
       [ORGANIZATION_PROJECT_DOCS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
@@ -73,6 +77,7 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [], // No access
       [ORGANIZATION_MEMBERS]: [], // No access
       [ORGANIZATION_SEATS]: [], // No access
+      [ORGANIZATION_ACCESS_LOGS]: [], // No access
       [ORGANIZATION_PROJECTS]: [READ], // Config
       [ORGANIZATION_PROJECT_DOCS]: [READ], // Config
       [ORGANIZATION_PROJECT_INVITATIONS]: [], // Config
@@ -115,6 +120,9 @@ export default class Constants {
         [UPDATE]: { default: true, configurable: false },
         [DELETE]: { default: true, configurable: false },
       },
+      [ORGANIZATION_ACCESS_LOGS]: {
+        [READ]: { default: true, configurable: false },
+      },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: true, configurable: false },
         [READ]: { default: true, configurable: false },
@@ -182,6 +190,9 @@ export default class Constants {
         [READ]: { default: true, configurable: false },
         [UPDATE]: { default: false, configurable: false },
         [DELETE]: { default: false, configurable: false },
+      },
+      [ORGANIZATION_ACCESS_LOGS]: {
+        [READ]: { default: true, configurable: false },
       },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: true, configurable: false },
@@ -251,6 +262,9 @@ export default class Constants {
         [UPDATE]: { default: false, configurable: false },
         [DELETE]: { default: false, configurable: false },
       },
+      [ORGANIZATION_ACCESS_LOGS]: {
+        [READ]: { default: false, configurable: false },
+      },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: false, configurable: true },
         [READ]: { default: true, configurable: false },
@@ -318,6 +332,9 @@ export default class Constants {
         [READ]: { default: false, configurable: false },
         [UPDATE]: { default: false, configurable: false },
         [DELETE]: { default: false, configurable: false },
+      },
+      [ORGANIZATION_ACCESS_LOGS]: {
+        [READ]: { default: false, configurable: false },
       },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: false, configurable: false },
@@ -369,6 +386,7 @@ export default class Constants {
     ORGANIZATION_INVITATIONS,
     ORGANIZATION_MEMBERS,
     ORGANIZATION_SEATS,
+    ORGANIZATION_ACCESS_LOGS,
   ];
 
   static OrganizationProjectResources: Permissions.Resources[] = [

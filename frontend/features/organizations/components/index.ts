@@ -8,3 +8,4 @@ export { default as OrganizationsList } from "./orgs-list";
 export { default as OrganizationInfo } from "./organization-info";
 export { default as MembersManagement } from "./members-management";
 export { default as EditRoleDialog } from "./edit-role-dialog";
+export { default as AccessLogs } from "./access-logs";
