@@ -15,6 +15,7 @@ import { getPdfPageAsImage } from "../../utils";
 import { z } from "zod";
 import { Jimp } from "jimp";
 import { mistralOcr } from "../../doc-processor";
+import { CONFIG } from "../../config/constants";
 
 export const executeLLMStep: StepExecutorFunction = async ({
   step,
@@ -362,7 +363,6 @@ export const documentOcrStep: StepExecutorFunction = async ({
   if (debug) {
     console.log(`[${step.id}] Inputs:`, {
       documentDataSource: stepConfig.documentDataSource,
-
     });
   }
 
@@ -385,69 +385,53 @@ export const documentOcrStep: StepExecutorFunction = async ({
     includeImages: true,
   });
 
-      // Process results for the chunk
-      for (const [pageIndexInChunk, item] of result.pages.entries()) {
-        const absolutePageIndex = startPage + pageIndexInChunk; // Calculate absolute page index
+  let combinedMarkdown = "";
+  const combinedImages: FileData[] = [];
 
-        if (item.markdown) {
-          combinedMarkdown += item.markdown + "\n\n";
-        }
+  // Process results for the chunk
+  for (const [pageIndexInChunk, item] of result.pages.entries()) {
+    if (item.markdown) {
+      combinedMarkdown += item.markdown + "\n\n";
+    }
 
-        for (
-          let imageIndex = 0;
-          imageIndex < item.images.length;
-          imageIndex++
-        ) {
-          const image = item.images[imageIndex];
-          if (!image.imageBase64) {
-            continue;
-          }
+    for (let imageIndex = 0; imageIndex < item.images.length; imageIndex++) {
+      const image = item.images[imageIndex];
+      if (!image.imageBase64) {
+        continue;
+      }
 
-          // Extract base64 data, removing any prefix if present
-          let imageBase64 = image.imageBase64;
-          if (imageBase64.includes(",")) {
-            imageBase64 = imageBase64.split(",", 2)[1];
-          }
+      // Extract base64 data, removing any prefix if present
+      let imageBase64 = image.imageBase64;
+      if (imageBase64.includes(",")) {
+        imageBase64 = imageBase64.split(",", 2)[1];
+      }
 
-          // Use absolute page index in file name
-          const fileName = `page_${absolutePageIndex}_image_${image.id}`;
-          combinedImages.push({
-            url: imageBase64,
-            fileName: fileName,
-            mimeType: "image/jpeg", // Assuming JPEG, adjust if needed
-          });
+      // Use absolute page index in file name
+      const fileName = `page_${pageIndexInChunk}_image_${image.id}`;
+      combinedImages.push({
+        url: imageBase64,
+        fileName: fileName,
+        mimeType: "image/jpeg", // Assuming JPEG, adjust if needed
+      });
 
-          if (debug) {
-            try {
-              const imageFilePath = `./debug-images/${step.id}_${fileName}.jpeg`;
-              await Bun.write(
-                imageFilePath,
-                Buffer.from(imageBase64, "base64")
-              );
-              console.log(
-                `[${step.id}] Saved image from page ${
-                  absolutePageIndex + 1
-                }: ${imageFilePath}`
-              );
-            } catch (error) {
-              console.error(
-                `[${step.id}] Failed to save debug image ${fileName}:`,
-                error
-              );
-            }
-          }
+      if (debug) {
+        try {
+          const imageFilePath = `./debug-images/${step.id}_${fileName}.jpeg`;
+          await Bun.write(imageFilePath, Buffer.from(imageBase64, "base64"));
+          console.log(
+            `[${step.id}] Saved image from page ${
+              pageIndexInChunk + 1
+            }: ${imageFilePath}`
+          );
+        } catch (error) {
+          console.error(
+            `[${step.id}] Failed to save debug image ${fileName}:`,
+            error
+          );
         }
       }
-    } catch (error) {
-      console.error(
-        `[${step.id}] OCR failed for chunk pages ${startPage + 1}-${endPage}:`,
-        error
-      );
-      // Decide if we should continue with other chunks or throw
-      // For now, let's log and continue, potentially returning partial results
-      // Alternatively: throw new Error(`OCR failed for chunk pages ${startPage + 1}-${endPage}: ${error}`);
     }
-  } // End chunk loop
+  }
 
   if (debug) {
     console.log(
