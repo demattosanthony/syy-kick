@@ -7,6 +7,7 @@ import { CONFIG } from "./config/constants";
 import db from "./config/db";
 import myPassport from "./config/passport";
 import routes from "./api";
+import { startQueue, stopQueue } from "./doc-job-queue";
 
 async function main() {
   try {
@@ -16,6 +17,12 @@ async function main() {
   } catch (error) {
     console.error("Error occurred during database migration", error);
     process.exit(1);
+  }
+
+  // Start the document job queue
+  if (CONFIG.__prod__) {
+    console.log("Starting document job queue...");
+    startQueue();
   }
 
   const app = Express();
@@ -43,6 +50,31 @@ async function main() {
 
   app.listen(CONFIG.PORT as number, "0.0.0.0", () => {
     console.log(`Server is running on http://localhost:${CONFIG.PORT}`);
+  });
+
+  // Handle shutdown signals
+  process.on("SIGTERM", async () => {
+    console.log("SIGTERM received. Stopping queue...");
+    try {
+      await stopQueue();
+      console.log("Queue stopped successfully.");
+    } catch (error) {
+      console.error("Error during shutdown:", error);
+    } finally {
+      process.exit(0);
+    }
+  });
+
+  process.on("SIGINT", async () => {
+    console.log("SIGINT received. Stopping queue...");
+    try {
+      await stopQueue();
+      console.log("Queue stopped successfully.");
+    } catch (error) {
+      console.error("Error during shutdown:", error);
+    } finally {
+      process.exit(0);
+    }
   });
 }
 

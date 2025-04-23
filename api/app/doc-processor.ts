@@ -1,209 +1,613 @@
-import { embedMany, generateText } from "ai";
-import { CONFIG } from "./config/constants";
-import s3 from "./config/s3";
-import { Strategy } from "unstructured-client/sdk/models/shared";
-import { MODELS, smallOpenaiEmbeddingModel } from "./features/models";
-import { documentEmbeddings } from "./config/schema";
+// Node built-ins
+import os from "os";
+import path from "node:path";
+import crypto from "node:crypto";
+
+// Database and schema
 import db from "./config/db";
-import unstructured, {
-  ALLOWED_UNSTRUCTURED_EXTENSIONS,
-} from "./config/unstructured";
+import { documentEmbeddings } from "./config/schema";
+
+// AI/ML models and services
+import {
+  mistralAi,
+  MODELS,
+  smallOpenaiEmbeddingModel,
+} from "./features/models";
+import { embedMany, generateText } from "ai";
+
+// Storage
+import s3 from "./config/s3";
+
+// Text processing
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { PDFDocument } from "pdf-lib";
+
+// Types and constants
+import { OCRResponse } from "@mistralai/mistralai/models/components";
 import { encoding_for_model } from "tiktoken";
+import unstructured from "./config/unstructured";
+import { Strategy } from "unstructured-client/sdk/models/shared";
+import { ACCEPTED_DOC_PROCESSING_EXTENSIONS, CONFIG } from "./config/constants";
 
 // Define constants
 const SUPER_CHUNK_SIZE = 400_000;
+const EMBEDDING_BATCH_SIZE = 100;
+const MAX_PAGES_PER_OCR_CHUNK = 15; // Send 15 pages at a time to Mistral OCR. actual limit is 1000
+const MAX_SIZE_PER_OCR_CHUNK_MB = 50; // Max size per Mistral OCR call in MB (limit is 50MB)
+const MAX_SIZE_PER_OCR_CHUNK_BYTES = MAX_SIZE_PER_OCR_CHUNK_MB * 1024 * 1024;
 
-export async function processFile(
-  fileKey: string,
-  fileName: string,
-  mimeType: string,
-  documentId: string
-) {
+interface DocumentChunk {
+  markdown: string;
+  contextualSummary?: string;
+  metadata?: {
+    page_number?: number;
+  };
+}
+
+interface ProcessFileOptions {
+  fileKey: string;
+  fileName: string;
+  mimeType: string;
+  documentId: string;
+  debug?: boolean;
+  addContextualSummaries?: boolean;
+}
+
+type FileProcessor = (params: {
+  fileContent: ArrayBuffer;
+  fileName: string;
+  fileKey: string;
+  mimeType: string;
+  extension: string;
+  textSplitter: RecursiveCharacterTextSplitter;
+  debug: boolean;
+}) => Promise<DocumentChunk[]>;
+
+// Processor for PDF files
+const processPdf: FileProcessor = async ({
+  fileContent,
+  mimeType,
+  textSplitter,
+  debug,
+}) => {
+  let documentChunks: DocumentChunk[] = [];
+  let allOcrPages: OCRResponse["pages"] = [];
+
   try {
-    // Determine extension (fallback to empty if no '.'):
+    const result = await mistralOcr({
+      base64: Buffer.from(fileContent).toString("base64"),
+      mimeType,
+      includeImages: false, // Keep image processing separate for now
+    });
+    allOcrPages = result.pages;
+  } catch (error) {
+    throw new Error(
+      `Failed during PDF OCR processing: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  // Process each page individually to retain page numbers
+  for (const page of allOcrPages) {
+    const pageMarkdown = page.markdown || "";
+    if (pageMarkdown.trim().length === 0) {
+      continue; // Skip empty pages
+    }
+
+    // TODO: Store images and descriptions of those images associated with the page number.
+
+    const textChunks = await textSplitter.splitText(pageMarkdown.trim());
+    documentChunks.push(
+      ...textChunks.map((chunk) => ({
+        markdown: sanitizeText(chunk),
+        metadata: {
+          page_number: page.index,
+        },
+      }))
+    );
+  }
+
+  // Remove duplicates just in case splitting/image processing created identical chunks
+  // Note: This simple duplicate removal might remove legitimate duplicates from different pages.
+  // Consider a more sophisticated approach if needed, e.g., checking page number as well.
+  documentChunks = Array.from(
+    new Map(documentChunks.map((item) => [item.markdown, item])).values()
+  );
+
+  if (debug) {
+    console.log(
+      `Total document chunks after processing all PDF pages individually: ${documentChunks.length}`
+    );
+  }
+
+  return documentChunks;
+};
+
+// Processor for Image files
+const processImage: FileProcessor = async ({
+  fileContent,
+  fileName,
+  fileKey,
+  mimeType,
+  extension,
+  debug,
+}) => {
+  const base64 = Buffer.from(fileContent).toString("base64");
+  const markdown = await imageToMarkdown(base64, mimeType);
+  const imageFileKey = `${fileKey}-img-${crypto.randomUUID()}${extension}`;
+
+  // Save the original image file to S3 associated with the chunk
+  await s3.write(imageFileKey, Buffer.from(fileContent));
+
+  if (debug) {
+    console.log("(Image File) Image markdown:", markdown);
+  }
+
+  return [
+    {
+      markdown: sanitizeText(markdown),
+      imageFileKey,
+    },
+  ];
+};
+
+// Processor for Generic files (using markitdown)
+const processGeneric: FileProcessor = async ({
+  fileContent,
+  fileName,
+  textSplitter,
+  debug,
+}) => {
+  if (debug) {
+    console.log(`Processing generic file ${fileName} with markitdown`);
+  }
+  const text = await markitdown(fileContent, fileName);
+  const chunks = await textSplitter.splitText(text);
+  return chunks.map((chunk) => ({
+    markdown: sanitizeText(chunk),
+  }));
+};
+
+// Map of processors
+const fileProcessors: [(mime: string) => boolean, FileProcessor][] = [
+  [(mime) => mime === "application/pdf", processPdf],
+  [(mime) => mime.startsWith("image/"), processImage],
+  [(mime) => true, processGeneric],
+];
+
+// Function to get the appropriate processor
+function getProcessor(mimeType: string): FileProcessor {
+  for (const [predicate, processor] of fileProcessors) {
+    if (predicate(mimeType)) {
+      return processor;
+    }
+  }
+  // Should theoretically be unreachable due to the default processor
+  return processGeneric;
+}
+
+export async function processFile({
+  fileKey,
+  fileName,
+  mimeType,
+  documentId,
+  debug = false,
+  addContextualSummaries = true,
+}: ProcessFileOptions) {
+  try {
     const extension = "." + (fileName.split(".").pop()?.toLowerCase() || "");
 
-    // Now check by extension instead:
-    if (!ALLOWED_UNSTRUCTURED_EXTENSIONS.includes(extension)) {
+    if (debug) {
+      console.log("Processing file:", fileName);
+      console.log("Mime type:", mimeType);
+      console.log("Extension:", extension);
+    }
+
+    // Check if we can process the file extension
+    if (!ACCEPTED_DOC_PROCESSING_EXTENSIONS.includes(extension)) {
       console.log(`Skipping unsupported file extension: ${extension}`);
       throw new Error(`Unsupported file extension: ${extension}`);
     }
+
     // Read the file content
-    const fileContent = await s3.file(fileKey).bytes();
-
-    // Send the file to the Unstructured API for partitioning
-    console.log("Processing file:", fileName);
-
-    const response = await unstructured.general.partition({
-      partitionParameters: {
-        files: {
-          content: fileContent,
-          fileName: fileName,
-        },
-        strategy: CONFIG.__prod__ ? Strategy.HiRes : Strategy.Fast,
-        splitPdfPage: true,
-        splitPdfAllowFailed: true,
-        splitPdfConcurrencyLevel: 5,
-        maxCharacters: 2000,
-        combineUnderNChars: 500,
-        overlap: 200,
-        coordinates: true,
-        includeOrigElements: false,
-        chunkingStrategy: "by_title",
-      },
-    });
-
-    if (response.statusCode !== 200 || !response.elements) {
-      throw new Error("Failed to partition file");
-    }
-
-    console.log(
-      "Received response from Unstructured API for file:",
-      fileName,
-      "with",
-      response.elements.length
-    );
-    console.log("CSV Response elements:", response.csvElements?.length);
-    // Prepare chunks and full document text
-    const chunks = response.elements.map((e) => ({
-      ...e,
-      text: sanitizeText(e.text),
-    })) as typeof response.elements;
-    const fullDocumentText = chunks.map((c) => c.text).join("\n");
-
-    // Create token-based super chunks of the full document
-    const superChunks = createSuperChunks(fullDocumentText, SUPER_CHUNK_SIZE);
-    console.log(`Created ${superChunks.length} super chunks from the document`);
-    console.log(
-      `Token count of each super chunk: ${superChunks.map(
-        (sc) => sc.tokenCount
-      )}`
-    );
-
-    // Add context to chunks using the appropriate super chunk
-    const contextualizedChunks = await addContextToChunks(superChunks, chunks);
-    console.log(
-      `Finished contextualizing ${contextualizedChunks.length} chunks`
-    );
-
-    // Generate embeddings in batches
-    const values = contextualizedChunks.map((c) => c.text);
-    console.log("Embedding contextualized values:", values);
-    const batchSize = 100;
-    let allEmbeddings = [];
-
-    for (let i = 0; i < values.length; i += batchSize) {
-      const batch = values.slice(i, i + batchSize);
-      const { embeddings } = await embedMany({
-        model: smallOpenaiEmbeddingModel,
-        values: batch,
-      });
-      allEmbeddings.push(...embeddings);
-    }
-
-    if (contextualizedChunks.length !== allEmbeddings.length) {
+    let fileContent: ArrayBuffer;
+    try {
+      fileContent = await s3.file(fileKey).arrayBuffer();
+    } catch (error) {
       throw new Error(
-        `Mismatch between chunks (${contextualizedChunks.length}) and embeddings (${allEmbeddings.length})`
+        `Failed to read file from S3: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
     }
 
-    console.log(
-      "Generated embeddings for all chunks, about to insert into database"
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1024,
+      chunkOverlap: 20,
+    });
+
+    let documentChunks: DocumentChunk[] = [];
+
+    // Process file content using the appropriate processor
+    try {
+      const processor = getProcessor(mimeType);
+      documentChunks = await processor({
+        fileContent,
+        fileName,
+        fileKey,
+        mimeType,
+        extension,
+        textSplitter,
+        debug,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to process file content using ${mimeType} processor: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+
+    if (debug) {
+      console.log("Initial document chunks count:", documentChunks.length);
+    }
+
+    if (documentChunks.length === 0) {
+      throw new Error("No document chunks were generated from the file");
+    }
+
+    const superChunks = createSuperChunks(
+      documentChunks.map((chunk) => chunk.markdown).join("\n\n"),
+      SUPER_CHUNK_SIZE
     );
 
-    // Insert into database if there are chunks
-    if (contextualizedChunks.length > 0) {
-      await db.insert(documentEmbeddings).values(
-        contextualizedChunks.map((chunk, i) => ({
-          documentId,
-          text: chunk.text,
-          embedding: allEmbeddings[i],
-          metadata:
-            "metadata" in chunk && chunk.metadata ? chunk.metadata : null,
-        }))
+    if (debug) {
+      console.log("Number of super chunks:", superChunks.length);
+    }
+
+    let contextualizedChunks: DocumentChunk[] = [];
+
+    if (addContextualSummaries) {
+      try {
+        contextualizedChunks = await addContextToChunks(
+          superChunks,
+          documentChunks
+        );
+      } catch (error) {
+        console.warn(
+          `Failed to add context to chunks, proceeding without contextual summaries: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        // Fallback: Use original chunks without context
+        contextualizedChunks = documentChunks.map((chunk) => ({
+          ...chunk,
+          contextualSummary: undefined,
+        }));
+      }
+    } else {
+      // If not adding context, use the original chunks directly
+      contextualizedChunks = documentChunks.map((chunk) => ({
+        ...chunk,
+        contextualSummary: undefined,
+      }));
+      if (debug) {
+        console.log(
+          "Skipping contextual summary generation as per configuration."
+        );
+      }
+    }
+
+    if (debug) {
+      console.log("Contextualized chunks:", contextualizedChunks);
+    }
+
+    // Generate embeddings for the chunk (+ contextual summary if available)
+    // Do this in batches because of API rate limits
+    const values = contextualizedChunks.map(
+      (c) =>
+        c.markdown + (c.contextualSummary ? "\n\n" + c.contextualSummary : "")
+    );
+    let allEmbeddings = [];
+
+    try {
+      // Generate all embeddings in batches
+      for (let i = 0; i < values.length; i += EMBEDDING_BATCH_SIZE) {
+        const batchValues = values.slice(i, i + EMBEDDING_BATCH_SIZE);
+        const { embeddings } = await embedMany({
+          model: smallOpenaiEmbeddingModel,
+          values: batchValues,
+        });
+
+        // Check if the embedding service returned the expected number for the batch
+        if (embeddings.length !== batchValues.length) {
+          throw new Error(
+            `Embedding service returned ${embeddings.length} embeddings for a batch of size ${batchValues.length}`
+          );
+        }
+        allEmbeddings.push(...embeddings);
+      }
+
+      // Final check after generating all embeddings
+      if (contextualizedChunks.length !== allEmbeddings.length) {
+        throw new Error(
+          `Mismatch between total chunks (${contextualizedChunks.length}) and total generated embeddings (${allEmbeddings.length})`
+        );
+      }
+
+      // Insert all embeddings into the database in one go
+      if (contextualizedChunks.length > 0) {
+        try {
+          await db.insert(documentEmbeddings).values(
+            contextualizedChunks.map((chunk, index) => ({
+              documentId,
+              text: chunk.markdown,
+              contextualSummary: chunk.contextualSummary,
+              embedding: allEmbeddings[index],
+              metadata: chunk.metadata,
+            }))
+          );
+        } catch (error) {
+          throw new Error(
+            `Failed to insert embeddings into database: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+        }
+      }
+    } catch (error) {
+      // Catch errors from embedding generation OR insertion
+      throw new Error(
+        `Failed to generate or store embeddings: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
     }
 
     console.log("Successfully processed the file:", fileName);
+
+    return contextualizedChunks;
   } catch (error) {
-    console.error(`Failed to process the file: ${error}`);
-    throw new Error(`Failed to process the file: ${error}`);
+    console.error(`Error processing file ${fileName}:`, error);
+    throw error; // Re-throw to be handled by the job queue
   }
 }
 
-// Helper function to generate context for a chunk using GPT
-async function addContextToChunks(
-  superChunks: {
-    text: string;
-    tokenCount: number;
-    startChar: number;
-    endChar: number;
-  }[],
-  chunks: {
-    [k: string]: any;
-  }[]
-) {
-  const batchSize = 5; // Process 5 chunks at a time to stay under API limits
-  const delayMs = 200; // 200ms delay between batches to avoid rate limiting
-  const contextualizedChunks = [];
+interface MistralOcrInput {
+  base64: string;
+  mimeType: string;
+  includeImages?: boolean;
+}
 
-  for (let i = 0; i < chunks.length; i += batchSize) {
-    console.log(`Processing batch starting at index ${i}`);
-    const batch = chunks.slice(i, i + batchSize);
+/**
+ * Process a pdf file with mistral ocr, handling chunking internally.
+ * @param input - The input parameters for OCR processing
+ */
+export async function mistralOcr({
+  base64,
+  mimeType,
+  includeImages = true,
+}: MistralOcrInput): Promise<OCRResponse> {
+  const allOcrPages: OCRResponse["pages"] = [];
 
+  // Check if it's a PDF, otherwise process directly
+  if (mimeType !== "application/pdf") {
+    // For non-PDFs, process the whole file at once
+    console.log(
+      `Processing non-PDF file (${mimeType}) with Mistral OCR directly.`
+    );
     try {
-      const batchResults = await Promise.all(
-        batch.map(async (chunk) => {
-          // Find the most appropriate super chunk for this text chunk
-          const bestSuperChunk = findBestSuperChunk(superChunks, chunk.text);
-          console.log(
-            `Found best super chunk with ${bestSuperChunk.tokenCount} tokens for chunk`
-          );
+      const result = await mistralAi.ocr.process({
+        model: "mistral-ocr-latest",
+        document: {
+          documentUrl: `data:${mimeType};base64,${base64}`,
+          type: "document_url",
+        },
+        includeImageBase64: includeImages,
+      });
 
-          const { text: context } = await generateText({
-            model: MODELS["gpt-4.1-mini"].model,
-            messages: [
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: `<document>\n${bestSuperChunk.text}\n</document>`,
-                  },
-                  {
-                    type: "text",
-                    text: `This document is related to HVAC, building engineering, and architecture.\n\n<chunk>\n${chunk.text}\n</chunk>\n\nProvide a short context to situate this chunk within the document. Consider aspects such as:
-- Equipment specifications, operation procedures, or maintenance instructions
-- Building systems and infrastructure
-- Facility spaces, assets, or components
-- Installation, testing, or commissioning details
-- Safety procedures or compliance requirements
-- Warranty or maintenance schedules
-Answer only with the short context and nothing else.`,
-                  },
-                ],
-              },
-            ],
-          });
-          return { ...chunk, text: `${chunk.text}\n\n${context}` };
-        })
-      );
-      contextualizedChunks.push(...batchResults);
+      if (!result) {
+        throw new Error("OCR processing returned no result for non-PDF");
+      }
+      return result;
     } catch (error) {
-      console.warn(
-        `Failed to add context to batch starting at index ${i}, using original chunks:`,
-        error
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Mistral OCR processing failed for non-PDF: ${errorMessage}`
       );
-      contextualizedChunks.push(...batch); // Fallback to original chunks for this batch
-    }
-
-    // Add delay between batches (skip delay on the last batch)
-    if (i + batchSize < chunks.length) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 
-  return contextualizedChunks;
+  // Handle PDF chunking
+  console.log("Processing PDF with chunking inside mistralOcr.");
+  let firstChunkResult: OCRResponse | null = null; // To store metadata from the first successful chunk
+
+  try {
+    const pdfDoc = await PDFDocument.load(base64);
+    const totalPages = pdfDoc.getPageCount();
+    console.log(`PDF has ${totalPages} pages. Chunking for Mistral OCR...`);
+
+    // Process pages in chunks
+    for (let i = 0; i < totalPages; i += MAX_PAGES_PER_OCR_CHUNK) {
+      const startPage = i;
+      const endPage = Math.min(i + MAX_PAGES_PER_OCR_CHUNK, totalPages);
+      const numPagesInChunk = endPage - startPage;
+
+      console.log(
+        `Processing chunk: pages ${startPage + 1} to ${endPage} (${numPagesInChunk} pages)`
+      );
+
+      // Create a new PDF document for the chunk
+      const chunkPdfDoc = await PDFDocument.create();
+      const copiedPages = await chunkPdfDoc.copyPages(
+        pdfDoc,
+        Array.from({ length: numPagesInChunk }, (_, k) => startPage + k)
+      );
+      copiedPages.forEach((page) => chunkPdfDoc.addPage(page));
+
+      const chunkPdfBytes = await chunkPdfDoc.save();
+
+      // Check if chunk size exceeds limit
+      if (chunkPdfBytes.byteLength > MAX_SIZE_PER_OCR_CHUNK_BYTES) {
+        console.warn(
+          `PDF chunk (pages ${startPage + 1}-${endPage}) exceeds size limit (${MAX_SIZE_PER_OCR_CHUNK_MB}MB). Size: ${(
+            chunkPdfBytes.byteLength /
+            1024 /
+            1024
+          ).toFixed(2)}MB. Attempting OCR anyway.`
+        );
+        // Or potentially throw an error:
+        // throw new Error(`PDF chunk (pages ${startPage + 1}-${endPage}) exceeds size limit (${MAX_SIZE_PER_OCR_CHUNK_MB}MB)`);
+      }
+
+      const base64 = Buffer.from(chunkPdfBytes).toString("base64");
+
+      console.log(
+        `Calling Mistral OCR API for chunk (pages ${startPage + 1}-${endPage})...`
+      );
+      const result = await mistralAi.ocr.process({
+        model: "mistral-ocr-latest",
+        document: {
+          documentUrl: `data:${mimeType};base64,${base64}`,
+          type: "document_url",
+        },
+        includeImageBase64: includeImages,
+      });
+      console.log(
+        `Mistral OCR API finished for chunk (pages ${startPage + 1}-${endPage}). Found ${result.pages.length} pages in response.`
+      );
+
+      // Store the result and potentially grab metadata from the first chunk
+      if (allOcrPages.length === 0 && result.pages.length > 0) {
+        // Keep track of the first successful chunk's result for metadata
+        // This assumes OCRResponse has model and usageInfo
+        firstChunkResult = result;
+      }
+
+      // Adjust page indices relative to the original document
+      const adjustedPages = result.pages.map((page) => ({
+        ...page,
+        // startPage is 0-based, page.index is 1-based from the chunk
+        index: startPage + page.index,
+      }));
+
+      allOcrPages.push(...adjustedPages);
+
+      // Optional: Add delay between API calls if hitting rate limits
+      if (endPage < totalPages) {
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Consider making delay configurable
+      }
+    }
+
+    // Construct the final OCRResponse object
+    if (allOcrPages.length === 0) {
+      // Handle case where no pages were extracted from any chunk
+      console.warn("OCR processing yielded no pages after chunking.");
+      // Return an empty but valid OCRResponse
+      return {
+        pages: [],
+        model: firstChunkResult?.model || "mistral-ocr-latest", // Use first chunk model or default
+        usageInfo: {
+          pagesProcessed: 0,
+          docSizeBytes: 0,
+        },
+      };
+    }
+
+    const combinedResponse: OCRResponse = {
+      pages: allOcrPages,
+      // Use model and usageInfo from the first chunk that returned pages
+      model: firstChunkResult?.model || "mistral-ocr-latest", // Default if firstChunkResult is somehow null
+      usageInfo: firstChunkResult?.usageInfo || {
+        pagesProcessed: 0,
+        docSizeBytes: 0,
+      },
+    };
+
+    console.log(
+      `Combined OCR results from ${allOcrPages.length} pages across all chunks.`
+    );
+    return combinedResponse;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Mistral OCR processing failed during PDF chunking: ${errorMessage}`
+    );
+  }
+}
+
+/**
+ * Process a pdf file with microsofts Markitdown CLI tool
+ * @param fileContent - The file content as an ArrayBuffer
+ */
+export async function markitdown(
+  fileContent: ArrayBuffer,
+  fileName: string
+): Promise<string> {
+  const tempPath = path.join(os.tmpdir(), fileName);
+
+  try {
+    // Save to temp path
+    await Bun.write(tempPath, fileContent);
+
+    // Process with markitdown
+    const proc = Bun.spawn(["markitdown", tempPath]);
+    if (!proc.pid) {
+      throw new Error("Failed to spawn markitdown process");
+    }
+
+    const result = await new Response(proc.stdout).text();
+    if (!result) {
+      throw new Error("Markitdown produced no output");
+    }
+
+    return result;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Markitdown processing failed: ${errorMessage}`);
+  } finally {
+    // Clean up temp file
+    try {
+      await Bun.file(tempPath).delete();
+    } catch (error) {
+      console.warn(`Failed to delete temp file ${tempPath}:`, error);
+    }
+  }
+}
+
+/**
+ * Create a text description of an image
+ */
+async function imageToMarkdown(
+  base64: string,
+  mimeType: string
+): Promise<string> {
+  try {
+    const { text } = await generateText({
+      model: MODELS["gpt-4.1-mini"].model,
+      temperature: 0,
+      maxTokens: 1024,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "You are an advanced OCR and image analysis model. Your task is to analyze the provided image and extract ONLY the information explicitly visible within it, such as text, numbers, and structural elements like tables. Do not infer, guess, or add any information not directly present in the image. Format the extracted information strictly as markdown. If the image contains tables, represent them accurately using markdown table syntax based ONLY on the visible table structure and content. If the image depicts an object, describe only its visible components, labels, and text. Do not assess its condition or make assumptions about its function unless explicitly stated in the image. Output ONLY the markdown representation of the visible image content. Do not include any introductory phrases, explanations, or text like 'Here is the markdown representation' or 'The image contains...'. DO NOT wrap the markdown in ```markdown tags, just output the markdown. If any of the text is not visible in the image, do not include it in the output. If there is no text in the image, output a description of the image.",
+            },
+            {
+              image: base64,
+              type: "image",
+              mimeType: mimeType,
+            },
+          ],
+        },
+      ],
+    });
+    return text;
+  } catch (error) {
+    throw new Error(`Error processing image: ${error}`);
+  }
 }
 
 /**
@@ -313,6 +717,85 @@ export function findBestSuperChunk(
   return closestSuperChunk;
 }
 
+async function addContextToChunks(
+  superChunks: {
+    text: string;
+    tokenCount: number;
+    startChar: number;
+    endChar: number;
+  }[],
+  chunks: DocumentChunk[]
+) {
+  const batchSize = 5;
+  const delayMs = 200;
+  let contextualizedChunks: DocumentChunk[] = [];
+
+  for (let i = 0; i < chunks.length; i += batchSize) {
+    console.log(`Processing batch starting at index ${i}`);
+    const batch = chunks.slice(i, i + batchSize);
+
+    try {
+      const batchResults = await Promise.all(
+        batch.map(async (chunk) => {
+          const bestSuperChunk = findBestSuperChunk(
+            superChunks,
+            chunk.markdown
+          );
+          console.log(
+            `Found best super chunk with ${bestSuperChunk.tokenCount} tokens for chunk`
+          );
+
+          const { text: context } = await generateText({
+            model: MODELS["gpt-4.1-mini"].model,
+            temperature: 0,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: `<document>\n${bestSuperChunk.text}\n</document>`,
+                  },
+                  {
+                    type: "text",
+                    text: `Here is the chunk we want to situate within the whole document
+<chunk>
+${chunk.markdown}
+</chunk>
+
+Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
+`,
+                  },
+                ],
+              },
+            ],
+          });
+
+          return {
+            ...chunk,
+            contextualSummary: context,
+          };
+        })
+      );
+
+      contextualizedChunks.push(...batchResults);
+
+      // Add delay between batches (skip delay on last batch)
+      if (i + batchSize < chunks.length) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    } catch (error) {
+      console.warn(
+        `Failed to process batch starting at index ${i}, using original chunks:`,
+        error
+      );
+      contextualizedChunks.push(...batch);
+    }
+  }
+
+  return contextualizedChunks;
+}
+
 /** Sanitize text to remove unwanted characters and control codes */
 export function sanitizeText(text: string): string {
   // Remove null bytes
@@ -327,5 +810,53 @@ export function sanitizeText(text: string): string {
   // Remove any other control characters except newlines and tabs
   text = text.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]/g, "");
 
+  // Remove any markdown links
+  text = text.replace(/\[.*?\]\(.*?\)/g, "");
+
+  // Remove any markdown images
+  text = text.replace(/\!\[.*?\]\(.*?\)/g, "");
+
+  // Lowercase the text
+  text = text.toLowerCase();
+
   return text.trim();
+}
+
+// LEGACY
+/**
+ * Process a pdf file with unstructured
+ * @param fileContent - The file content as an ArrayBuffer
+ * @param fileName - The name of the file
+ */
+async function processUnstructured(
+  fileContent: ArrayBuffer,
+  fileName: string
+): Promise<DocumentChunk[]> {
+  const response = await unstructured.general.partition({
+    partitionParameters: {
+      files: {
+        content: fileContent,
+        fileName: fileName,
+      },
+      strategy: CONFIG.__prod__ ? Strategy.HiRes : Strategy.Fast,
+      splitPdfPage: true,
+      splitPdfAllowFailed: true,
+      splitPdfConcurrencyLevel: 5,
+      maxCharacters: 2000,
+      combineUnderNChars: 500,
+      overlap: 200,
+      coordinates: true,
+      includeOrigElements: false,
+      chunkingStrategy: "by_title",
+    },
+  });
+
+  const chunks = response.elements?.map((element) => ({
+    markdown: element.text || "",
+    metadata: {
+      page_number: element.metadata?.page_number,
+    },
+  }));
+
+  return chunks || [];
 }

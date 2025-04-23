@@ -12,7 +12,7 @@ import { createPerplexity } from "@ai-sdk/perplexity";
 import { mistral } from "@ai-sdk/mistral";
 import { wrapLanguageModel, extractReasoningMiddleware } from "ai";
 import { Mistral as MistralAi } from "@mistralai/mistralai";
-import { markitdownMimeTypes } from "../doc-processor-v2";
+import { ACCEPTED_DOC_PROCESSING_MIME_TYPES } from "../config/constants";
 
 const perplexity = createPerplexity({
   apiKey: process.env.PPLX_API_KEY ?? "",
@@ -45,7 +45,7 @@ export const anthropicModels = (
     "image/webp",
     "image/gif",
     "application/pdf",
-    ...markitdownMimeTypes,
+    ...ACCEPTED_DOC_PROCESSING_MIME_TYPES,
   ];
 
   return {
@@ -95,7 +95,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
     "image/webp",
     "image/gif",
     "application/pdf",
-    ...markitdownMimeTypes,
+    ...ACCEPTED_DOC_PROCESSING_MIME_TYPES,
   ];
 
   return {
@@ -189,7 +189,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
     "text/properties",
     "text/conf",
     "text/log",
-    ...markitdownMimeTypes,
+    ...ACCEPTED_DOC_PROCESSING_MIME_TYPES,
   ];
 
   return {
@@ -244,7 +244,7 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: [...markitdownMimeTypes],
+      supportedMimeTypes: [...ACCEPTED_DOC_PROCESSING_MIME_TYPES],
       description:
         "xAI's flagship model that excels at enterprise use cases like data extraction, coding, and text summarization. Possesses deep domain knowledge in finance, healthcare, law, and science.",
     },
@@ -254,7 +254,7 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: [...markitdownMimeTypes],
+      supportedMimeTypes: [...ACCEPTED_DOC_PROCESSING_MIME_TYPES],
       maxImageSize: 10 * 1024 * 1024, // 10MB
       description:
         "xAI's lightweight model that thinks before responding. Great for simple or logic-based tasks that do not require deep domain knowledge. The raw thinking traces are accessible.",
@@ -267,7 +267,7 @@ export const togetherAiModels = (
 ): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
-  const supportedMimeTypes = [...markitdownMimeTypes];
+  const supportedMimeTypes = [...ACCEPTED_DOC_PROCESSING_MIME_TYPES];
 
   return {
     "deepseek-r1": {
@@ -290,7 +290,7 @@ export const togetherAiModels = (
       supportedMimeTypes,
       provider: "deepseek",
       supportsSystemMessages: true,
-      description: `DeepSeek-V3 is an open-source large language model that builds upon LLaMA (Meta’s foundational language model) to enable versatile functionalities such as text generation, code completion, and more. The model is hosted on Together AI and running on USA servers, no data gets shared with DeepSeek or china.`,
+      description: `DeepSeek-V3 is an open-source large language model that builds upon LLaMA (Meta's foundational language model) to enable versatile functionalities such as text generation, code completion, and more. The model is hosted on Together AI and running on USA servers, no data gets shared with DeepSeek or china.`,
     },
     "llama-3.1-405B": {
       model: togetherai("meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"),
@@ -314,7 +314,7 @@ export const groqModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsToolUse: true,
       supportsStreaming: true,
       supportsSystemMessages: true,
-      supportedMimeTypes: [...markitdownMimeTypes],
+      supportedMimeTypes: [...ACCEPTED_DOC_PROCESSING_MIME_TYPES],
       provider: "meta",
       description:
         "The Meta Llama 3.3 multilingual large language model (LLM) is a pretrained and instruction tuned generative model in 70B (text in/text out). The Llama 3.3 instruction tuned text only model is optimized for multilingual dialogue use cases and outperforms many of the available open source and closed chat models on common industry benchmarks.",
