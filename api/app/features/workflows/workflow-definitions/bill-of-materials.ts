@@ -5,7 +5,7 @@ export const billOfMaterialsWorkflow: Workflow = {
   id: "controls-bom",
   title: "Project BOM Builder",
   description:
-    "This workflow generates a Bill of Materials (BOM) for a project based on engineering drawings.",
+    "This workflow consolidates all the Bill of Materials tables from the provided controls drawings into a single, comprehensive BOM spreadsheet.",
   authorizedOrganizationIds: [
     "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
     "a5b8c99d-9e1d-42a9-8473-b52471932d51",
