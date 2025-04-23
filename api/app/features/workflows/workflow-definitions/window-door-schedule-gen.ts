@@ -54,8 +54,9 @@ Instructions:
     {
       id: "extract-pdf-page",
       type: "pdf_page_extract",
-      processingMessage: "Extracting the page with mechanical schedules...",
-      processedMessage: "Mechanical schedules page extracted.",
+      processingMessage:
+        "Extracting the page with window and door schedules...",
+      processedMessage: "Window and door schedules page extracted.",
       config: {
         pdfDataSource: "workflowInput.architectural-drawings",
         pageNumbersSource: "find-schedules-page.pageNumbers",
@@ -67,7 +68,7 @@ Instructions:
       processingMessage: "Detecting schedule tables in the extracted page...",
       processedMessage: "Schedule tables detected successfully.",
       config: {
-        imageDataSource: "extract-pdf-page.imageBase64",
+        imageDataSource: "extract-pdf-page.extractedImagesBase64",
         model: "gemini-2.5-pro-preview",
         promptTemplate: `Your task is to located all window and door schedule tables and place 2d bounding boxes around them. Each schedule table bounding box should contain the table title and all the rows of the table.
 Output the bounding boxes in the [y_min, x_min, y_max, x_max] format.

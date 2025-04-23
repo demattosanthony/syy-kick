@@ -96,7 +96,7 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
     );
   }
 
-  const extractedPages: { imageBase64: string; pageNumber: number }[] = [];
+  const extractedImagesBase64: string[] = [];
 
   // Process each requested page number
   for (const pageNumber of pageNumbers) {
@@ -122,7 +122,7 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
         maxDimension: 8000, // Consider if this needs adjustment
       });
 
-      extractedPages.push({ imageBase64: pageImageBase64, pageNumber });
+      extractedImagesBase64.push(pageImageBase64);
 
       // Save debug image if enabled
       if (debug) {
@@ -158,12 +158,11 @@ export const executePdfPageExtractionStep: StepExecutorFunction = async ({
 
   if (debug) {
     console.log(
-      `[${step.id}] Successfully extracted ${extractedPages.length} pages.`
+      `[${step.id}] Successfully extracted ${extractedImagesBase64.length} pages as images.`
     );
   }
 
-  // Return the array of extracted page images and their original numbers
-  // Note: The output key 'extractedPages' should be documented or standardized
-  // if other steps depend on this specific structure.
-  return { extractedPages };
+  // Return the array of extracted page images as base64 strings.
+  // Note: The output key 'extractedImagesBase64' should be used by subsequent steps.
+  return { extractedImagesBase64 };
 };

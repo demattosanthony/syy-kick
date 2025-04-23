@@ -10,35 +10,26 @@ import { z } from "zod";
 import { Jimp } from "jimp";
 import { FileData } from "../workflows.schemas";
 
-export const executeObjectDetectionStep: StepExecutorFunction = async ({
-  step,
-  state,
-  utils,
-  debug,
-}: StepExecutorInput): Promise<StepOutputData> => {
-  const stepConfig = step.config as ObjectDetectionStepConfig["config"];
-  if (debug) {
-    console.log(`[${step.id}] Inputs:`, {
-      imageDataSource: stepConfig.imageDataSource,
-    });
-  }
-  const imageFileData = utils.getDataSourceValue(
-    state,
-    stepConfig.imageDataSource
-  ) as string | undefined;
-
-  // Validate input
-  if (!imageFileData) {
-    throw new Error(
-      `Invalid image at '${stepConfig.imageDataSource}' in step ${step.id}`
-    );
-  }
-
-  const model = MODELS[stepConfig.model].model;
-  const prompt = stepConfig.promptTemplate;
+/**
+ * Process a single image and return the bounding boxes.
+ * @param imageData - The image data to process.
+ * @param stepId - The ID of the step.
+ * @param config - The configuration for the step.
+ * @param debug - Whether to enable debug mode.
+ */
+async function processImage(
+  imageData: string,
+  stepId: string,
+  config: ObjectDetectionStepConfig["config"],
+  sourceImageIndex: number,
+  debug: boolean
+): Promise<FileData[]> {
+  const model = MODELS[config.model].model;
+  const prompt = config.promptTemplate;
 
   if (debug) {
-    console.log(`[${step.id}] Prompt:`, prompt);
+    console.log(`[${stepId}] Prompt:`, prompt);
+    console.log(`[${stepId}] Processing one image...`);
   }
 
   // Run object detection
@@ -48,7 +39,7 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
       {
         role: "user",
         content: [
-          { type: "image", image: imageFileData, mimeType: "image/png" },
+          { type: "image", image: imageData, mimeType: "image/png" },
           { type: "text", text: prompt },
         ],
       },
@@ -90,11 +81,11 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
   });
 
   if (debug) {
-    console.log(`[${step.id}] Detected Bounding Boxes:`, object.bounding_boxes);
+    console.log(`[${stepId}] Detected Bounding Boxes:`, object.bounding_boxes);
   }
 
   // Process image
-  const image = await Jimp.read(Buffer.from(imageFileData, "base64"));
+  const image = await Jimp.read(Buffer.from(imageData, "base64"));
   const { width, height } = image.bitmap;
   const boundingBoxImages: FileData[] = [];
 
@@ -108,7 +99,7 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
     // Validate coordinates
     if (x_min >= x_max || y_min >= y_max) {
       console.warn(
-        `[${step.id}] Skipping invalid box for ${label}: [${y_min}, ${x_min}, ${y_max}, ${x_max}]`
+        `[${stepId}] Skipping invalid box for ${label}: [${y_min}, ${x_min}, ${y_max}, ${x_max}]`
       );
       continue;
     }
@@ -137,16 +128,84 @@ export const executeObjectDetectionStep: StepExecutorFunction = async ({
     if (debug) {
       try {
         const safeLabel = label.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-        const imageFilePath = `./debug-images/${step.id}_box_${index}_${safeLabel}.jpeg`;
+        const imageFilePath = `./debug-images/${stepId}_img_${sourceImageIndex}_box_${index}_${safeLabel}.jpeg`;
         await Bun.write(imageFilePath, Buffer.from(boxImageBase64, "base64"));
-        console.log(`[${step.id}] Saved box ${index} to ${imageFilePath}`);
+        console.log(`[${stepId}] Saved box ${index} to ${imageFilePath}`);
       } catch (writeError) {
-        console.error(`[${step.id}] Failed to save box ${index}:`, writeError);
+        console.error(`[${stepId}] Failed to save box ${index}:`, writeError);
       }
     }
   }
+  return boundingBoxImages;
+}
+
+/**
+ * Execute the object detection step.
+ * @param input - The input for the step.
+ * @param debug - Whether to enable debug mode.
+ */
+export const executeObjectDetectionStep: StepExecutorFunction = async ({
+  step,
+  state,
+  utils,
+  debug,
+}: StepExecutorInput): Promise<StepOutputData> => {
+  const stepConfig = step.config as ObjectDetectionStepConfig["config"];
+  if (debug) {
+    console.log(`[${step.id}] Inputs:`, {
+      imageDataSource: stepConfig.imageDataSource,
+    });
+  }
+  const imageFileData = utils.getDataSourceValue(
+    state,
+    stepConfig.imageDataSource
+  ) as string | undefined | string[];
+
+  // Validate input
+  if (!imageFileData) {
+    throw new Error(
+      `Invalid image at '${stepConfig.imageDataSource}' in step ${step.id}`
+    );
+  }
+
+  const imagesToProcess = Array.isArray(imageFileData)
+    ? imageFileData
+    : [imageFileData];
+
+  let allBoundingBoxImages: FileData[] = [];
+
+  for (const [sourceIndex, singleImage] of imagesToProcess.entries()) {
+    if (typeof singleImage !== "string") {
+      console.warn(
+        `[${step.id}] Skipping non-string image data:`,
+        typeof singleImage
+      );
+      continue; // Skip if it's not a string (e.g., could be undefined in the array)
+    }
+    try {
+      const boundingBoxes = await processImage(
+        singleImage,
+        step.id,
+        stepConfig,
+        sourceIndex,
+        debug
+      );
+      allBoundingBoxImages = allBoundingBoxImages.concat(boundingBoxes);
+    } catch (error) {
+      console.error(`[${step.id}] Error processing one image:`, error);
+      // Decide if you want to throw, continue, or handle partially
+      // For now, log the error and continue with other images
+    }
+  }
+
+  if (debug) {
+    console.log(
+      `[${step.id}] Total bounding box images generated:`,
+      allBoundingBoxImages.length
+    );
+  }
 
   return {
-    screenshots: boundingBoxImages,
+    screenshots: allBoundingBoxImages,
   };
 };
