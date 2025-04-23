@@ -10,7 +10,7 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
     "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
     "a5b8c99d-9e1d-42a9-8473-b52471932d51",
     "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
-    "99b93b8d-0360-47af-bd74-0fd099f07c4e"
+    "99b93b8d-0360-47af-bd74-0fd099f07c4e",
   ],
   inputs: [
     {
@@ -39,15 +39,15 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
       },
       config: {
         modelName: "gemini-2.5-pro-preview",
-        promptTemplate: `You are an AI assistant specialized in analyzing architectural drawings. Your task is to examine a set of architectural drawings provided in a PDF format and identify the specific page that contains the window and door schedules.
+        promptTemplate: `You are an AI assistant specialized in analyzing architectural drawings. Your task is to examine a set of architectural drawings provided in a PDF format and identify the specific pages that contains the embedded window and door schedules tables.
           
 Instructions:
 1. Carefully examine each page of the provided PDF.
-2. Look for a page that contains window and door schedules. These schedules typically list details about windows and doors used in the building, such as sizes, types, and quantities.
+2. Look for pages that contains window and door schedules. These schedules typically list details about windows and doors used in the building, such as sizes, types, and quantities.
 3. When you find the page with the schedules, note the PDF page number. This should be the actual page number in the PDF file, not the sheet number that might be printed on the drawing itself.
-4. If you cannot find a page with window and door schedules, indicate that the schedules were not found.`,
+4. If you cannot find a page with window and door schedules, indicate that the schedules were not found and return an empty array for pageNumbers.`,
         outputSchema: z.object({
-          pageNumber: z.number(),
+          pageNumbers: z.array(z.number()),
         }),
       },
     },
@@ -58,7 +58,7 @@ Instructions:
       processedMessage: "Mechanical schedules page extracted.",
       config: {
         pdfDataSource: "workflowInput.architectural-drawings",
-        pageNumberSource: "find-schedules-page.pageNumber",
+        pageNumbersSource: "find-schedules-page.pageNumbers",
       },
     },
     {

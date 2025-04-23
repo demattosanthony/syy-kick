@@ -5,7 +5,17 @@ import {
   rfpEvalWorkflow,
   windowDoorScheduleGenWorkflow,
 } from "./workflow-definitions";
-import { Workflow, WorkflowSchema } from "./workflows.schemas";
+import {
+  executePdfPageExtractionStep,
+  executeObjectDetectionStep,
+  documentOcrStep,
+  executeLLMStep,
+} from "./workflow-processors";
+import {
+  StepExecutorFunction,
+  Workflow,
+  WorkflowSchema,
+} from "./workflows.schemas";
 
 const workflows: Workflow[] = [
   rfpEvalWorkflow,
@@ -57,3 +67,9 @@ export function isWorkflowAuthorized(
     return true;
   return workflow.authorizedOrganizationIds.includes(organizationId);
 }
+
+export const stepExecutorRegistry = new Map<string, StepExecutorFunction>();
+stepExecutorRegistry.set("llm", executeLLMStep);
+stepExecutorRegistry.set("pdf_page_extract", executePdfPageExtractionStep);
+stepExecutorRegistry.set("object_detection", executeObjectDetectionStep);
+stepExecutorRegistry.set("document_ocr", documentOcrStep);
