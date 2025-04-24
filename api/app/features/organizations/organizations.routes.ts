@@ -11,6 +11,9 @@ import { Permissions } from "../permissions/permissions.types";
 import { auth } from "../../middleware";
 import PermissionsMiddlewares from "../permissions/permissions.middlewares";
 
+/** Routes */
+import accessLogsRouter from "./access-logs/access-logs.routes";
+
 export default Router()
     .get("", handlers.list)
     .post("", handlers.create)
@@ -86,11 +89,4 @@ export default Router()
         handlers.getTransferablePermissions
     )
     .get("/:id/user-role", auth, handlers.getUserRole)
-    .get(
-        "/:id/access-logs",
-        PermissionsMiddlewares.organizations(
-            Permissions.Resources.ORGANIZATION_ACCESS_LOGS,
-            Permissions.Actions.READ
-        ),
-        handlers.getAccessLogs
-    );
+    .use("/:id/access-logs", accessLogsRouter);
