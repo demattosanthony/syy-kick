@@ -44,7 +44,8 @@ const KnowledgeBaseSettings = ({ kbId }: { kbId: string }) => {
   const { data: user } = useMeQuery();
   const { data: knowledgeBase } = useKnowledgeBase(kbId);
 
-  const { canDeleteOrgProjects, canReadOrgKnowledgeBaseAccessLogs } = usePermissions();
+  const { canDeleteOrgProjects, canReadOrgKnowledgeBaseAccessLogs } =
+    usePermissions();
 
   const updateKnowledgeBaseMutation = useUpdateKnowledgeBase();
   const deleteKnowledgeBaseMutation = useDeleteKnowledgeBase();
@@ -99,8 +100,6 @@ const KnowledgeBaseSettings = ({ kbId }: { kbId: string }) => {
       });
     }
   }, [knowledgeBase]);
-
-  console.log(canReadOrgKnowledgeBaseAccessLogs, '<- canReadOrgKnowledgeBaseAccessLogs');
 
   return (
     <div className="flex flex-col h-screen w-full">
@@ -165,17 +164,27 @@ const KnowledgeBaseSettings = ({ kbId }: { kbId: string }) => {
               </Card>
             </section>
 
-            {canReadOrgKnowledgeBaseAccessLogs && knowledgeBase?.organizationId && user && (
-              <AccessLogs
-                organizationId={knowledgeBase.organizationId}
-                resources={Object.entries(Permissions.Resources).filter(([_, value]) => PermissionsConstants.OrganizationKnowledgeBaseResources.includes(value) && value !== Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS)}
-                actions={Object.entries(Permissions.Actions)}
-                status={Object.entries(AccessLogStatus)}
-                type="knowledge-base"
-                knowledgeBaseId={kbId}
-                user={user}
-              />
-            )}
+            {canReadOrgKnowledgeBaseAccessLogs &&
+              knowledgeBase?.organizationId &&
+              user && (
+                <AccessLogs
+                  organizationId={knowledgeBase.organizationId}
+                  resources={Object.entries(Permissions.Resources).filter(
+                    ([_, value]) =>
+                      PermissionsConstants.OrganizationKnowledgeBaseResources.includes(
+                        value
+                      ) &&
+                      value !==
+                        Permissions.Resources
+                          .ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS
+                  )}
+                  actions={Object.entries(Permissions.Actions)}
+                  status={Object.entries(AccessLogStatus)}
+                  type="knowledge-base"
+                  knowledgeBaseId={kbId}
+                  user={user}
+                />
+              )}
 
             {/* Danger Zone Section */}
             <section className="flex items-center justify-between px-2">

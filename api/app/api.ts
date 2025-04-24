@@ -18,7 +18,6 @@ import permissionsRoutes from "./features/permissions/permissions.routes";
 import analyticsRoutes from "./features/analytics";
 import knowledgeBasesRoutes from "./features/knowledge-bases/knowledge-bases.routes";
 import sitesRoutes from "./features/sites/sites.routes";
-import { PermissionManager } from "./features/permissions/permissions.tools";
 import projectsRoutes from "./features/projects/projects.routes";
 
 export default Router()
@@ -64,9 +63,9 @@ export default Router()
 
       const logoUrl = invite.organization?.logo
         ? s3.presign(invite.organization.logo, {
-          expiresIn: 3600,
-          method: "GET",
-        })
+            expiresIn: 3600,
+            method: "GET",
+          })
         : null;
 
       return {
@@ -148,5 +147,4 @@ export default Router()
     }
   })
   .use("/permissions", auth, permissionsRoutes)
-  .use("/analytics", analyticsRoutes)
-  ;
+  .use("/analytics", analyticsRoutes);
