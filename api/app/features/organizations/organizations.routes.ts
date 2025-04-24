@@ -12,6 +12,7 @@ import { auth } from "../../middleware";
 import PermissionsMiddlewares from "../permissions/permissions.middlewares";
 
 /** Routes */
+import seatsRouter from "./seats/seats.routes";
 import membersRouter from "./members/members.routes";
 import accessLogsRouter from "./access-logs/access-logs.routes";
 
@@ -42,22 +43,7 @@ export default Router()
         ),
         handlers.delete
     )
-    .post(
-        "/:id/seats/validate",
-        PermissionsMiddlewares.organizations(
-            Permissions.Resources.ORGANIZATION_SEATS,
-            Permissions.Actions.READ
-        ),
-        handlers.validateSeatUpdate
-    )
-    .put(
-        "/:id/seats",
-        PermissionsMiddlewares.organizations(
-            Permissions.Resources.ORGANIZATION_SEATS,
-            Permissions.Actions.UPDATE
-        ),
-        handlers.updateSeats
-    )
+    .use("/:id/seats", seatsRouter)
     .get("/:id/user-role", auth, handlers.getUserRole)
     .use("/:id/access-logs", accessLogsRouter)
     .use("/:id/members", membersRouter);

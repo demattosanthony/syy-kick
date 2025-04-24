@@ -37,7 +37,7 @@ export default Router()
   )
   .get(
     "/organizations/:orgId/transferable-permissions",
-    
+    permissionsOps.getTransferablePermissions
   )
   .put(
     "/organizations/:orgId/members/:memberId",

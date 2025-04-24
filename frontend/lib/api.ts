@@ -359,22 +359,30 @@ class OrganizationApi extends ApiRequest {
     organizationId: string,
     seats: number
   ): Promise<{ success: boolean; error?: string }> {
-    return await this.request<{ success: boolean; error?: string }>(
-      `/organizations/${organizationId}/seats/validate`,
-      "POST",
-      { seats }
-    );
+    try {
+      return await this.request<{ success: boolean; error?: string }>(
+        `/organizations/${organizationId}/seats/validate`,
+        "POST",
+        { seats }
+      );
+    } catch (error) {
+      throw error;
+    }
   }
 
   async updateOrganizationSeats(
     organizationId: string,
     seats: number
-  ): Promise<{ success: boolean; error?: string }> {
-    return await this.request<{ success: boolean; error?: string }>(
-      `/organizations/${organizationId}/seats`,
-      "PUT",
-      { seats }
-    );
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/organizations/${organizationId}/seats`,
+        "PUT",
+        { seats }
+      );
+    } catch (error) {
+      throw error;
+    }
   }
 
   async getTransferablePermissions(
@@ -382,7 +390,7 @@ class OrganizationApi extends ApiRequest {
   ): Promise<TransferableRolesPermissions> {
     try {
       return await this.request<TransferableRolesPermissions>(
-        `/organizations/${organizationId}/transferable-permissions`
+        `/permissions/organizations/${organizationId}/transferable-permissions`
       );
     } catch (error) {
       throw error;
