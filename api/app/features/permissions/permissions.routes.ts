@@ -9,7 +9,7 @@ export default Router()
   })
   .post(
     "/organizations/:orgId/invitations",
-    PermissionsMiddlewares.permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_INVITATIONS,
       Permissions.Actions.CREATE
     ),
@@ -17,7 +17,7 @@ export default Router()
   )
   .get(
     "/organizations/:orgId/invitations",
-    PermissionsMiddlewares.permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_INVITATIONS,
       Permissions.Actions.READ
     ),
@@ -25,7 +25,7 @@ export default Router()
   )
   .delete(
     "/organizations/:orgId/invitations",
-    PermissionsMiddlewares.permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_INVITATIONS,
       Permissions.Actions.DELETE
     ),
@@ -33,15 +33,15 @@ export default Router()
   )
   .get(
     "/organizations/:orgId/transferable-projects",
-    PermissionsMiddlewares.permissions(
-      Permissions.Resources.ORGANIZATION_PROJECTS,
-      Permissions.Actions.READ
-    ),
     permissionsOps.getTransferableProjects
+  )
+  .get(
+    "/organizations/:orgId/transferable-permissions",
+    permissionsOps.getTransferablePermissions
   )
   .put(
     "/organizations/:orgId/members/:memberId",
-    PermissionsMiddlewares.permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_MEMBERS,
       Permissions.Actions.UPDATE
     ),
@@ -49,7 +49,7 @@ export default Router()
   )
   .delete(
     "/organizations/:orgId/members",
-    PermissionsMiddlewares.permissions(
+    PermissionsMiddlewares.organizations(
       Permissions.Resources.ORGANIZATION_MEMBERS,
       Permissions.Actions.DELETE
     ),

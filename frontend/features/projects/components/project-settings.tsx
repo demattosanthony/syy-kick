@@ -1,13 +1,13 @@
 "use client";
 
-// React and Next.js imports
+/** React and Next.js imports */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-// Third-party utility imports
+/** Third-party utility imports */
 import { toast } from "sonner";
 
-// UI component imports
+/** UI components */
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -22,23 +22,33 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// API and data fetching imports
+/** API and data fetching */
 import {
   useDeleteProjectMutation,
   useProjectQuery,
   useUpdateProjectMutation,
 } from "../api";
+import { useMeQuery } from "@/features/user/api";
 
-// Custom component imports
+/** Custom component imports */
 import ProjectFormFields, { ProjectFormData } from "./project-form-fields";
 import { usePermissions } from "@/features/permissions/context";
+import { AccessLogs } from "@/features/organizations/components";
+
+/** Utils */
+import { PermissionsConstants } from "@/features/permissions/utils";
+
+/** Types */
+import { Permissions } from "@/types/permissions";
+import { AccessLogStatus } from "@/features/organizations/types";
 
 const ProjectSettings = ({ pid }: { pid: string }) => {
   const router = useRouter();
 
+  const { data: user } = useMeQuery();
   const { data: project } = useProjectQuery(pid);
 
-  const { canDeleteOrgProjects } = usePermissions();
+  const { canDeleteOrgProjects, canReadOrgProjectAccessLogs } = usePermissions();
 
   const updateProjectMutation = useUpdateProjectMutation();
   const deleteProjectMutation = useDeleteProjectMutation();
@@ -159,6 +169,18 @@ const ProjectSettings = ({ pid }: { pid: string }) => {
                 </form>
               </Card>
             </section>
+
+            {canReadOrgProjectAccessLogs && project?.organizationId && user && (
+              <AccessLogs
+                organizationId={project.organizationId}
+                projectId={pid}
+                resources={Object.entries(Permissions.Resources).filter(([_, value]) => PermissionsConstants.OrganizationProjectResources.includes(value))}
+                actions={Object.entries(Permissions.Actions)}
+                status={Object.entries(AccessLogStatus)}
+                user={user}
+                type="project"
+              />
+            )}
 
             {/* Danger Zone Section */}
             <section className="flex items-center justify-between px-2">

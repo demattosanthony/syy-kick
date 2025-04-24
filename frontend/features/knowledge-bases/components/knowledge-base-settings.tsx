@@ -32,13 +32,20 @@ import {
 
 // Custom component imports
 import { usePermissions } from "@/features/permissions/context";
+import { useMeQuery } from "@/features/user/api";
+import { PermissionsConstants } from "@/features/permissions/utils";
+import { Permissions } from "@/types/permissions";
+import { AccessLogStatus } from "@/features/organizations/types";
+import { AccessLogs } from "@/features/organizations/components";
 
 const KnowledgeBaseSettings = ({ kbId }: { kbId: string }) => {
   const router = useRouter();
 
+  const { data: user } = useMeQuery();
   const { data: knowledgeBase } = useKnowledgeBase(kbId);
 
-  const { canDeleteOrgProjects } = usePermissions();
+  const { canDeleteOrgProjects, canReadOrgKnowledgeBaseAccessLogs } =
+    usePermissions();
 
   const updateKnowledgeBaseMutation = useUpdateKnowledgeBase();
   const deleteKnowledgeBaseMutation = useDeleteKnowledgeBase();
@@ -156,6 +163,28 @@ const KnowledgeBaseSettings = ({ kbId }: { kbId: string }) => {
                 </form>
               </Card>
             </section>
+
+            {canReadOrgKnowledgeBaseAccessLogs &&
+              knowledgeBase?.organizationId &&
+              user && (
+                <AccessLogs
+                  organizationId={knowledgeBase.organizationId}
+                  resources={Object.entries(Permissions.Resources).filter(
+                    ([_, value]) =>
+                      PermissionsConstants.OrganizationKnowledgeBaseResources.includes(
+                        value
+                      ) &&
+                      value !==
+                        Permissions.Resources
+                          .ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS
+                  )}
+                  actions={Object.entries(Permissions.Actions)}
+                  status={Object.entries(AccessLogStatus)}
+                  type="knowledge-base"
+                  knowledgeBaseId={kbId}
+                  user={user}
+                />
+              )}
 
             {/* Danger Zone Section */}
             <section className="flex items-center justify-between px-2">

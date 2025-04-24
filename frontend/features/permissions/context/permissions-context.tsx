@@ -15,6 +15,7 @@ type PermissionsContextType = {
   canCreateOrgInvitations: boolean;
   canUpdateOrgInvitations: boolean;
   canDeleteOrgInvitations: boolean;
+  canReadOrgAccessLogs: boolean;
   canCreateOrgProjects: boolean;
   canUpdateOrgProjects: boolean;
   canDeleteOrgProjects: boolean;
@@ -24,6 +25,7 @@ type PermissionsContextType = {
   canCreateOrgProjectDocs: boolean;
   canUpdateOrgProjectDocs: boolean;
   canDeleteOrgProjectDocs: boolean;
+  canReadOrgProjectAccessLogs: boolean;
   canCreateOrgKnowledgeBases: boolean;
   canReadOrgKnowledgeBases: boolean;
   canUpdateOrgKnowledgeBases: boolean;
@@ -32,6 +34,7 @@ type PermissionsContextType = {
   canReadOrgKnowledgeBaseDocs: boolean;
   canUpdateOrgKnowledgeBaseDocs: boolean;
   canDeleteOrgKnowledgeBaseDocs: boolean;
+  canReadOrgKnowledgeBaseAccessLogs: boolean;
   canCreateProjectIssues: boolean;
   canReadProjectIssues: boolean;
   canUpdateProjectIssues: boolean;
@@ -70,6 +73,7 @@ export const PermissionsProvider = ({
     canCreateOrgInvitations,
     canUpdateOrgInvitations,
     canDeleteOrgInvitations,
+    canReadOrgAccessLogs,
     canCreateOrgProjects,
     canUpdateOrgProjects,
     canDeleteOrgProjects,
@@ -79,6 +83,7 @@ export const PermissionsProvider = ({
     canCreateOrgProjectDocs,
     canUpdateOrgProjectDocs,
     canDeleteOrgProjectDocs,
+    canReadOrgProjectAccessLogs,
     canCreateOrgKnowledgeBases,
     canReadOrgKnowledgeBases,
     canUpdateOrgKnowledgeBases,
@@ -87,6 +92,7 @@ export const PermissionsProvider = ({
     canReadOrgKnowledgeBaseDocs,
     canUpdateOrgKnowledgeBaseDocs,
     canDeleteOrgKnowledgeBaseDocs,
+    canReadOrgKnowledgeBaseAccessLogs,
     canCreateProjectIssues,
     canReadProjectIssues,
     canUpdateProjectIssues,
@@ -127,11 +133,17 @@ export const PermissionsProvider = ({
         true,
         true,
         true,
+        true,
+        true,
+        true,
       ];
     }
 
     if (!userPermissions) {
       return [
+        false,
+        false,
+        false,
         false,
         false,
         false,
@@ -212,6 +224,10 @@ export const PermissionsProvider = ({
         Permissions.Actions.DELETE
       ),
       userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_ACCESS_LOGS,
+        Permissions.Actions.READ
+      ),
+      userPermissions.hasAccess(
         Permissions.Resources.ORGANIZATION_PROJECTS,
         Permissions.Actions.CREATE
       ),
@@ -248,6 +264,10 @@ export const PermissionsProvider = ({
         Permissions.Actions.DELETE
       ),
       userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_PROJECT_ACCESS_LOGS,
+        Permissions.Actions.READ
+      ),
+      userPermissions.hasAccess(
         Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
         Permissions.Actions.CREATE
       ),
@@ -278,6 +298,10 @@ export const PermissionsProvider = ({
       userPermissions.hasAccess(
         Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
         Permissions.Actions.DELETE
+      ),
+      userPermissions.hasAccess(
+        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS,
+        Permissions.Actions.READ
       ),
       userPermissions.hasAccess(
         Permissions.Resources.PROJECT_ISSUES,
@@ -312,6 +336,7 @@ export const PermissionsProvider = ({
         canCreateOrgInvitations,
         canUpdateOrgInvitations,
         canDeleteOrgInvitations,
+        canReadOrgAccessLogs,
         canCreateOrgProjects,
         canUpdateOrgProjects,
         canDeleteOrgProjects,
@@ -321,6 +346,7 @@ export const PermissionsProvider = ({
         canCreateOrgProjectDocs,
         canUpdateOrgProjectDocs,
         canDeleteOrgProjectDocs,
+        canReadOrgProjectAccessLogs,
         canCreateOrgKnowledgeBases,
         canReadOrgKnowledgeBases,
         canUpdateOrgKnowledgeBases,
@@ -329,6 +355,7 @@ export const PermissionsProvider = ({
         canReadOrgKnowledgeBaseDocs,
         canUpdateOrgKnowledgeBaseDocs,
         canDeleteOrgKnowledgeBaseDocs,
+        canReadOrgKnowledgeBaseAccessLogs,
         canCreateProjectIssues,
         canReadProjectIssues,
         canUpdateProjectIssues,
@@ -356,6 +383,7 @@ export const usePermissions = () => {
       canCreateOrgInvitations: false,
       canUpdateOrgInvitations: false,
       canDeleteOrgInvitations: false,
+      canReadOrgAccessLogs: false,
       canCreateOrgProjects: false,
       canUpdateOrgProjects: false,
       canDeleteOrgProjects: false,
@@ -365,6 +393,7 @@ export const usePermissions = () => {
       canCreateOrgProjectDocs: false,
       canUpdateOrgProjectDocs: false,
       canDeleteOrgProjectDocs: false,
+      canReadOrgProjectAccessLogs: false,
       canCreateOrgKnowledgeBases: false,
       canReadOrgKnowledgeBases: false,
       canUpdateOrgKnowledgeBases: false,
@@ -373,6 +402,7 @@ export const usePermissions = () => {
       canReadOrgKnowledgeBaseDocs: false,
       canUpdateOrgKnowledgeBaseDocs: false,
       canDeleteOrgKnowledgeBaseDocs: false,
+      canReadOrgKnowledgeBaseAccessLogs: false,
       canCreateProjectIssues: false,
       canReadProjectIssues: false,
       canUpdateProjectIssues: false,

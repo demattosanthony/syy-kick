@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Project } from "@/types/project";
 import { ProjectAddFileButton } from "@/features/projects/components";
 import { usePermissions } from "@/features/permissions/context";
-import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
+import { KnowledgeBase } from "@/features/knowledge-bases/types";
 
 interface ProjectHeaderProps {
   type: "project" | "knowledge-base";

@@ -34,27 +34,32 @@ export const membersTableTranslations = Object.freeze({
   },
 });
 
-export const editRoleTranslations: Record<string, string> = Object.freeze({
+export const resourcesTranslations: Record<string, string> = Object.freeze({
   [Permissions.Resources.ORGANIZATION]: "Organization",
   [Permissions.Resources.ORGANIZATION_INVITATIONS]: "Organization Invitations",
   [Permissions.Resources.ORGANIZATION_MEMBERS]: "Organization Members",
   [Permissions.Resources.ORGANIZATION_SEATS]: "Organization Seats",
   [Permissions.Resources.ORGANIZATION_SITES]: "Organization Sites",
+  [Permissions.Resources.ORGANIZATION_ACCESS_LOGS]: "Organization Access Logs",
   [Permissions.Resources.ORGANIZATION_PROJECTS]: "Organization Projects",
   [Permissions.Resources.ORGANIZATION_PROJECT_DOCS]:
-    "Organization Project Docs",
+    "Project Docs",
   [Permissions.Resources.ORGANIZATION_PROJECT_INVITATIONS]:
-    "Organization Project Invitations",
+    "Project Invitations",
   [Permissions.Resources.ORGANIZATION_PROJECT_MEMBERS]:
-    "Organization Project Members",
+    "Project Members",
+  [Permissions.Resources.ORGANIZATION_PROJECT_ACCESS_LOGS]:
+    "Project Access Logs",
   [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES]:
-    "Organization Knowledge Bases",
+    "Knowledge Bases",
   [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS]:
-    "Organization Knowledge Bases Docs",
+    "Knowledge Bases Docs",
+  [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]:
+    "Knowledge Bases Access Logs",
   [Permissions.Resources.PROJECT_ISSUES]: "Project Issues",
 });
 
-export const editRoleActions: Record<string, string> = Object.freeze({
+export const actionsTranslations: Record<string, string> = Object.freeze({
   [Permissions.Actions.CREATE]: "Create",
   [Permissions.Actions.READ]: "Read",
   [Permissions.Actions.UPDATE]: "Update",

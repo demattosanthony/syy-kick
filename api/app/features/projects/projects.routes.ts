@@ -5,6 +5,7 @@ import { handlers } from "./projects.handlers";
 import { handlers as documentsHandlers } from "./docs/documents.handlers";
 import documentsRoutes from "./docs/documents.routes";
 import issuesRoutes from "./issues/issues.routes";
+import accessLogsRoutes from "./access-logs/access-logs.routes";
 
 export default Router()
   .post(
@@ -40,8 +41,6 @@ export default Router()
     ),
     handlers.deleteProject
   )
-  .use("/:projectId/documents", documentsRoutes)
-  .use("/:projectId/issues", issuesRoutes)
   .get(
     "/:projectId/document",
     PermissionsMiddlewares.projects(
@@ -57,4 +56,8 @@ export default Router()
       Permissions.Actions.READ
     ),
     handlers.getProjectMembers
-  );
+  )
+  .use("/:projectId/documents", documentsRoutes)
+  .use("/:projectId/issues", issuesRoutes)
+  .use("/:projectId/access-logs", accessLogsRoutes);
+  ;

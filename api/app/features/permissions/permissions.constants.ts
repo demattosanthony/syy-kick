@@ -6,12 +6,15 @@ const {
     ORGANIZATION_INVITATIONS,
     ORGANIZATION_MEMBERS,
     ORGANIZATION_SEATS,
+    ORGANIZATION_ACCESS_LOGS,
     ORGANIZATION_PROJECTS,
     ORGANIZATION_PROJECT_DOCS,
     ORGANIZATION_PROJECT_INVITATIONS,
     ORGANIZATION_PROJECT_MEMBERS,
+    ORGANIZATION_PROJECT_ACCESS_LOGS,
     ORGANIZATION_KNOWLEDGE_BASES,
     ORGANIZATION_KNOWLEDGE_BASES_DOCS,
+    ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS,
     PROJECT_ISSUES,
   },
   Actions: { CREATE, READ, UPDATE, DELETE },
@@ -34,12 +37,15 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_SEATS]: [CREATE, READ, UPDATE, DELETE],
+      [ORGANIZATION_ACCESS_LOGS]: [READ],
       [ORGANIZATION_PROJECTS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_DOCS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
+      [ORGANIZATION_PROJECT_ACCESS_LOGS]: [READ],
       [ORGANIZATION_KNOWLEDGE_BASES]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: [CREATE, READ, UPDATE, DELETE],
+      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: [READ],
       [PROJECT_ISSUES]: [CREATE, READ, UPDATE, DELETE],
     },
     [ORGANIZATION_MANAGER]: {
@@ -47,12 +53,15 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_SEATS]: [READ],
+      [ORGANIZATION_ACCESS_LOGS]: [READ],
       [ORGANIZATION_PROJECTS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_DOCS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
-      [ORGANIZATION_KNOWLEDGE_BASES]: [CREATE, READ, UPDATE],
+      [ORGANIZATION_PROJECT_ACCESS_LOGS]: [READ],
+      [ORGANIZATION_KNOWLEDGE_BASES]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: [CREATE, READ, UPDATE, DELETE],
+      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: [READ],
       [PROJECT_ISSUES]: [CREATE, READ, UPDATE, DELETE],
     },
     [PROJECT_MANAGER]: {
@@ -60,12 +69,15 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [], // No access
       [ORGANIZATION_MEMBERS]: [], // No access
       [ORGANIZATION_SEATS]: [], // No access
+      [ORGANIZATION_ACCESS_LOGS]: [], // No access
       [ORGANIZATION_PROJECTS]: [READ], // Config
       [ORGANIZATION_PROJECT_DOCS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_INVITATIONS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_PROJECT_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
+      [ORGANIZATION_PROJECT_ACCESS_LOGS]: [READ],
       [ORGANIZATION_KNOWLEDGE_BASES]: [READ], // Config
       [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: [CREATE, READ, UPDATE, DELETE],
+      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: [], // No access
       [PROJECT_ISSUES]: [CREATE, READ, UPDATE, DELETE],
     },
     [PROJECT_MEMBER]: {
@@ -73,12 +85,15 @@ export default class Constants {
       [ORGANIZATION_INVITATIONS]: [], // No access
       [ORGANIZATION_MEMBERS]: [], // No access
       [ORGANIZATION_SEATS]: [], // No access
+      [ORGANIZATION_ACCESS_LOGS]: [], // No access
       [ORGANIZATION_PROJECTS]: [READ], // Config
       [ORGANIZATION_PROJECT_DOCS]: [READ], // Config
       [ORGANIZATION_PROJECT_INVITATIONS]: [], // Config
       [ORGANIZATION_PROJECT_MEMBERS]: [], // Config
+      [ORGANIZATION_PROJECT_ACCESS_LOGS]: [],
       [ORGANIZATION_KNOWLEDGE_BASES]: [READ], // Config
       [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: [READ], // Config
+      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: [], // No access
       [PROJECT_ISSUES]: [CREATE, READ, UPDATE, DELETE],
     },
   };
@@ -115,6 +130,9 @@ export default class Constants {
         [UPDATE]: { default: true, configurable: false },
         [DELETE]: { default: true, configurable: false },
       },
+      [ORGANIZATION_ACCESS_LOGS]: {
+        [READ]: { default: true, configurable: false },
+      },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: true, configurable: false },
         [READ]: { default: true, configurable: false },
@@ -139,6 +157,9 @@ export default class Constants {
         [UPDATE]: { default: true, configurable: false },
         [DELETE]: { default: true, configurable: false },
       },
+      [ORGANIZATION_PROJECT_ACCESS_LOGS]: {
+        [READ]: { default: true, configurable: false },
+      },
       [ORGANIZATION_KNOWLEDGE_BASES]: {
         [CREATE]: { default: true, configurable: false },
         [READ]: { default: true, configurable: false },
@@ -150,6 +171,9 @@ export default class Constants {
         [READ]: { default: true, configurable: false },
         [UPDATE]: { default: true, configurable: false },
         [DELETE]: { default: true, configurable: false },
+      },
+      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: {
+        [READ]: { default: true, configurable: false },
       },
       [PROJECT_ISSUES]: {
         [CREATE]: { default: true, configurable: false },
@@ -183,6 +207,9 @@ export default class Constants {
         [UPDATE]: { default: false, configurable: false },
         [DELETE]: { default: false, configurable: false },
       },
+      [ORGANIZATION_ACCESS_LOGS]: {
+        [READ]: { default: true, configurable: false },
+      },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: true, configurable: false },
         [READ]: { default: true, configurable: false },
@@ -207,6 +234,9 @@ export default class Constants {
         [UPDATE]: { default: true, configurable: false },
         [DELETE]: { default: true, configurable: false },
       },
+      [ORGANIZATION_PROJECT_ACCESS_LOGS]: {
+        [READ]: { default: true, configurable: false },
+      },
       [ORGANIZATION_KNOWLEDGE_BASES]: {
         [CREATE]: { default: true, configurable: false },
         [READ]: { default: true, configurable: false },
@@ -218,6 +248,9 @@ export default class Constants {
         [READ]: { default: true, configurable: false },
         [UPDATE]: { default: true, configurable: false },
         [DELETE]: { default: true, configurable: false },
+      },
+      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: {
+        [READ]: { default: true, configurable: false },
       },
       [PROJECT_ISSUES]: {
         [CREATE]: { default: true, configurable: false },
@@ -251,6 +284,9 @@ export default class Constants {
         [UPDATE]: { default: false, configurable: false },
         [DELETE]: { default: false, configurable: false },
       },
+      [ORGANIZATION_ACCESS_LOGS]: {
+        [READ]: { default: false, configurable: false },
+      },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: false, configurable: true },
         [READ]: { default: true, configurable: false },
@@ -275,6 +311,9 @@ export default class Constants {
         [UPDATE]: { default: true, configurable: false },
         [DELETE]: { default: true, configurable: false },
       },
+      [ORGANIZATION_PROJECT_ACCESS_LOGS]: {
+        [READ]: { default: true, configurable: false },
+      },
       [ORGANIZATION_KNOWLEDGE_BASES]: {
         [CREATE]: { default: false, configurable: true },
         [READ]: { default: true, configurable: false },
@@ -286,6 +325,9 @@ export default class Constants {
         [READ]: { default: true, configurable: false },
         [UPDATE]: { default: true, configurable: false },
         [DELETE]: { default: true, configurable: false },
+      },
+      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: {
+        [READ]: { default: false, configurable: false },
       },
       [PROJECT_ISSUES]: {
         [CREATE]: { default: true, configurable: false },
@@ -319,6 +361,9 @@ export default class Constants {
         [UPDATE]: { default: false, configurable: false },
         [DELETE]: { default: false, configurable: false },
       },
+      [ORGANIZATION_ACCESS_LOGS]: {
+        [READ]: { default: false, configurable: false },
+      },
       [ORGANIZATION_PROJECTS]: {
         [CREATE]: { default: false, configurable: false },
         [READ]: { default: true, configurable: false },
@@ -343,6 +388,9 @@ export default class Constants {
         [UPDATE]: { default: false, configurable: false },
         [DELETE]: { default: false, configurable: false },
       },
+      [ORGANIZATION_PROJECT_ACCESS_LOGS]: {
+        [READ]: { default: false, configurable: false },
+      },
       [ORGANIZATION_KNOWLEDGE_BASES]: {
         [CREATE]: { default: false, configurable: true },
         [READ]: { default: true, configurable: false },
@@ -354,6 +402,9 @@ export default class Constants {
         [READ]: { default: true, configurable: false },
         [UPDATE]: { default: false, configurable: true },
         [DELETE]: { default: false, configurable: true },
+      },
+      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: {
+        [READ]: { default: false, configurable: false },
       },
       [PROJECT_ISSUES]: {
         [CREATE]: { default: false, configurable: false },
@@ -369,6 +420,7 @@ export default class Constants {
     ORGANIZATION_INVITATIONS,
     ORGANIZATION_MEMBERS,
     ORGANIZATION_SEATS,
+    ORGANIZATION_ACCESS_LOGS,
   ];
 
   static OrganizationProjectResources: Permissions.Resources[] = [
@@ -376,12 +428,14 @@ export default class Constants {
     ORGANIZATION_PROJECT_DOCS,
     ORGANIZATION_PROJECT_INVITATIONS,
     ORGANIZATION_PROJECT_MEMBERS,
+    ORGANIZATION_PROJECT_ACCESS_LOGS,
     PROJECT_ISSUES,
   ];
 
   static OrganizationKnowledgeBaseResources: Permissions.Resources[] = [
     ORGANIZATION_KNOWLEDGE_BASES,
     ORGANIZATION_KNOWLEDGE_BASES_DOCS,
+    ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS
   ];
 
   static RoleHierarchy: Permissions.Roles[] = [

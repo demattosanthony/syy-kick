@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Permissions } from "../permissions/permissions.types";
 import * as handlers from "./knowledge-bases.handlers";
 import PermissionsMiddlewares from "../permissions/permissions.middlewares";
-
+import accessLogsRouter from "./access-logs/access-logs.routes";
 export default Router()
   .post(
     "/",
@@ -47,7 +47,7 @@ export default Router()
   .post(
     "/:knowledgeBaseId/documents",
     PermissionsMiddlewares.knowledgeBases(
-      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
       Permissions.Actions.CREATE
     ),
     handlers.uploadDocs
@@ -55,7 +55,7 @@ export default Router()
   .get(
     "/:knowledgeBaseId/document",
     PermissionsMiddlewares.knowledgeBases(
-      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
       Permissions.Actions.READ
     ),
     handlers.getDocument
@@ -63,7 +63,7 @@ export default Router()
   .get(
     "/:knowledgeBaseId/documents",
     PermissionsMiddlewares.knowledgeBases(
-      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
       Permissions.Actions.READ
     ),
     handlers.getDocs
@@ -71,8 +71,12 @@ export default Router()
   .delete(
     "/:knowledgeBaseId/documents",
     PermissionsMiddlewares.knowledgeBases(
-      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
+      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
       Permissions.Actions.DELETE
     ),
     handlers.deleteDocs
+  )
+  .use(
+    "/:knowledgeBaseId/access-logs",
+    accessLogsRouter
   );

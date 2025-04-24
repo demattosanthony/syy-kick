@@ -33,7 +33,6 @@ import {
   Permissions,
   TransferableRolesPermissions,
 } from "@/features/permissions/types";
-import useGetMemberQuery from "../api/members/get-member";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Popover,
@@ -55,9 +54,10 @@ import { Badge } from "@/components/ui/badge";
 import useUpdateOrgMemberRoleMutation from "@/features/permissions/api/organizations/update-org-member-role";
 import { toast } from "sonner";
 import {
-  editRoleActions,
-  editRoleTranslations,
+  actionsTranslations,
+  resourcesTranslations,
 } from "@/features/permissions/utils";
+import useGetMemberQuery from "../api/members/get-member";
 
 type EditRoleDialogProps = {
   open: boolean;
@@ -438,7 +438,7 @@ export default function EditRoleDialog({
                 <AccordionItem key={resource.id} value={resource.id}>
                   <AccordionTrigger className="text-sm font-medium">
                     {
-                      editRoleTranslations[
+                      resourcesTranslations[
                         resource.name as Permissions.Resources
                       ]
                     }
@@ -478,7 +478,7 @@ export default function EditRoleDialog({
                               }
                             >
                               {
-                                editRoleActions[
+                                actionsTranslations[
                                   action.name as Permissions.Actions
                                 ]
                               }

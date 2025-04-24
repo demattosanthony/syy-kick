@@ -3,9 +3,8 @@ import db from "../../config/db";
 import {
   organizationInvites,
   organizations,
-  permissions,
-  permissions as permissionsTable,
   memberRoles,
+  permissions,
   projects,
   roles,
   users,
@@ -88,10 +87,10 @@ export const permissionsOps = {
 
   /** ---- Insert permissions */
   insertPermissions: async (
-    permissions: Record<string, string[]>,
+    permissionsList: Record<string, string[]>,
     memberRoleId: string
   ): Promise<void> => {
-    const permissionValues = Object.entries(permissions).flatMap(
+    const permissionValues = Object.entries(permissionsList).flatMap(
       ([resourceId, actionIds]) =>
         actionIds.map((actionId) => ({
           memberRoleId,
@@ -100,7 +99,7 @@ export const permissionsOps = {
         }))
     );
 
-    await db.insert(permissionsTable).values(permissionValues);
+    await db.insert(permissions).values(permissionValues);
   },
 
   /** ---- Remove Organization permissions */
@@ -135,8 +134,8 @@ export const permissionsOps = {
       return undefined;
     }
 
-    const permissions = await db.query.permissions.findMany({
-      where: eq(permissionsTable.memberRoleId, userRole.id),
+    const permissionsList = await db.query.permissions.findMany({
+      where: eq(permissions.memberRoleId, userRole.id),
       with: {
         action: true,
         resource: true,
@@ -145,7 +144,7 @@ export const permissionsOps = {
 
     return {
       ...userRole,
-      permissions,
+      permissions: permissionsList,
       projects: [],
     };
   },
@@ -304,9 +303,9 @@ export const permissionsOps = {
       role: invitation.role,
       canUpdate: invitation.role
         ? PermissionManager.hasSuperiorRole(
-            userRole.role.name as Permissions.Roles,
-            invitation.role.name as Permissions.Roles
-          )
+          userRole.role.name as Permissions.Roles,
+          invitation.role.name as Permissions.Roles
+        )
         : false,
       createdAt: invitation.createdAt,
     }));
@@ -464,7 +463,7 @@ export const permissionsOps = {
 
     // Log inserted permissions, only get resource name and action name
     const insertedPermissions = await db.query.permissions.findMany({
-      where: eq(permissionsTable.memberRoleId, newOrgRole.id),
+      where: eq(permissions.memberRoleId, newOrgRole.id),
       with: {
         resource: true,
         action: true,
@@ -527,4 +526,21 @@ export const permissionsOps = {
 
     res.status(200).json({ message: "Member(s) deleted" });
   },
+
+  async getTransferablePermissions(req: Request, res: Response) {
+    const user = req.dbUser;
+    const orgId = req.params.orgId;
+
+    if (!user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const permissions = await PermissionManager.getUserTransferableRoles(
+      user.id,
+      Permissions.Level.ORGANIZATION,
+      orgId
+    );
+    res.json(permissions);
+  }
 };

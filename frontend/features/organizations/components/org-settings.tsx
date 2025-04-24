@@ -29,6 +29,9 @@ import OrganizationInfo from "./organization-info";
 import OrgManageSeats from "./org-manage-seats";
 import MembersManagement from "./members-management";
 import { usePermissions } from "@/features/permissions/context";
+import AccessLogs from "./access-logs";
+import { Permissions } from "@/types/permissions";
+import { AccessLogStatus } from "../types/access-logs";
 
 const OrganizationSettings = ({ orgId }: { orgId: string }) => {
   const { data: user } = useMeQuery();
@@ -41,7 +44,7 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
 
   const deleteOrgMutation = useDeleteOrganizationMutation();
 
-  const { canReadOrgSeats, canDeleteOrg } = usePermissions();
+  const { canReadOrgSeats, canDeleteOrg, canReadOrgAccessLogs } = usePermissions();
 
   if (!org) return null;
 
@@ -66,6 +69,19 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
         userId={user?.id}
         availableSeats={org.seats - (members?.length ?? 1)}
       />
+
+      {/* Access Logs Section */}
+      {canReadOrgAccessLogs && user && (
+        <AccessLogs
+          organizationId={orgId}
+          resources={Object.entries(Permissions.Resources)}
+          actions={Object.entries(Permissions.Actions)}
+          status={Object.entries(AccessLogStatus)}
+          user={user}
+          type="organization"
+        />
+      )}
+
       {/* Danger Zone Section */}
       <section className="flex items-center justify-between">
         <div className="space-y-1">
