@@ -35,6 +35,10 @@ export default Router()
     "/organizations/:orgId/transferable-projects",
     permissionsOps.getTransferableProjects
   )
+  .get(
+    "/organizations/:orgId/transferable-permissions",
+    
+  )
   .put(
     "/organizations/:orgId/members/:memberId",
     PermissionsMiddlewares.organizations(

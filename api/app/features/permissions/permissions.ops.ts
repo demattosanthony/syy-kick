@@ -526,4 +526,21 @@ export const permissionsOps = {
 
     res.status(200).json({ message: "Member(s) deleted" });
   },
+
+  async getTransferablePermissions(req: Request, res: Response) {
+    const user = req.dbUser;
+    const orgId = req.params.orgId;
+
+    if (!user) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const permissions = await PermissionManager.getUserTransferableRoles(
+      user.id,
+      Permissions.Level.ORGANIZATION,
+      orgId
+    );
+    res.json(permissions);
+  }
 };

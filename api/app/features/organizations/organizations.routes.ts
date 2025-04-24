@@ -42,13 +42,6 @@ export default Router()
         ),
         handlers.delete
     )
-    .get(
-        "/:id/permissions",
-        PermissionsMiddlewares.organizations(
-            Permissions.Resources.ORGANIZATION_MEMBERS,
-            Permissions.Actions.READ
-        )
-    )
     .post(
         "/:id/seats/validate",
         PermissionsMiddlewares.organizations(
@@ -64,14 +57,6 @@ export default Router()
             Permissions.Actions.UPDATE
         ),
         handlers.updateSeats
-    )
-    .get(
-        "/:id/transferable-permissions",
-        PermissionsMiddlewares.organizations(
-            Permissions.Resources.ORGANIZATION_INVITATIONS,
-            Permissions.Actions.CREATE
-        ),
-        handlers.getTransferablePermissions
     )
     .get("/:id/user-role", auth, handlers.getUserRole)
     .use("/:id/access-logs", accessLogsRouter)
