@@ -202,40 +202,4 @@ export const handlers = {
 
         res.json(PermissionManager.formatUserRole(role));
     },
-
-    async getMemberRole(req: Request, res: Response) {
-        const userId = req.params.userId;
-        const orgId = req.params.id;
-
-        const role = await permissionsOps.getUserOrganizationRole(userId, orgId);
-
-        if (!role) {
-            res.status(404).json({ error: "User not found in organization" });
-            return;
-        }
-
-        const formattedRole = PermissionManager.formatUserRole(role);
-
-        if (
-            [
-                Permissions.Roles.PROJECT_MANAGER,
-                Permissions.Roles.PROJECT_MEMBER,
-            ].includes(role.role.name as Permissions.Roles)
-        ) {
-            const userProjects = await db.query.memberRoles.findMany({
-                where: and(
-                    eq(memberRoles.organizationId, orgId),
-                    isNotNull(memberRoles.projectId)
-                ),
-                with: { project: true },
-            });
-
-            formattedRole.projects = userProjects.map((p) => ({
-                id: p.project!.id,
-                name: p.project!.name,
-            }));
-        }
-
-        res.json(formattedRole);
-    },
 };

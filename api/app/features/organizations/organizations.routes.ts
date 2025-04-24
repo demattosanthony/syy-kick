@@ -12,6 +12,7 @@ import { auth } from "../../middleware";
 import PermissionsMiddlewares from "../permissions/permissions.middlewares";
 
 /** Routes */
+import membersRouter from "./members/members.routes";
 import accessLogsRouter from "./access-logs/access-logs.routes";
 
 export default Router()
@@ -48,22 +49,6 @@ export default Router()
             Permissions.Actions.READ
         )
     )
-    .get(
-        "/:id/members",
-        PermissionsMiddlewares.organizations(
-            Permissions.Resources.ORGANIZATION_MEMBERS,
-            Permissions.Actions.READ
-        ),
-        handlers.listMembers
-    )
-    .get(
-        "/:id/members/:userId",
-        PermissionsMiddlewares.organizations(
-            Permissions.Resources.ORGANIZATION_MEMBERS,
-            Permissions.Actions.READ
-        ),
-        handlers.getMemberRole
-    )
     .post(
         "/:id/seats/validate",
         PermissionsMiddlewares.organizations(
@@ -89,4 +74,5 @@ export default Router()
         handlers.getTransferablePermissions
     )
     .get("/:id/user-role", auth, handlers.getUserRole)
-    .use("/:id/access-logs", accessLogsRouter);
+    .use("/:id/access-logs", accessLogsRouter)
+    .use("/:id/members", membersRouter);
