@@ -74,7 +74,7 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
       {canReadOrgAccessLogs && user && (
         <AccessLogs
           organizationId={orgId}
-          resources={Object.entries(Permissions.Resources).filter(([_, value]) => value !== Permissions.Resources.ORGANIZATION_ACCESS_LOGS)}
+          resources={Object.entries(Permissions.Resources)}
           actions={Object.entries(Permissions.Actions)}
           status={Object.entries(AccessLogStatus)}
           user={user}

@@ -168,7 +168,7 @@ const KnowledgeBaseSettings = ({ kbId }: { kbId: string }) => {
             {canReadOrgKnowledgeBaseAccessLogs && knowledgeBase?.organizationId && user && (
               <AccessLogs
                 organizationId={knowledgeBase.organizationId}
-                resources={Object.entries(Permissions.Resources).filter(([_, value]) => PermissionsConstants.OrganizationKnowledgeBaseResources.includes(value))}
+                resources={Object.entries(Permissions.Resources).filter(([_, value]) => PermissionsConstants.OrganizationKnowledgeBaseResources.includes(value) && value !== Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS)}
                 actions={Object.entries(Permissions.Actions)}
                 status={Object.entries(AccessLogStatus)}
                 type="knowledge-base"

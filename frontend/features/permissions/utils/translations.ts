@@ -54,6 +54,8 @@ export const resourcesTranslations: Record<string, string> = Object.freeze({
     "Knowledge Bases",
   [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS]:
     "Knowledge Bases Docs",
+  [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]:
+    "Knowledge Bases Access Logs",
   [Permissions.Resources.PROJECT_ISSUES]: "Project Issues",
 });
 

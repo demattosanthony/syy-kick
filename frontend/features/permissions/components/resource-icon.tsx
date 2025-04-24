@@ -5,7 +5,7 @@ import { memo } from "react";
 import { Permissions } from "@/features/permissions/types/permissions";
 
 /** Icons */
-import { Book, Building, CircleDot, FileText, FolderOpen, MapPin, Shield, UserRoundPlus, Users } from "lucide-react";
+import { Book, Building, CircleDot, FileText, FolderOpen, MapPin, ScanEye, Shield, UserRoundPlus, Users } from "lucide-react";
 
 const ResourceIcon = ({ resource, size = 16 }: { resource: Permissions.Resources, size?: number }) => {
     switch (resource) {
@@ -31,6 +31,10 @@ const ResourceIcon = ({ resource, size = 16 }: { resource: Permissions.Resources
             return <FileText size={size} />
         case Permissions.Resources.PROJECT_ISSUES:
             return <CircleDot size={size} />
+        case Permissions.Resources.ORGANIZATION_ACCESS_LOGS:
+        case Permissions.Resources.ORGANIZATION_PROJECT_ACCESS_LOGS:
+        case Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS:
+            return <ScanEye size={size} />
         default:
             return <Shield size={size} />
     }
