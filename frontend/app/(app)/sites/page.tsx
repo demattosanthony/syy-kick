@@ -1,10 +1,7 @@
 "use client";
 
 import { SearchBar } from "@/features/chat/threads/components";
-import {
-  SitesList,
-  SitesMap,
-} from "@/features/sites/components";
+import { SitesList, SitesMap } from "@/features/sites/components";
 import useInfiniteGetSitesQuery from "@/features/sites/api/get-sites";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -23,7 +20,9 @@ export default function SitesPage() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const sitesWithCoords = useMemo(() => {
-    return data?.pages?.flatMap((page) => page.data).filter((site) => site.latitude && site.longitude);
+    return data?.pages
+      ?.flatMap((page) => page.data)
+      .filter((site) => site.latitude && site.longitude);
   }, [data]);
 
   return (
@@ -39,7 +38,8 @@ export default function SitesPage() {
           </div>
         </div>
         <div className="w-full lg:w-1/2 flex flex-col gap-6 py-8 px-12">
-          <SearchBar />
+          <h1 className="text-2xl font-bold">Sites</h1>
+          <SearchBar className="mb-4" />
           <SitesList onSiteHover={setHoveredSiteId} />
         </div>
       </div>

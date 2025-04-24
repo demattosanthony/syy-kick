@@ -29,7 +29,7 @@ export default function ProjectsPage() {
   const { activeWorkspace } = useWorkspace();
 
   return (
-    <main className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">
+    <div className="flex-1 max-w-3xl mx-auto p-4 pt-14 w-full">
       {site && (
         <>
           <Breadcrumb className="absolute top-4 left-4">
@@ -53,8 +53,7 @@ export default function ProjectsPage() {
           <SiteHeader site={site} />
         </>
       )}
-
-      <div className="flex items-center justify-between mb-6 mt-6">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold ">Projects</h1>
 
         <CreateProjectDialog
@@ -72,6 +71,6 @@ export default function ProjectsPage() {
         <ProjectsFilters />
       </div>
       <ProjectsList />
-    </main>
+    </div>
   );
 }
