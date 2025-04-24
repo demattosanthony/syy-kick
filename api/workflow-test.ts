@@ -13,6 +13,7 @@ import {
   tool,
   generateText,
   generateObject,
+  Tool,
 } from "ai";
 import { z } from "zod";
 import { google } from "@ai-sdk/google";
@@ -20,6 +21,30 @@ import { PDFDocument } from "pdf-lib";
 import { getPdfPageAsImage } from "./app/utils";
 import { Jimp } from "jimp";
 import { MODELS } from "./app/features/models";
+
+// Schemas
+
+type Agent = {
+  id: string;
+  name: string;
+  description: string;
+  systemPrompt: string;
+  tools: Tool[];
+};
+
+type WorkflowStep = {
+  id: string;
+  name: string;
+  description: string;
+  agent: Agent;
+};
+
+type Workflow = {
+  id: string;
+  name: string;
+  description: string;
+  steps: WorkflowStep[];
+};
 
 // ARTIFACT SERVICE
 
