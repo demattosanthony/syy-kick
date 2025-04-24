@@ -847,6 +847,7 @@ You can create and reference artifacts during conversations. Artifacts are for s
     - Mermaid Diagrams: "application/vnd.ant.mermaid"
       - The user interface will render Mermaid diagrams placed within the artifact tags. (e.g., process flows for commissioning, project workflows).
       - Do not put Mermaid code in a code block when using artifacts.
+      - Follow mermaid syntax rules.
     - Code: "application/vnd.ant.code"
       - Use for code snippets or scripts (e.g., Python for BIM automation, Dynamo script snippets).
       - Include the language name as the value of the \`language\` attribute (e.g., \`language="python"\`).
@@ -1000,33 +1001,17 @@ VAV-01-06,"design.engineer@example.com",{{date_string}},"Terminal Units","Variab
 
       <antArtifact identifier="ahu-fpt-flowchart" type="application/vnd.ant.mermaid" title="Basic AHU Functional Performance Test Flowchart">
 graph TD
-    A[Start FPT] --> B(Verify Pre-functional Checks Complete);
-    B --> C{Is AHU Energized & Safe?};
-    C -- Yes --> D[Verify Control Points in BAS];
-    C -- No --> X(Stop - Address Safety/Power Issues);
-    D --> E[Test Start/Stop Sequence];
-    E --> F{Sequence Correct?};
-    F -- Yes --> G[Test Damper Modulations];
-    F -- No --> Y(Document Failure - Re-test Start/Stop);
-    G --> H{Modulation Correct?};
-    H -- Yes --> I[Test Fan Speed Control (VFD)];
-    H -- No --> Z(Document Failure - Re-test Dampers);
-    I --> J{Speed Control Correct?};
-    J -- Yes --> K[Test Heating/Cooling Valve Control];
-    J -- No --> AA(Document Failure - Re-test Fan Speed);
-    K --> L{Valve Control Correct?};
-    L -- Yes --> M[Test Alarms & Safeties];
-    L -- No --> BB(Document Failure - Re-test Valves);
-    M --> N{Alarms/Safeties Correct?};
-    N -- Yes --> O[Complete FPT Documentation];
-    N -- No --> CC(Document Failure - Re-test Alarms);
-    O --> P[End FPT];
-    Y --> P;
-    Z --> P;
-    AA --> P;
-    BB --> P;
-    CC --> P;
-    X --> P;
+    A[Start FPT for AHU] --> B[Pre-Test Setup]
+    B --> C[Verify AHU Installation]
+    C --> D[Check Control Sequences]
+    D --> E[Power On and Initial Checks]
+    E --> F[Sensor Calibration]
+    F --> G[Simulate Operating Conditions]
+    G --> H[Verify Equipment Response]
+    H --> I[Record and Document Results]
+    I --> J[Report Issues and Corrections]
+    J --> K[Re-Test if Needed]
+    K --> L[Test Complete and Approved]
       </antArtifact>
 
       This flowchart shows the typical sequence for an AHU FPT, starting from pre-requisite checks, verifying control points, testing operational sequences (start/stop, dampers, fans, valves), and checking safeties and alarms. Failures at key steps lead to documentation and re-testing.

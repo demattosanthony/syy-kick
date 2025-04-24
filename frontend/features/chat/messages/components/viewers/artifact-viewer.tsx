@@ -101,60 +101,167 @@ export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
 };
 
 const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
-  const mermaidRef = useRef<HTMLDivElement>(null);
+  const mermaidRef = useRef<HTMLDivElement>(null); // Outer container ref
+  const diagramRef = useRef<HTMLDivElement>(null); // Inner container ref (for transform)
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const startDragPos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    if (mermaidRef.current) {
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: "default",
-        securityLevel: "loose",
-      });
+    if (!mermaidRef.current || !diagramRef.current) return;
 
-      try {
-        // Clear previous content
-        mermaidRef.current.innerHTML = "";
-        const id = `mermaid-diagram-${Date.now()}`;
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "default",
+      securityLevel: "loose",
+    });
 
-        // Create a wrapper div to show loading/error states
-        const wrapperDiv = document.createElement("div");
-        wrapperDiv.className = "relative w-full";
-        mermaidRef.current.appendChild(wrapperDiv);
+    try {
+      const id = `mermaid-diagram-${Date.now()}`;
+      const currentDiagramRef = diagramRef.current; // Capture ref value
 
-        // Create the mermaid container
-        const tempDiv = document.createElement("div");
-        tempDiv.id = id;
-        tempDiv.className = "mermaid";
-        tempDiv.textContent = content;
-        wrapperDiv.appendChild(tempDiv);
+      // Clear previous content and show loading indicator
+      currentDiagramRef.innerHTML = "<p>Loading diagram...</p>";
+      currentDiagramRef.style.cursor = "default"; // Reset cursor
 
-        // Use parse to validate the diagram first
-        mermaid
-          .parse(content)
-          .then(() => {
-            // If parsing succeeds, render the diagram
-            return mermaid.render(id, content);
-          })
-          .then(({ svg }) => {
-            if (mermaidRef.current) {
-              wrapperDiv.innerHTML = svg;
-            }
-          })
-          .catch(() => {
-            // console.error("Error rendering mermaid diagram:", error);
-          });
-      } catch {
-        // console.error("Error in mermaid setup:", error);
+      // Use a temporary invisible div for rendering
+      const tempRenderDiv = document.createElement("div");
+      tempRenderDiv.id = id;
+      tempRenderDiv.className = "mermaid";
+      tempRenderDiv.textContent = content;
+      tempRenderDiv.style.visibility = "hidden";
+      tempRenderDiv.style.position = "absolute";
+      document.body.appendChild(tempRenderDiv);
+
+      mermaid
+        .parse(content)
+        .then(() => mermaid.render(id, content))
+        .then(({ svg }) => {
+          if (currentDiagramRef) {
+            currentDiagramRef.innerHTML = svg; // Inject SVG
+            currentDiagramRef.style.cursor = "grab"; // Set cursor for panning
+            // Reset zoom/pan state when content changes
+            setScale(1);
+            setPosition({ x: 0, y: 0 });
+          }
+        })
+        .catch((error) => {
+          console.error("Error rendering mermaid diagram:", error);
+          if (currentDiagramRef) {
+            currentDiagramRef.innerHTML =
+              '<p class="text-red-500 p-4">Error rendering diagram. Check console for details.</p>';
+          }
+        })
+        .finally(() => {
+          // Clean up the temporary div regardless of success/failure
+          if (document.body.contains(tempRenderDiv)) {
+            document.body.removeChild(tempRenderDiv);
+          }
+        });
+    } catch (error) {
+      console.error("Error in mermaid setup:", error);
+      if (diagramRef.current) {
+        diagramRef.current.innerHTML =
+          '<p class="text-red-500 p-4">Error setting up diagram rendering.</p>';
       }
     }
-  }, [content]);
+  }, [content]); // Rerun effect when content changes
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const zoomFactor = 1.1;
+    // Calculate scale delta based on scroll direction
+    const scaleDelta = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
+
+    setScale((prevScale) => {
+      const newScale = Math.max(0.1, Math.min(prevScale * scaleDelta, 10)); // Min/Max scale
+
+      // TODO: Adjust position based on cursor location during zoom for better UX
+      // This requires calculating the pointer position relative to the diagram element
+      // For now, we keep the position fixed during zoom, effectively zooming towards the center.
+
+      return newScale;
+    });
+  };
+
+  // Mouse move handler (attached to window)
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging.current || !diagramRef.current) return;
+    e.preventDefault(); // Prevent text selection during drag
+    const newX = e.clientX - startDragPos.current.x;
+    const newY = e.clientY - startDragPos.current.y;
+    setPosition({ x: newX, y: newY });
+  };
+
+  // Mouse up handler (attached to window)
+  const handleMouseUp = () => {
+    if (!isDragging.current) return; // Avoid removing listeners if not dragging
+    isDragging.current = false;
+    if (diagramRef.current) {
+      diagramRef.current.style.cursor = "grab"; // Change cursor back
+    }
+    window.removeEventListener("mousemove", handleMouseMove);
+    window.removeEventListener("mouseup", handleMouseUp);
+  };
+
+  // Mouse down handler (on the diagram)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Prevent dragging on error messages or loading text
+    if (
+      !diagramRef.current ||
+      diagramRef.current.querySelector("svg") === null
+    ) {
+      return;
+    }
+    e.preventDefault(); // Prevent default image drag behavior
+    isDragging.current = true;
+    // Calculate starting position relative to the current transform
+    startDragPos.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    };
+    if (diagramRef.current) {
+      diagramRef.current.style.cursor = "grabbing"; // Change cursor
+    }
+    // Add listeners to window to capture mouse movements outside the element
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  // Cleanup window event listeners on component unmount
+  useEffect(() => {
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
 
   return (
-    <div className="w-full flex justify-center">
+    // Outer container: Handles viewport clipping and wheel events
+    <div
+      ref={mermaidRef}
+      className="w-full flex-1 h-full overflow-hidden cursor-default bg-muted/20" // Added subtle background
+      onWheel={handleWheel}
+    >
+      {/* Inner container: Handles dragging and transforms */}
       <div
-        ref={mermaidRef}
-        className="mermaid-container max-w-full overflow-auto"
-      />
+        ref={diagramRef}
+        className="w-full h-full flex justify-center items-center" // Center content initially
+        style={{
+          // Apply scale first, then translation
+          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+          transformOrigin: "center", // Zoom/scale relative to the center
+          transition: isDragging.current ? "none" : "transform 0.1s ease-out", // Faster updates during drag
+        }}
+        onMouseDown={handleMouseDown}
+        // Prevent context menu while dragging
+        onContextMenu={(e) => {
+          if (isDragging.current) e.preventDefault();
+        }}
+      >
+        {/* Mermaid SVG will be rendered here by the useEffect */}
+      </div>
     </div>
   );
 };
@@ -426,7 +533,7 @@ const ArtifactViewer: React.FC<{
 
   return (
     <motion.div
-      className="h-full"
+      className="h-full flex-1 flex"
       style={{ width: `${100 - splitPosition - 0.25}%`, minWidth: "450px" }}
       initial={{ opacity: 0, x: -50, scale: 0.95 }}
       animate={{
@@ -451,7 +558,7 @@ const ArtifactViewer: React.FC<{
             "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
           )}
         >
-          <div className="mx-auto">
+          <div className="mx-auto h-[95%]">
             <div className="flex justify-between items-center sticky top-0 z-10 px-4 py-3 bg-background/80 backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <Button
@@ -488,8 +595,11 @@ const ArtifactViewer: React.FC<{
                 </Button>
               </div>
             </div>
-            <div className="p-4 px-6 flex justify-center">
-              <div className="w-full flex justify-center">{renderViewer()}</div>
+
+            <div className="p-4 px-6 flex justify-center h-full">
+              <div className="w-full flex justify-center flex-1 h-full">
+                {renderViewer()}
+              </div>
             </div>
           </div>
         </div>
