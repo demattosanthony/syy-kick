@@ -166,7 +166,7 @@ export const ops = {
       with: { members: { columns: { id: true } } },
     });
 
-    if (org?.subscriptionStatus !== "active")
+    if (!["active", "trialing"].includes(org?.subscriptionStatus as string))
       throw new Error("inactive_subscription");
     if (org?.seats && org.members.length >= org.seats)
       throw new Error("insufficient_seats");
