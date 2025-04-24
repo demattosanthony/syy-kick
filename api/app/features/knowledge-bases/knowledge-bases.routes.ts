@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Permissions } from "../permissions/permissions.types";
 import * as handlers from "./knowledge-bases.handlers";
 import PermissionsMiddlewares from "../permissions/permissions.middlewares";
-
+import accessLogsRouter from "./access-logs/access-logs.routes";
 export default Router()
   .post(
     "/",
@@ -75,4 +75,8 @@ export default Router()
       Permissions.Actions.DELETE
     ),
     handlers.deleteDocs
+  )
+  .use(
+    "/:knowledgeBaseId/access-logs",
+    accessLogsRouter
   );

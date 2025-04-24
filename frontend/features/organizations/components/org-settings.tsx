@@ -78,6 +78,7 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
           actions={Object.entries(Permissions.Actions)}
           status={Object.entries(AccessLogStatus)}
           user={user}
+          type="organization"
         />
       )}
 

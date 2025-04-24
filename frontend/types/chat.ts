@@ -1,4 +1,4 @@
-import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
+import { KnowledgeBase } from "@/features/knowledge-bases/types";
 import { Project } from "./project";
 
 export enum MessageRole {

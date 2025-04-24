@@ -32,7 +32,6 @@ const ResourceIcon = ({ resource, size = 16 }: { resource: Permissions.Resources
         case Permissions.Resources.PROJECT_ISSUES:
             return <CircleDot size={size} />
         default:
-            console.log('Default case reached for resource:', resource);
             return <Shield size={size} />
     }
 }

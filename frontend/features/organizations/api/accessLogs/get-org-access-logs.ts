@@ -1,15 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
-import { AccessLogsResponse, Filters } from "../../types/access-logs";
+import { OrganizationAccessLogsResponse, OrganizationAccessLogFilters } from "../../types/access-logs";
 
-export const useGetAccessLogsQuery = (
+export const useGetOrgAccessLogsQuery = (
     organizationId: string,
     page: number = 1,
     limit: number = 10,
-    filters: Filters
+    filters: OrganizationAccessLogFilters,
+    skip: boolean = false
 ) => {
-    return useQuery<AccessLogsResponse>({
-        queryKey: ["accessLogs", organizationId, page, limit, filters],
+    return useQuery<OrganizationAccessLogsResponse>({
+        queryKey: ["orgAccessLogs", organizationId, page, limit, filters],
         queryFn: async () => {
             const response = await api.organizations.getAccessLogs(
                 organizationId,
@@ -19,6 +20,6 @@ export const useGetAccessLogsQuery = (
             );
             return response;
         },
-        enabled: !!organizationId,
+        enabled: !!organizationId && !skip,
     });
 };

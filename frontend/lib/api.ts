@@ -15,9 +15,9 @@ import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
 import { FileUploadMixin } from "./file-upload-mixin";
-import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
-import { SortOption } from "@/features/projects/types";
-import { AccessLogsResponse } from "@/features/organizations/types/access-logs";
+import { KnowledgeBase } from "@/features/knowledge-bases/types";
+import { ProjectAccessLogFilters, ProjectAccessLogsResponse, SortOption } from "@/features/projects/types";
+import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -46,6 +46,7 @@ import {
   PaginatedIssues,
   UpdateIssueData,
 } from "@/features/projects/issues/issues.types";
+import { KnowledgeBaseAccessLogFilters, KnowledgeBaseAccessLogsResponse } from "@/features/knowledge-bases/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -423,7 +424,7 @@ class OrganizationApi extends ApiRequest {
       action: string;
       status: string;
     }
-  ): Promise<AccessLogsResponse> {
+  ): Promise<OrganizationAccessLogsResponse> {
     const queryParams = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
@@ -788,6 +789,22 @@ class ProjectsApi extends ApiRequest {
   async getProjectMembers(projectId: string): Promise<User[]> {
     return await this.request<User[]>(`/projects/${projectId}/members`);
   }
+
+  async getAccessLogs(projectId: string, page: number, limit: number, filters: ProjectAccessLogFilters): Promise<ProjectAccessLogsResponse> {
+    try {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        ...(filters.search && { search: filters.search }),
+        ...(filters.resource !== "all" && { resource: filters.resource }),
+        ...(filters.action !== "all" && { action: filters.action }),
+        ...(filters.status !== "all" && { status: filters.status }),
+      });
+      return await this.request<ProjectAccessLogsResponse>(`/projects/${projectId}/access-logs?${queryParams.toString()}`);
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 class PermissionsApi extends ApiRequest {
@@ -1056,6 +1073,27 @@ export class KnowledgeBasesApi extends ApiRequest {
     return await this.request(
       `/knowledge-bases/${knowledgeBaseId}/document?${queryParams.toString()}`
     );
+  }
+
+  async getAccessLogs(
+    knowledgeBaseId: string,
+    page: number,
+    limit: number,
+    filters: KnowledgeBaseAccessLogFilters
+  ): Promise<KnowledgeBaseAccessLogsResponse> {
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(filters.search && { search: filters.search }),
+      ...(filters.resource !== "all" && { resource: filters.resource }),
+      ...(filters.action !== "all" && { action: filters.action }),
+      ...(filters.status !== "all" && { status: filters.status }),
+    });
+    try {
+      return await this.request(`/knowledge-bases/${knowledgeBaseId}/access-logs?${queryParams.toString()}`);
+    } catch (error) {
+      throw error;
+    }
   }
 }
 

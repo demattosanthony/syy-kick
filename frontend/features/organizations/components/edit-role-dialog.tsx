@@ -33,7 +33,6 @@ import {
   Permissions,
   TransferableRolesPermissions,
 } from "@/features/permissions/types";
-import useGetMemberQuery from "../api/members/get-member";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Popover,
@@ -58,6 +57,7 @@ import {
   actionsTranslations,
   resourcesTranslations,
 } from "@/features/permissions/utils";
+import useGetMemberQuery from "../api/members/get-member";
 
 type EditRoleDialogProps = {
   open: boolean;

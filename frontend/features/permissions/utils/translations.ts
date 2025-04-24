@@ -48,6 +48,8 @@ export const resourcesTranslations: Record<string, string> = Object.freeze({
     "Project Invitations",
   [Permissions.Resources.ORGANIZATION_PROJECT_MEMBERS]:
     "Project Members",
+  [Permissions.Resources.ORGANIZATION_PROJECT_ACCESS_LOGS]:
+    "Project Access Logs",
   [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES]:
     "Knowledge Bases",
   [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS]:

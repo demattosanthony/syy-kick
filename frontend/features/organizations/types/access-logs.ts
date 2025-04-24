@@ -9,7 +9,7 @@ interface AccessLogUser extends EntityReference {
     profilePicture: string;
 }
 
-export type AccessLog = {
+export type OrganizationAccessLog = {
     id: string;
     status: AccessLogStatus;
     createdAt: string;
@@ -22,8 +22,8 @@ export type AccessLog = {
     knowledgeBase: EntityReference | null;
 };
 
-export type AccessLogsResponse = {
-    data: AccessLog[];
+export type OrganizationAccessLogsResponse = {
+    data: OrganizationAccessLog[];
     pagination: {
         page: number;
         limit: number;
@@ -32,7 +32,7 @@ export type AccessLogsResponse = {
     };
 };
 
-export type Filters = {
+export type OrganizationAccessLogFilters = {
     search: string;
     resource: string;
     action: string;
