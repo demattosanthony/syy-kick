@@ -553,7 +553,7 @@ Tips:
     }),
     execute: async ({ query }) => {
       const { text, sources, providerMetadata } = await generateText({
-        model: MODELS["gemini-2.0-flash-online"].model,
+        model: MODELS["gemini-2.5-flash-online"].model,
         prompt: `Search the web for information on "${query}"`,
         maxTokens: 1200,
         temperature: 0,
@@ -763,9 +763,9 @@ ${
   knowledgeBase
     ? `The user is currently focused on the "${knowledgeBase.name}". This knowledge base contains specific information that the user is interested in exploring. Prioritize searching and referencing this knowledge base when responding to user queries. Don't respond to the user first without checking this knowledge base for more context`
     : knowledgeBases?.length
-    ? `Here are the following knowledge bases available for reference (use the ID when searching for information):
+      ? `Here are the following knowledge bases available for reference (use the ID when searching for information):
 ${knowledgeBasesString}`
-    : ""
+      : ""
 }
 
 Do not mention knowledge base IDs to users; refer to them by name only.
@@ -832,12 +832,9 @@ You can create and reference artifacts during conversations. Artifacts are for s
   3. Assign an identifier to the \`identifier\` attribute of the opening \`<antArtifact>\` tag. For updates, reuse the prior identifier. For new artifacts, the identifier should be descriptive and relevant to the content, using kebab-case (e.g., "ifc-property-check-script", "ahu-commissioning-checklist"). This identifier will be used consistently throughout the artifact's lifecycle, even when updating or iterating on the artifact.
   4. Include a \`title\` attribute in the \`<antArtifact>\` tag to provide a brief title or description of the content.
   5. Add a \`type\` attribute to the opening \`<antArtifact>\` tag to specify the type of content the artifact represents. Assign one of the following values to the \`type\` attribute:
-    - Code: "application/vnd.ant.code"
-      - Use for code snippets or scripts (e.g., Python for BIM automation, Dynamo script snippets).
-      - Include the language name as the value of the \`language\` attribute (e.g., \`language="python"\`).
-      - Do not use triple backticks when putting code in an artifact.
     - Documents: "text/markdown"
       - Plain text, Markdown, or other formatted text documents (e.g., commissioning report sections, checklist templates, simple specifications).
+      - Do not wrap the content in \`\`\`text or \`\`\` just format it as markdown.
     - HTML: "text/html"
       - The user interface can render single file HTML pages placed within the artifact tags. HTML, JS, and CSS should be in a single file when using the \`text/html\` type. (Less common for core engineering tasks, but potentially useful for simple dashboards or reports).
       - Images from the web are not allowed, but you can use placeholder images by specifying the width and height like so \`<img src="/api/placeholder/400/320" alt="placeholder" />\`
@@ -850,6 +847,10 @@ You can create and reference artifacts during conversations. Artifacts are for s
     - Mermaid Diagrams: "application/vnd.ant.mermaid"
       - The user interface will render Mermaid diagrams placed within the artifact tags. (e.g., process flows for commissioning, project workflows).
       - Do not put Mermaid code in a code block when using artifacts.
+    - Code: "application/vnd.ant.code"
+      - Use for code snippets or scripts (e.g., Python for BIM automation, Dynamo script snippets).
+      - Include the language name as the value of the \`language\` attribute (e.g., \`language="python"\`).
+      - Do not use triple backticks when putting code in an artifact.
   6. Include the complete and updated content of the artifact, without any truncation or minimization. Don't use "// rest of the code remains the same...".
   7. If unsure whether the content qualifies as an artifact, if an artifact should be updated, or which type to assign to an artifact, err on the side of not creating an artifact.
 </artifact_instructions>

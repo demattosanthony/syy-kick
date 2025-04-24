@@ -218,7 +218,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
         "Gemini 2.5 Flash is Google's first fully hybrid reasoning model, giving developers the ability to turn thinking on or off. The model also allows developers to set thinking budgets to find the right tradeoff between quality, cost, and latency.",
     },
     "gemini-2.5-flash-online": {
-      model: google("gemini-2.5-flash-online-04-25", {
+      model: google("gemini-2.5-flash-preview-04-17", {
         useSearchGrounding: true,
       }),
       supportsToolUse: true,
