@@ -10,9 +10,7 @@ import {
   CoreAssistantMessage,
   CoreSystemMessage,
   CoreUserMessage,
-  tool,
   generateText,
-  generateObject,
   Tool,
   GenerateTextOnStepFinishCallback,
   FinishReason,
@@ -20,14 +18,16 @@ import {
   ToolResultUnion,
   LanguageModelUsage,
 } from "ai";
-import { z } from "zod";
-import { google } from "@ai-sdk/google";
-import { PDFDocument } from "pdf-lib";
-import { getPdfPageAsImage } from "./app/utils";
-import { Jimp } from "jimp";
 import { MODELS } from "./app/features/models";
-import { ArtifactService } from "./app/features/workflows/artifact-service";
+import {
+  ArtifactService,
+  createCreateArtifactTool,
+  createListArtifactsTool,
+  createLoadArtifactTool,
+} from "./app/features/workflows/artifact-service";
 import util from "util";
+import { createPdfPageExtractionTool } from "./app/features/workflows/tools";
+import { createObjectDetectionTool } from "./app/features/workflows/tools/object-detection";
 
 // Define types
 
@@ -113,237 +113,15 @@ export type WorkflowProgressCallback = (update: WorkflowProgressUpdate) => void;
 
 const createToolSet = (toolArtifactService: ArtifactService) => {
   return {
-    "list-artifacts": tool({
-      description: "Lists the filenames of all currently available artifacts.",
-      parameters: z.object({}).describe("No parameters required."),
-      execute: async () => {
-        try {
-          const filenames = toolArtifactService.listArtifacts();
-          return { filenames: filenames };
-        } catch (error: any) {
-          console.error("Error in listArtifactsTool:", error);
-          return {
-            success: false,
-            message: `Failed to list artifacts: ${error.message}`,
-          };
-        }
-      },
-    }),
+    "list-artifacts": createListArtifactsTool(toolArtifactService),
 
-    "load-artifact": tool({
-      description:
-        "Loads an artifact from the artifact service. This tool allows you to read the contents of an artifact. For example, if you need to read the contents of a PDF file, you can use this tool to load the PDF file into your context. This also works for images and allows you to see the image in your context.",
-      parameters: z.object({
-        fileName: z.string().describe("The file name of the artifact to load."),
-      }),
-      execute: async ({ fileName }) => {
-        const artifact = toolArtifactService.loadArtifact(fileName);
-        if (!artifact) {
-          return {
-            success: false,
-            message: `Artifact '${fileName}' not found.`,
-          };
-        }
+    "load-artifact": createLoadArtifactTool(toolArtifactService),
 
-        return {
-          success: true,
-          message: `Successfully loaded artifact '${fileName}'.`,
-        };
-      },
-    }),
+    "create-artifact": createCreateArtifactTool(toolArtifactService),
 
-    "create-artifact": tool({
-      description:
-        "Creates a text-based artifact in the artifact service. This is useful for saving textual data like Markdown documents, CSV files, or plain text notes. For example, you could use this to save extracted text, generated reports, or structured data.",
-      parameters: z.object({
-        fileName: z
-          .string()
-          .describe(
-            "The name of the artifact to create (e.g., 'report.md', 'data.csv')."
-          ),
-        mimeType: z
-          .string()
-          .describe(
-            "The MIME type of the artifact (e.g., 'text/markdown', 'text/csv', 'text/plain')."
-          ),
-        data: z
-          .string()
-          .describe(
-            "The text content of the artifact. Do not base64 encode this data; provide it as a plain string."
-          ),
-      }),
-      execute: async ({ fileName, mimeType, data }) => {
-        // Convert the plain text string data to a Uint8Array for storage
-        const artifactData = new TextEncoder().encode(data);
+    "pdf-page-extraction": createPdfPageExtractionTool(toolArtifactService),
 
-        toolArtifactService.saveArtifact(fileName, {
-          data: artifactData,
-          mimeType,
-        });
-
-        return {
-          success: true,
-          message: `Successfully created artifact '${fileName}' with MIME type '${mimeType}'.`,
-        };
-      },
-    }),
-
-    "pdf-page-extraction": tool({
-      description:
-        "Extracts pages from a PDF file and converts them to images.",
-      parameters: z.object({
-        fileName: z
-          .string()
-          .describe("The name of the PDF file to extract pages from."),
-        pageNumbers: z
-          .array(z.number())
-          .describe("The page numbers to extract."),
-      }),
-      execute: async ({ fileName, pageNumbers }) => {
-        const pdfBytes = toolArtifactService.loadArtifact(fileName)?.data;
-        if (!pdfBytes) {
-          return {
-            success: false,
-            message: `PDF file '${fileName}' not found.`,
-          };
-        }
-
-        const pdfDoc = await PDFDocument.load(pdfBytes);
-        // const totalPages = pdfDoc.getPageCount();
-
-        for (const pageNumber of pageNumbers) {
-          const newPdfDoc = await PDFDocument.create();
-          const [copiedPage] = await newPdfDoc.copyPages(pdfDoc, [
-            pageNumber - 1,
-          ]);
-          newPdfDoc.addPage(copiedPage);
-
-          const newPdfBytes = await newPdfDoc.save();
-
-          const pageImageBase64 = await getPdfPageAsImage(newPdfBytes, 1, {
-            format: "png",
-            dpi: 96,
-            maxDimension: 8000,
-          });
-
-          toolArtifactService.saveArtifact(
-            `${fileName}-page-${pageNumber}.png`,
-            {
-              data: Buffer.from(pageImageBase64, "base64"),
-              mimeType: "image/png",
-            }
-          );
-        }
-
-        return {
-          success: true,
-          message: `Successfully extracted ${pageNumbers.length} pages from '${fileName}' and saved them as artifacts.`,
-        };
-      },
-    }),
-
-    "object-detection": tool({
-      description:
-        "Analyzes an image artifact (specified by `fileName`) to detect objects using an AI model. For each object found, it crops the image around the object's bounding box and saves this cropped region as a new, separate image artifact in the artifact service.",
-      parameters: z.object({
-        fileName: z
-          .string()
-          .describe("The name of the image file to detect objects in."),
-        label: z.string().describe("The label of the object to detect."),
-      }),
-      execute: async ({ fileName, label }) => {
-        const imageArtifact = toolArtifactService.loadArtifact(fileName);
-        if (!imageArtifact) {
-          return {
-            success: false,
-            message: `Image '${fileName}' not found.`,
-          };
-        }
-
-        const imagebase64 = Buffer.from(imageArtifact.data).toString("base64");
-
-        const { object } = await generateObject({
-          model: google("gemini-2.5-pro-preview-03-25"),
-          schema: z.object({
-            bounding_boxes: z.array(
-              z.object({
-                box_2d: z.array(z.number()).length(4),
-                label: z.string(),
-              })
-            ),
-          }),
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "image",
-                  image: imagebase64,
-                  mimeType: imageArtifact.mimeType,
-                },
-                {
-                  type: "text",
-                  text: `Your task is to locate all instances of "${label}" and place 2d bounding boxes around them. Each bounding box should tightly enclose the identified object.
-Output the bounding boxes in the [y_min, x_min, y_max, x_max] format.
-The top left corner is (0,0). The x axis goes left→right, the y axis top→bottom.
-Coordinate values must be normalized to 0–1000 for both width and height.
-Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "${label}" }.`,
-                },
-              ],
-            },
-          ],
-        });
-
-        console.log(object.bounding_boxes);
-
-        // Process image
-        const image = await Jimp.read(Buffer.from(imagebase64, "base64"));
-        const { width, height } = image.bitmap;
-
-        for (const [index, boundingBox] of object.bounding_boxes.entries()) {
-          const {
-            box_2d: [y_min, x_min, y_max, x_max],
-            label,
-          } = boundingBox;
-
-          // Convert normalized [0..1000] to pixel coordinates
-          const padding = 20; // 20px padding on each side
-          const x1 = Math.max(0, Math.round((x_min / 1000) * width) - padding);
-          const y1 = Math.max(0, Math.round((y_min / 1000) * height) - padding);
-          const x2 = Math.min(
-            width,
-            Math.round((x_max / 1000) * width) + padding
-          );
-          const y2 = Math.min(
-            height,
-            Math.round((y_max / 1000) * height) + padding
-          );
-
-          const croppedImage = image
-            .clone()
-            .crop({ h: y2 - y1, w: x2 - x1, x: x1, y: y1 });
-
-          const croppedImageBase64 = (
-            await croppedImage.getBuffer("image/jpeg")
-          ).toString("base64");
-
-          toolArtifactService.saveArtifact(
-            `${fileName}-${label}-${index}.jpeg`,
-            {
-              data: Buffer.from(croppedImageBase64, "base64"),
-              mimeType: "image/jpeg",
-            }
-          );
-        }
-
-        dumpArtifacts();
-
-        return {
-          success: true,
-          message: `Successfully detected ${object.bounding_boxes.length} objects in '${fileName}' and saved them as artifacts.`,
-        };
-      },
-    }),
+    "object-detection": createObjectDetectionTool(toolArtifactService),
   };
 };
 

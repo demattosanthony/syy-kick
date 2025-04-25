@@ -1,3 +1,6 @@
+import { Tool, tool } from "ai";
+import { z } from "zod";
+
 export type ArtifactData = {
   data: Uint8Array;
   mimeType: string;
@@ -57,4 +60,89 @@ export class ArtifactService {
     }
     return deleted;
   }
+}
+
+export function createListArtifactsTool(
+  artifactService: ArtifactService
+): Tool {
+  return tool({
+    description: "Lists the filenames of all currently available artifacts.",
+    parameters: z.object({}).describe("No parameters required."),
+    execute: async () => {
+      try {
+        const filenames = artifactService.listArtifacts();
+        return { filenames: filenames };
+      } catch (error: any) {
+        console.error("Error in listArtifactsTool:", error);
+        return {
+          success: false,
+          message: `Failed to list artifacts: ${error.message}`,
+        };
+      }
+    },
+  });
+}
+
+export function createLoadArtifactTool(artifactService: ArtifactService): Tool {
+  return tool({
+    description:
+      "Loads an artifact from the artifact service. This tool allows you to read the contents of an artifact. For example, if you need to read the contents of a PDF file, you can use this tool to load the PDF file into your context. This also works for images and allows you to see the image in your context.",
+    parameters: z.object({
+      fileName: z.string().describe("The file name of the artifact to load."),
+    }),
+    execute: async ({ fileName }) => {
+      const artifact = artifactService.loadArtifact(fileName);
+      if (!artifact) {
+        return {
+          success: false,
+          message: `Artifact '${fileName}' not found.`,
+        };
+      }
+
+      return {
+        success: true,
+        message: `Successfully loaded artifact '${fileName}'.`,
+      };
+    },
+  });
+}
+
+export function createCreateArtifactTool(
+  artifactService: ArtifactService
+): Tool {
+  return tool({
+    description:
+      "Creates a text-based artifact in the artifact service. This is useful for saving textual data like Markdown documents, CSV files, or plain text notes. For example, you could use this to save extracted text, generated reports, or structured data.",
+    parameters: z.object({
+      fileName: z
+        .string()
+        .describe(
+          "The name of the artifact to create (e.g., 'report.md', 'data.csv')."
+        ),
+      mimeType: z
+        .string()
+        .describe(
+          "The MIME type of the artifact (e.g., 'text/markdown', 'text/csv', 'text/plain')."
+        ),
+      data: z
+        .string()
+        .describe(
+          "The text content of the artifact. Do not base64 encode this data; provide it as a plain string."
+        ),
+    }),
+    execute: async ({ fileName, mimeType, data }) => {
+      // Convert the plain text string data to a Uint8Array for storage
+      const artifactData = new TextEncoder().encode(data);
+
+      artifactService.saveArtifact(fileName, {
+        data: artifactData,
+        mimeType,
+      });
+
+      return {
+        success: true,
+        message: `Successfully created artifact '${fileName}' with MIME type '${mimeType}'.`,
+      };
+    },
+  });
 }
