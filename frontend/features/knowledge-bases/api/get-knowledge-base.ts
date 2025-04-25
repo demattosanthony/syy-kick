@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { KnowledgeBase } from "../types/knowledge-bases";
 import api from "@/lib/api";
+import { KnowledgeBase } from "../types";
 
 export const useKnowledgeBase = (knowledgeBaseId: string) => {
   return useQuery<KnowledgeBase, Error>({

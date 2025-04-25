@@ -3,7 +3,7 @@
 import { Project } from "@/types/project";
 import { ProjectHeader } from "@/features/projects/components";
 import { ReactNode } from "react";
-import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
+import { KnowledgeBase } from "@/features/knowledge-bases/types";
 
 interface ProjectLayoutProps {
   type: "project" | "knowledge-base";

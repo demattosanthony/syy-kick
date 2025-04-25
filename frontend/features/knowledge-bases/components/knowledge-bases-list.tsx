@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getRelativeTimeString } from "@/lib/utils";
 import { BookMarked, BookOpen, MoreHorizontal, Trash } from "lucide-react";
 import { useInfiniteKnowledgeBasesQuery } from "../api/get-knowledge-bases";
-import { KnowledgeBase } from "../types/knowledge-bases";
+import { KnowledgeBase } from "../types";
 import { useDeleteKnowledgeBase } from "../api";
 import { Button } from "@/components/ui/button";
 import {

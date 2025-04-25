@@ -15,8 +15,9 @@ import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
 import { FileUploadMixin } from "./file-upload-mixin";
-import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
-import { SortOption } from "@/features/projects/types";
+import { KnowledgeBase } from "@/features/knowledge-bases/types";
+import { ProjectAccessLogFilters, ProjectAccessLogsResponse, SortOption } from "@/features/projects/types";
+import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -45,6 +46,7 @@ import {
   PaginatedIssues,
   UpdateIssueData,
 } from "@/features/projects/issues/issues.types";
+import { KnowledgeBaseAccessLogFilters, KnowledgeBaseAccessLogsResponse } from "@/features/knowledge-bases/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -82,8 +84,8 @@ async function clientFetch<T>(
     throw new ApiError(
       response.status,
       errorData?.message ||
-        errorData?.error ||
-        `Request failed with status ${response.status}`
+      errorData?.error ||
+      `Request failed with status ${response.status}`
     );
   }
 
@@ -357,22 +359,30 @@ class OrganizationApi extends ApiRequest {
     organizationId: string,
     seats: number
   ): Promise<{ success: boolean; error?: string }> {
-    return await this.request<{ success: boolean; error?: string }>(
-      `/organizations/${organizationId}/seats/validate`,
-      "POST",
-      { seats }
-    );
+    try {
+      return await this.request<{ success: boolean; error?: string }>(
+        `/organizations/${organizationId}/seats/validate`,
+        "POST",
+        { seats }
+      );
+    } catch (error) {
+      throw error;
+    }
   }
 
   async updateOrganizationSeats(
     organizationId: string,
     seats: number
-  ): Promise<{ success: boolean; error?: string }> {
-    return await this.request<{ success: boolean; error?: string }>(
-      `/organizations/${organizationId}/seats`,
-      "PUT",
-      { seats }
-    );
+  ): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/organizations/${organizationId}/seats`,
+        "PUT",
+        { seats }
+      );
+    } catch (error) {
+      throw error;
+    }
   }
 
   async getTransferablePermissions(
@@ -380,7 +390,7 @@ class OrganizationApi extends ApiRequest {
   ): Promise<TransferableRolesPermissions> {
     try {
       return await this.request<TransferableRolesPermissions>(
-        `/organizations/${organizationId}/transferable-permissions`
+        `/permissions/organizations/${organizationId}/transferable-permissions`
       );
     } catch (error) {
       throw error;
@@ -410,6 +420,31 @@ class OrganizationApi extends ApiRequest {
     } catch (error) {
       throw error;
     }
+  }
+
+  async getAccessLogs(
+    organizationId: string,
+    page: number = 1,
+    limit: number = 10,
+    filters: {
+      search: string;
+      resource: string;
+      action: string;
+      status: string;
+    }
+  ): Promise<OrganizationAccessLogsResponse> {
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(filters.search && { search: filters.search }),
+      ...(filters.resource !== "all" && { resource: filters.resource }),
+      ...(filters.action !== "all" && { action: filters.action }),
+      ...(filters.status !== "all" && { status: filters.status }),
+    });
+
+    return await this.request(
+      `/organizations/${organizationId}/access-logs?${queryParams.toString()}`
+    );
   }
 }
 
@@ -605,8 +640,7 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -660,8 +694,7 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`,
       "DELETE"
     );
@@ -677,8 +710,7 @@ class ProjectsApi extends ApiRequest {
     }
 
     return await this.request(
-      `/projects/${projectId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -764,6 +796,22 @@ class ProjectsApi extends ApiRequest {
 
   async getProjectMembers(projectId: string): Promise<User[]> {
     return await this.request<User[]>(`/projects/${projectId}/members`);
+  }
+
+  async getAccessLogs(projectId: string, page: number, limit: number, filters: ProjectAccessLogFilters): Promise<ProjectAccessLogsResponse> {
+    try {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        ...(filters.search && { search: filters.search }),
+        ...(filters.resource !== "all" && { resource: filters.resource }),
+        ...(filters.action !== "all" && { action: filters.action }),
+        ...(filters.status !== "all" && { status: filters.status }),
+      });
+      return await this.request<ProjectAccessLogsResponse>(`/projects/${projectId}/access-logs?${queryParams.toString()}`);
+    } catch (error) {
+      throw error;
+    }
   }
 }
 
@@ -982,8 +1030,7 @@ export class KnowledgeBasesApi extends ApiRequest {
     const queryParams = new URLSearchParams();
     if (path) queryParams.append("path", path);
     return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/knowledge-bases/${knowledgeBaseId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -1034,6 +1081,27 @@ export class KnowledgeBasesApi extends ApiRequest {
     return await this.request(
       `/knowledge-bases/${knowledgeBaseId}/document?${queryParams.toString()}`
     );
+  }
+
+  async getAccessLogs(
+    knowledgeBaseId: string,
+    page: number,
+    limit: number,
+    filters: KnowledgeBaseAccessLogFilters
+  ): Promise<KnowledgeBaseAccessLogsResponse> {
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      ...(filters.search && { search: filters.search }),
+      ...(filters.resource !== "all" && { resource: filters.resource }),
+      ...(filters.action !== "all" && { action: filters.action }),
+      ...(filters.status !== "all" && { status: filters.status }),
+    });
+    try {
+      return await this.request(`/knowledge-bases/${knowledgeBaseId}/access-logs?${queryParams.toString()}`);
+    } catch (error) {
+      throw error;
+    }
   }
 }
 

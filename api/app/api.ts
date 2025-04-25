@@ -1,9 +1,9 @@
-import { Router, Request, Response } from "express";
-import { organizationInvites, projects } from "./config/schema";
+import { Router } from "express";
+import { organizationInvites } from "./config/schema";
 import db from "./config/db";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import s3 from "./config/s3";
-import { getOrgIdOrUnedfined, handle } from "./utils";
+import { handle } from "./utils";
 import { auth, checkSub } from "./middleware";
 import threadsOps from "./features/threads/threads.ops";
 
@@ -12,13 +12,12 @@ import authRoutes from "./features/auth/auth.routes";
 import modelRoutes from "./features/models";
 import threadRoutes from "./features/threads/threads.routes";
 import paymentRoutes, { webhook } from "./features/payments";
-import organizationRoutes from "./features/organizations";
+import organizationRoutes from "./features/organizations/organizations.routes";
 import workflowRoutes from "./features/workflows/workflows.routes";
 import permissionsRoutes from "./features/permissions/permissions.routes";
 import analyticsRoutes from "./features/analytics";
 import knowledgeBasesRoutes from "./features/knowledge-bases/knowledge-bases.routes";
 import sitesRoutes from "./features/sites/sites.routes";
-import { PermissionManager } from "./features/permissions/permissions.tools";
 import projectsRoutes from "./features/projects/projects.routes";
 
 export default Router()
@@ -64,9 +63,9 @@ export default Router()
 
       const logoUrl = invite.organization?.logo
         ? s3.presign(invite.organization.logo, {
-          expiresIn: 3600,
-          method: "GET",
-        })
+            expiresIn: 3600,
+            method: "GET",
+          })
         : null;
 
       return {
@@ -148,5 +147,4 @@ export default Router()
     }
   })
   .use("/permissions", auth, permissionsRoutes)
-  .use("/analytics", analyticsRoutes)
-;
+  .use("/analytics", analyticsRoutes);

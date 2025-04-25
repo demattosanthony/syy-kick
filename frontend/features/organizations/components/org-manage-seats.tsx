@@ -34,26 +34,18 @@ const OrgManageSeats = ({
       setIsLoading(true);
 
       // First validate the seat update
-      const validation = await api.organizations.validateSeatUpdate(
+      await api.organizations.validateSeatUpdate(
         org.id,
         seats
       );
-      if (!validation.success) {
-        toast.error(validation.error || "Failed to update seats");
-        return;
-      }
 
       // Update the seats using mutation
-      const result = await updateSeats.mutateAsync({ orgId: org.id, seats });
-      if (!result.success) {
-        toast.error(result.error || "Failed to update seats");
-        return;
-      }
+      await updateSeats.mutateAsync({ orgId: org.id, seats });
 
       toast.success("Successfully updated seats");
-    } catch (error) {
-      console.error("Failed to update seats:", error);
-      toast.error("Failed to update seats");
+    } catch (error: any) {
+      console.error("Failed to update seats:", error?.message);
+      toast.error(error?.message || "Failed to update seats");
     } finally {
       setIsLoading(false);
     }

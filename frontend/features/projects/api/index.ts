@@ -10,3 +10,6 @@ export * from "./docs/get-doc";
 export * from "./docs/get-docs";
 export * from "./docs/upload-docs";
 export * from "./docs/delete-docs";
+
+/** Access Logs */
+export * from "./access-logs/get-project-access-logs";

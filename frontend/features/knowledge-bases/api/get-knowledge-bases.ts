@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
-import { KnowledgeBase } from "../types/knowledge-bases";
+import { KnowledgeBase } from "../types";
 
 export const useInfiniteKnowledgeBasesQuery = ({
   search,

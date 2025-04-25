@@ -8,7 +8,7 @@ import { Project } from "@/types/project";
 import { Search } from "lucide-react";
 import ProjectStatusCard from "./project-status-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { KnowledgeBase } from "@/features/knowledge-bases/types/knowledge-bases";
+import { KnowledgeBase } from "@/features/knowledge-bases/types";
 
 interface ProjectSidebarProps {
   type: "project" | "knowledge-base";
