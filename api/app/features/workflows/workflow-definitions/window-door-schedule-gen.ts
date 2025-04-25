@@ -1,146 +1,53 @@
-import { Workflow } from "../workflows.schemas";
-import { z } from "zod";
+import { Agent, Workflow } from "../workflows.types";
 
-export const windowDoorScheduleGenWorkflow: Workflow = {
-  id: "window-door-schedule-gen",
-  title: "Window & Door Schedule Generator",
-  description:
-    "This workflow generates a window and door schedule based on architectural drawings.",
-  authorizedOrganizationIds: [
-    "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
-    "a5b8c99d-9e1d-42a9-8473-b52471932d51",
-    "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
-    "99b93b8d-0360-47af-bd74-0fd099f07c4e",
-  ],
-  inputs: [
-    {
-      id: "architectural-drawings",
-      type: "file",
-      title: "Architectural Drawings",
-      description: "Upload the document you want to analyze",
-      acceptedFileTypes: "application/pdf",
-      required: true,
-    },
-  ],
-  output: {
-    type: "text/csv",
-    title: "Window & Door Schedule",
-    description: "View the generated window and door schedule",
-    outputKey: "csvArtifact",
-  },
-  steps: [
-    {
-      id: "find-schedules-page",
-      type: "llm",
-      processingMessage: "Finding the page with window and door schedules...",
-      processedMessage: "Window and door schedules page found.",
-      inputMapping: {
-        file: "workflowInput.architectural-drawings",
-      },
-      config: {
-        modelName: "gemini-2.5-pro-preview",
-        promptTemplate: `You are an AI assistant specialized in analyzing architectural drawings. Your task is to examine a set of architectural drawings provided in a PDF format and identify the specific pages that contains the embedded window and door schedules tables.
+// PDF extraction agent to find pages with window and door schedules
+const pageExtractionAgent: Agent = {
+  id: "page-extraction-agent",
+  name: "Page Extraction Agent",
+  description: "Extracts pages from a PDF file and converts them to images.",
+  instructions: `You are an AI assistant specialized in analyzing architectural drawings. Your task is to examine a set of architectural drawings provided in a PDF format, identify the specific pages that contains the embedded window and door schedules tables, and extract the pages as images.
           
 Instructions:
-1. Carefully examine each page of the provided PDF.
-2. Look for pages that contains window and door schedules. These schedules typically list details about windows and doors used in the building, such as sizes, types, and quantities.
-3. When you find the page with the schedules, note the PDF page number. This should be the actual page number in the PDF file, not the sheet number that might be printed on the drawing itself.
-4. If you cannot find a page with window and door schedules, indicate that the schedules were not found and return an empty array for pageNumbers.`,
-        outputSchema: z.object({
-          pageNumbers: z.array(z.number()),
-        }),
-      },
-    },
-    {
-      id: "extract-pdf-page",
-      type: "pdf_page_extract",
-      processingMessage:
-        "Extracting the page with window and door schedules...",
-      processedMessage: "Window and door schedules page extracted.",
-      config: {
-        pdfDataSource: "workflowInput.architectural-drawings",
-        pageNumbersSource: "find-schedules-page.pageNumbers",
-      },
-    },
-    {
-      id: "schedule-data-object-detection",
-      type: "object_detection",
-      processingMessage: "Detecting schedule tables in the extracted page...",
-      processedMessage: "Schedule tables detected successfully.",
-      config: {
-        imageDataSource: "extract-pdf-page.extractedImagesBase64",
-        model: "gemini-2.5-pro-preview",
-        promptTemplate: `Your task is to located all window and door schedule tables and place 2d bounding boxes around them. Each schedule table bounding box should contain the table title and all the rows of the table.
-Output the bounding boxes in the [y_min, x_min, y_max, x_max] format.
-The top left corner is (0,0). The x axis goes left→right, the y axis top→bottom.
-Coordinate values must be normalized to 0–1000 for both width and height.
-Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "..." }.`,
-        outputSchema: z.object({
-          screenshots: z.array(
-            z.object({
-              url: z.string(),
-              mimeType: z.string(),
-              fileName: z.string(),
-            })
-          ),
-        }),
-      },
-    },
-    {
-      id: "ai-evaluation",
-      processingMessage: "Generating window and door schedules...",
-      processedMessage: "Window and door schedules generated successfully.",
-      type: "llm",
-      inputMapping: {
-        images: "schedule-data-object-detection.screenshots",
-      },
-      config: {
-        modelName: "gemini-2.5-pro-preview",
-        outputSchema: z.object({
-          csvArtifact: z.string(),
-        }),
-        promptTemplate: `You are an expert architectural document analysis system, specialized in extracting and processing window and door specifications from architectural drawings. Your objective is to generate standardized window and door schedules in CSV format.
+1. Use the "list-artifacts" tool to get the file name of the PDF file.
+2. Use the "load-artifact" tool to load the PDF file into your context.
+3. Carefully examine each page of the provided PDF.
+4. Look for pages that contains window and door schedules. These schedules typically list details about windows and doors used in the building, such as sizes, types, and quantities.
+5. When you find the page with the schedules, note the PDF page number. This should be the actual page number in the PDF file, not the sheet number that might be printed on the drawing itself.
+6. If you cannot find a page with window and door schedules, indicate that the schedules were not found and return an empty array for pageNumbers.
+7. Use the "pdf-page-extraction" tool to extract the pages as images.
 
-Analysis Protocol:
+I've placed the pdf file in the artifact service. Use the list artifacts tool to get the file name and then use the load artifact tool to load the file into your context.`,
+  model: "gemini-2.5-flash-preview",
+  activeTools: ["pdf-page-extraction", "load-artifact", "list-artifacts"],
+};
 
-1. SCHEDULE IDENTIFICATION
-First, analyze the document for existing window and door schedules:
-- Search for tables or sections explicitly labeled as "Window Schedule", "Door Schedule", or similar variants
-- If found, proceed to Protocol A
-- If not found, proceed to Protocol B
+// Table extraction agent to locate the window and door schedule tables in the images and save them as image artifacts
+const tableExtractionAgent: Agent = {
+  id: "table-extraction-agent",
+  name: "Table Extraction Agent",
+  description: "Extracts tables from images.",
+  instructions: `You are a table extraction agent. Your task is to locate the window and door schedule tables in the images and save them as image artifacts.
 
-Protocol A - Existing Schedule Processing:
-1. Extract all entries from the identified schedules
-2. Validate and standardize measurements:
-   - Convert all dimensions to feet and inches format (e.g., 7'0")
-   - Verify each entry has both height and width
-   - Calculate area in square feet (height × width)
-   - Round areas to two decimal places
-3. Format according to the required CSV structure
+Steps:
+1. Use the "list-artifacts" tool to get the file names of the image artifacts.
+2. Use the "object-detection" tool to locate the window and door schedule tables in each of the images. This will save the bounding boxes as image artifacts.
 
-Protocol B - Floor Plan Analysis:
-1. Analyze architectural floor plan images for:
-   - Window symbols and annotations
-   - Door symbols and annotations
-   - Dimensional notations and scale indicators
-2. For each identified element:
-   - Extract or calculate dimensions using scale references
-   - Convert measurements to feet and inches
-   - Generate unique identifiers (e.g., "Window-A", "Door-1")
-   - Calculate areas using extracted dimensions
-3. Format according to the required CSV structure
+The label you want to detect is "Window or Door Schedule table".`,
+  model: "gemini-2.5-flash-preview",
+  activeTools: ["object-detection", "load-artifact", "list-artifacts"],
+};
 
-Data Processing Requirements:
-- All measurements must be in feet and inches format (e.g., 7'0")
-- Areas must be in square feet, rounded to two decimal places
-- Each item requires: unique identifier, height, width, and calculated area
+// CSV generation agent to analyze cropped images of window and door schedule tables and extract the data from them
+const csvGenerationAgent: Agent = {
+  id: "csv-generation-agent",
+  name: "CSV Generation Agent",
+  description: "Generates a CSV file from the window and door schedule tables.",
+  instructions: `You are a CSV generation agent. Your task is to too analyze cropped images of window and door schedule tables and extract the data from them. You are able to see images so once you load the image artifacts you will able to analyze them and create an accurate CSV file.
 
-Document your analysis process within <analysis_log> tags inside of your thinking block, including:
-- Protocol selected (A or B) with justification
-- Data extraction methodology
-- Any assumptions or estimations made
-- Conversion calculations performed
-- Quality control checks applied
+Steps:
+1. Use the "list-artifacts" tool to get the file names of the image artifacts.
+2. Use the "load-artifact" tool to load the image artifact into your context. (Only load the image artifacts that contain the window and door schedule tables.)
+3. Use the "create-artifact" tool to create a CSV file.
 
 Output Format:
 Generate a CSV artifact with proper escaping using the following structure:
@@ -175,8 +82,208 @@ Quality Control:
 
 Return only the final CSV artifact in the specified format, without any additional commentary or markup.
 
-Do not make up any information. Only include information that is present in the drawings. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
-      },
+Do not make up any information. Only include information that is present in the cropped images. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
+  model: "gemini-2.5-pro-preview",
+  activeTools: ["create-artifact", "load-artifact", "list-artifacts"],
+};
+
+export const windowDoorScheduleGenWorkflow: Workflow = {
+  id: "window-door-schedule-gen",
+  name: "Window & Door Schedule Generator",
+  description:
+    "This workflow generates a window and door schedule based on architectural drawings.",
+  inputs: [
+    {
+      id: "architectural-drawings",
+      type: "file",
+      title: "Architectural Drawings",
+      description: "Upload the document you want to analyze",
+      required: true,
+      acceptedFileTypes: ["application/pdf"],
     },
   ],
+  agents: [pageExtractionAgent, tableExtractionAgent, csvGenerationAgent],
 };
+
+// import { Workflow } from "../workflows.schemas";
+// import { z } from "zod";
+
+// export const windowDoorScheduleGenWorkflow: Workflow = {
+//   id: "window-door-schedule-gen",
+//   title: "Window & Door Schedule Generator",
+//   description:
+//     "This workflow generates a window and door schedule based on architectural drawings.",
+//   authorizedOrganizationIds: [
+//     "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+//     "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+//     "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
+//     "99b93b8d-0360-47af-bd74-0fd099f07c4e",
+//   ],
+//   inputs: [
+//     {
+//       id: "architectural-drawings",
+//       type: "file",
+//       title: "Architectural Drawings",
+//       description: "Upload the document you want to analyze",
+//       acceptedFileTypes: "application/pdf",
+//       required: true,
+//     },
+//   ],
+//   output: {
+//     type: "text/csv",
+//     title: "Window & Door Schedule",
+//     description: "View the generated window and door schedule",
+//     outputKey: "csvArtifact",
+//   },
+//   steps: [
+//     {
+//       id: "find-schedules-page",
+//       type: "llm",
+//       processingMessage: "Finding the page with window and door schedules...",
+//       processedMessage: "Window and door schedules page found.",
+//       inputMapping: {
+//         file: "workflowInput.architectural-drawings",
+//       },
+//       config: {
+//         modelName: "gemini-2.5-pro-preview",
+//         promptTemplate: `You are an AI assistant specialized in analyzing architectural drawings. Your task is to examine a set of architectural drawings provided in a PDF format and identify the specific pages that contains the embedded window and door schedules tables.
+
+// Instructions:
+// 1. Carefully examine each page of the provided PDF.
+// 2. Look for pages that contains window and door schedules. These schedules typically list details about windows and doors used in the building, such as sizes, types, and quantities.
+// 3. When you find the page with the schedules, note the PDF page number. This should be the actual page number in the PDF file, not the sheet number that might be printed on the drawing itself.
+// 4. If you cannot find a page with window and door schedules, indicate that the schedules were not found and return an empty array for pageNumbers.`,
+//         outputSchema: z.object({
+//           pageNumbers: z.array(z.number()),
+//         }),
+//       },
+//     },
+//     {
+//       id: "extract-pdf-page",
+//       type: "pdf_page_extract",
+//       processingMessage:
+//         "Extracting the page with window and door schedules...",
+//       processedMessage: "Window and door schedules page extracted.",
+//       config: {
+//         pdfDataSource: "workflowInput.architectural-drawings",
+//         pageNumbersSource: "find-schedules-page.pageNumbers",
+//       },
+//     },
+//     {
+//       id: "schedule-data-object-detection",
+//       type: "object_detection",
+//       processingMessage: "Detecting schedule tables in the extracted page...",
+//       processedMessage: "Schedule tables detected successfully.",
+//       config: {
+//         imageDataSource: "extract-pdf-page.extractedImagesBase64",
+//         model: "gemini-2.5-pro-preview",
+//         promptTemplate: `Your task is to located all window and door schedule tables and place 2d bounding boxes around them. Each schedule table bounding box should contain the table title and all the rows of the table.
+// Output the bounding boxes in the [y_min, x_min, y_max, x_max] format.
+// The top left corner is (0,0). The x axis goes left→right, the y axis top→bottom.
+// Coordinate values must be normalized to 0–1000 for both width and height.
+// Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "..." }.`,
+//         outputSchema: z.object({
+//           screenshots: z.array(
+//             z.object({
+//               url: z.string(),
+//               mimeType: z.string(),
+//               fileName: z.string(),
+//             })
+//           ),
+//         }),
+//       },
+//     },
+//     {
+//       id: "ai-evaluation",
+//       processingMessage: "Generating window and door schedules...",
+//       processedMessage: "Window and door schedules generated successfully.",
+//       type: "llm",
+//       inputMapping: {
+//         images: "schedule-data-object-detection.screenshots",
+//       },
+//       config: {
+//         modelName: "gemini-2.5-pro-preview",
+//         outputSchema: z.object({
+//           csvArtifact: z.string(),
+//         }),
+//         promptTemplate: `You are an expert architectural document analysis system, specialized in extracting and processing window and door specifications from architectural drawings. Your objective is to generate standardized window and door schedules in CSV format.
+
+// Analysis Protocol:
+
+// 1. SCHEDULE IDENTIFICATION
+// First, analyze the document for existing window and door schedules:
+// - Search for tables or sections explicitly labeled as "Window Schedule", "Door Schedule", or similar variants
+// - If found, proceed to Protocol A
+// - If not found, proceed to Protocol B
+
+// Protocol A - Existing Schedule Processing:
+// 1. Extract all entries from the identified schedules
+// 2. Validate and standardize measurements:
+//    - Convert all dimensions to feet and inches format (e.g., 7'0")
+//    - Verify each entry has both height and width
+//    - Calculate area in square feet (height × width)
+//    - Round areas to two decimal places
+// 3. Format according to the required CSV structure
+
+// Protocol B - Floor Plan Analysis:
+// 1. Analyze architectural floor plan images for:
+//    - Window symbols and annotations
+//    - Door symbols and annotations
+//    - Dimensional notations and scale indicators
+// 2. For each identified element:
+//    - Extract or calculate dimensions using scale references
+//    - Convert measurements to feet and inches
+//    - Generate unique identifiers (e.g., "Window-A", "Door-1")
+//    - Calculate areas using extracted dimensions
+// 3. Format according to the required CSV structure
+
+// Data Processing Requirements:
+// - All measurements must be in feet and inches format (e.g., 7'0")
+// - Areas must be in square feet, rounded to two decimal places
+// - Each item requires: unique identifier, height, width, and calculated area
+
+// Document your analysis process within <analysis_log> tags inside of your thinking block, including:
+// - Protocol selected (A or B) with justification
+// - Data extraction methodology
+// - Any assumptions or estimations made
+// - Conversion calculations performed
+// - Quality control checks applied
+
+// Output Format:
+// Generate a CSV artifact with proper escaping using the following structure:
+
+// Example of correct CSV formatting:
+// "WINDOW SCHEDULE"
+// "Item","Height","Width","Area (sq ft)"
+// "A","8'-0""","2'-4""","18.67"
+// "B","4'-8""","2'-8""","12.44"
+
+// "DOOR SCHEDULE"
+// "Item","Height","Width","Area (sq ft)"
+// "01A","8'-0""","3'-0""","24.00"
+// "01B","8'-0""","3'-0""","24.00"
+
+// CSV Formatting Rules:
+// 1. Every field must be enclosed in double quotes: "field"
+// 2. For measurements containing inches ("), add an additional " before the inches: "8'-0"""
+// 3. Separate fields with single commas (no spaces): "field1","field2"
+// 4. Each schedule should start with its title on a separate line
+// 5. Headers should be quoted: "Item","Height","Width","Area (sq ft)"
+
+// Example of a single properly formatted line:
+// "A","8'-0""","2'-4""","18.67"
+
+// Quality Control:
+// - Verify all measurements are properly formatted (X'-Y""")
+// - Confirm area calculations are accurate and rounded
+// - Ensure unique identifiers are consistent and logical
+// - Validate that no required data fields are missing
+// - Check that all fields are properly quoted and escaped
+
+// Return only the final CSV artifact in the specified format, without any additional commentary or markup.
+
+// Do not make up any information. Only include information that is present in the drawings. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
+//       },
+//     },
+//   ],
+// };

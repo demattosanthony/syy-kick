@@ -6,7 +6,7 @@ import {
   isWorkflowAuthorized,
 } from "./workflows.registry";
 import { WorkflowAttachment } from "./workflows.types";
-import { WorkflowRunner } from "./workflows.runnner";
+// import { WorkflowRunner } from "./workflows.runnner";
 import { FileData, ProgressUpdate } from "./workflows.schemas";
 import db from "../../config/db";
 import {
@@ -247,14 +247,14 @@ const workflowHandlers = {
         }
       };
 
-      const runnner = new WorkflowRunner(
-        workflowId,
-        processedAttachments,
-        workflowProgressCallback,
-        CONFIG.__prod__ ? false : true // Logging enabled in dev mode
-      );
+      //   const runnner = new WorkflowRunner(
+      //     workflowId,
+      //     processedAttachments,
+      //     workflowProgressCallback,
+      //     CONFIG.__prod__ ? false : true // Logging enabled in dev mode
+      //   );
 
-      await runnner.run();
+      //   await runnner.run();
 
       res.write(`d:{"finishReason":"stop"}\n`);
       res.end();

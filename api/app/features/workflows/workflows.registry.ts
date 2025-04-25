@@ -1,9 +1,13 @@
+import { ArtifactService } from "./artifact-service";
+import {
+  createPdfPageExtractionTool,
+  createObjectDetectionTool,
+} from "./tools";
 import {
   basisOfDesignGenWorkflow,
   billOfMaterialsWorkflow,
   equipmentServingListWorkflow,
   rfpEvalWorkflow,
-  windowDoorScheduleGenWorkflow,
 } from "./workflow-definitions";
 import {
   executePdfPageExtractionStep,
@@ -19,7 +23,6 @@ import {
 
 const workflows: Workflow[] = [
   rfpEvalWorkflow,
-  windowDoorScheduleGenWorkflow,
   equipmentServingListWorkflow,
   basisOfDesignGenWorkflow,
   billOfMaterialsWorkflow,
@@ -73,3 +76,15 @@ stepExecutorRegistry.set("llm", executeLLMStep);
 stepExecutorRegistry.set("pdf_page_extract", executePdfPageExtractionStep);
 stepExecutorRegistry.set("object_detection", executeObjectDetectionStep);
 stepExecutorRegistry.set("document_ocr", documentOcrStep);
+
+export const createToolSet = (toolArtifactService: ArtifactService) => {
+  const artifactTools = toolArtifactService.getArtifactTools();
+  return {
+    "list-artifacts": artifactTools["list-artifacts"],
+    "load-artifact": artifactTools["load-artifact"],
+    "create-artifact": artifactTools["create-artifact"],
+
+    "pdf-page-extraction": createPdfPageExtractionTool(toolArtifactService),
+    "object-detection": createObjectDetectionTool(toolArtifactService),
+  };
+};

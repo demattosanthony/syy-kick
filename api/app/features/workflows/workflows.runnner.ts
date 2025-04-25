@@ -1,222 +1,218 @@
 import {
-  getWorkflowDefinition,
-  stepExecutorRegistry,
-} from "./workflows.registry";
+  CoreSystemMessage,
+  CoreUserMessage,
+  CoreAssistantMessage,
+  CoreToolMessage,
+  GenerateTextOnStepFinishCallback,
+  Tool,
+  generateText,
+} from "ai";
 import {
-  FileData,
-  ProgressCallback,
-  ProgressUpdate,
-  StepExecutorUtilities,
-  StepInputData,
-  StepOutputData,
+  Agent,
   Workflow,
-  WorkflowState,
-  WorkflowStepConfig,
-} from "./workflows.schemas";
+  WorkflowExecutionInputValues,
+  WorkflowProgressCallback,
+  WorkflowToolCall,
+  WorkflowToolResult,
+} from "./workflows.types";
+import { ArtifactService } from "./artifact-service";
+import { createToolSet } from "./workflows.registry";
+import { MODELS } from "../models";
+
+// Reusable onStepFinish callback
+// Mainly used to add a artifact to the messages after load-artifact tool is called
+// Also used for logging and progress updates
+export function onStepFinishCallback(
+  messagesArray: Array<
+    CoreSystemMessage | CoreUserMessage | CoreAssistantMessage | CoreToolMessage
+  >,
+  agent: Agent,
+  artifactService: ArtifactService,
+  progressCallback: WorkflowProgressCallback,
+  debug: boolean = false
+): GenerateTextOnStepFinishCallback<Record<string, Tool>> {
+  return ({
+    toolCalls,
+    finishReason,
+    toolResults,
+    text,
+    usage,
+  }: Parameters<GenerateTextOnStepFinishCallback<Record<string, Tool>>>[0]) => {
+    progressCallback({
+      type: "agent_step",
+      data: {
+        agentId: agent.id,
+        agentName: agent.name,
+        text,
+        toolCalls: toolCalls as WorkflowToolCall[],
+        toolResults: toolResults as WorkflowToolResult[],
+        finishReason: finishReason,
+        usage,
+      },
+    });
+
+    // Check if the load artifact tool was called, if so add the artifact to the messages
+    for (const toolCall of toolCalls) {
+      if (toolCall.toolName === "load-artifact") {
+        const fileName = toolCall.args.fileName;
+        const artifact = artifactService.loadArtifact(fileName);
+        if (artifact) {
+          const contentItem = artifact.mimeType.startsWith("image/")
+            ? {
+                type: "image" as const,
+                image: Buffer.from(artifact.data).toString("base64"),
+                mimeType: artifact.mimeType,
+                filename: fileName,
+              }
+            : {
+                type: "file" as const,
+                data: Buffer.from(artifact.data).toString("base64"),
+                mimeType: artifact.mimeType,
+                filename: fileName,
+              };
+
+          messagesArray.push({
+            role: "user",
+            content: [contentItem],
+          });
+        } else {
+          if (debug) {
+            console.log(
+              `Artifact '${fileName}' not found, cannot load into message context.`
+            );
+          }
+        }
+      }
+    }
+  };
+}
 
 export class WorkflowRunner {
   private workflow: Workflow;
-  private initialRequestInputs: Record<string, FileData>;
-  private state: WorkflowState;
-  private utilities: StepExecutorUtilities;
-  private progressCallback: ProgressCallback;
+  private artifactService: ArtifactService;
+  private tools: Record<string, Tool>;
+  private progressCallback: WorkflowProgressCallback;
   private debug: boolean;
 
   constructor(
-    workflowId: string,
-    initialRequestInputs: Record<string, FileData>,
-    progressCallback: ProgressCallback,
+    workflow: Workflow,
+    artifactService: ArtifactService,
+    progressCallback: WorkflowProgressCallback,
     debug: boolean = false
   ) {
-    const definition = getWorkflowDefinition(workflowId);
-    if (!definition) {
-      throw new Error(`Workflow definition not found for ID: ${workflowId}`);
-    }
-
-    this.workflow = definition;
-    this.initialRequestInputs = initialRequestInputs;
+    this.workflow = workflow;
+    this.artifactService = artifactService;
+    this.tools = createToolSet(artifactService);
     this.progressCallback = progressCallback;
-    this.state = { workflowInput: {}, stepOutputs: {} };
-    this.utilities = {
-      getDataSourceValue: this.getDataSourceValue,
-    };
     this.debug = debug;
   }
 
-  private async processInitalInputs(): Promise<void> {
-    for (const inputConfig of this.workflow.inputs) {
-      const inputData = this.initialRequestInputs[inputConfig.id];
+  async run(inputValues: WorkflowExecutionInputValues) {
+    this.progressCallback({
+      type: "workflow_start",
+      data: {
+        workflowId: this.workflow.id,
+        workflowName: this.workflow.name,
+      },
+    });
 
-      if (inputConfig.required && !inputData) {
-        throw new Error(
-          `Missing required input: ${inputConfig.title} (ID: ${inputConfig.id})`
-        );
-      }
-      if (!inputData) continue;
-
-      this.state.workflowInput[inputConfig.id] = inputData;
-    }
-  }
-
-  private logState(): void {
-    const stateCopy = JSON.parse(JSON.stringify(this.state));
-    for (const key in stateCopy.workflowInput) {
-      if (stateCopy.workflowInput[key].url) {
-        stateCopy.workflowInput[key].url = "[URL hidden]";
-      }
-    }
-    console.log(stateCopy);
-  }
-
-  private getDataSourceValue(state: WorkflowState, sourcePath: string) {
-    if (!sourcePath) return undefined;
-
-    const parts = sourcePath.split(".");
-    const sourceKey = parts[0]; // e.g., 'workflowInput' or '{step-id}'
-    const remainingPath = parts.slice(1); // e.g., ['file', 'url']
-
-    let currentValue: any;
-
-    if (sourceKey === "workflowInput") {
-      currentValue = state.workflowInput;
-    } else if (state.stepOutputs?.[sourceKey]) {
-      currentValue = state.stepOutputs[sourceKey];
-    }
-
-    // Traverse the remaining path
-    for (const key of remainingPath) {
-      currentValue = currentValue?.[key];
-      if (currentValue === undefined) break;
-    }
-
-    return currentValue;
-  }
-
-  private prepareStepInputs(step: WorkflowStepConfig): StepInputData {
-    const stepInputs: StepInputData = {};
-    const inputMapping = step.inputMapping;
-
-    if (!inputMapping) return {};
-
-    for (const inputKey in inputMapping) {
-      const sourcePath = inputMapping[inputKey];
-      const value = this.getDataSourceValue(this.state, sourcePath);
-      stepInputs[inputKey] = value;
-    }
-
-    return stepInputs;
-  }
-
-  // Main execution loop
-  public async run(): Promise<StepOutputData> {
-    try {
-      // Emit workflow_start event
-      this.progressCallback({
-        type: "workflow_start",
-        data: { workflowId: this.workflow.id, title: this.workflow.title },
-      });
-
-      // 1. Process inital inputs
-      await this.processInitalInputs();
-
-      for (const step of this.workflow.steps) {
-        // Emit step_start event
-        this.progressCallback({
-          type: "step_start",
-          data: { stepId: step.id, message: step.processingMessage },
+    // Add any files or images from the inputValues to the artifact service
+    for (const inputId in inputValues) {
+      const inputValue = inputValues[inputId];
+      if (
+        inputValue.data instanceof Uint8Array &&
+        inputValue.mimeType &&
+        inputValue.filename
+      ) {
+        this.artifactService.saveArtifact(inputValue.filename, {
+          data: inputValue.data,
+          mimeType: inputValue.mimeType,
         });
+      }
+    }
 
-        let output: StepOutputData;
-
-        const executor = stepExecutorRegistry.get(step.type);
-
-        if (!executor) {
-          const errorMsg = `No executor registered for step type '${step.type}' in step ${step.id}.`;
-          this.progressCallback({
-            type: "step_error",
-            data: { stepId: step.id, error: errorMsg },
-          });
-          throw new Error(errorMsg);
-        }
-
-        // Prepare the inputs required by the executor
-        const inputs = this.prepareStepInputs(step);
-
+    try {
+      for (const agent of this.workflow.agents) {
         try {
-          output = await executor({
-            state: this.state,
-            inputs,
-            step,
-            workflow: this.workflow,
-            utils: this.utilities,
-            progressCallback: this.progressCallback,
-            debug: this.debug,
+          this.progressCallback({
+            type: "agent_start",
+            data: {
+              agentId: agent.id,
+              agentName: agent.name,
+            },
           });
 
-          // Emit step_complete event
-          this.progressCallback({
-            type: "step_complete",
-            data: { stepId: step.id, message: step.processedMessage },
+          let messages: Array<
+            | CoreSystemMessage
+            | CoreUserMessage
+            | CoreAssistantMessage
+            | CoreToolMessage
+          > = [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: agent.instructions,
+                },
+              ],
+            },
+          ];
+
+          await generateText({
+            messages,
+            model: MODELS[agent.model].model,
+            tools: this.tools,
+            experimental_activeTools: agent.activeTools,
+            maxSteps: 10,
+            onStepFinish: onStepFinishCallback(
+              messages,
+              agent,
+              this.artifactService,
+              this.progressCallback,
+              this.debug
+            ),
           });
-        } catch (stepError: any) {
-          // Emit step_error event
+
           this.progressCallback({
-            type: "step_error",
-            data: { stepId: step.id, error: stepError.message },
+            type: "agent_finish",
+            data: {
+              agentId: agent.id,
+              agentName: agent.name,
+            },
           });
-          throw stepError; // Re-throw to stop execution
+        } catch (error: any) {
+          console.error(`Error executing agent ${agent.name}:`, error);
+          this.progressCallback({
+            type: "agent_error",
+            data: {
+              agentId: agent.id,
+              agentName: agent.name,
+              error: error.message || "Unknown agent error",
+            },
+          });
+          // For now, let's stop the workflow on agent error
+          throw new Error(`Agent ${agent.name} failed: ${error.message}`);
         }
-
-        // Store the output
-        this.state.stepOutputs[step.id] = output;
-
-        // if (this.debug) {
-        //   console.log(`State after step ${step.id}:`, {
-        //     workflowInput: Object.keys(this.state.workflowInput),
-        //     stepOutputs: Object.keys(this.state.stepOutputs),
-        //   });
-        // }
       }
 
-      // Get the final output from the last step
-      const finalOutput =
-        this.state.stepOutputs[
-          this.workflow.steps[this.workflow.steps.length - 1].id
-        ] || {};
-
-      // Determine the workflow output based on the output key
-      let workflowOutput: any = finalOutput;
-      const keys = this.workflow.output.outputKey.split(".");
-      for (const key of keys) {
-        if (
-          workflowOutput &&
-          typeof workflowOutput === "object" &&
-          key in workflowOutput
-        ) {
-          workflowOutput = workflowOutput[key];
-        } else {
-          const errorMsg = `Output key '${this.workflow.output.outputKey}' not found in final output`;
-          this.progressCallback({
-            type: "workflow_error",
-            data: { error: errorMsg },
-          });
-          throw new Error(errorMsg);
-        }
-      }
-
-      // Emit workflow_complete event
       this.progressCallback({
         type: "workflow_complete",
-        data: { output: workflowOutput, type: this.workflow.output.type },
+        data: {
+          workflowId: this.workflow.id,
+          workflowName: this.workflow.name,
+        },
       });
-
-      return finalOutput;
-    } catch (err: any) {
+    } catch (error: any) {
+      console.error(`Workflow ${this.workflow.name} failed:`, error);
       this.progressCallback({
         type: "workflow_error",
-        data: { error: err.message },
+        data: {
+          workflowId: this.workflow.id,
+          workflowName: this.workflow.name,
+          error: error.message || "Unknown workflow error",
+        },
       });
-      throw err;
     }
   }
 }
