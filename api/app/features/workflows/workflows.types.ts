@@ -7,12 +7,10 @@ import {
 } from "ai";
 import { createToolSet } from "./workflows.registry";
 
-type WorkflowAttachment = Attachment & {
+export type WorkflowAttachment = Attachment & {
   file_key: string;
   inputId: string;
 };
-
-export { WorkflowAttachment };
 
 // Define tool names based on the keys of the toolSet object
 export type WorkflowToolSet = ReturnType<typeof createToolSet>;
