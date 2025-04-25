@@ -15,8 +15,10 @@ import {
   generateObject,
   Tool,
   GenerateTextOnStepFinishCallback,
-  CoreMessage,
   FinishReason,
+  ToolCallUnion,
+  ToolResultUnion,
+  LanguageModelUsage,
 } from "ai";
 import { z } from "zod";
 import { google } from "@ai-sdk/google";
@@ -32,6 +34,10 @@ import util from "util";
 // Define tool names based on the keys of the toolSet object
 type ToolSet = ReturnType<typeof createToolSet>;
 type ToolName = keyof ToolSet;
+
+// Define union types for tool calls and results based on the toolSet
+type WorkflowToolCall = ToolCallUnion<ToolSet>;
+type WorkflowToolResult = ToolResultUnion<ToolSet>;
 
 type Agent = {
   id: string;
@@ -57,8 +63,11 @@ type AgentStartData = {
 type AgentStepData = {
   agentId: string;
   agentName: string;
-  messages: CoreMessage[];
+  text: string;
+  toolCalls: WorkflowToolCall[]; // Use the specific union type
+  toolResults: WorkflowToolResult[]; // Use the specific union type
   finishReason: FinishReason;
+  usage: LanguageModelUsage;
 };
 
 type AgentErrorData = {
@@ -364,15 +373,20 @@ function onStepFinishCallback(
   return ({
     toolCalls,
     finishReason,
-    response,
+    toolResults,
+    text,
+    usage,
   }: Parameters<GenerateTextOnStepFinishCallback<Record<string, Tool>>>[0]) => {
     progressCallback({
       type: "agent_step",
       data: {
         agentId: agent.id,
         agentName: agent.name,
-        messages: response.messages,
+        text,
+        toolCalls: toolCalls as WorkflowToolCall[],
+        toolResults: toolResults as WorkflowToolResult[],
         finishReason: finishReason,
+        usage,
       },
     });
 
@@ -382,16 +396,23 @@ function onStepFinishCallback(
         const fileName = toolCall.args.fileName;
         const artifact = artifactService.loadArtifact(fileName);
         if (artifact) {
-          messagesArray.push({
-            role: "user",
-            content: [
-              {
-                type: "file",
+          const contentItem = artifact.mimeType.startsWith("image/")
+            ? {
+                type: "image" as const,
+                image: Buffer.from(artifact.data).toString("base64"),
+                mimeType: artifact.mimeType,
+                filename: fileName,
+              }
+            : {
+                type: "file" as const,
                 data: Buffer.from(artifact.data).toString("base64"),
                 mimeType: artifact.mimeType,
                 filename: fileName,
-              },
-            ],
+              };
+
+          messagesArray.push({
+            role: "user",
+            content: [contentItem],
           });
         } else {
           if (debug) {
@@ -574,7 +595,7 @@ Steps:
 1. Use the "list-artifacts" tool to get the file names of the image artifacts.
 2. Use the "load-artifact" tool to load the image artifact into your context. (Only load the image artifacts that contain the window and door schedule tables.)
 3. Use the "create-artifact" tool to create a CSV file.`,
-  model: "gemini-2.5-pro-preview",
+  model: "gpt-4.1",
   activeTools: ["create-artifact", "load-artifact", "list-artifacts"],
 };
 
@@ -614,7 +635,9 @@ const workflowRunner = new WorkflowRunner(
     console.log(util.inspect(update, { depth: null, colors: true }));
     console.log("\n");
   },
-  false
+  true
 );
 
 await workflowRunner.run();
+
+dumpArtifacts();
