@@ -14,6 +14,8 @@ import {
   generateText,
   generateObject,
   Tool,
+  GenerateTextOnStepFinishCallback,
+  CoreMessage,
 } from "ai";
 import { z } from "zod";
 import { google } from "@ai-sdk/google";
@@ -21,6 +23,8 @@ import { PDFDocument } from "pdf-lib";
 import { getPdfPageAsImage } from "./app/utils";
 import { Jimp } from "jimp";
 import { MODELS } from "./app/features/models";
+import { ArtifactService } from "./app/features/workflows/artifact-service";
+import util from "util";
 
 // Define types
 
@@ -40,83 +44,57 @@ type SequentialWorkflow = {
   agents: Agent[];
 };
 
-// Type for progress updates sent via SSE
-export type WorkflowProgressUpdate = {
-  type:
-    | "workflow_start"
-    | "step_start"
-    | "step_progress"
-    | "step_complete"
-    | "step_error"
-    | "workflow_complete"
-    | "workflow_error"
-    | "log";
-  data: any;
+type AgentStartData = {
+  agentId: string;
+  agentName: string;
 };
+
+type AgentStepData = {
+  agentId: string;
+  agentName: string;
+  messages: CoreMessage[];
+};
+
+type AgentErrorData = {
+  agentId: string;
+  agentName: string;
+  error: string;
+};
+
+type AgentFinishData = {
+  agentId: string;
+  agentName: string;
+  result?: any;
+};
+
+type WorkflowStartData = {
+  workflowId: string;
+  workflowName: string;
+};
+
+type WorkflowCompleteData = {
+  workflowId: string;
+  workflowName: string;
+};
+
+type WorkflowErrorData = {
+  workflowId: string;
+  workflowName: string;
+  error: string;
+};
+
+// Type for progress updates
+export type WorkflowProgressUpdate =
+  | { type: "workflow_start"; data: WorkflowStartData }
+  | { type: "agent_start"; data: AgentStartData }
+  | { type: "agent_step"; data: AgentStepData }
+  | { type: "agent_finish"; data: AgentFinishData }
+  | { type: "agent_error"; data: AgentErrorData }
+  | { type: "workflow_complete"; data: WorkflowCompleteData }
+  | { type: "workflow_error"; data: WorkflowErrorData };
 export type WorkflowProgressCallback = (update: WorkflowProgressUpdate) => void;
 
 // ARTIFACT SERVICE
-
-type ArtifactData = {
-  data: Uint8Array;
-  mimeType: string;
-};
-
-class ArtifactService {
-  // In memory storage for artifacts
-  private storage: Map<string, ArtifactData> = new Map();
-
-  /**
-   * Saves an artifact to the in-memory storage.
-   * If an artifact with the same filename already exists, it will be overwritten.
-   * @param filename The unique identifier for the artifact.
-   * @param artifact The artifact data (bytes and MIME type).
-   */
-  saveArtifact(filename: string, artifact: ArtifactData): void {
-    this.storage.set(filename, artifact);
-    console.log(`Artifact '${filename}' saved.`);
-  }
-
-  /**
-   * Loads an artifact from the in-memory storage.
-   * @param filename The unique identifier for the artifact.
-   * @returns The artifact data if found, otherwise undefined.
-   */
-  loadArtifact(filename: string): ArtifactData | undefined {
-    const artifact = this.storage.get(filename);
-    if (artifact) {
-      console.log(`Artifact '${filename}' loaded.`);
-    } else {
-      console.log(`Artifact '${filename}' not found.`);
-    }
-    return artifact;
-  }
-
-  /**
-   * Lists the filenames of all artifacts currently stored in memory.
-   * @returns An array of artifact filenames.
-   */
-  listArtifacts(): string[] {
-    const keys = Array.from(this.storage.keys());
-    console.log("Listing artifacts:", keys);
-    return keys;
-  }
-
-  /**
-   * Deletes an artifact from the in-memory storage.
-   * @param filename The unique identifier for the artifact.
-   * @returns True if the artifact was deleted, false if it wasn't found.
-   */
-  deleteArtifact(filename: string): boolean {
-    const deleted = this.storage.delete(filename);
-    if (deleted) {
-      console.log(`Artifact '${filename}' deleted.`);
-    } else {
-      console.log(`Artifact '${filename}' not found for deletion.`);
-    }
-    return deleted;
-  }
-}
 
 const artifactService = new ArtifactService();
 
@@ -349,29 +327,40 @@ function dumpArtifacts() {
 }
 
 // Reusable onStepFinish callback
-function createOnStepFinishCallback(
+// Mainly used to add a artifact to the messages after load-artifact tool is called
+// Also used for logging and progress updates
+function onStepFinishCallback(
   messagesArray: Array<
     CoreSystemMessage | CoreUserMessage | CoreAssistantMessage | CoreToolMessage
   >,
+  agent: Agent,
+  progressCallback: WorkflowProgressCallback,
   debug: boolean = false
-) {
+): GenerateTextOnStepFinishCallback<Record<string, Tool>> {
   return ({
     toolCalls,
     finishReason,
     text,
     toolResults,
-  }: {
-    toolCalls: any;
-    finishReason: any;
-    text: any;
-    toolResults: any;
-  }) => {
+    response,
+  }: Parameters<GenerateTextOnStepFinishCallback<Record<string, Tool>>>[0]) => {
     if (debug) {
       console.log("toolCalls", toolCalls);
       console.log("finishReason", finishReason);
       console.log("text", text);
       console.log("toolResults", toolResults);
+      console.log("response messages", response.messages);
+      console.log("\n\n\n\n");
     }
+
+    progressCallback({
+      type: "agent_step",
+      data: {
+        agentId: agent.id,
+        agentName: agent.name,
+        messages: response.messages,
+      },
+    });
 
     // Check if the load artifact tool was called, if so add the artifact to the messages
     for (const toolCall of toolCalls) {
@@ -426,35 +415,98 @@ class WorkflowRunner {
   }
 
   async run() {
-    for (const agent of this.workflow.agents) {
-      let messages: Array<
-        | CoreSystemMessage
-        | CoreUserMessage
-        | CoreAssistantMessage
-        | CoreToolMessage
-      > = [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: agent.instructions,
+    this.progressCallback({
+      type: "workflow_start",
+      data: {
+        workflowId: this.workflow.id,
+        workflowName: this.workflow.name,
+      },
+    });
+
+    try {
+      for (const agent of this.workflow.agents) {
+        try {
+          this.progressCallback({
+            type: "agent_start",
+            data: {
+              agentId: agent.id,
+              agentName: agent.name,
             },
-          ],
-        },
-      ];
+          });
 
-      await generateText({
-        messages,
-        model: MODELS[agent.model].model,
-        tools: agent.tools,
-        maxSteps: 10,
-        onStepFinish: createOnStepFinishCallback(messages, this.debug),
-      });
+          let messages: Array<
+            | CoreSystemMessage
+            | CoreUserMessage
+            | CoreAssistantMessage
+            | CoreToolMessage
+          > = [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: agent.instructions,
+                },
+              ],
+            },
+          ];
 
-      if (this.debug) {
-        dumpArtifacts();
+          await generateText({
+            messages,
+            model: MODELS[agent.model].model,
+            tools: agent.tools,
+            maxSteps: 10,
+            onStepFinish: onStepFinishCallback(
+              messages,
+              agent,
+              this.progressCallback,
+              this.debug
+            ),
+          });
+
+          if (this.debug) {
+            dumpArtifacts();
+          }
+
+          this.progressCallback({
+            type: "agent_finish",
+            data: {
+              agentId: agent.id,
+              agentName: agent.name,
+            },
+          });
+        } catch (error: any) {
+          console.error(`Error executing agent ${agent.name}:`, error);
+          this.progressCallback({
+            type: "agent_error",
+            data: {
+              agentId: agent.id,
+              agentName: agent.name,
+              error: error.message || "Unknown agent error",
+            },
+          });
+          // For now, let's stop the workflow on agent error
+          throw new Error(`Agent ${agent.name} failed: ${error.message}`);
+        }
       }
+
+      this.progressCallback({
+        type: "workflow_complete",
+        data: {
+          workflowId: this.workflow.id,
+          workflowName: this.workflow.name,
+        },
+      });
+    } catch (error: any) {
+      console.error(`Workflow ${this.workflow.name} failed:`, error);
+      this.progressCallback({
+        type: "workflow_error",
+        data: {
+          workflowId: this.workflow.id,
+          workflowName: this.workflow.name,
+          error: error.message || "Unknown workflow error",
+        },
+      });
     }
   }
 }
@@ -552,9 +604,10 @@ const workflowRunner = new WorkflowRunner(
   workflow,
   artifactService,
   (update) => {
-    // console.log(update);
+    console.log(util.inspect(update, { depth: null, colors: true }));
+    console.log("\n\n\n\n");
   },
-  true
+  false
 );
 
 await workflowRunner.run();
