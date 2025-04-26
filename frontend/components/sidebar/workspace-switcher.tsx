@@ -108,7 +108,7 @@ export function WorkSpaceSwitcher({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-2 px-2 font-normal max-w-[185px]"
+          className="h-10 gap-2 px-2 font-normal max-w-[175px]"
         >
           <WorkspaceLogo workspace={activeWorkspace} />
           {state === "expanded" && (

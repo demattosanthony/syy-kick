@@ -21,7 +21,7 @@ export function NewThreadButton() {
         size={state === "collapsed" && !isMobile ? "icon" : "default"}
       >
         <PlusIcon
-          className={state === "collapsed" && !isMobile ? "size-3" : "size-4"}
+          className={state === "collapsed" && !isMobile ? "size-2" : "size-4"}
         />
         {state === "expanded" && !isMobile && "New Thread"}
       </Button>

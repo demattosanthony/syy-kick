@@ -20,7 +20,7 @@ export default async function MainAppLayout({
     <SidebarProvider defaultOpen={defaultOpen}>
       {user && <AppSidebar user={user} />}
 
-      <SidebarInset className="overflow-hidden">
+      <SidebarInset className="overflow-hidden  flex flex-1 flex-col overflow-y-auto h-screen max-h-[calc(100vh-20px)]">
         <FinishOrgSetupBanner />
 
         {!user && (

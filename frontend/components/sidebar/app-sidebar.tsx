@@ -57,13 +57,13 @@ export function AppSidebar({
   return (
     <Sidebar collapsible={"icon"} variant="inset" ref={sidebarRef} {...props}>
       <SidebarHeader>
-        <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between">
+        <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between ">
           {isMobile ? (
             <MobileWorkspaceSwitcher />
           ) : (
             <WorkSpaceSwitcher state={state} />
           )}
-          {state === "expanded" && <SidebarTrigger className=" h-8 w-8" />}
+          {state === "expanded" && <SidebarTrigger />}
         </SidebarMenu>
       </SidebarHeader>
 
@@ -165,7 +165,7 @@ export function AppSidebar({
         <SidebarMenu className="flex flex-col w-full items-center group-data-[collapsible=icon]:justify-center justify-between">
           {state === "collapsed" && !isMobile && (
             <SidebarMenuItem>
-              <SidebarTrigger className=" mb-1 h-8 w-8" />
+              <SidebarTrigger className="mb-3 " />
             </SidebarMenuItem>
           )}
 

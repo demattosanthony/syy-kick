@@ -1,12 +1,9 @@
 "use client";
 
-import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useRef, ElementType } from "react";
 import {
   GitBranch,
-  GitBranchPlus,
   Search,
   FileText,
   ScanSearch,
@@ -16,8 +13,6 @@ import {
 import { useWorkflowsQuery } from "../api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Workflow } from "../workflows.types";
-import { cn } from "@/lib/utils";
-
 interface WorkflowsListProps {
   initalData?: Workflow[];
   projectId?: string;
@@ -38,7 +33,6 @@ const getWorkflowIcon = (title: string): LucideIcon => {
 export default function WorkflowsList(props: WorkflowsListProps) {
   const searchParams = useSearchParams();
   const search = searchParams.get("search") || "";
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: workflows, isLoading } = useWorkflowsQuery(props.initalData);
 
