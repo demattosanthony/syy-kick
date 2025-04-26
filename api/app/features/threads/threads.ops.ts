@@ -31,6 +31,7 @@ import { getOrgIdOrUnedfined } from "../../utils";
 import { markitdown, markitdownMimeTypes } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
 import workflowHandlers from "../workflows/workflows.handlers";
+import { CONFIG } from "../../config/constants";
 
 const threadsOps = {
   async createThread(
@@ -110,8 +111,8 @@ const threadsOps = {
           type: attachment.contentType?.includes("image")
             ? "image"
             : attachment.contentType?.includes("markdown")
-            ? "markdown"
-            : "file",
+              ? "markdown"
+              : "file",
           markdown,
         });
       }
@@ -320,6 +321,14 @@ const threadsOps = {
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.setHeader("Transfer-Encoding", "chunked");
+
+    // Manually set CORS headers for SSE
+    const origin = req.headers.origin;
+    if (origin && CONFIG.CORS_ORIGINS.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
+
     res.flushHeaders();
 
     try {
