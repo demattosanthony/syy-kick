@@ -12,9 +12,15 @@ import {
   WorkflowsPage,
   WorkflowPage,
   SitesPage,
+  UserSettings,
+  ProjectsPage,
+  ProjectPage,
+  ProjectTree,
+  ProjectBlob,
 } from "./pages";
 import { Providers } from "./providers";
 import MainAppLayout from "./components/layouts/main-app-layout";
+import ProjectPageLayout from "./components/layouts/project-layout";
 import { queryClient } from "./providers/tanstack-query-client-provider";
 import api from "./lib/api";
 
@@ -65,6 +71,17 @@ const router = createBrowserRouter([
           { path: "/workflows", element: <WorkflowsPage /> },
           { path: "/workflows/:workflowId", element: <WorkflowPage /> },
           { path: "/sites", element: <SitesPage /> },
+          { path: "/settings", element: <UserSettings /> },
+          { path: "/projects", element: <ProjectsPage /> },
+          {
+            path: "/projects/:projectId",
+            element: <ProjectPageLayout />,
+            children: [
+              { index: true, element: <ProjectPage /> },
+              { path: "tree/*", element: <ProjectTree /> },
+              { path: "blob/*", element: <ProjectBlob /> },
+            ],
+          },
         ],
       },
       {

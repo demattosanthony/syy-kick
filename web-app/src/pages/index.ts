@@ -9,3 +9,8 @@ export * from "./threads/thread-page";
 export * from "./workflows/workflows-page";
 export * from "./workflows/workflow-page";
 export * from "./sites/sites-page";
+export * from "./settings/settings-page";
+export * from "./projects/projects-page";
+export * from "./projects/[:projectId]/project-page";
+export * from "./projects/[:projectId]/tree/project-tree";
+export * from "./projects/[:projectId]/blob/project-blob";

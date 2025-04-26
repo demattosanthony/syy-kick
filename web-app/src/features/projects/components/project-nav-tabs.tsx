@@ -1,10 +1,7 @@
-"use client";
-
-import Link from "next/link";
 import { CircleDot, Settings, ChevronsLeftRight, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, useLocation, Link } from "react-router";
 import { usePermissions } from "@/features/permissions/context";
 
 interface NavItem {
@@ -39,7 +36,7 @@ const navItems: NavItem[] = [
 
 export default function ProjectNavigationTabs() {
   const { projectId } = useParams<{ projectId: string }>();
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const { canUpdateOrgProjects } = usePermissions();
 
   const filteredNavItems = navItems.filter((item) => {
@@ -73,7 +70,7 @@ export default function ProjectNavigationTabs() {
               )}
               asChild
             >
-              <Link href={itemPath} prefetch={false}>
+              <Link to={itemPath}>
                 {item.icon}
                 <span>{item.label}</span>
                 {item.count && (

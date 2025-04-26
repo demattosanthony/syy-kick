@@ -1,6 +1,5 @@
-"use client";
 import { Button } from "@/components/ui/button";
-import { useSearchParams, usePathname, useRouter } from "next/navigation";
+import { useSearchParams, useNavigate, useLocation } from "react-router";
 import { Clock, ArrowUp, ArrowDown, Calendar, FilterIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -12,17 +11,17 @@ import { useState } from "react";
 import { SortOption } from "../types";
 
 export default function ProjectsFilters() {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const { replace } = useRouter();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const pathname = useLocation().pathname;
 
   const sort = (searchParams.get("sort") as SortOption) || "created-desc";
 
   const handleSortChange = (option: SortOption) => {
     const params = new URLSearchParams(searchParams);
     params.set("sort", option);
-    replace(`${pathname}?${params.toString()}`);
+    navigate(`${pathname}?${params.toString()}`);
   };
 
   const getActiveFilterLabel = () => {

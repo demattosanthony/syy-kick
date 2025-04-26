@@ -8,11 +8,11 @@ import {
   MarkdownViewer,
   MultiSheetViewer,
 } from "@/features/chat/messages/components";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams } from "react-router";
 
 export default function ProjectFileViewer({ doc }: { doc: DocumentContent }) {
   const [textContent, setTextContent] = useState<string>("");
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const page = searchParams.get("page") || undefined;
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useParams } from "next/navigation";
+import { useParams, useLocation } from "react-router";
 
 interface DecodedPathParams {
   projectId: string;
@@ -15,7 +15,8 @@ export function useDecodedPathParams(): DecodedPathParams {
   const params = useParams();
   const projectId = params.projectId as string;
   const knowledgeBaseId = params.kbId as string;
-  const pathArray = (params.path as string[]) || [];
+  const pathname = useLocation().pathname;
+  const pathArray = pathname.split("/").slice(4);
 
   // Decode each path segment individually
   const decodedPathArray = pathArray.map((segment) =>
