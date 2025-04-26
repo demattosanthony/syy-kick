@@ -276,7 +276,7 @@ export const togetherAiModels = (
         middleware: extractReasoningMiddleware({ tagName: "think" }),
       }),
       supportedMimeTypes,
-      supportsToolUse: true,
+      supportsToolUse: false,
       supportsStreaming: true,
       provider: "deepseek",
       supportsSystemMessages: true,
@@ -285,16 +285,36 @@ export const togetherAiModels = (
     },
     "deepseek-v3": {
       model: togetherai("deepseek-ai/DeepSeek-V3"),
-      supportsToolUse: true,
+      supportsToolUse: false,
       supportsStreaming: true,
       supportedMimeTypes,
       provider: "deepseek",
       supportsSystemMessages: true,
       description: `DeepSeek-V3 is an open-source large language model that builds upon LLaMA (Meta’s foundational language model) to enable versatile functionalities such as text generation, code completion, and more. The model is hosted on Together AI and running on USA servers, no data gets shared with DeepSeek or china.`,
     },
-    "llama-3.1-405B": {
-      model: togetherai("meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo"),
-      supportsToolUse: true,
+    "llama-4-maverick": {
+      model: togetherai("meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"),
+      supportsToolUse: false,
+      supportsStreaming: true,
+      supportedMimeTypes,
+      provider: "meta",
+      supportsSystemMessages: true,
+      description:
+        "Llama 4 Maverick is a large language model that is optimized for reasoning and has a focus on providing accurate and helpful responses. It is hosted on Together AI and running on USA servers, no data gets shared with Meta.",
+    },
+    "llama-4-scout": {
+      model: togetherai("meta-llama/Llama-4-Scout-17B-16E-Instruct"),
+      supportsToolUse: false,
+      supportsStreaming: true,
+      supportedMimeTypes,
+      provider: "meta",
+      supportsSystemMessages: true,
+      description:
+        "Llama 4 Scout is a large language model that is optimized for reasoning and has a focus on providing accurate and helpful responses. It is hosted on Together AI and running on USA servers, no data gets shared with Meta.",
+    },
+    "llama-3.3-70b": {
+      model: togetherai("meta-llama/Llama-3.3-70B-Instruct-Turbo"),
+      supportsToolUse: false,
       supportsStreaming: true,
       supportedMimeTypes,
       provider: "meta",
@@ -309,8 +329,8 @@ export const groqModels = (apiKey?: string): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
   return {
-    "llama-3": {
-      model: groq("deepseek-r1-distill-llama-70b"),
+    "llama-3.3-70b": {
+      model: groq("llama-3.3-70b-versatile"),
       supportsToolUse: true,
       supportsStreaming: true,
       supportsSystemMessages: true,
@@ -397,10 +417,10 @@ export const MODELS: Record<string, ModelConfig> = {
   ...openaiModels(process.env.OPENAI_API_KEY),
   ...googleModels(process.env.GOOGLE_GENERATIVE_AI_API_KEY),
   ...xAiModels(process.env.XAI_API_KEY),
-  //   ...mistralModels(process.env.MISTRAL_API_KEY),
-  //   ...togetherAiModels(process.env.TOGETHER_AI_API_KEY),
+  ...mistralModels(process.env.MISTRAL_API_KEY),
+  ...togetherAiModels(process.env.TOGETHER_AI_API_KEY),
   //   ...groqModels(process.env.GROQ_API_KEY),
-  //   ...perplexityModels(process.env.PPLX_API_KEY),
+  ...perplexityModels(process.env.PPLX_API_KEY),
 };
 
 export const embeddingModel = openai.embedding("text-embedding-3-large", {
