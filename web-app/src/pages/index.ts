@@ -8,3 +8,4 @@ export * from "./threads/threads-page";
 export * from "./threads/thread-page";
 export * from "./workflows/workflows-page";
 export * from "./workflows/workflow-page";
+export * from "./sites/sites-page";

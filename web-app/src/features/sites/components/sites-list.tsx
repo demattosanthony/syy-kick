@@ -1,12 +1,10 @@
-"use client";
-
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams } from "react-router";
 import { useEffect, useMemo, useRef } from "react";
 import useInfiniteGetSitesQuery from "../api/get-sites";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Site } from "../types/sites";
-import Link from "next/link";
+import { Link } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Clock, MapPin } from "lucide-react";
 
@@ -15,7 +13,7 @@ const SitesList = ({
 }: {
   onSiteHover?: (siteId: string | null) => void;
 }) => {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const search = useMemo(
     () => searchParams.get("search") || "",
     [searchParams]
@@ -77,7 +75,7 @@ const SitesList = ({
               onMouseEnter={() => handleMouseEnter(site.id)}
               onMouseLeave={handleMouseLeave}
             >
-              <Link href={`/projects?siteId=${site.id}`}>
+              <Link to={`/projects?siteId=${site.id}`}>
                 <SiteItem site={site} />
               </Link>
             </div>

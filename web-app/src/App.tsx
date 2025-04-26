@@ -11,6 +11,7 @@ import {
   ThreadPage,
   WorkflowsPage,
   WorkflowPage,
+  SitesPage,
 } from "./pages";
 import { Providers } from "./providers";
 import MainAppLayout from "./components/layouts/main-app-layout";
@@ -63,6 +64,7 @@ const router = createBrowserRouter([
           { path: "/threads/:threadId", element: <ThreadPage /> },
           { path: "/workflows", element: <WorkflowsPage /> },
           { path: "/workflows/:workflowId", element: <WorkflowPage /> },
+          { path: "/sites", element: <SitesPage /> },
         ],
       },
       {

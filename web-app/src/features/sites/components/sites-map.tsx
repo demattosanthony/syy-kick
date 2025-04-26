@@ -1,11 +1,9 @@
-"use client";
-
 import React, { useRef, useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { Site } from "../types/sites";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || "";
 
 interface SitesMapProps {
   sites?: Site[];
@@ -27,7 +25,6 @@ const SitesMap: React.FC<SitesMapProps> = ({
   const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
 
-  console.log(sites);
   // 1. Initialize map once
   useEffect(() => {
     try {
@@ -169,9 +166,7 @@ const SitesMap: React.FC<SitesMapProps> = ({
             ${
               site.city
                 ? `<p class="text-sm text-muted-foreground">
-                     ${site.city}, ${site.state || ""} ${
-                    site.postalCode || ""
-                  }
+                     ${site.city}, ${site.state || ""} ${site.postalCode || ""}
                    </p>`
                 : ""
             }
