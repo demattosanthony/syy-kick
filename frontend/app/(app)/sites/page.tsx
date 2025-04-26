@@ -26,10 +26,10 @@ export default function SitesPage() {
   }, [data]);
 
   return (
-    <main className="flex-1 w-full mx-auto h-full">
+    <div className="flex-1 w-full mx-auto h-full overflow-hidden">
       <div className="flex flex-col lg:flex-row h-full">
         <div className="w-full lg:w-1/2 relative lg:h-full flex justify-center items-center rounded-xl p-0">
-          <div className="h-full w-full relative">
+          <div className="h-full w-full relative rounded-xl overflow-hidden">
             <SitesMap
               sites={sitesWithCoords}
               isLoading={isLoading || isFetchingAll}
@@ -43,6 +43,6 @@ export default function SitesPage() {
           <SitesList onSiteHover={setHoveredSiteId} />
         </div>
       </div>
-    </main>
+    </div>
   );
 }

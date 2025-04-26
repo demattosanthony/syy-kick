@@ -1,6 +1,5 @@
 "use client";
 
-import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { useGetIssues } from "../api";
 import React, { useEffect } from "react";
@@ -52,10 +51,10 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
         <div className="flex items-center px-4 bg-sidebar dark:bg-secondary rounded-t-lg h-12">
           <Button
             variant="ghost"
-            className={`rounded-none  ${
+            className={`rounded-none border-none ${
               filterStatus === "open"
-                ? "border-primary text-primary font-bold"
-                : "border-transparent text-muted-foreground"
+                ? "text-primary font-bold"
+                : "text-muted-foreground"
             } px-4 py-2 -mb-px hover:bg-transparent hover:text-primary`}
             onClick={() => {
               const params = new URLSearchParams(searchParams);
@@ -67,10 +66,10 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
           </Button>
           <Button
             variant="ghost"
-            className={`rounded-none  ${
+            className={`rounded-none border-none ${
               filterStatus === "closed"
-                ? "border-primary text-primary font-bold"
-                : "border-transparent text-muted-foreground"
+                ? "text-primary font-bold"
+                : "text-muted-foreground"
             } px-4 py-2 -mb-px hover:bg-transparent hover:text-primary`}
             onClick={() => {
               const params = new URLSearchParams(searchParams);
@@ -126,7 +125,6 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
                     key={issue.id}
                     className="flex items-center gap-4 p-4 hover:bg-muted/50"
                   >
-                    <Checkbox />
                     <div className="relative flex-1">
                       <div className="flex items-center gap-2">
                         {issue.status === "open" ? (

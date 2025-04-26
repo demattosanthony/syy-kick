@@ -20,7 +20,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
@@ -60,14 +59,34 @@ export function NavUser({
   };
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu onOpenChange={onDropdownOpenChange}>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
+    <SidebarMenuItem>
+      <DropdownMenu onOpenChange={onDropdownOpenChange}>
+        <DropdownMenuTrigger asChild>
+          <SidebarMenuButton size="lg" className="hover:bg-accent">
+            <Avatar className="h-8 w-8 rounded-full">
+              <AvatarImage src={user.profilePicture} alt={user.name} />
+              <AvatarFallback className="rounded-full">
+                {user.name
+                  ?.split(" ")
+                  .map((n: string) => n[0])
+                  .join("")}
+              </AvatarFallback>
+            </Avatar>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-semibold">{user.name}</span>
+              <span className="truncate text-xs">{user.email}</span>
+            </div>
+            <ChevronsUpDown className="ml-auto size-4" />
+          </SidebarMenuButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="w-[--radix-dropdown-menu-trigger-width] min-w-64 rounded-lg"
+          side={isMobile ? "bottom" : "top"}
+          align="end"
+          sideOffset={4}
+        >
+          <DropdownMenuLabel className="p-0 font-normal">
+            <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
               <Avatar className="h-8 w-8 rounded-full">
                 <AvatarImage src={user.profilePicture} alt={user.name} />
                 <AvatarFallback className="rounded-full">
@@ -81,109 +100,80 @@ export function NavUser({
                 <span className="truncate font-semibold">{user.name}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-64 rounded-lg"
-            side={isMobile ? "bottom" : "top"}
-            align="end"
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-full">
-                  <AvatarImage src={user.profilePicture} alt={user.name} />
-                  <AvatarFallback className="rounded-full">
-                    {user.name
-                      ?.split(" ")
-                      .map((n: string) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
-                </div>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+
+          {user.subscriptionStatus === "active" &&
+            activeWorkspace?.type === "personal" && (
+              <>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem
+                    onClick={handleBillingPortal}
+                    className="cursor-pointer"
+                  >
+                    <CreditCard />
+                    Billing
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+              </>
+            )}
+
+          <DropdownMenuGroup>
+            <Link href="/settings">
+              <DropdownMenuItem className="hover:cursor-pointer">
+                <Settings />
+                Settings
+              </DropdownMenuItem>
+            </Link>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuGroup>
+            <div className="flex items-center justify-between px-2 py-0.5">
+              <span className="text-sm font-medium">Theme</span>
+              <div className="flex gap-1">
+                <Button
+                  variant={useTheme().theme === "light" ? "secondary" : "ghost"}
+                  size="icon"
+                  className="size-8"
+                  onClick={() => setTheme("light")}
+                >
+                  <Sun className="size-4" />
+                  <span className="sr-only">Light theme</span>
+                </Button>
+                <Button
+                  variant={useTheme().theme === "dark" ? "secondary" : "ghost"}
+                  size="icon"
+                  className="size-8"
+                  onClick={() => setTheme("dark")}
+                >
+                  <Moon className="size-4" />
+                  <span className="sr-only">Dark theme</span>
+                </Button>
+                <Button
+                  variant={
+                    useTheme().theme === "system" ? "secondary" : "ghost"
+                  }
+                  size="icon"
+                  className="size-8"
+                  onClick={() => setTheme("system")}
+                >
+                  <Monitor className="size-4" />
+                  <span className="sr-only">System theme</span>
+                </Button>
               </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-
-            {user.subscriptionStatus === "active" &&
-              activeWorkspace?.type === "personal" && (
-                <>
-                  <DropdownMenuGroup>
-                    <DropdownMenuItem
-                      onClick={handleBillingPortal}
-                      className="cursor-pointer"
-                    >
-                      <CreditCard />
-                      Billing
-                    </DropdownMenuItem>
-                  </DropdownMenuGroup>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-
-            <DropdownMenuGroup>
-              <Link href="/settings">
-                <DropdownMenuItem className="hover:cursor-pointer">
-                  <Settings />
-                  Settings
-                </DropdownMenuItem>
-              </Link>
-            </DropdownMenuGroup>
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuGroup>
-              <div className="flex items-center justify-between px-2 py-0.5">
-                <span className="text-sm font-medium">Theme</span>
-                <div className="flex gap-1">
-                  <Button
-                    variant={
-                      useTheme().theme === "light" ? "secondary" : "ghost"
-                    }
-                    size="icon"
-                    className="size-8"
-                    onClick={() => setTheme("light")}
-                  >
-                    <Sun className="size-4" />
-                    <span className="sr-only">Light theme</span>
-                  </Button>
-                  <Button
-                    variant={
-                      useTheme().theme === "dark" ? "secondary" : "ghost"
-                    }
-                    size="icon"
-                    className="size-8"
-                    onClick={() => setTheme("dark")}
-                  >
-                    <Moon className="size-4" />
-                    <span className="sr-only">Dark theme</span>
-                  </Button>
-                  <Button
-                    variant={
-                      useTheme().theme === "system" ? "secondary" : "ghost"
-                    }
-                    size="icon"
-                    className="size-8"
-                    onClick={() => setTheme("system")}
-                  >
-                    <Monitor className="size-4" />
-                    <span className="sr-only">System theme</span>
-                  </Button>
-                </div>
-              </div>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logOut} className="cursor-pointer">
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+            </div>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={logOut} className="cursor-pointer">
+            <LogOut />
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </SidebarMenuItem>
   );
 }

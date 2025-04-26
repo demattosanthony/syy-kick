@@ -64,7 +64,7 @@ const SitesList = ({
   }
 
   return (
-    <ScrollArea className="h-[calc(100vh-175px)] px-2">
+    <ScrollArea className="h-[calc(100vh-220px)] px-2">
       {sites.length === 0 && !isLoading ? (
         <div className="flex items-center justify-center h-full">
           <p className="text-muted-foreground">No sites found</p>
