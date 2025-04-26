@@ -68,7 +68,7 @@ export default function ProjectNavigationTabs() {
                 "h-full rounded-none border-b-2 px-4 hover:bg-transparent", // Base styles: only bottom border
                 "flex items-center gap-2 flex-shrink-0",
                 isActive
-                  ? "border-b-primary text-primary font-semibold hover:border-b-primary" // Active state: primary bottom border
+                  ? "border-b-primary text-white font-semibold hover:border-b-primary" // Active state: primary bottom border
                   : "border-b-transparent text-muted-foreground hover:border-b-border" // Inactive state: transparent bottom border, default border color on hover
               )}
               asChild

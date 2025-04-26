@@ -200,10 +200,10 @@ function FileUploadInput({
       <h3 className="text-lg font-bold mb-2">{input.title}</h3>
       <div
         className={cn(
-          "border-2 border-dashed rounded-xl p-8 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center relative",
+          "border-2 border-dashed border-border rounded-xl p-8 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center relative", // Use border-border for adaptive base color (greyer in dark mode)
           isDragging
-            ? "border-primary bg-primary/5"
-            : "border-muted hover:border-primary/50 hover:bg-muted/10"
+            ? "border-accent bg-accent/10" // Dragging state uses accent border
+            : "hover:border-accent hover:bg-accent/10" // Hover state also uses accent border and subtle background
         )}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}

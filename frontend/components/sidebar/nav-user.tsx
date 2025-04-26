@@ -63,10 +63,7 @@ export function NavUser({
     <SidebarMenuItem>
       <DropdownMenu onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton
-            size="lg"
-            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-          >
+          <SidebarMenuButton size="lg" className="hover:bg-accent">
             <Avatar className="h-8 w-8 rounded-full">
               <AvatarImage src={user.profilePicture} alt={user.name} />
               <AvatarFallback className="rounded-full">

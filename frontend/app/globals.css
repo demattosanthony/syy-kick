@@ -83,7 +83,7 @@
     --ring: 25 90% 70%; /* Brighter orange for focus rings */
 
     /* Sidebar with a dark purple-grey shade */
-    --sidebar-background: 288 9% 11%; /* Dark purple-grey */
+    --sidebar-background: 225 9% 9%; /* Dark blue-grey, lighter */
     --sidebar-foreground: 25 8% 98%; /* Match main foreground */
     --sidebar-primary: 25 90% 60%; /* Match main primary */
     --sidebar-primary-foreground: 25 10% 10%; /* Match main primary foreground */
@@ -143,6 +143,33 @@
 
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior: none;
+    overflow: hidden;
+    /* Prevent bounce effect and dragging */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    -webkit-overflow-scrolling: none;
+    user-select: text;
+  }
+
+  html {
+    touch-action: none;
+    height: -webkit-fill-available;
+    /* Prevent pull-to-refresh */
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    user-select: text;
+  }
+
+  #__next {
+    height: 100%;
+    /* Prevent dragging */
+    touch-action: none;
+    /* -webkit-user-drag: none; */
+    user-select: text;
   }
 }
 
