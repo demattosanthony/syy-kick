@@ -7,6 +7,7 @@ export const CONFIG = {
     "https://yo.syyclops.com",
     "https://www.yo.syyclops.com",
     "https://yo-syyclops.vercel.app",
+    "https://timely-faun-d79ed5.netlify.app/",
   ],
   COOKIE_OPTIONS: {
     httpOnly: true,
