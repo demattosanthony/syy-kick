@@ -40,7 +40,7 @@ export function AnalyticsDashboard({
   return (
     <html>
       <head>
-        <title>Analytics Dashboard</title>
+        <title>Syykick Analytics</title>
         <meta charSet="utf-8" />
         <style>
           {`

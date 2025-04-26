@@ -147,4 +147,4 @@ export default Router()
     }
   })
   .use("/permissions", auth, permissionsRoutes)
-  .use("/analytics-dashboard", analyticsRoutes);
+  .use("/analytics", analyticsRoutes);
