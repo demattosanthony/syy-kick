@@ -15,7 +15,7 @@ import paymentRoutes, { webhook } from "./features/payments";
 import organizationRoutes from "./features/organizations/organizations.routes";
 import workflowRoutes from "./features/workflows/workflows.routes";
 import permissionsRoutes from "./features/permissions/permissions.routes";
-import analyticsRoutes from "./features/analytics";
+import analyticsRoutes from "./features/analytics/analytics.routes";
 import knowledgeBasesRoutes from "./features/knowledge-bases/knowledge-bases.routes";
 import sitesRoutes from "./features/sites/sites.routes";
 import projectsRoutes from "./features/projects/projects.routes";

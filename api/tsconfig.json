@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "lib": ["ESNext"], // Removed "DOM" as it's unnecessary for backend APIs
+    "lib": ["ESNext", "DOM"],
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
-    // Removed "jsx" as it's not used in an Express API
+    "jsx": "react-jsx",
     "allowJs": true,
     "moduleResolution": "bundler", // Retained for Bun.js compatibility
     "esModuleInterop": true,
