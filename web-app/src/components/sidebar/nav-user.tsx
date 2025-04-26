@@ -37,7 +37,7 @@ export function NavUser({
   user: User;
   onDropdownOpenChange?: (open: boolean) => void;
 }) {
-  const { isMobile } = useSidebar();
+  const { isMobile, state } = useSidebar();
   const { logOut } = useAuth();
   const { setTheme } = useTheme();
   const { activeWorkspace } = useWorkspace();
@@ -60,7 +60,10 @@ export function NavUser({
     <SidebarMenuItem>
       <DropdownMenu onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton size="lg" className="hover:bg-accent">
+          <SidebarMenuButton
+            size="lg"
+            className="hover:bg-accent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2"
+          >
             <Avatar className="h-8 w-8 rounded-full">
               <AvatarImage src={user.profilePicture} alt={user.name} />
               <AvatarFallback className="rounded-full">
@@ -70,11 +73,15 @@ export function NavUser({
                   .join("")}
               </AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">{user.name}</span>
-              <span className="truncate text-xs">{user.email}</span>
-            </div>
-            <ChevronsUpDown className="ml-auto size-4" />
+            {(state === "expanded" || isMobile) && (
+              <>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">{user.name}</span>
+                  <span className="truncate text-xs">{user.email}</span>
+                </div>
+                <ChevronsUpDown className="ml-auto size-4" />
+              </>
+            )}
           </SidebarMenuButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent
