@@ -83,16 +83,40 @@ export const checkTokens = async (
       throw new Error("User not found");
     }
 
-    // Update lastActiveAt on successful access token validation
-    // Do not increment session count here, as it's just continuing an existing session
+    // Check if last active time is more than 30 minutes ago
+    const now = new Date();
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    let shouldIncrementSession = false;
+
+    if (!user.lastActiveAt || user.lastActiveAt < thirtyMinutesAgo) {
+      shouldIncrementSession = true;
+    }
+
+    // Update lastActiveAt and potentially sessionCount
+    const updateData: Partial<{ lastActiveAt: Date; sessionCount: any }> = {
+      lastActiveAt: now,
+    };
+    if (shouldIncrementSession) {
+      updateData.sessionCount = sql`${users.sessionCount} + 1`;
+    }
+
     db.update(users)
-      .set({ lastActiveAt: new Date() })
+      .set(updateData)
       .where(eq(users.id, data.userId))
       .catch(console.error); // Fire and forget
 
+    // Return the user data (sessionCount may have been updated asynchronously)
+    // If immediate accuracy needed, might need to adjust or re-fetch user object if incremented
     return {
       userId: data.userId,
-      user,
+      // Return the user object fetched before the update
+      user: shouldIncrementSession
+        ? {
+            ...user,
+            sessionCount: (user.sessionCount || 0) + 1,
+            lastActiveAt: now,
+          }
+        : { ...user, lastActiveAt: now },
     };
   } catch {
     // Access token is invalid, expired, or user not found
@@ -125,10 +149,11 @@ export const checkTokens = async (
 
     // Successfully validated refresh token - THIS IS A NEW SESSION
     // Increment session count and update last active time
+    const now = new Date();
     db.update(users)
       .set({
         sessionCount: sql`${users.sessionCount} + 1`,
-        lastActiveAt: new Date(),
+        lastActiveAt: now,
       })
       .where(eq(users.id, refreshTokenData.userId))
       .catch(console.error); // Fire and forget update
@@ -136,9 +161,12 @@ export const checkTokens = async (
     // Return the user data (sessionCount will be updated asynchronously)
     return {
       userId: refreshTokenData.userId,
-      // We return the user object fetched before the update
-      // If the updated count is immediately needed, re-fetch or update object here
-      user,
+      // We return the user object fetched before the update, but manually update relevant fields
+      user: {
+        ...user,
+        sessionCount: (user.sessionCount || 0) + 1,
+        lastActiveAt: now,
+      },
     };
   }
 };
