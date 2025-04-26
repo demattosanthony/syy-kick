@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import useDebounce from "@/hooks/use-debounce";
 import { Search } from "lucide-react";
 import { useSearchParams, useNavigate, useLocation } from "react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 
 interface SearchBarProps {
   placeholder?: string;
@@ -26,6 +26,7 @@ export default function SearchBar({
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState(initialSearch || "");
   const debouncedSearchTerm = useDebounce(searchTerm, debounceMs);
+  const initialSearchParam = useRef(searchParams[0].get(searchParamKey));
 
   const handleSearch = useCallback(
     (term: string) => {
@@ -41,7 +42,9 @@ export default function SearchBar({
   );
 
   useEffect(() => {
-    handleSearch(debouncedSearchTerm);
+    if (debouncedSearchTerm !== (initialSearchParam.current || "")) {
+      handleSearch(debouncedSearchTerm);
+    }
   }, [debouncedSearchTerm, handleSearch]);
 
   return (

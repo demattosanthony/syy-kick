@@ -1,5 +1,5 @@
 import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router";
+import { createBrowserRouter, RouterProvider, Outlet } from "react-router";
 import {
   HomePage,
   LoginPage,
@@ -7,34 +7,31 @@ import {
   PrivacyPolicyPage,
   TermsOfUsePage,
   JoinOrgPage,
+  ThreadsPage,
 } from "./pages";
 import { Providers } from "./providers";
 import MainAppLayout from "./components/layouts/main-app-layout";
+import { queryClient } from "./providers/tanstack-query-client-provider";
+import api from "./lib/api";
 
-function App() {
+// Define the loader function
+const mainAppLoader = async () => {
+  const queryKey = ["me"];
+  // Ensure the data is fetched or retrieved from cache
   return (
-    <BrowserRouter>
+    queryClient.getQueryData(queryKey) ??
+    (await queryClient.fetchQuery({ queryKey, queryFn: () => api.auth.me() }))
+  );
+};
+
+// Define routes using the object-based format
+const router = createBrowserRouter([
+  {
+    // Root element that includes Providers and Outlet
+    element: (
       <Providers>
-        <Routes>
-          {/* Routes with MainAppLayout */}
-          <Route element={<MainAppLayout />}>
-            <Route path="/" element={<HomePage />} />
-          </Route>
-
-          {/** Auth Pages */}
-          <Route path="/login" element={<LoginPage />} />
-
-          <Route
-            path="/policies/privacy-policy"
-            element={<PrivacyPolicyPage />}
-          />
-          <Route path="/policies/terms-of-use" element={<TermsOfUsePage />} />
-
-          <Route path="/success" element={<PaymentSuccessPage />} />
-
-          <Route path="/join-org" element={<JoinOrgPage />} />
-        </Routes>
-
+        <Outlet /> {/* Render matched child route here */}
+        {/* iframe can be moved here if it should be present on all routes */}
         <iframe
           id="microsoft-picker-iframe"
           style={{
@@ -51,8 +48,44 @@ function App() {
           name="microsoftPickerFrame"
         />
       </Providers>
-    </BrowserRouter>
-  );
+    ),
+    // Nest all other routes as children
+    children: [
+      {
+        element: <MainAppLayout />,
+        loader: mainAppLoader, // Loader for routes using MainAppLayout
+        children: [
+          { path: "/", element: <HomePage /> },
+          { path: "/threads", element: <ThreadsPage /> },
+        ],
+      },
+      {
+        path: "/login",
+        element: <LoginPage />,
+      },
+      {
+        path: "/policies/privacy-policy",
+        element: <PrivacyPolicyPage />,
+      },
+      {
+        path: "/policies/terms-of-use",
+        element: <TermsOfUsePage />,
+      },
+      {
+        path: "/success",
+        element: <PaymentSuccessPage />,
+      },
+      {
+        path: "/join-org",
+        element: <JoinOrgPage />,
+      },
+    ],
+  },
+]);
+
+function App() {
+  // Render only the RouterProvider
+  return <RouterProvider router={router} />;
 }
 
 export default App;

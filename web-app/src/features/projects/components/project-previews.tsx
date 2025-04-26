@@ -7,48 +7,6 @@ import { useWorkspace } from "@/workspace-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router";
 
-// Add this style tag for the pin point shape
-const PinStyles = () => (
-  <style jsx global>{`
-    .location-marker {
-      width: 28px;
-      height: 28px;
-      background-color: hsl(var(--marker-fill, 215 5% 15%));
-      border-radius: 50% 50% 0 50%;
-      transform: rotate(45deg);
-      position: relative;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-
-    .location-marker::after {
-      content: "";
-      position: absolute;
-      top: 9px;
-      left: 9px;
-      width: 10px;
-      height: 10px;
-      background-color: white;
-      border-radius: 50%;
-    }
-
-    /* Add overlay to hide Google logo */
-    .map-container {
-      position: relative;
-      overflow: hidden;
-    }
-
-    .map-container::after {
-      content: "";
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 25px;
-      background-color: hsl(var(--muted));
-      z-index: 10;
-    }
-  `}</style>
-);
 const ProjectPreviews = ({
   projects,
   isLoading,
@@ -61,7 +19,45 @@ const ProjectPreviews = ({
 
   return (
     <div className="w-full max-w-[950px] px-6 mx-auto">
-      <PinStyles />
+      <style>{`
+        .location-marker {
+          width: 28px;
+          height: 28px;
+          background-color: hsl(var(--marker-fill, 215 5% 15%));
+          border-radius: 50% 50% 0 50%;
+          transform: rotate(45deg);
+          position: relative;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .location-marker::after {
+          content: "";
+          position: absolute;
+          top: 9px;
+          left: 9px;
+          width: 10px;
+          height: 10px;
+          background-color: white;
+          border-radius: 50%;
+        }
+
+        /* Add overlay to hide Google logo */
+        .map-container {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .map-container::after {
+          content: "";
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 25px;
+          background-color: hsl(var(--muted));
+          z-index: 10;
+        }
+      `}</style>
 
       {!isLoading && projects?.length > 0 && (
         <div className="flex flex-col gap-1 mb-3 ">
@@ -145,7 +141,7 @@ interface ProjectCardProps {
 function ProjectCard({ project }: ProjectCardProps) {
   const mapUrl = useMemo(() => {
     // Create Google Maps Static API URL for satellite view
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
     // Default to a generic location if coordinates aren't available
     const hasLocation = project.site?.address;

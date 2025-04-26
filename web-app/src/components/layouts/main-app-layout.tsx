@@ -1,12 +1,13 @@
-import { useMeQuery } from "@/features/user/api";
-import { Outlet } from "react-router";
+import { Outlet, useLoaderData } from "react-router";
 import { LoginButtons } from "@/features/auth/components";
 import { FinishOrgSetupBanner } from "@/features/organizations/components";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { User } from "@/types/user";
 
 export default function MainAppLayout() {
-  const { data: user } = useMeQuery();
+  const user = useLoaderData() as User | null;
+
   return (
     <SidebarProvider defaultOpen={true}>
       {user && <AppSidebar user={user} />}
