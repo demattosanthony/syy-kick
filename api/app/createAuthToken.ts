@@ -1,6 +1,6 @@
 import * as jwt from "jsonwebtoken";
 import { Response } from "express";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import db from "./config/db";
 import { users } from "./config/schema";
 
@@ -61,7 +61,7 @@ export const clearAuthCookies = (res: Response) => {
 export const checkTokens = async (
   accessToken: string,
   refreshToken: string
-) => {
+): Promise<{ userId: string; user: DbUser }> => {
   // First try to verify the access token
   try {
     const data = <AccessTokenData>(
@@ -76,9 +76,40 @@ export const checkTokens = async (
       throw new Error("User not found");
     }
 
+    // Check if last active time is more than 30 minutes ago
+    const now = new Date();
+    const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+    let shouldIncrementSession = false;
+
+    if (!user.lastActiveAt || user.lastActiveAt < thirtyMinutesAgo) {
+      shouldIncrementSession = true;
+    }
+
+    // Update lastActiveAt and potentially sessionCount
+    const updateData: Partial<{ lastActiveAt: Date; sessionCount: any }> = {
+      lastActiveAt: now,
+    };
+    if (shouldIncrementSession) {
+      updateData.sessionCount = sql`${users.sessionCount} + 1`;
+    }
+
+    db.update(users)
+      .set(updateData)
+      .where(eq(users.id, data.userId))
+      .catch(console.error); // Fire and forget
+
+    // Return the user data (sessionCount may have been updated asynchronously)
+    // If immediate accuracy needed, might need to adjust or re-fetch user object if incremented
     return {
       userId: data.userId,
-      user,
+      // Return the user object fetched before the update
+      user: shouldIncrementSession
+        ? {
+            ...user,
+            sessionCount: (user.sessionCount || 0) + 1,
+            lastActiveAt: now,
+          }
+        : { ...user, lastActiveAt: now },
     };
   } catch {
     // Access token is invalid, expired, or user not found
@@ -109,9 +140,26 @@ export const checkTokens = async (
       throw new Error("Invalid refresh token");
     }
 
+    // Successfully validated refresh token - THIS IS A NEW SESSION
+    // Increment session count and update last active time
+    const now = new Date();
+    db.update(users)
+      .set({
+        sessionCount: sql`${users.sessionCount} + 1`,
+        lastActiveAt: now,
+      })
+      .where(eq(users.id, refreshTokenData.userId))
+      .catch(console.error); // Fire and forget update
+
+    // Return the user data (sessionCount will be updated asynchronously)
     return {
       userId: refreshTokenData.userId,
-      user,
+      // We return the user object fetched before the update, but manually update relevant fields
+      user: {
+        ...user,
+        sessionCount: (user.sessionCount || 0) + 1,
+        lastActiveAt: now,
+      },
     };
   }
 };

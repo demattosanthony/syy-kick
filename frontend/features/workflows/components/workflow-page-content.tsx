@@ -178,7 +178,7 @@ export default function WorkflowPageContent({
   return (
     <div className="max-w-2xl mx-auto flex flex-col items-center w-full">
       <div className="mb-6 text-center">
-        <div className="inline-block p-3 mb-6 rounded-full bg-primary/10">
+        <div className="inline-block p-3 mb-6 rounded-full bg-accent">
           <span className="text-4xl">📋</span>
         </div>
         <h1 className="text-4xl font-bold mb-4">{workflow?.title}</h1>

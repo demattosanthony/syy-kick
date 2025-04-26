@@ -1,6 +1,5 @@
 "use client";
 
-import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useMemo, useState } from "react";
@@ -20,7 +19,6 @@ const ProjectsList = () => {
   const sort = (searchParams.get("sort") as SortOption) || "created-desc";
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Use initial projects for first render
   const {
     data,
     fetchNextPage,
@@ -38,9 +36,10 @@ const ProjectsList = () => {
 
   useEffect(() => {
     if (isError && error) {
-      toast.error(error.message);
+      toast.error(error.message || "Failed to load projects");
     }
   }, [error, isError]);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -61,7 +60,6 @@ const ProjectsList = () => {
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Use a Set to deduplicate projects by ID
   const uniqueProjects = useMemo(() => {
     const projectsMap = new Map<string, Project>();
 
@@ -79,62 +77,63 @@ const ProjectsList = () => {
   }, [data?.pages]);
 
   return (
-    <div className="flex flex-col w-full">
-      <ScrollArea className="h-[calc(100vh-205px)] px-2">
-        {uniqueProjects.length === 0 && !isLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">No projects found</p>
-          </div>
-        ) : (
-          <>
-            {uniqueProjects.map((project) => (
-              <ProjectItem key={project.id} project={project} />
-            ))}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      {isLoading &&
+        uniqueProjects.length === 0 &&
+        Array.from({ length: 4 }).map((_, i) => <ProjectSkeleton key={i} />)}
 
-            <div ref={scrollRef} className="h-10">
-              {(isFetchingNextPage || isLoading) && (
-                <div className="space-y-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <ProjectSkeleton key={i} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </ScrollArea>
+      {!isLoading && uniqueProjects.length === 0 && (
+        <div className="col-span-1 md:col-span-2 flex items-center justify-center h-full py-10">
+          <p className="text-muted-foreground">No projects found</p>
+        </div>
+      )}
+
+      {uniqueProjects.map((project) => (
+        <ProjectItem key={project.id} project={project} />
+      ))}
+
+      <div ref={scrollRef} className="h-1 col-span-1 md:col-span-2"></div>
+      {isFetchingNextPage && (
+        <>
+          <ProjectSkeleton />
+          <ProjectSkeleton />
+        </>
+      )}
     </div>
   );
 };
 
 function ProjectItem({ project }: { project: Project }) {
-  const [relativeTime, setRelativeTime] = useState("");
-
-  useEffect(() => {
-    setRelativeTime(getRelativeTimeString(project.updatedAt));
-  }, [project.updatedAt]);
+  const relativeTime = getRelativeTimeString(project.updatedAt);
 
   return (
-    <Link href={`/projects/${project.id}`} prefetch={false}>
-      <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full group">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="text-muted-foreground relative">
-            <FolderClosed className="w-6 h-6 absolute text-blue-400 fill-blue-400 transition-opacity duration-200 group-hover:opacity-0" />
-            <FolderOpen className="w-6 h-6 text-blue-400 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-          </div>
+    <Link
+      href={`/projects/${project.id}`}
+      prefetch={false}
+      className="block p-6 rounded-lg bg-card hover:bg-accent border transition-colors h-full group"
+    >
+      <div className="flex flex-col gap-4 h-full">
+        <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center border flex-shrink-0 relative">
+          <FolderClosed className="w-6 h-6 absolute text-blue-400 fill-blue-400 transition-opacity duration-200 group-hover:opacity-0" />
+          <FolderOpen className="w-6 h-6 text-blue-400 opacity-0 absolute transition-opacity duration-200 group-hover:opacity-100" />
+        </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="text-xl font-medium">{project.name}</p>
+        <div className="flex-1 min-w-0 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <p className="text-lg font-semibold text-card-foreground line-clamp-2 break-words">
+                {project.name}
+              </p>
               {project?.projectNumber && (
-                <Badge variant={"secondary"}>{project?.projectNumber}</Badge>
+                <Badge variant={"secondary"} className="flex-shrink-0">
+                  {project?.projectNumber}
+                </Badge>
               )}
             </div>
-
-            <p className="text-xs text-muted-foreground">
-              Updated {relativeTime}
-            </p>
           </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Updated {relativeTime}
+          </p>
         </div>
       </div>
     </Link>
@@ -143,12 +142,15 @@ function ProjectItem({ project }: { project: Project }) {
 
 function ProjectSkeleton() {
   return (
-    <div className="p-4">
-      <div className="flex items-start gap-4">
-        <Skeleton className="w-6 h-6 rounded flex-shrink-0" />
+    <div className="p-6 rounded-lg bg-card border h-full">
+      <div className="flex flex-col gap-4">
+        <Skeleton className="w-10 h-10 rounded-md bg-muted" />
         <div className="flex-1">
-          <Skeleton className="h-5 w-1/3 mb-2" />
-          <Skeleton className="h-3 w-1/4" />
+          <div className="flex items-center gap-2 mb-2">
+            <Skeleton className="h-5 w-3/4 bg-muted" />
+            <Skeleton className="h-5 w-1/4 bg-muted rounded-full" />
+          </div>
+          <Skeleton className="h-4 w-1/3 bg-muted" />
         </div>
       </div>
     </div>

@@ -10,7 +10,6 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarRail,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -26,15 +25,12 @@ import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "./workspace-context";
 import { Button } from "../ui/button";
 import {
-  ArrowLeftToLine,
-  ArrowRightToLine,
   BookOpen,
   FolderClosed,
   MapPinIcon,
   Plus,
   Workflow,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { NewThreadButton } from "./new-thread-button";
 import { usePermissions } from "@/features/permissions/context";
 import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
@@ -46,68 +42,22 @@ export function AppSidebar({
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & { user: User }) {
-  const { state, setOpen } = useSidebar();
+  const { state } = useSidebar();
   const isMobile = useIsMobile();
   const { activeWorkspace } = useWorkspace();
-  const [isPinned, setIsPinned] = React.useState(true);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
-  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   const { canCreateOrgKnowledgeBases, canCreateOrgProjects } = usePermissions();
 
-  // Keep pin state in sync with sidebar state
-  React.useEffect(() => {
-    if (state === "collapsed") {
-      setIsPinned(false);
-    }
-  }, [state]);
-
-  // Handle hover behavior
-  const handleMouseEnter = React.useCallback(() => {
-    if (state === "collapsed" && !isMobile) {
-      setOpen(true);
-    }
-  }, [state, isMobile, setOpen]);
-
-  const handleMouseLeave = React.useCallback(() => {
-    if (state === "expanded" && !isPinned && !isMobile && !isPopoverOpen) {
-      setOpen(false);
-    }
-  }, [isPinned, state, isMobile, setOpen, isPopoverOpen]);
-
-  // Toggle pin state
-  const togglePin = React.useCallback(() => {
-    setIsPinned((prev) => !prev);
-  }, []);
-
   return (
-    <Sidebar
-      collapsible={"icon"}
-      ref={sidebarRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      {...props}
-    >
+    <Sidebar collapsible={"icon"} variant="inset" ref={sidebarRef} {...props}>
       <SidebarHeader>
-        <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between">
+        <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between ">
           {isMobile ? (
             <MobileWorkspaceSwitcher />
           ) : (
             <WorkSpaceSwitcher state={state} />
           )}
-          {state === "expanded" && (
-            <div className="flex items-center">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button onClick={togglePin} variant={"ghost"} size={"icon"}>
-                    {isPinned ? <ArrowLeftToLine /> : <ArrowRightToLine />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isPinned ? "Unpin sidebar" : "Pin sidebar"}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
+          {state === "expanded" && <SidebarTrigger />}
         </SidebarMenu>
       </SidebarHeader>
 
@@ -115,8 +65,17 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupContent className="px-1.5 md:px-0">
             <SidebarMenu>
-              <SidebarMenuItem>
+              <SidebarMenuItem className="mb-3">
                 <NewThreadButton />
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarButton
+                  href="/workflows"
+                  icon={Workflow}
+                  hoverIcon={Workflow}
+                  label="Workflows"
+                />
               </SidebarMenuItem>
 
               <SidebarMenuItem>
@@ -124,13 +83,13 @@ export function AppSidebar({
                   activeWorkspace?.type === "personal" &&
                   user.subscriptionStatus !== "active"
                 ) && (
-                    <SidebarButton
-                      href="/sites"
-                      icon={MapPinIcon}
-                      hoverIcon={MapPinIcon}
-                      label="Sites"
-                    />
-                  )}
+                  <SidebarButton
+                    href="/sites"
+                    icon={MapPinIcon}
+                    hoverIcon={MapPinIcon}
+                    label="Sites"
+                  />
+                )}
               </SidebarMenuItem>
 
               <SidebarMenuItem>
@@ -141,29 +100,24 @@ export function AppSidebar({
                   label="Projects"
                   actionTrigger={
                     <CreateProjectDialog
-                      trigger={<Button
-                        disabled={!canCreateOrgProjects}
-                        variant="ghost"
-                        className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
-                      >
-                        <Plus className="h-6 w-6" />
-                      </Button>}
-                      organizationId={activeWorkspace?.type === "organization" ? activeWorkspace.id : undefined}
+                      trigger={
+                        <Button
+                          disabled={!canCreateOrgProjects}
+                          variant="ghost"
+                          className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
+                        >
+                          <Plus className="h-6 w-6" />
+                        </Button>
+                      }
+                      organizationId={
+                        activeWorkspace?.type === "organization"
+                          ? activeWorkspace.id
+                          : undefined
+                      }
                     />
                   }
                 />
               </SidebarMenuItem>
-
-              {activeWorkspace?.type === "organization" && (
-                <SidebarMenuItem>
-                  <SidebarButton
-                    href="/workflows"
-                    icon={Workflow}
-                    hoverIcon={Workflow}
-                    label="Workflows"
-                  />
-                </SidebarMenuItem>
-              )}
 
               <SidebarMenuItem>
                 <SidebarButton
@@ -205,7 +159,7 @@ export function AppSidebar({
         <SidebarMenu className="flex flex-col w-full items-center group-data-[collapsible=icon]:justify-center justify-between">
           {state === "collapsed" && !isMobile && (
             <SidebarMenuItem>
-              <SidebarTrigger className=" mb-1" />
+              <SidebarTrigger className="mb-3 " />
             </SidebarMenuItem>
           )}
 
@@ -216,10 +170,9 @@ export function AppSidebar({
                 <PricingDialog />
               </DropdownMenuGroup>
             )}
-          <NavUser user={user} onDropdownOpenChange={setIsPopoverOpen} />
+          <NavUser user={user} />
         </SidebarMenu>
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 }

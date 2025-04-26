@@ -1,6 +1,5 @@
 "use client";
 
-import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useMemo, useState } from "react";
@@ -34,20 +33,17 @@ const KnowledgeBasesList = () => {
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Use the infinite query hook instead of the regular query
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteKnowledgeBasesQuery({
       search,
       limit: 10,
     });
 
-  // Flatten the pages into a single array of knowledge bases
   const knowledgeBases = useMemo(() => {
     if (!data?.pages) return [];
     return data.pages.flatMap((page) => page.data);
   }, [data]);
 
-  // Ensure we have unique knowledge bases (in case of overlaps between pages)
   const uniqueKnowledgeBases = useMemo(() => {
     if (!knowledgeBases.length) return [];
     const kbMap = new Map<string, KnowledgeBase>();
@@ -55,7 +51,6 @@ const KnowledgeBasesList = () => {
     return Array.from(kbMap.values());
   }, [knowledgeBases]);
 
-  // Infinite loading effect
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -76,29 +71,31 @@ const KnowledgeBasesList = () => {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
-    <ScrollArea className="h-[calc(100vh-175px)] px-2">
-      {uniqueKnowledgeBases.length === 0 && !isLoading ? (
-        <div className="flex items-center justify-center h-full">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      {isLoading &&
+        uniqueKnowledgeBases.length === 0 &&
+        Array.from({ length: 4 }).map((_, i) => (
+          <KnowledgeBaseSkeleton key={i} />
+        ))}
+
+      {!isLoading && uniqueKnowledgeBases.length === 0 && (
+        <div className="col-span-1 md:col-span-2 flex items-center justify-center h-full py-10">
           <p className="text-muted-foreground">No knowledge bases found</p>
         </div>
-      ) : (
-        <>
-          {uniqueKnowledgeBases.map((kb) => (
-            <KnowledgeBaseItem key={kb.id} knowledgeBase={kb} />
-          ))}
+      )}
 
-          <div ref={scrollRef} className="h-10">
-            {(isFetchingNextPage || isLoading) && (
-              <div className="space-y-4">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <KnowledgeBaseSkeleton key={i} />
-                ))}
-              </div>
-            )}
-          </div>
+      {uniqueKnowledgeBases.map((kb) => (
+        <KnowledgeBaseItem key={kb.id} knowledgeBase={kb} />
+      ))}
+
+      <div ref={scrollRef} className="h-1 col-span-1 md:col-span-2"></div>
+      {isFetchingNextPage && (
+        <>
+          <KnowledgeBaseSkeleton />
+          <KnowledgeBaseSkeleton />
         </>
       )}
-    </ScrollArea>
+    </div>
   );
 };
 
@@ -108,7 +105,6 @@ function KnowledgeBaseItem({
   knowledgeBase: KnowledgeBase;
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
   const { canDeleteOrgKnowledgeBaseDocs } = usePermissions();
   const deleteKnowledgeBaseMutation = useDeleteKnowledgeBase();
 
@@ -122,65 +118,66 @@ function KnowledgeBaseItem({
     await deleteKnowledgeBaseMutation.mutateAsync(knowledgeBase.id);
   };
 
-  const handleDialogOpenChange = (open: boolean) => {
-    setIsDeleteDialogOpen(open);
-  };
-
   return (
     <>
-      <Link href={`/knowledge-bases/${knowledgeBase.id}`} prefetch={false}>
-        <div className="mb-2 hover:bg-accent p-4 rounded-lg transition-colors max-w-full group">
-          <div className="flex items-center gap-4 min-w-0">
-            <div className="text-muted-foreground relative">
-              <BookMarked className="w-6 h-6 absolute transition-opacity duration-200 group-hover:opacity-0" />
-              <BookOpen className="w-6 h-6 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+      <div className="relative group">
+        <Link
+          href={`/knowledge-bases/${knowledgeBase.id}`}
+          prefetch={false}
+          className="block p-6 rounded-lg bg-card hover:bg-accent border transition-colors h-full"
+        >
+          <div className="flex flex-col gap-4 h-full">
+            <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center border flex-shrink-0">
+              <BookMarked className="w-5 h-5 text-muted-foreground" />
             </div>
 
-            <div className="flex-1 min-w-0">
-              <p className="text-xl font-medium">{knowledgeBase.name}</p>
-              <p className="text-xs text-muted-foreground">
+            <div className="flex-1 min-w-0 flex flex-col justify-between">
+              <div>
+                <p className="text-lg font-semibold text-card-foreground mb-1 line-clamp-2">
+                  {knowledgeBase.name}
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
                 Updated {getRelativeTimeString(knowledgeBase.updatedAt)}
               </p>
             </div>
-
-            {canDeleteOrgKnowledgeBaseDocs && (
-              <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <div className="flex items-center">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-fit">
-                      <DropdownMenuItem
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
-                        onClick={handleDelete}
-                      >
-                        <Trash className="h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
-      </Link>
+        </Link>
 
-      {/* Alert Dialog placed outside the Link component */}
+        {canDeleteOrgKnowledgeBaseDocs && (
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-fit">
+                <DropdownMenuItem
+                  className="text-destructive hover:!text-destructive focus:!text-destructive hover:!bg-destructive/10 focus:!bg-destructive/10 cursor-pointer flex items-center gap-2"
+                  onClick={handleDelete}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  <Trash className="h-4 w-4" />
+                  <span>Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </div>
+
       <AlertDialog
         open={isDeleteDialogOpen}
-        onOpenChange={handleDialogOpenChange}
+        onOpenChange={setIsDeleteDialogOpen}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -208,12 +205,13 @@ function KnowledgeBaseItem({
 
 function KnowledgeBaseSkeleton() {
   return (
-    <div className="p-4">
-      <div className="flex items-start gap-4">
-        <Skeleton className="w-6 h-6 rounded flex-shrink-0" />
+    <div className="p-6 rounded-lg bg-card border">
+      <div className="flex flex-col gap-4">
+        <Skeleton className="w-10 h-10 rounded-md bg-muted" />
         <div className="flex-1">
-          <Skeleton className="h-5 w-1/3 mb-2" />
-          <Skeleton className="h-3 w-1/4" />
+          <Skeleton className="h-5 w-3/4 mb-2 bg-muted" />
+          <Skeleton className="h-4 w-full mb-1 bg-muted" />
+          <Skeleton className="h-4 w-5/6 bg-muted" />
         </div>
       </div>
     </div>

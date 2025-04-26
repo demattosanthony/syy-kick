@@ -23,7 +23,7 @@ export default function ChatAttachment({
               <DialogTrigger asChild>
                 <div
                   key={`img-${attachment.name}-${index}`}
-                  className="cursor-pointer bg-primary p-2 rounded-lg"
+                  className="cursor-pointer bg-[#242628] p-2 rounded-lg"
                 >
                   <img
                     key={index}
@@ -52,7 +52,7 @@ export default function ChatAttachment({
         return (
           <div
             key={`pdf-${attachment.name}-${index}`}
-            className="bg-primary p-2 rounded-lg"
+            className="bg-[#242628] p-2 rounded-lg"
           >
             <PdfThumbnail url={attachment.url || ""} />
           </div>
@@ -61,7 +61,7 @@ export default function ChatAttachment({
         return (
           <div key={`file-${attachment.name}-${index}`}>
             <Link key={index} href={attachment.url || ""} target="_blank">
-              <div className="flex flex-col bg-primary text-white dark:text-black rounded-2xl p-3 hover:opacity-90 transition-opacity">
+              <div className="flex flex-col bg-[#242628] text-white dark:text-black rounded-2xl p-3 hover:opacity-90 transition-opacity">
                 <div className="flex items-center gap-2 ">
                   <File className="w-4 h-4" />
                   <div className="flex flex-col">

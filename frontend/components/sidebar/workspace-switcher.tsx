@@ -108,12 +108,12 @@ export function WorkSpaceSwitcher({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-2 px-2 font-normal max-w-[185px]"
+          className="h-10 gap-2 px-2 font-normal max-w-[175px]"
         >
           <WorkspaceLogo workspace={activeWorkspace} />
           {state === "expanded" && (
             <>
-              <p className="text-sm truncate">
+              <p className="text-base font-medium truncate">
                 {activeWorkspace?.name || "Select Workspace"}
               </p>
               <ChevronDown className="h-4 w-4" />
@@ -259,8 +259,8 @@ export function WorkSpaceSwitcher({
 const WorkspaceLogo = ({ workspace }: { workspace?: Workspace | null }) => {
   if (!workspace) return null;
   return (
-    <div className="flex h-6 w-6 items-center justify-center shrink-0">
-      <Avatar className="h-6 w-6 rounded-full bg-transparent">
+    <div className="flex h-7 w-7 items-center justify-center shrink-0">
+      <Avatar className="h-7 w-7 rounded-full bg-transparent">
         <AvatarImage src={workspace?.logo} alt={workspace?.name} />
         <AvatarFallback>
           {workspace?.name

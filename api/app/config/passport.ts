@@ -153,25 +153,6 @@ export function configurePassport() {
     )
   );
 
-  passport.use(
-    "microsoft-files",
-    new MicrosoftStrategy(
-      {
-        clientID: process.env.MICROSOFT_CLIENT_ID!,
-        clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
-        callbackURL: process.env.MICROSOFT_FILES_CALLBACK_URL!,
-        tenant: "organizations",
-        authorizationURL: "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize",
-        tokenURL: "https://login.microsoftonline.com/organizations/oauth2/v2.0/token",
-        scope: ["offline_access", "https://graph.microsoft.com/.default"],
-      },
-      async (accessToken: string, refreshToken: string, profile: any, done: VerifiedCallback) => {
-        const access = { accessToken, refreshToken, profile };
-        done(null, access);
-      }
-    )
-  );
-
   return passport;
 }
 

@@ -35,7 +35,8 @@ export function useMicrosoftPicker({
       toast.success("Sharepoint connected successfully");
       microsoftPicker.openPicker({ mode: "files" });
     } else if (oauthSuccess === "false") {
-      toast.error("Sharepoint connection failed");
+      const error = searchParams.get("error");
+      toast.error(error || "Sharepoint connection failed");
     }
     setLoading(false);
   }, [oauthSuccess]);
