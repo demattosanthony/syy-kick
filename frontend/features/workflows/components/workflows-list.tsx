@@ -100,13 +100,13 @@ function WorkflowItem({
 
 function WorkflowSkeleton() {
   return (
-    <div className="p-6 rounded-lg bg-neutral-800 border border-neutral-700">
+    <div className="p-6 rounded-lg bg-card border">
       <div className="flex flex-col gap-4">
-        <Skeleton className="w-10 h-10 rounded-md bg-neutral-700" />
+        <Skeleton className="w-10 h-10 rounded-md" />
         <div className="flex-1">
-          <Skeleton className="h-5 w-3/4 mb-2 bg-neutral-700" />
-          <Skeleton className="h-4 w-full mb-1 bg-neutral-700" />
-          <Skeleton className="h-4 w-5/6 bg-neutral-700" />
+          <Skeleton className="h-5 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-full mb-1" />
+          <Skeleton className="h-4 w-5/6" />
         </div>
       </div>
     </div>

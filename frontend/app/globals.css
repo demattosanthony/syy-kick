@@ -65,8 +65,8 @@
     --secondary: 225 11% 12%; /* Slightly lighter dark blue-grey shade */
     --secondary-foreground: 25 8% 98%; /* Light text */
 
-    /* Darker muted greys with blue hint */
-    --muted: 225 11% 12%; /* Match secondary */
+    /* Darker muted greys with blue hint - made lighter for visibility */
+    --muted: 225 11% 18%; /* Increased lightness from 12% */
     --muted-foreground: 25 8% 65%; /* Greyer text */
 
     /* Accent colors darker with blue hint */
