@@ -28,6 +28,7 @@ import {
   KnowledgeBaseTreePage,
   KnowledgeBaseBlobPage,
   KnowledgeBaseSettingsPage,
+  ForbiddenPage,
 } from "./pages";
 import { Providers } from "./providers";
 import MainAppLayout from "./components/layouts/main-app-layout";
@@ -143,12 +144,15 @@ const router = createBrowserRouter([
         path: "/join-org",
         element: <JoinOrgPage />,
       },
+      {
+        path: "*",
+        element: <ForbiddenPage />,
+      },
     ],
   },
 ]);
 
 function App() {
-  // Render only the RouterProvider
   return <RouterProvider router={router} />;
 }
 

@@ -25,3 +25,4 @@ export * from "./knowledge-bases/[kbId]/page";
 export * from "./knowledge-bases/[kbId]/tree/[...path]/page";
 export * from "./knowledge-bases/[kbId]/blob/[...path]/page";
 export * from "./knowledge-bases/[kbId]/settings/page";
+export * from "./forbidden/page";
