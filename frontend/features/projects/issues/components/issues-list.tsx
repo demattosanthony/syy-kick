@@ -1,6 +1,5 @@
 "use client";
 
-import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { useGetIssues } from "../api";
 import React, { useEffect } from "react";
@@ -52,7 +51,7 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
         <div className="flex items-center px-4 bg-sidebar dark:bg-secondary rounded-t-lg h-12">
           <Button
             variant="ghost"
-            className={`rounded-none ${
+            className={`rounded-none border-none ${
               filterStatus === "open"
                 ? "text-primary font-bold"
                 : "text-muted-foreground"
@@ -67,7 +66,7 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
           </Button>
           <Button
             variant="ghost"
-            className={`rounded-none ${
+            className={`rounded-none border-none ${
               filterStatus === "closed"
                 ? "text-primary font-bold"
                 : "text-muted-foreground"
@@ -126,7 +125,6 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
                     key={issue.id}
                     className="flex items-center gap-4 p-4 hover:bg-muted/50"
                   >
-                    <Checkbox />
                     <div className="relative flex-1">
                       <div className="flex items-center gap-2">
                         {issue.status === "open" ? (
