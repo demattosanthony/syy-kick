@@ -1,18 +1,17 @@
 import { useMeQuery } from "@/features/user/api";
 import { Outlet } from "react-router";
-import { SidebarInset } from "../ui/sidebar";
-import { SidebarProvider } from "../ui/sidebar";
 import { LoginButtons } from "@/features/auth/components";
 import { FinishOrgSetupBanner } from "@/features/organizations/components";
-import { AppSidebar } from "../sidebar/app-sidebar";
+import { AppSidebar } from "@/components/sidebar/app-sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export default function MainAppLayout() {
   const { data: user } = useMeQuery();
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
       {user && <AppSidebar user={user} />}
 
-      <SidebarInset className="overflow-hidden  flex flex-1 flex-col overflow-y-auto h-screen max-h-[calc(100vh-50px)]">
+      <SidebarInset>
         <FinishOrgSetupBanner />
 
         {!user && (

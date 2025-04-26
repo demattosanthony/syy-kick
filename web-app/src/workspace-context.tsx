@@ -53,9 +53,9 @@ export const WorkspaceProvider = ({
   // Function to update both client state and cookie
   const setActiveWorkspace = React.useCallback((workspace: Workspace) => {
     // Also set the cookie on the client side for immediate effect
-    document.cookie = `activeWorkspace=${JSON.stringify(
-      workspace
-    )}; path=/; max-age=2147483647; secure${
+    // Encode the JSON string before storing it in the cookie
+    const encodedWorkspace = encodeURIComponent(JSON.stringify(workspace));
+    document.cookie = `activeWorkspace=${encodedWorkspace}; path=/; max-age=2147483647; secure${
       process.env.NODE_ENV === "production"
         ? "; domain=.syykick.com; samesite=lax"
         : "; samesite=lax"

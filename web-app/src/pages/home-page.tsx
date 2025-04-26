@@ -26,11 +26,11 @@ import { useNavigate } from "react-router";
 
 export function HomePage() {
   const { data: user, isFetched: userFetched } = useMeQuery();
-  const { data: recentProjects, isFetching: projectsLoading } =
-    useProjectsQuery({
-      sort: "recent",
-      limit: 6,
-    });
+  //   const { data: recentProjects, isFetching: projectsLoading } =
+  //     useProjectsQuery({
+  //       sort: "recent",
+  //       limit: 6,
+  //     });
 
   const navigate = useNavigate();
   const [initalInput, setInitalInput] = useAtom(initalInputAtom);
@@ -100,10 +100,10 @@ export function HomePage() {
           <div className="max-w-5xl w-full flex flex-col items-center">
             {user ? (
               <div className="mt-6 w-full">
-                <ProjectPreviews
+                {/* <ProjectPreviews
                   projects={recentProjects || []}
                   isLoading={projectsLoading}
-                />
+                /> */}
               </div>
             ) : (
               <div className="flex flex-col items-center max-w-[800px] w-full">

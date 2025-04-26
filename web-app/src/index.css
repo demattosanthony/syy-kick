@@ -9,8 +9,8 @@
   font-weight: 400;
 
   color-scheme: light dark;
-  /* color: rgba(255, 255, 255, 0.87); */
-  /* background-color: #242424; */
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #ffffff;
 
   /* Pure white background with slight orange tint */
   --background: 25 5% 100%; /* Added slight orange tint */
@@ -55,20 +55,8 @@
   /* Location marker colors with orange hint */
   --marker-fill: 25 8% 8%;
   --marker-border: 25 5% 100%;
+  --sidebar: 25 10% 96%;
 }
-/* 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -157,6 +145,7 @@
   /* Location marker colors for dark mode */
   --marker-fill: 25 8% 98%; /* Use foreground for visibility */
   --marker-border: 225 11% 12%; /* Match main border */
+  --sidebar: hsl(240 5.9% 10%);
 }
 
 @layer base {
