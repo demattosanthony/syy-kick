@@ -10,7 +10,6 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarRail,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -26,16 +25,12 @@ import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "./workspace-context";
 import { Button } from "../ui/button";
 import {
-  ArrowLeftToLine,
-  ArrowRightToLine,
   BookOpen,
-  Columns2,
   FolderClosed,
   MapPinIcon,
   Plus,
   Workflow,
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { NewThreadButton } from "./new-thread-button";
 import { usePermissions } from "@/features/permissions/context";
 import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
@@ -47,10 +42,9 @@ export function AppSidebar({
   user,
   ...props
 }: React.ComponentProps<typeof Sidebar> & { user: User }) {
-  const { state, setOpen, toggleSidebar } = useSidebar();
+  const { state } = useSidebar();
   const isMobile = useIsMobile();
   const { activeWorkspace } = useWorkspace();
-  const [isPinned, setIsPinned] = React.useState(true);
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const { canCreateOrgKnowledgeBases, canCreateOrgProjects } = usePermissions();
 
