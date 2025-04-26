@@ -43,7 +43,6 @@ export default Router({ mergeParams: true })
     handlers.oauthCallback
   )
   .get("/microsoft-files/init", handlers.microsoftFilesInit)
-  .get("/microsoft-files", handlers.microsoftFilesAuth)
   .get("/microsoft-files/callback", handlers.microsoftFilesCallback)
   .get("/saml/:slug", authenticateSaml)
   .post("/saml/:slug/callback", authenticateSaml, handlers.samlCallback)

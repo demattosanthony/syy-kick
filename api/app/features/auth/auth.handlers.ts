@@ -228,15 +228,17 @@ export const handlers = {
     );
     authUrl.searchParams.set(
       "scope",
-      "openid offline_access https://graph.microsoft.com/.default"
+      "openid offline_access Sites.Read.All MyFiles.Read"
     );
     authUrl.searchParams.set("state", state);
+
+    console.log(authUrl.toString());
 
     // Check if the user has a picker token
     if (userId) {
       const microsoftApi = new MicrosoftAPI({ userId });
       const pickerToken = await microsoftApi.getUserToken("picker");
-      
+
       if (!pickerToken) {
         // If no picker token, display account selection
         authUrl.searchParams.set("prompt", "select_account");
@@ -246,40 +248,47 @@ export const handlers = {
     res.json({ url: authUrl.toString() });
   },
 
-  microsoftFilesAuth: async (req: Request, res: Response) => {
-    myPassport.authenticate("microsoft-files", {
-      session: false,
-      failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
-      state: req.query.state as string,
-    })(req, res);
-  },
-
   microsoftFilesCallback: async (req: Request, res: Response) => {
-    const { code, state } = req.query;
+    const { code, state, error, error_description } = req.query;
     const { id, rid } = req.cookies;
     const { userId } = await checkTokens(id, rid);
 
     const stateEntry = getStateEntry(state as string);
 
     if (!stateEntry) {
-      res.status(400).send("Invalid state");
+      res.redirect(
+        `${process.env.FRONTEND_URL}?error=missing_state`
+      )
       return;
+    }
+
+    if (error) {
+      res.redirect(
+        `${stateEntry.redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${error_description}`
+      )
     }
 
     const { redirectUrl } = stateEntry;
 
     if (!redirectUrl) {
-      res.status(400).send("Missing redirectUrl");
+      res.redirect(
+        `${process.env.FRONTEND_URL}?error=Missing redirect url`
+      );
       return;
     }
 
     if (!userId) {
-      res.status(401).send("Unauthorized");
+      res.redirect(
+        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Unauthorized`
+      );
       return;
     }
 
     if (!code) {
-      res.status(400).send("Missing code");
+      console.log('missing code')
+      res.redirect(
+        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Missing code`
+      );
       return;
     }
 
@@ -354,10 +363,10 @@ export const handlers = {
         `${redirectUrl}?syy-connector=microsoft-files&oauth_success=true`
       );
     } catch (err: any) {
-      
-      
+      console.log(err, 'Error in microsoftFilesCallback')
+
       res.redirect(
-        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false`
+        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${err.message}`
       );
     }
   },
