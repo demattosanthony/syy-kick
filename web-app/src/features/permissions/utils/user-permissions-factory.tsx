@@ -42,10 +42,7 @@ export class DefaultUserPermissions extends UserPermissions {
 }
 
 export class SuperAdminPermissions extends UserPermissions {
-  hasAccess(
-    resource: Permissions.Resources,
-    action: Permissions.Actions
-  ): boolean {
+  hasAccess(): boolean {
     return true;
   }
 }

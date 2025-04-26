@@ -14,7 +14,6 @@ import { Loader, Minus, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   OrgInvitationRequestItem,
-  OrgInvitationsRequest,
   TransferableRolesPermissions,
 } from "@/features/permissions/types";
 import { z } from "zod";
@@ -121,7 +120,7 @@ export function InvitationSection({
       <CardContent>
         <form
           className="space-y-4"
-          onSubmit={handleSubmit((data) => {
+          onSubmit={handleSubmit(() => {
             inviteUsers({
               organizationId,
               data: getValues("invitations"),

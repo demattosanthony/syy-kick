@@ -12,7 +12,7 @@ export const useCreateIssue = () => {
   >({
     mutationFn: ({ projectId, data }) =>
       api.issues.createIssue(projectId, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["issues", variables.projectId],
       });

@@ -1,8 +1,5 @@
-"use client";
-
-// React and Next.js imports
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router";
 
 // UI component imports
 import { Button } from "@/components/ui/button";
@@ -39,7 +36,7 @@ import { AccessLogStatus } from "@/features/organizations/types";
 import { AccessLogs } from "@/features/organizations/components";
 
 const KnowledgeBaseSettings = ({ kbId }: { kbId: string }) => {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const { data: user } = useMeQuery();
   const { data: knowledgeBase } = useKnowledgeBase(kbId);
@@ -85,7 +82,7 @@ const KnowledgeBaseSettings = ({ kbId }: { kbId: string }) => {
       toast.success("Knowledge base deleted", {
         description: "Your knowledge base has been deleted successfully.",
       });
-      router.push("/knowledge-bases");
+      navigate("/knowledge-bases");
     } catch {
       toast.error("Failed to delete knowledge base. Please try again.");
     }

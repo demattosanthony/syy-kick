@@ -48,7 +48,7 @@ export function FileUploadSection({
                   <PdfThumbnail url={upload.preview} width={96} />
                 ) : customIconSrc ? (
                   <>
-                    <Image
+                    <img
                       src={customIconSrc}
                       alt={`${extension} icon`}
                       width={42} // Adjust size as needed

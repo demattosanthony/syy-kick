@@ -103,7 +103,7 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
                   <div className="flex -space-x-1">
                     {tool.result.dataForFrontend
                       .slice(0, 3)
-                      .map((result: { source: string }, idx: number) => (
+                      .map((_: any, idx: number) => (
                         <div
                           key={`file-icon-${idx}`}
                           className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"

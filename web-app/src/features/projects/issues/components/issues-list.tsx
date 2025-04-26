@@ -1,6 +1,4 @@
-"use client";
-
-import Link from "next/link";
+import { Link, useNavigate } from "react-router";
 import { useGetIssues } from "../api";
 import React, { useEffect } from "react";
 import { useInView } from "react-intersection-observer";
@@ -9,7 +7,7 @@ import { CheckCircle, CircleDot, Inbox } from "lucide-react";
 import { IssueStatus } from "../issues.types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "react-router";
 
 interface IssuesListProps {
   projectId: string;
@@ -17,8 +15,8 @@ interface IssuesListProps {
 }
 
 export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const filterStatus: IssueStatus =
     (searchParams.get("status") as IssueStatus) || "open";
@@ -59,7 +57,7 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
             onClick={() => {
               const params = new URLSearchParams(searchParams);
               params.set("status", "open");
-              router.push(`?${params.toString()}`);
+              navigate(`?${params.toString()}`);
             }}
           >
             Open ({data?.pages[0].pagination.totalOpen})
@@ -74,7 +72,7 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
             onClick={() => {
               const params = new URLSearchParams(searchParams);
               params.set("status", "closed");
-              router.push(`?${params.toString()}`);
+              navigate(`?${params.toString()}`);
             }}
           >
             Closed ({data?.pages[0].pagination.totalClosed})
@@ -134,8 +132,7 @@ export function IssuesList({ projectId, searchTerm }: IssuesListProps) {
                         )}
 
                         <Link
-                          href={`/projects/${projectId}/issues/${issue.issueNumber}`}
-                          replace={false}
+                          to={`/projects/${projectId}/issues/${issue.issueNumber}`}
                           className="font-medium hover:underline hover:text-blue-500"
                         >
                           {issue.title}

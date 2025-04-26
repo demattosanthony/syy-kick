@@ -1,7 +1,4 @@
-"use client";
-
 import { Button } from "../../../components/ui/button";
-import { useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -44,7 +41,8 @@ const OrganizationSettings = ({ orgId }: { orgId: string }) => {
 
   const deleteOrgMutation = useDeleteOrganizationMutation();
 
-  const { canReadOrgSeats, canDeleteOrg, canReadOrgAccessLogs } = usePermissions();
+  const { canReadOrgSeats, canDeleteOrg, canReadOrgAccessLogs } =
+    usePermissions();
 
   if (!org) return null;
 

@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import * as pdfjsLib from "pdfjs-dist";
+// import * as pdfjsLib from "pdfjs-dist"; // Remove static import
 
 const PdfThumbnail = ({
   url,
@@ -21,10 +21,11 @@ const PdfThumbnail = ({
       // Initialize worker first
       const pdfjs = await import("pdfjs-dist");
 
+      // Use the dynamically imported module
       pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
       try {
-        // Load the PDF
-        const loadingTask = pdfjsLib.getDocument(url);
+        // Load the PDF using the dynamic import
+        const loadingTask = pdfjs.getDocument(url);
         const pdf = await loadingTask.promise;
 
         // Get specified page instead of always first page

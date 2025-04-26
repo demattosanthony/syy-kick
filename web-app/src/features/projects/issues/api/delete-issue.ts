@@ -11,7 +11,7 @@ export const useDeleteIssue = () => {
   >({
     mutationFn: ({ projectId, issueNumber }) =>
       api.issues.deleteIssue(projectId, issueNumber),
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["issues"] });
     },
   });

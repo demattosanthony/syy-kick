@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useMemo, memo, useId } from "react";
+import { useMemo, memo, useId } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 

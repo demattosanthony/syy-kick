@@ -609,8 +609,6 @@ class ThreadApi extends ApiRequest {
  * Projects API Module
  */
 class ProjectsApi extends ApiRequest {
-  private readonly LARGE_FILE_THRESHOLD = 100 * 1024 * 1024; // 100MB
-  private readonly CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks for large files
   private fileUploadMixin = new FileUploadMixin();
 
   async createProject(data: {

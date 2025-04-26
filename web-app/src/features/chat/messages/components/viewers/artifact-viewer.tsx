@@ -30,7 +30,7 @@ import { Message } from "ai";
 // Content renderers and parsers
 import MarkdownViewer from "./markdown-viewer";
 import { marked } from "marked";
-import mermaid from "mermaid";
+// import mermaid from "mermaid"; // Remove static import
 import Papa from "papaparse";
 
 export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
@@ -111,61 +111,75 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
   useEffect(() => {
     if (!mermaidRef.current || !diagramRef.current) return;
 
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: "default",
-      securityLevel: "loose",
-    });
+    const initializeAndRenderMermaid = async () => {
+      try {
+        // Dynamically import mermaid
+        const mermaidModule = await import("mermaid");
+        const mermaid = mermaidModule.default; // Access the default export
 
-    try {
-      const id = `mermaid-diagram-${Date.now()}`;
-      const currentDiagramRef = diagramRef.current; // Capture ref value
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: "default",
+          securityLevel: "loose",
+        });
 
-      // Clear previous content and show loading indicator
-      currentDiagramRef.innerHTML = "<p>Loading diagram...</p>";
-      currentDiagramRef.style.cursor = "default"; // Reset cursor
+        const id = `mermaid-diagram-${Date.now()}`;
+        const currentDiagramRef = diagramRef.current; // Capture ref value
 
-      // Use a temporary invisible div for rendering
-      const tempRenderDiv = document.createElement("div");
-      tempRenderDiv.id = id;
-      tempRenderDiv.className = "mermaid";
-      tempRenderDiv.textContent = content;
-      tempRenderDiv.style.visibility = "hidden";
-      tempRenderDiv.style.position = "absolute";
-      document.body.appendChild(tempRenderDiv);
+        // Clear previous content and show loading indicator
+        if (!currentDiagramRef) return; // Guard against null ref
+        currentDiagramRef.innerHTML = "<p>Loading diagram...</p>";
+        currentDiagramRef.style.cursor = "default"; // Reset cursor
 
-      mermaid
-        .parse(content)
-        .then(() => mermaid.render(id, content))
-        .then(({ svg }) => {
+        // Use a temporary invisible div for rendering
+        const tempRenderDiv = document.createElement("div");
+        tempRenderDiv.id = id;
+        tempRenderDiv.className = "mermaid";
+        tempRenderDiv.textContent = content;
+        tempRenderDiv.style.visibility = "hidden";
+        tempRenderDiv.style.position = "absolute";
+        document.body.appendChild(tempRenderDiv);
+
+        // Use a try-finally block for cleanup, even if parse fails
+        try {
+          await mermaid.parse(content); // Ensure parsing completes before rendering
+          const { svg } = await mermaid.render(id, content);
+
           if (currentDiagramRef) {
             currentDiagramRef.innerHTML = svg; // Inject SVG
             currentDiagramRef.style.cursor = "grab"; // Set cursor for panning
-            // Reset zoom/pan state when content changes
-            setScale(1);
-            setPosition({ x: 0, y: 0 });
+            // Reset zoom/pan state when content changes (already handled by content dependency)
+            // setScale(1); // Consider if resetting is needed here or if effect dependency handles it
+            // setPosition({ x: 0, y: 0 });
           }
-        })
-        .catch((error) => {
-          console.error("Error rendering mermaid diagram:", error);
+        } catch (error) {
+          console.error("Error parsing or rendering mermaid diagram:", error);
           if (currentDiagramRef) {
             currentDiagramRef.innerHTML =
               '<p class="text-red-500 p-4">Error rendering diagram. Check console for details.</p>';
           }
-        })
-        .finally(() => {
+        } finally {
           // Clean up the temporary div regardless of success/failure
           if (document.body.contains(tempRenderDiv)) {
             document.body.removeChild(tempRenderDiv);
           }
-        });
-    } catch (error) {
-      console.error("Error in mermaid setup:", error);
-      if (diagramRef.current) {
-        diagramRef.current.innerHTML =
-          '<p class="text-red-500 p-4">Error setting up diagram rendering.</p>';
+        }
+      } catch (error) {
+        console.error("Error loading or initializing mermaid:", error);
+        if (diagramRef.current) {
+          // Check diagramRef.current again
+          diagramRef.current.innerHTML =
+            '<p class="text-red-500 p-4">Error setting up diagram rendering.</p>';
+        }
       }
-    }
+    };
+
+    initializeAndRenderMermaid();
+
+    // We still need the cleanup for event listeners, keep this part
+    // return () => {
+    //   // Any specific mermaid cleanup needed? Usually not, but depends on lib.
+    // };
   }, [content]); // Rerun effect when content changes
 
   const handleWheel = (e: React.WheelEvent) => {

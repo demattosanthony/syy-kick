@@ -12,7 +12,7 @@ export function useDeleteThreadMutation() {
       queryClient.invalidateQueries({
         queryKey: ["threads"],
         predicate: (query) => {
-          const [key, search, workspaceId] = query.queryKey;
+          const [key, workspaceId] = query.queryKey;
           return key === "threads" && workspaceId === activeWorkspace?.id;
         },
       });

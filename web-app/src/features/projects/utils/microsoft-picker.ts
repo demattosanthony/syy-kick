@@ -195,7 +195,7 @@ export class MicrosoftPicker {
     const results: File[] = [];
 
     for (const pickerObj of pickerFiles) {
-      const { parentReference, id, name } = pickerObj;
+      const { parentReference, id } = pickerObj;
 
       if (!parentReference?.driveId || !id) {
         console.warn("Missing driveId or id, skipping:", pickerObj);

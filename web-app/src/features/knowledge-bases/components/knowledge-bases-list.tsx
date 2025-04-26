@@ -1,11 +1,8 @@
-"use client";
-
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams } from "react-router";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getRelativeTimeString } from "@/lib/utils";
-import { BookMarked, BookOpen, MoreHorizontal, Trash } from "lucide-react";
+import { BookMarked, MoreHorizontal, Trash } from "lucide-react";
 import { useInfiniteKnowledgeBasesQuery } from "../api/get-knowledge-bases";
 import { KnowledgeBase } from "../types";
 import { useDeleteKnowledgeBase } from "../api";
@@ -27,9 +24,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Link } from "react-router";
 
 const KnowledgeBasesList = () => {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const search = searchParams.get("search") || "";
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -122,8 +120,7 @@ function KnowledgeBaseItem({
     <>
       <div className="relative group">
         <Link
-          href={`/knowledge-bases/${knowledgeBase.id}`}
-          prefetch={false}
+          to={`/knowledge-bases/${knowledgeBase.id}`}
           className="block p-6 rounded-lg bg-card hover:bg-accent border transition-colors h-full"
         >
           <div className="flex flex-col gap-4 h-full">
