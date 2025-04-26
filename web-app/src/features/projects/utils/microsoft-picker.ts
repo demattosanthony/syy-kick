@@ -57,7 +57,9 @@ export class MicrosoftPicker {
       !userToken.baseUrl
     ) {
       const initRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/microsoft-files/init?redirectUrl=${redirectUri}`
+        `${
+          import.meta.env.VITE_API_URL
+        }/auth/microsoft-files/init?redirectUrl=${redirectUri}`
       );
       const { url } = await initRes.json();
       window.location.href = url;

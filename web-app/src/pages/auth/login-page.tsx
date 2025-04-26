@@ -25,7 +25,7 @@ export function LoginPage() {
     try {
       // Check if org exists first
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/saml/check/${domain}`
+        `${import.meta.env.VITE_API_URL}/auth/saml/check/${domain}`
       );
 
       if (!response.ok) {

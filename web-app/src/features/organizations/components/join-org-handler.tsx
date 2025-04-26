@@ -25,7 +25,9 @@ const JoinOrgHandler = ({
 
       if (result.requiresAuth) {
         // Redirect to Google login with invite token as state parameter
-        window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/${provider}?state=${token}`;
+        window.location.href = `${
+          import.meta.env.VITE_API_URL
+        }/auth/${provider}?state=${token}`;
         return;
       }
       if (result.insufficientSeats) {

@@ -41,8 +41,12 @@ const router = createBrowserRouter([
     // Root element that includes Providers and Outlet
     element: (
       <Providers>
-        <Outlet /> {/* Render matched child route here */}
-        {/* iframe can be moved here if it should be present on all routes */}
+        <Outlet />
+        <div
+          id="microsoft-picker-overlay"
+          className="fixed inset-0 bg-black/80 hidden"
+          style={{ zIndex: 999 }}
+        />
         <iframe
           id="microsoft-picker-iframe"
           style={{

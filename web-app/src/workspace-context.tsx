@@ -56,7 +56,7 @@ export const WorkspaceProvider = ({
     // Encode the JSON string before storing it in the cookie
     const encodedWorkspace = encodeURIComponent(JSON.stringify(workspace));
     document.cookie = `activeWorkspace=${encodedWorkspace}; path=/; max-age=2147483647; secure${
-      process.env.NODE_ENV === "production"
+      import.meta.env.NODE_ENV === "production"
         ? "; domain=.syykick.com; samesite=lax"
         : "; samesite=lax"
     }`;
