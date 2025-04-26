@@ -327,15 +327,8 @@
     {
       "idx": 46,
       "version": "7",
-      "when": 1745689198871,
-      "tag": "0046_bored_the_hood",
-      "breakpoints": true
-    },
-    {
-      "idx": 47,
-      "version": "7",
-      "when": 1745689418069,
-      "tag": "0047_chubby_epoch",
+      "when": 1745690630353,
+      "tag": "0046_small_spot",
       "breakpoints": true
     }
   ]

@@ -1,5 +1,5 @@
 {
-  "id": "ac690280-625f-4bf4-b413-d71e38769345",
+  "id": "51e85d95-4699-4175-86fa-14e21152ef7e",
   "prevId": "575bc56a-4043-495e-becf-fc7dd726d9c9",
   "version": "7",
   "dialect": "postgresql",
@@ -2478,6 +2478,13 @@
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
+        },
+        "session_count": {
+          "name": "session_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "created_at": {
           "name": "created_at",
