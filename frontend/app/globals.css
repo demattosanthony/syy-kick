@@ -4,99 +4,99 @@
 
 @layer base {
   :root {
-    /* Pure white background */
-    --background: 210 5% 100%; /* Added slight blue tint */
-    --foreground: 215 5% 10%; /* Added slight blue tint with contrast */
-    /* Slightly whiter cards with blue hint */
-    --card: 210 5% 100%; /* Added slight blue tint */
-    --card-foreground: 215 5% 10%; /* Added slight blue tint */
-    --popover: 210 5% 100%; /* Added slight blue tint */
-    --popover-foreground: 215 5% 10%; /* Added slight blue tint */
-    /* Darker primary grey with blue hint */
-    --primary: 215 5% 15%; /* Added slight blue tint */
-    --primary-foreground: 210 5% 98%; /* Added slight blue tint */
-    /* Darker secondary grey with blue hint */
-    --secondary: 210 5% 90%; /* Added slight blue tint */
-    --secondary-foreground: 215 5% 15%; /* Added slight blue tint */
-    /* Darker muted greys with blue hint */
-    --muted: 210 5% 92%; /* Added slight blue tint */
-    --muted-foreground: 215 5% 40%; /* Added slight blue tint */
-    /* Darker accent greys with blue hint */
-    --accent: 210 5% 92%; /* Added slight blue tint */
-    --accent-foreground: 215 5% 15%; /* Added slight blue tint */
+    /* Pure white background with slight orange tint */
+    --background: 25 5% 100%; /* Added slight orange tint */
+    --foreground: 25 5% 10%; /* Added slight orange tint with contrast */
+    /* Slightly whiter cards with orange hint */
+    --card: 25 5% 100%; /* Added slight orange tint */
+    --card-foreground: 25 5% 10%; /* Added slight orange tint */
+    --popover: 25 5% 100%; /* Added slight orange tint */
+    --popover-foreground: 25 5% 10%; /* Added slight orange tint */
+    /* Primary orange */
+    --primary: 25 100% 51%;
+    --primary-foreground: 25 5% 98%; /* Added slight orange tint */
+    /* Secondary grey with orange hint */
+    --secondary: 25 5% 90%; /* Added slight orange tint */
+    --secondary-foreground: 25 5% 15%; /* Added slight orange tint */
+    /* Muted greys with orange hint */
+    --muted: 25 5% 92%; /* Added slight orange tint */
+    --muted-foreground: 25 5% 40%; /* Added slight orange tint */
+    /* Accent greys with orange hint */
+    --accent: 25 5% 92%; /* Added slight orange tint */
+    --accent-foreground: 25 5% 15%; /* Added slight orange tint */
     /* Destructive red unchanged */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    /* Darker grey borders and inputs with blue hint */
-    --border: 210 5% 88%; /* Added slight blue tint */
-    --input: 210 5% 88%; /* Added slight blue tint */
-    --ring: 215 5% 15%; /* Added slight blue tint */
+    /* Grey borders and inputs with orange hint */
+    --border: 25 5% 88%; /* Added slight orange tint */
+    --input: 25 5% 88%; /* Added slight orange tint */
+    --ring: 25 5% 15%; /* Added slight orange tint */
     --radius: 0.75rem; /* Unchanged */
-    /* Sidebar with darker greys */
-    --sidebar-background: 210 10% 96%; /* Added slight blue tint to background */
-    --sidebar-foreground: 215 5.3% 20%; /* Added slight blue tint to foreground */
-    --sidebar-primary: 215 5.9% 8%; /* Added slight blue tint to primary */
-    --sidebar-primary-foreground: 210 2% 98%; /* Added very subtle blue tint */
-    --sidebar-accent: 210 4.8% 92%; /* Added slight blue tint to accent */
-    --sidebar-accent-foreground: 215 5.9% 8%; /* Added slight blue tint */
-    --sidebar-border: 215 13% 87%; /* Added slight blue tint to border */
-    --sidebar-ring: 217.2 91.2% 50%; /* Kept blue ring as is */
+    /* Sidebar with greys and orange hint */
+    --sidebar-background: 25 10% 96%; /* Added slight orange tint to background */
+    --sidebar-foreground: 25 5.3% 20%; /* Added slight orange tint to foreground */
+    --sidebar-primary: 25 5.9% 8%; /* Added slight orange tint to primary */
+    --sidebar-primary-foreground: 25 2% 98%; /* Added very subtle orange tint */
+    --sidebar-accent: 25 4.8% 92%; /* Added slight orange tint to accent */
+    --sidebar-accent-foreground: 25 5.9% 8%; /* Added slight orange tint */
+    --sidebar-border: 25 13% 87%; /* Added slight orange tint to border */
+    --sidebar-ring: 25 91.2% 50%; /* Changed to orange ring */
 
     --theme-color: #ffffff; /* White, unchanged */
 
-    /* Location marker colors */
-    --marker-fill: 210 8% 8%;
-    --marker-border: 210 5% 100%;
+    /* Location marker colors with orange hint */
+    --marker-fill: 25 8% 8%;
+    --marker-border: 25 5% 100%;
   }
-
   .dark {
-    /* Slightly darker background with blue hint */
-    --background: 210 8% 8%;
-    --foreground: 210 8% 98%;
-    --card: 210 8% 8%;
-    --card-foreground: 210 8% 98%;
-    --popover: 210 8% 8%;
-    --popover-foreground: 210 8% 98%;
+    /* Dark background with orange hint */
+    --background: 225 11% 7%; /* Dark blue-grey background */
+    --foreground: 25 8% 98%; /* Light text with orange hue */
+    --card: 225 11% 7%; /* Match background */
+    --card-foreground: 25 8% 98%; /* Match foreground */
+    --popover: 225 11% 7%; /* Match background */
+    --popover-foreground: 25 8% 98%; /* Match foreground */
 
-    /* Clean white with blue hint for primary in dark mode */
-    --primary: 210 8% 98%;
-    --primary-foreground: 210 8% 8%;
+    /* Primary orange adapted for dark mode (lighter/brighter) */
+    --primary: 25 100% 51%;
+    --primary-foreground: 25 5% 98%; /* Added slight orange tint */
 
     /* Darker greys with blue hint for secondary elements */
-    --secondary: 210 8% 15%;
-    --secondary-foreground: 210 8% 98%;
+    --secondary: 225 11% 12%; /* Slightly lighter dark blue-grey shade */
+    --secondary-foreground: 25 8% 98%; /* Light text */
 
     /* Darker muted greys with blue hint */
-    --muted: 210 8% 15%;
-    --muted-foreground: 210 8% 65%;
+    --muted: 225 11% 12%; /* Match secondary */
+    --muted-foreground: 25 8% 65%; /* Greyer text */
 
     /* Accent colors darker with blue hint */
-    --accent: 210 8% 15%;
-    --accent-foreground: 210 8% 98%;
+    --accent: 225 11% 12%; /* Match secondary */
+    --accent-foreground: 25 8% 98%; /* Light text */
 
     /* Deeper destructive red for dark mode unchanged */
     --destructive: 0 65% 30%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 210 8% 15%;
-    --input: 210 8% 15%;
-    --ring: 210 8% 85%;
+    /* Borders and inputs with blue hint */
+    --border: 225 11% 12%; /* Match secondary/accent */
+    --input: 225 11% 12%; /* Match secondary/accent */
+    --ring: 25 90% 70%; /* Brighter orange for focus rings */
 
-    /* Sidebar with darker shade and blue hint */
-    --sidebar-background: 210 8% 8%;
-    --sidebar-foreground: 210 8% 98%;
-    --sidebar-primary: 210 8% 98%;
-    --sidebar-primary-foreground: 210 8% 8%;
-    --sidebar-accent: 210 8% 15%;
-    --sidebar-accent-foreground: 210 8% 98%;
-    --sidebar-border: 210 8% 15%;
-    --sidebar-ring: 210 8% 85%;
+    /* Sidebar with a dark purple-grey shade */
+    --sidebar-background: 288 9% 11%; /* Dark purple-grey */
+    --sidebar-foreground: 25 8% 98%; /* Match main foreground */
+    --sidebar-primary: 25 90% 60%; /* Match main primary */
+    --sidebar-primary-foreground: 25 10% 10%; /* Match main primary foreground */
+    --sidebar-accent: 288 9% 16%; /* Slightly lighter accent for sidebar */
+    --sidebar-accent-foreground: 25 8% 98%; /* Match main accent foreground */
+    --sidebar-border: 288 9% 16%; /* Match sidebar accent */
+    --sidebar-ring: 25 90% 70%; /* Match main ring */
 
-    --theme-color: hsl(210 8% 8%);
+    --theme-color: hsl(225 11% 7%); /* Match dark background */
 
     /* Location marker colors for dark mode */
-    --marker-fill: 210 8% 8%;
-    --marker-border: 210 8% 8%;
+    --marker-fill: 25 8% 98%; /* Use foreground for visibility */
+    --marker-border: 225 11% 12%; /* Match main border */
   }
 }
 

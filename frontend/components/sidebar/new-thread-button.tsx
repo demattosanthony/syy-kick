@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Plus, PlusIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import Link from "next/link";
 import { useSidebar } from "../ui/sidebar";
@@ -17,11 +17,13 @@ export function NewThreadButton() {
       onMouseDown={() => isMobile && toggleSidebar()}
     >
       <Button
-        variant={"outline"}
         className="w-full"
-        size={state === "collapsed" && !isMobile ? "sm" : "default"}
+        size={state === "collapsed" && !isMobile ? "icon" : "default"}
       >
-        {state === "collapsed" && !isMobile ? <Plus /> : "New Thread"}
+        <PlusIcon
+          className={state === "collapsed" && !isMobile ? "size-3" : "size-4"}
+        />
+        {state === "expanded" && !isMobile && "New Thread"}
       </Button>
     </Link>
   );

@@ -22,12 +22,8 @@ const MessageBubble = ({
   >
     <div
       className={`
-        relative flex flex-col rounded-lg p-2
-        ${
-          isUser
-            ? "bg-primary text-white dark:text-black max-w-[515px]"
-            : "bg-background max-w-full"
-        }
+        relative flex flex-col rounded-lg p-2 bg-[#242628]
+        ${isUser ? " text-white dark:text-white max-w-[515px]" : " max-w-full"}
       `}
       style={{
         whiteSpace: isUser ? "pre-wrap" : "normal",

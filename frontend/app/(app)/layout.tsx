@@ -20,18 +20,16 @@ export default async function MainAppLayout({
     <SidebarProvider defaultOpen={defaultOpen}>
       {user && <AppSidebar user={user} />}
 
-      <SidebarInset>
-        <div className="h-full w-full flex flex-col max-h-[-webkit-fill-available] relative">
-          <FinishOrgSetupBanner />
+      <SidebarInset className="overflow-hidden">
+        <FinishOrgSetupBanner />
 
-          {!user && (
-            <div className="absolute top-4 right-4 z-10">
-              <LoginButtons />
-            </div>
-          )}
+        {!user && (
+          <div className="absolute top-4 right-4 z-10">
+            <LoginButtons />
+          </div>
+        )}
 
-          {children}
-        </div>
+        {children}
       </SidebarInset>
     </SidebarProvider>
   );

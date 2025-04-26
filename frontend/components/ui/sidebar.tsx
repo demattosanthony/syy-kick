@@ -16,7 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ArrowLeftToLine, ArrowRightToLine } from "lucide-react";
+import { Columns2 } from "lucide-react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -265,32 +265,21 @@ const SidebarTrigger = React.forwardRef<
   const { toggleSidebar } = useSidebar();
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          ref={ref}
-          data-sidebar="trigger"
-          variant="ghost"
-          size="icon"
-          className={cn("h-8 w-8", className)}
-          onClick={(event) => {
-            onClick?.(event);
-            toggleSidebar();
-          }}
-          {...props}
-        >
-          {useSidebar().state === "expanded" ? (
-            <ArrowLeftToLine style={{ width: "16px", height: "16px" }} />
-          ) : (
-            <ArrowRightToLine style={{ width: "19px", height: "19px" }} />
-          )}
-          <span className="sr-only">Toggle Sidebar</span>
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {useSidebar().state === "expanded" ? "Collapse" : "Expand"}
-      </TooltipContent>
-    </Tooltip>
+    <Button
+      ref={ref}
+      data-sidebar="trigger"
+      variant="ghost"
+      size="icon"
+      className={cn("h-8 w-8", className)}
+      onClick={(event) => {
+        onClick?.(event);
+        toggleSidebar();
+      }}
+      {...props}
+    >
+      <Columns2 />
+      <span className="sr-only">Toggle Sidebar</span>
+    </Button>
   );
 });
 SidebarTrigger.displayName = "SidebarTrigger";
