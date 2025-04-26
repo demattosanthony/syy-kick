@@ -5,3 +5,6 @@ export * from "./legal-policies/terms-of-use-page";
 export * from "./auth/payment-success-page";
 export * from "./auth/join-org-page";
 export * from "./threads/threads-page";
+export * from "./threads/thread-page";
+export * from "./workflows/workflows-page";
+export * from "./workflows/workflow-page";

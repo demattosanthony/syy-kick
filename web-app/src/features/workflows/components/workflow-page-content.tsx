@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { Loader, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ export default function WorkflowPageContent({
   projectId?: string;
   workflow?: Workflow;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [files, setFiles] = useState<
     Record<string, File | WorkflowProjectFile | null>
   >({});
@@ -139,7 +139,7 @@ export default function WorkflowPageContent({
         workflowId,
         projectId,
       });
-      router.push(
+      navigate(
         `/threads/${thread.id}?isNew=true&isWorkflow=true&workflowId=${workflowId}`
       );
     } catch (err) {
@@ -168,7 +168,7 @@ export default function WorkflowPageContent({
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-4">
         <h2 className="text-2xl font-bold">Workflow not found</h2>
-        <Button onClick={() => router.push("/workflows")}>
+        <Button onClick={() => navigate("/workflows")}>
           Back to Workflows
         </Button>
       </div>

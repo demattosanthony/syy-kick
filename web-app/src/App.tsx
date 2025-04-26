@@ -8,6 +8,9 @@ import {
   TermsOfUsePage,
   JoinOrgPage,
   ThreadsPage,
+  ThreadPage,
+  WorkflowsPage,
+  WorkflowPage,
 } from "./pages";
 import { Providers } from "./providers";
 import MainAppLayout from "./components/layouts/main-app-layout";
@@ -57,6 +60,9 @@ const router = createBrowserRouter([
         children: [
           { path: "/", element: <HomePage /> },
           { path: "/threads", element: <ThreadsPage /> },
+          { path: "/threads/:threadId", element: <ThreadPage /> },
+          { path: "/workflows", element: <WorkflowsPage /> },
+          { path: "/workflows/:workflowId", element: <WorkflowPage /> },
         ],
       },
       {

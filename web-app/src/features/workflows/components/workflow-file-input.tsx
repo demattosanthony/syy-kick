@@ -3,7 +3,6 @@ import useMicrosoftPicker from "@/features/projects/hooks/use-microsoft-picker";
 import { SharePointFile } from "@/features/projects/types";
 import { cn } from "@/lib/utils";
 import { FileIcon, Loader2, Folder } from "lucide-react";
-import Image from "next/image";
 import { useState } from "react";
 import {
   Dialog,
@@ -234,7 +233,7 @@ function FileUploadInput({
             {isMicrosoftPickerLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Image
+              <img
                 src={"/logos/sharepoint.svg"}
                 alt="Sharepoint"
                 width={20}

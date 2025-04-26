@@ -1,4 +1,4 @@
-import { useWorkspace } from "@/components/sidebar/workspace-context";
+import { useWorkspace } from "@/workspace-context";
 import api from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 

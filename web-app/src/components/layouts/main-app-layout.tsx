@@ -12,7 +12,7 @@ export default function MainAppLayout() {
     <SidebarProvider defaultOpen={true}>
       {user && <AppSidebar user={user} />}
 
-      <SidebarInset>
+      <SidebarInset className="overflow-hidden  flex flex-1 flex-col overflow-y-auto">
         <FinishOrgSetupBanner />
 
         {!user && (

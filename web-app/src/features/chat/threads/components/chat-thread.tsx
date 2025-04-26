@@ -86,7 +86,7 @@ export default function ThreadPage({
     stop,
     error,
   } = useChat({
-    api: `${process.env.NEXT_PUBLIC_API_URL}/threads/${threadId}/inference`,
+    api: `${import.meta.env.VITE_API_URL}/threads/${threadId}/inference`,
     credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,

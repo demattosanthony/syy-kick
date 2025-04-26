@@ -1,7 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { Link, useSearchParams } from "react-router";
 import {
   GitBranch,
   Search,
@@ -31,7 +28,7 @@ const getWorkflowIcon = (title: string): LucideIcon => {
 };
 
 export default function WorkflowsList(props: WorkflowsListProps) {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const search = searchParams.get("search") || "";
 
   const { data: workflows, isLoading } = useWorkflowsQuery(props.initalData);
@@ -72,12 +69,11 @@ function WorkflowItem({
 
   return (
     <Link
-      href={
+      to={
         projectId
           ? `/projects/${projectId}/workflows/${workflow.id}`
           : `/workflows/${workflow.id}`
       }
-      prefetch={false}
       className="block p-6 rounded-lg bg-card hover:bg-accent border transition-colors group"
     >
       <div className="flex flex-col gap-4">
