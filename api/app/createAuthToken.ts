@@ -58,13 +58,6 @@ export const clearAuthCookies = (res: Response) => {
   res.clearCookie("rid", cookieOpts);
 };
 
-export const invalidateTokens = async (userId: string) => {
-  await db
-    .update(users)
-    .set({ refreshTokenVersion: sql`${users.refreshTokenVersion} + 1` })
-    .where(eq(users.id, userId));
-};
-
 export const checkTokens = async (
   accessToken: string,
   refreshToken: string
