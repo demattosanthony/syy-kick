@@ -1,6 +1,6 @@
 import * as jwt from "jsonwebtoken";
 import { Response } from "express";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import db from "./config/db";
 import { users } from "./config/schema";
 
@@ -58,10 +58,17 @@ export const clearAuthCookies = (res: Response) => {
   res.clearCookie("rid", cookieOpts);
 };
 
+export const invalidateTokens = async (userId: string) => {
+  await db
+    .update(users)
+    .set({ refreshTokenVersion: sql`${users.refreshTokenVersion} + 1` })
+    .where(eq(users.id, userId));
+};
+
 export const checkTokens = async (
   accessToken: string,
   refreshToken: string
-) => {
+): Promise<{ userId: string; user: DbUser }> => {
   // First try to verify the access token
   try {
     const data = <AccessTokenData>(
@@ -75,6 +82,13 @@ export const checkTokens = async (
     if (!user) {
       throw new Error("User not found");
     }
+
+    // Update lastActiveAt on successful access token validation
+    // Do not increment session count here, as it's just continuing an existing session
+    db.update(users)
+      .set({ lastActiveAt: new Date() })
+      .where(eq(users.id, data.userId))
+      .catch(console.error); // Fire and forget
 
     return {
       userId: data.userId,
@@ -109,8 +123,21 @@ export const checkTokens = async (
       throw new Error("Invalid refresh token");
     }
 
+    // Successfully validated refresh token - THIS IS A NEW SESSION
+    // Increment session count and update last active time
+    db.update(users)
+      .set({
+        sessionCount: sql`${users.sessionCount} + 1`,
+        lastActiveAt: new Date(),
+      })
+      .where(eq(users.id, refreshTokenData.userId))
+      .catch(console.error); // Fire and forget update
+
+    // Return the user data (sessionCount will be updated asynchronously)
     return {
       userId: refreshTokenData.userId,
+      // We return the user object fetched before the update
+      // If the updated count is immediately needed, re-fetch or update object here
       user,
     };
   }

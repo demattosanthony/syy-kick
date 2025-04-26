@@ -323,6 +323,20 @@
       "when": 1745490873960,
       "tag": "0045_robust_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1745689198871,
+      "tag": "0046_bored_the_hood",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1745689418069,
+      "tag": "0047_chubby_epoch",
+      "breakpoints": true
     }
   ]
 }

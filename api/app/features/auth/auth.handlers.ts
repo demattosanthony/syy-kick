@@ -256,24 +256,20 @@ export const handlers = {
     const stateEntry = getStateEntry(state as string);
 
     if (!stateEntry) {
-      res.redirect(
-        `${process.env.FRONTEND_URL}?error=missing_state`
-      )
+      res.redirect(`${process.env.FRONTEND_URL}?error=missing_state`);
       return;
     }
 
     if (error) {
       res.redirect(
         `${stateEntry.redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${error_description}`
-      )
+      );
     }
 
     const { redirectUrl } = stateEntry;
 
     if (!redirectUrl) {
-      res.redirect(
-        `${process.env.FRONTEND_URL}?error=Missing redirect url`
-      );
+      res.redirect(`${process.env.FRONTEND_URL}?error=Missing redirect url`);
       return;
     }
 
@@ -285,7 +281,7 @@ export const handlers = {
     }
 
     if (!code) {
-      console.log('missing code')
+      console.log("missing code");
       res.redirect(
         `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Missing code`
       );
@@ -355,7 +351,7 @@ export const handlers = {
             site.siteCollection.hostname,
             "picker",
             tx
-          )
+          ),
         ]);
       });
 
@@ -363,7 +359,7 @@ export const handlers = {
         `${redirectUrl}?syy-connector=microsoft-files&oauth_success=true`
       );
     } catch (err: any) {
-      console.log(err, 'Error in microsoftFilesCallback')
+      console.log(err, "Error in microsoftFilesCallback");
 
       res.redirect(
         `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${err.message}`
