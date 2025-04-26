@@ -23,24 +23,21 @@ const useAuth = () => {
   }
 
   const handleGoogleLogin = () => {
-    navigate(`${
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-    }/auth/google 
-    `);
+    window.location.href = `${
+      import.meta.env.VITE_API_URL || "http://localhost:4000"
+    }/auth/google`;
   };
 
   const handleMicrosoftLogin = () => {
-    navigate(`${
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-    }/auth/microsoft 
-    `);
+    window.location.href = `${
+      import.meta.env.VITE_API_URL || "http://localhost:4000"
+    }/auth/microsoft`;
   };
 
   const handleSSOLogin = (slug: string) => {
-    navigate(`${
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-    }/auth/saml/${slug}
-    `);
+    window.location.href = `${
+      import.meta.env.VITE_API_URL || "http://localhost:4000"
+    }/auth/saml/${slug}`;
   };
 
   const handleJoinOrg = async (token: string) => {

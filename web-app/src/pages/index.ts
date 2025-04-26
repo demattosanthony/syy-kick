@@ -14,3 +14,4 @@ export * from "./projects/projects-page";
 export * from "./projects/[:projectId]/project-page";
 export * from "./projects/[:projectId]/tree/project-tree";
 export * from "./projects/[:projectId]/blob/project-blob";
+export * from "./projects/[:projectId]/project-settings-page";
