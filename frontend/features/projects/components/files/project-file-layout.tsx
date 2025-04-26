@@ -21,9 +21,9 @@ const ProjectFileLayout = ({
 }: ProjectFileLayoutProps) => {
   return (
     <div className="h-full w-full flex flex-col">
-      <div className="flex gap-2 flex-1 pb-2 mx-2 max-h-[calc(100vh-105px)]">
+      <div className="flex gap-2 flex-1 pb-2 mx-2 max-h-[calc(100vh-125px)]">
         {/* Left Navigation: full tree with auto-opened folders */}
-        <Card className="w-80 h-full flex flex-col">
+        <Card className="w-80 h-full flex flex-col overflow-hidden">
           <CardContent className="p-2 px-0 overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent">
             <ProjectFileExplorer
               projectId={contentSource === "project" ? projectId : undefined}

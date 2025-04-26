@@ -7,7 +7,7 @@ export default function ProjectPageLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen h-screen bg-background flex items-center flex-col relative">
+    <div className="flex flex-col h-full bg-background flex-1 items-center relative">
       <ProjectsHeader />
 
       <ProjectNavigationTabs />
