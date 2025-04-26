@@ -1,4 +1,4 @@
-FROM oven/bun:1.2.9 AS base
+FROM oven/bun:1.2.0 AS base
 WORKDIR /usr/src/app
 
 # Install ghostscript and imagemagick
