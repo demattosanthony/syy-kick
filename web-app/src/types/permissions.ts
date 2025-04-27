@@ -1,0 +1,34 @@
+export namespace Permissions {
+  export enum Roles {
+    SUPER_ADMIN = "SUPER_ADMIN",
+    ORGANIZATION_ADMIN = "ORGANIZATION_ADMIN",
+    ORGANIZATION_MANAGER = "ORGANIZATION_MANAGER",
+    PROJECT_MANAGER = "PROJECT_MANAGER",
+    PROJECT_MEMBER = "PROJECT_MEMBER",
+  }
+
+  export enum Actions {
+    CREATE = "create",
+    READ = "read",
+    UPDATE = "update",
+    DELETE = "delete",
+  }
+
+  export enum Resources {
+    ORGANIZATION = "org",
+    ORGANIZATION_INVITATIONS = "org_invitations",
+    ORGANIZATION_MEMBERS = "org_members",
+    ORGANIZATION_SEATS = "org_seats",
+    ORGANIZATION_SITES = "org_sites",
+    ORGANIZATION_ACCESS_LOGS = "org_access_logs",
+    ORGANIZATION_PROJECTS = "org_projects",
+    ORGANIZATION_PROJECT_DOCS = "org_project_docs",
+    ORGANIZATION_PROJECT_INVITATIONS = "org_project_invitations",
+    ORGANIZATION_PROJECT_MEMBERS = "org_project_members",
+    ORGANIZATION_PROJECT_ACCESS_LOGS = "org_project_access_logs",
+    ORGANIZATION_KNOWLEDGE_BASES = "org_knowledge_bases",
+    ORGANIZATION_KNOWLEDGE_BASES_DOCS = "org_knowledge_bases_docs",
+    ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS = "org_knowledge_bases_access_logs",
+    PROJECT_ISSUES = "project_issues",
+  }
+}

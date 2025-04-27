@@ -27,8 +27,11 @@ type AnalyticsDashboardProps = {
 const formatDate = (date: Date | null | string): string => {
   if (!date) return "N/A";
   try {
-    return new Date(date).toLocaleString(); // Or use a more specific format
+    const d = new Date(date);
+    // Combine date and time using locale-specific formats
+    return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
   } catch (e) {
+    console.error("Error formatting date:", date, e); // Add logging
     return "Invalid Date";
   }
 };

@@ -16,7 +16,11 @@ import { DocumentContent, Project } from "@/types/project";
 import { Organization, User } from "@/types/user";
 import { FileUploadMixin } from "./file-upload-mixin";
 import { KnowledgeBase } from "@/features/knowledge-bases/types";
-import { ProjectAccessLogFilters, ProjectAccessLogsResponse, SortOption } from "@/features/projects/types";
+import {
+  ProjectAccessLogFilters,
+  ProjectAccessLogsResponse,
+  SortOption,
+} from "@/features/projects/types";
 import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -46,7 +50,10 @@ import {
   PaginatedIssues,
   UpdateIssueData,
 } from "@/features/projects/issues/issues.types";
-import { KnowledgeBaseAccessLogFilters, KnowledgeBaseAccessLogsResponse } from "@/features/knowledge-bases/types";
+import {
+  KnowledgeBaseAccessLogFilters,
+  KnowledgeBaseAccessLogsResponse,
+} from "@/features/knowledge-bases/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -84,8 +91,8 @@ async function clientFetch<T>(
     throw new ApiError(
       response.status,
       errorData?.message ||
-      errorData?.error ||
-      `Request failed with status ${response.status}`
+        errorData?.error ||
+        `Request failed with status ${response.status}`
     );
   }
 
@@ -640,7 +647,8 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -694,7 +702,8 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`,
       "DELETE"
     );
@@ -710,7 +719,8 @@ class ProjectsApi extends ApiRequest {
     }
 
     return await this.request(
-      `/projects/${projectId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -798,7 +808,12 @@ class ProjectsApi extends ApiRequest {
     return await this.request<User[]>(`/projects/${projectId}/members`);
   }
 
-  async getAccessLogs(projectId: string, page: number, limit: number, filters: ProjectAccessLogFilters): Promise<ProjectAccessLogsResponse> {
+  async getAccessLogs(
+    projectId: string,
+    page: number,
+    limit: number,
+    filters: ProjectAccessLogFilters
+  ): Promise<ProjectAccessLogsResponse> {
     try {
       const queryParams = new URLSearchParams({
         page: page.toString(),
@@ -808,7 +823,9 @@ class ProjectsApi extends ApiRequest {
         ...(filters.action !== "all" && { action: filters.action }),
         ...(filters.status !== "all" && { status: filters.status }),
       });
-      return await this.request<ProjectAccessLogsResponse>(`/projects/${projectId}/access-logs?${queryParams.toString()}`);
+      return await this.request<ProjectAccessLogsResponse>(
+        `/projects/${projectId}/access-logs?${queryParams.toString()}`
+      );
     } catch (error) {
       throw error;
     }
@@ -1030,7 +1047,8 @@ export class KnowledgeBasesApi extends ApiRequest {
     const queryParams = new URLSearchParams();
     if (path) queryParams.append("path", path);
     return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/knowledge-bases/${knowledgeBaseId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -1098,7 +1116,9 @@ export class KnowledgeBasesApi extends ApiRequest {
       ...(filters.status !== "all" && { status: filters.status }),
     });
     try {
-      return await this.request(`/knowledge-bases/${knowledgeBaseId}/access-logs?${queryParams.toString()}`);
+      return await this.request(
+        `/knowledge-bases/${knowledgeBaseId}/access-logs?${queryParams.toString()}`
+      );
     } catch (error) {
       throw error;
     }
