@@ -1,5 +1,3 @@
-"use client";
-
 import api from "@/lib/api";
 
 // Hooks
@@ -12,7 +10,6 @@ import { pricingPlanDialogOpenAtom } from "@/components/PricingDialog";
 
 // Components
 import ConversationStarters from "@/features/chat/messages/components/conversation-starters";
-import InstallPrompt from "@/components/InstallPrompt";
 import { toast } from "sonner";
 import {
   AnimatedGreeting,
@@ -26,11 +23,12 @@ import { useNavigate } from "react-router";
 
 export function HomePage() {
   const { data: user, isFetched: userFetched } = useMeQuery();
-  const { data: recentProjects, isFetching: projectsLoading } =
-    useProjectsQuery({
+  const { data: recentProjects, isLoading: projectsLoading } = useProjectsQuery(
+    {
       sort: "recent",
       limit: 6,
-    });
+    }
+  );
 
   const navigate = useNavigate();
   const [initalInput, setInitalInput] = useAtom(initalInputAtom);
@@ -73,8 +71,6 @@ export function HomePage() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      <InstallPrompt />
-
       <div className="flex flex-col flex-1">
         <div className="flex flex-col items-center w-full gap-6 pb-4">
           <div className="w-[85px] flex items-center justify-center min-h-[85px] mt-[16vh]">

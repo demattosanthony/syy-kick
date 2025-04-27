@@ -7,7 +7,6 @@ import { initalInputAtom } from "@/atoms/chat";
 
 // Components
 import ConversationStarters from "@/features/chat/messages/components/conversation-starters";
-import InstallPrompt from "@/components/InstallPrompt";
 import {
   AnimatedGreeting,
   ChatInputFormRef,
@@ -34,7 +33,6 @@ export function LandingPage() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      <InstallPrompt />
       <div className="absolute top-4 right-4 z-10">
         <LoginButtons />
       </div>
