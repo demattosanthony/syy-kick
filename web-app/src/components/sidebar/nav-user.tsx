@@ -64,7 +64,7 @@ export function NavUser({
             size="lg"
             className="hover:bg-accent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2"
           >
-            <Avatar className="h-8 w-8 rounded-full">
+            <Avatar className="h-10 w-10 rounded-full">
               <AvatarImage src={user.profilePicture} alt={user.name} />
               <AvatarFallback className="rounded-full">
                 {user.name
