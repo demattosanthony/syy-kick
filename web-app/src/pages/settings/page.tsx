@@ -62,7 +62,7 @@ export function UserSettings() {
           <TabsList className="bg-transparent p-0 h-9 gap-6">
             <TabsTrigger
               value="account"
-              className="bg-transparent px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-9"
+              className="bg-transparent px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-9 cursor-pointer"
             >
               Account
             </TabsTrigger>
@@ -78,7 +78,7 @@ export function UserSettings() {
             {canUpdateOrg && (
               <TabsTrigger
                 value="organization"
-                className="bg-transparent px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-9"
+                className="bg-transparent px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-9 cursor-pointer"
               >
                 Organization
               </TabsTrigger>
