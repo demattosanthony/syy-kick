@@ -1,5 +1,10 @@
 import "./App.css";
-import { createBrowserRouter, RouterProvider, Outlet } from "react-router";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Outlet,
+  useLoaderData,
+} from "react-router";
 import {
   HomePage,
   LoginPage,
@@ -29,6 +34,7 @@ import {
   KnowledgeBaseBlobPage,
   KnowledgeBaseSettingsPage,
   ForbiddenPage,
+  LandingPage,
 } from "./pages";
 import { Providers } from "./providers";
 import MainAppLayout from "./components/layouts/main-app-layout";
@@ -37,21 +43,57 @@ import { queryClient } from "./providers/tanstack-query-client-provider";
 import api from "./lib/api";
 import { KnowledgeBaseLayout } from "./components/layouts/knowledge-base-layout";
 import { ShareThreadPage } from "./pages/threads/shared-thread-page";
+import { User } from "./types/user";
 
-// Define the loader function
-const mainAppLoader = async () => {
+// Define the new loader function for the root route
+const rootUserDataLoader = async (): Promise<User | null> => {
   const queryKey = ["me"];
-  // Ensure the data is fetched or retrieved from cache
-  return (
-    queryClient.getQueryData(queryKey) ??
-    (await queryClient.fetchQuery({ queryKey, queryFn: () => api.auth.me() }))
-  );
+  try {
+    // Try fetching from the cache first
+    const cachedData = queryClient.getQueryData<User>(queryKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
+    // If not in cache, fetch from API using fetchQuery
+    const user = await queryClient.fetchQuery<User | null>({
+      queryKey,
+      // Wrap api.auth.me() to ensure it fits the expected signature if necessary
+      // Although fetchQuery<User | null> should handle Promise<User | null>
+      queryFn: async () => {
+        const result = await api.auth.me();
+        return result; // Return User or null
+      },
+      staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    });
+
+    if (user) {
+      return user; // Return user data if fetch is successful
+    } else {
+      return null; // Explicitly return null if fetchQuery resolves to null
+    }
+  } catch (error) {
+    // If fetch throws an error (e.g., 401 Unauthorized), return null
+    return null;
+  }
+};
+
+// Root element component to decide layout based on loader data
+const RootElement = () => {
+  // Use useLoaderData which gets data resolved by the loader function
+  const userData = useLoaderData() as Awaited<
+    ReturnType<typeof rootUserDataLoader>
+  >;
+
+  // Render MainAppLayout if user is logged in, otherwise LandingPage
+  // userData will be User or null based on rootUserDataLoader's resolution
+  return userData ? <MainAppLayout /> : <LandingPage />;
 };
 
 // Define routes using the object-based format
 const router = createBrowserRouter([
   {
-    // Root element that includes Providers and Outlet
+    // Root element for Providers ONLY
     element: (
       <Providers>
         <Outlet />
@@ -77,22 +119,22 @@ const router = createBrowserRouter([
         />
       </Providers>
     ),
-    // Nest all other routes as children
     children: [
       {
-        element: <MainAppLayout />,
-        loader: mainAppLoader, // Loader for routes using MainAppLayout
+        path: "/",
+        element: <RootElement />,
+        loader: rootUserDataLoader,
         children: [
-          { path: "/", element: <HomePage /> },
-          { path: "/threads", element: <ThreadsPage /> },
-          { path: "/threads/:threadId", element: <ThreadPage /> },
-          { path: "/workflows", element: <WorkflowsPage /> },
-          { path: "/workflows/:workflowId", element: <WorkflowPage /> },
-          { path: "/sites", element: <SitesPage /> },
-          { path: "/settings", element: <UserSettings /> },
-          { path: "/projects", element: <ProjectsPage /> },
+          { index: true, element: <HomePage /> },
+          { path: "threads", element: <ThreadsPage /> },
+          { path: "threads/:threadId", element: <ThreadPage /> },
+          { path: "workflows", element: <WorkflowsPage /> },
+          { path: "workflows/:workflowId", element: <WorkflowPage /> },
+          { path: "sites", element: <SitesPage /> },
+          { path: "settings", element: <UserSettings /> },
+          { path: "projects", element: <ProjectsPage /> },
           {
-            path: "/projects/:projectId",
+            path: "projects/:projectId",
             element: <ProjectPageLayout />,
             children: [
               { index: true, element: <ProjectPage /> },
@@ -123,6 +165,9 @@ const router = createBrowserRouter([
               { path: "settings", element: <KnowledgeBaseSettingsPage /> },
             ],
           },
+          // Need to decide how to handle index for logged-out state if LandingPage is not the element
+          // If RootElement renders LandingPage when userData is null, the index route might conflict or be ignored.
+          // Consider removing the index route here if LandingPage is handled by RootElement.
         ],
       },
       {
