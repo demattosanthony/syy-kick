@@ -1,0 +1,351 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  font-family: "Inter", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #ffffff;
+
+  /* Pure white background with slight orange tint */
+  --background: 25 5% 100%; /* Added slight orange tint */
+  --foreground: 25 5% 10%; /* Added slight orange tint with contrast */
+  /* Slightly whiter cards with orange hint */
+  --card: 25 5% 100%; /* Added slight orange tint */
+  --card-foreground: 25 5% 10%; /* Added slight orange tint */
+  --popover: 25 5% 100%; /* Added slight orange tint */
+  --popover-foreground: 25 5% 10%; /* Added slight orange tint */
+  /* Primary orange */
+  --primary: 25 100% 51%;
+  --primary-foreground: 25 5% 98%; /* Added slight orange tint */
+  /* Secondary grey with orange hint */
+  --secondary: 25 5% 90%; /* Added slight orange tint */
+  --secondary-foreground: 25 5% 15%; /* Added slight orange tint */
+  /* Muted greys with orange hint */
+  --muted: 25 5% 92%; /* Added slight orange tint */
+  --muted-foreground: 25 5% 40%; /* Added slight orange tint */
+  /* Accent greys with orange hint */
+  --accent: 25 5% 92%; /* Added slight orange tint */
+  --accent-foreground: 25 5% 15%; /* Added slight orange tint */
+  /* Destructive red unchanged */
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  /* Grey borders and inputs with orange hint */
+  --border: 25 10% 85%; /* Darker orange tint */
+  --input: 25 10% 85%; /* Darker orange tint */
+  --ring: 25 5% 15%; /* Added slight orange tint */
+  --radius: 0.75rem; /* Unchanged */
+  /* Sidebar with greys and orange hint */
+  --sidebar-background: 25 10% 96%; /* Added slight orange tint to background */
+  --sidebar-foreground: 25 5.3% 20%; /* Added slight orange tint to foreground */
+  --sidebar-primary: 25 5.9% 8%; /* Added slight orange tint to primary */
+  --sidebar-primary-foreground: 25 2% 98%; /* Added very subtle orange tint */
+  --sidebar-accent: 25 4.8% 92%; /* Added slight orange tint to accent */
+  --sidebar-accent-foreground: 25 5.9% 8%; /* Added slight orange tint */
+  --sidebar-border: 25 13% 87%; /* Added slight orange tint to border */
+  --sidebar-ring: 25 91.2% 50%; /* Changed to orange ring */
+
+  --theme-color: #ffffff; /* White, unchanged */
+
+  /* Location marker colors with orange hint */
+  --marker-fill: 25 8% 8%;
+  --marker-border: 25 5% 100%;
+  --sidebar: 25 10% 96%;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+}
+
+.dark {
+  /* Dark background with orange hint */
+  --background: 225 11% 7%; /* Dark blue-grey background */
+  --foreground: 25 8% 98%; /* Light text with orange hue */
+  --card: 225 11% 7%; /* Match background */
+  --card-foreground: 25 8% 98%; /* Match foreground */
+  --popover: 225 11% 7%; /* Match background */
+  --popover-foreground: 25 8% 98%; /* Match foreground */
+
+  /* Primary orange adapted for dark mode (lighter/brighter) */
+  --primary: 25 100% 51%;
+  --primary-foreground: 25 5% 98%; /* Added slight orange tint */
+
+  /* Darker greys with blue hint for secondary elements */
+  --secondary: 225 11% 12%; /* Slightly lighter dark blue-grey shade */
+  --secondary-foreground: 25 8% 98%; /* Light text */
+
+  /* Darker muted greys with blue hint - made lighter for visibility */
+  --muted: 225 11% 18%; /* Increased lightness from 12% */
+  --muted-foreground: 25 8% 65%; /* Greyer text */
+
+  /* Accent colors darker with blue hint */
+  --accent: 0, 0%, 15%; /* Match secondary */
+  --accent-foreground: 25 8% 98%; /* Light text */
+
+  /* Deeper destructive red for dark mode unchanged */
+  --destructive: 0 65% 30%;
+  --destructive-foreground: 0 0% 98%;
+
+  /* Borders and inputs with blue hint */
+  --border: 225 11% 12%; /* Match secondary/accent */
+  --input: 225 11% 12%; /* Match secondary/accent */
+  --ring: 25 90% 70%; /* Brighter orange for focus rings */
+
+  /* Sidebar with a dark purple-grey shade */
+  --sidebar: 225 9% 9%; /* Dark blue-grey, lighter */
+  --sidebar-foreground: 25 8% 98%; /* Match main foreground */
+  --sidebar-primary: 25 90% 60%; /* Match main primary */
+  --sidebar-primary-foreground: 25 10% 10%; /* Match main primary foreground */
+  --sidebar-accent: 288 9% 16%; /* Slightly lighter accent for sidebar */
+  --sidebar-accent-foreground: 25 8% 98%; /* Match main accent foreground */
+  --sidebar-border: 288 9% 16%; /* Match sidebar accent */
+  --sidebar-ring: 25 90% 70%; /* Match main ring */
+
+  --theme-color: hsl(225 11% 7%); /* Match dark background */
+
+  /* Location marker colors for dark mode */
+  --marker-fill: 25 8% 98%; /* Use foreground for visibility */
+  --marker-border: 225 11% 12%; /* Match main border */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: none;
+    /* Prevent element dragging */
+    /* -webkit-user-drag: none; */
+    /* user-select: none; */
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    color: hsl(var(--foreground)); /* Set color directly using the variable */
+    overscroll-behavior: none;
+    overflow: hidden;
+    /* Prevent bounce effect and dragging */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    -webkit-overflow-scrolling: none;
+    user-select: text;
+  }
+
+  html {
+    touch-action: none;
+    height: -webkit-fill-available;
+    /* Prevent pull-to-refresh */
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    user-select: text;
+  }
+}
+
+@theme {
+  --animate-shimmer: shimmer 4s infinite linear;
+  --border-pulse: border-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --accordion-down: accordion-down 0.2s ease-out;
+  --accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes border-pulse {
+    0%,
+    100% {
+      border-color: transparent;
+    }
+    50% {
+      border-color: hsl(var(--border)); /* Assuming --border is defined */
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 50%;
+    }
+    100% {
+      background-position: -200% 50%;
+    }
+  }
+
+  @keyframes typing {
+    0%,
+    100% {
+      transform: translateY(0);
+      opacity: 0.5;
+    }
+    50% {
+      transform: translateY(-2px);
+      opacity: 1;
+    }
+  }
+
+  @keyframes loading-dots {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes wave {
+    0%,
+    100% {
+      transform: scaleY(1);
+    }
+    50% {
+      transform: scaleY(0.6);
+    }
+  }
+
+  @keyframes blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes text-blink {
+    0%,
+    100% {
+      /* Assuming --primary is defined */
+      color: hsl(var(--primary));
+    }
+    50% {
+      /* Assuming --muted-foreground is defined */
+      color: hsl(var(--muted-foreground));
+    }
+  }
+
+  @keyframes bounce-dots {
+    0%,
+    100% {
+      transform: scale(0.8);
+      opacity: 0.5;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+  }
+
+  @keyframes thin-pulse {
+    0%,
+    100% {
+      transform: scale(0.95);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.4;
+    }
+  }
+
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 1;
+    }
+  }
+
+  @keyframes shimmer-text {
+    0% {
+      background-position: 150% center;
+    }
+    100% {
+      background-position: -150% center;
+    }
+  }
+
+  @keyframes wave-bars {
+    0%,
+    100% {
+      transform: scaleY(1);
+      opacity: 0.5;
+    }
+    50% {
+      transform: scaleY(0.6);
+      opacity: 1;
+    }
+  }
+
+  @keyframes spinner-fade {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  /* Note: accordion-down and accordion-up might be handled by tailwindcss-animate plugin or tw-animate-css */
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      /* Ensure this variable matches what your component/plugin uses */
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      /* Ensure this variable matches what your component/plugin uses */
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
