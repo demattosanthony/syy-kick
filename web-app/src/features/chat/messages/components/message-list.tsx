@@ -111,7 +111,7 @@ const LoadingMessage = React.memo(
       <div className="mb-4 mt flex flex-col justify-start">
         <div className="flex items-center">
           {status === "submitted" && (
-            <div className="w-[22px] h-[22px] mr-2 animate-spin">
+            <div className="w-[22px] h-[22px] mr-2">
               <img src="/logo192.png" width={22} height={22} alt="" />
             </div>
           )}
