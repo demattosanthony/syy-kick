@@ -25,10 +25,10 @@ import {
 import api from "@/lib/api";
 import { User } from "@/types/user";
 import { Button } from "../ui/button";
-import { useTheme } from "next-themes";
 import { Link } from "react-router";
 import { useWorkspace } from "@/workspace-context";
 import { useAuth } from "@/features/auth/hooks";
+import { useTheme } from "@/providers/theme-provider";
 
 export function NavUser({
   user,

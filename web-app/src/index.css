@@ -131,7 +131,7 @@
   --ring: 25 90% 70%; /* Brighter orange for focus rings */
 
   /* Sidebar with a dark purple-grey shade */
-  --sidebar-background: 225 9% 9%; /* Dark blue-grey, lighter */
+  --sidebar: 225 9% 9%; /* Dark blue-grey, lighter */
   --sidebar-foreground: 25 8% 98%; /* Match main foreground */
   --sidebar-primary: 25 90% 60%; /* Match main primary */
   --sidebar-primary-foreground: 25 10% 10%; /* Match main primary foreground */
@@ -145,7 +145,6 @@
   /* Location marker colors for dark mode */
   --marker-fill: 25 8% 98%; /* Use foreground for visibility */
   --marker-border: 225 11% 12%; /* Match main border */
-  --sidebar: hsl(240 5.9% 10%);
 }
 
 @layer base {
