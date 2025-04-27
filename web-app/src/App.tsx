@@ -42,7 +42,7 @@ import ProjectPageLayout from "./components/layouts/project-layout";
 import { queryClient } from "./providers/tanstack-query-client-provider";
 import api from "./lib/api";
 import { KnowledgeBaseLayout } from "./components/layouts/knowledge-base-layout";
-import { ShareThreadPage } from "./pages/threads/shared-thread-page";
+import { ShareThreadPage } from "./pages/share/[threadId]/page";
 import { User } from "./types/user";
 
 // Define the new loader function for the root route
