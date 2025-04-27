@@ -165,9 +165,6 @@ const router = createBrowserRouter([
               { path: "settings", element: <KnowledgeBaseSettingsPage /> },
             ],
           },
-          // Need to decide how to handle index for logged-out state if LandingPage is not the element
-          // If RootElement renders LandingPage when userData is null, the index route might conflict or be ignored.
-          // Consider removing the index route here if LandingPage is handled by RootElement.
         ],
       },
       {
