@@ -253,11 +253,16 @@ export default class PermissionsMiddlewares {
         return;
       }
 
+      // If its personal workspace, skip permission check
+      if (req.workspace?.type === "personal") {
+        next();
+        return;
+      }
+
       const orgId = getOrgIdOrUnedfined(req.workspace);
       const { id: userId } = req.dbUser;
       const { knowledgeBaseId } = req.params;
 
-      // Check if user is a member of an organization
       if (!orgId) {
         res.status(403).json({ error: "Please select an organization." });
         return;
