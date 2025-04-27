@@ -194,7 +194,7 @@ export default function ThreadPage({
     // If its a new thread, send the message right away
     if (isNew) {
       onSubmit({ preventDefault: () => {} } as React.FormEvent);
-      navigate(`/threads/${threadId}`);
+      navigate(`/threads/${threadId}`, { replace: true });
       setInitalInput("");
 
       setTimeout(() => {
