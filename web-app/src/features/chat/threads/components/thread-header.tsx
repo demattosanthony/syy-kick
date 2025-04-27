@@ -1,9 +1,8 @@
-import { Check, MenuIcon, Plus, Share, Slash } from "lucide-react";
+import { Check, Plus, Share, Slash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useParams, useNavigate } from "react-router";
 import { useAtom } from "jotai";
 import { messagesAtom } from "@/atoms/chat";
-import { useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
@@ -15,6 +14,7 @@ import { Link } from "react-router";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -36,7 +36,6 @@ export default function ThreadHeader() {
   const params = useParams();
   const navigate = useNavigate();
   const [shareLinkCopied, setShareLinkCopied] = React.useState(false);
-  const { toggleSidebar } = useSidebar();
 
   const threadId = params.threadId as string;
 
@@ -86,12 +85,6 @@ export default function ThreadHeader() {
     >
       <div className="flex w-full items-center justify-between">
         <div className="flex items-center gap-2 md:justify-start">
-          <div className="md:hidden">
-            <Button variant={"ghost"} size={"icon"} onClick={toggleSidebar}>
-              <MenuIcon />
-            </Button>
-          </div>
-
           <div>
             {parentName && parentLink && (
               <Breadcrumb>
@@ -131,18 +124,20 @@ export default function ThreadHeader() {
             <Plus className="h-4 w-4" />
           </Button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant={"ghost"}
-                size={"icon"}
-                onClick={handleCopyShareLink}
-              >
-                {shareLinkCopied ? <Check /> : <Share />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Copy Share Link</TooltipContent>
-          </Tooltip>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={"ghost"}
+                  size={"icon"}
+                  onClick={handleCopyShareLink}
+                >
+                  {shareLinkCopied ? <Check /> : <Share />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Copy Share Link</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     </header>

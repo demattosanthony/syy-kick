@@ -36,6 +36,7 @@ import ProjectPageLayout from "./components/layouts/project-layout";
 import { queryClient } from "./providers/tanstack-query-client-provider";
 import api from "./lib/api";
 import { KnowledgeBaseLayout } from "./components/layouts/knowledge-base-layout";
+import { ShareThreadPage } from "./pages/threads/shared-thread-page";
 
 // Define the loader function
 const mainAppLoader = async () => {
@@ -143,6 +144,10 @@ const router = createBrowserRouter([
       {
         path: "/join-org",
         element: <JoinOrgPage />,
+      },
+      {
+        path: "/share/:threadId",
+        element: <ShareThreadPage />,
       },
       {
         path: "*",
