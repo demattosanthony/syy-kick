@@ -116,7 +116,11 @@ const LoadingMessage = React.memo(
             </div>
           )}
           <div className="flex h-full items-start justify-center">
-            <Loader variant="text-shimmer" text={"Thinking..."} size="lg" />
+            {status === "submitted" ? (
+              <Loader variant="text-shimmer" text={"Thinking..."} size="lg" />
+            ) : (
+              <Loader variant="wave" size="lg" />
+            )}
           </div>
         </div>
       </div>
@@ -180,7 +184,7 @@ const ChatMessagesList = React.memo(
                 );
               })
             )}
-            {true && <LoadingMessage status={status} />}
+            {status === "submitted" && <LoadingMessage status={status} />}
           </div>
         </ChatContainer>
 
