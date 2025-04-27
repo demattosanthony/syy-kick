@@ -33,20 +33,36 @@ export function ThemeProvider({
   useEffect(() => {
     const root = window.document.documentElement;
 
+    // Remove previous theme class
     root.classList.remove("light", "dark");
 
+    // Determine the theme to apply (system or explicit)
+    let themeToApply = theme;
     if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-        .matches
+      themeToApply = window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light";
-
-      root.classList.add(systemTheme);
-      return;
     }
 
-    root.classList.add(theme);
-  }, [theme]);
+    // Add the new theme class
+    root.classList.add(themeToApply);
+
+    // Optional: Add listener for system theme changes if needed
+    // This part depends on whether you want the theme to react
+    // automatically if the OS theme changes while the app is open.
+    // const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    // const handleChange = () => {
+    //   if (theme === 'system') { // Only update if current theme is 'system'
+    //      const newSystemTheme = mediaQuery.matches ? 'dark' : 'light';
+    //      root.classList.remove('light', 'dark');
+    //      root.classList.add(newSystemTheme);
+    //      // Optionally update state if needed, though the class is the main goal
+    //      // setTheme('system'); // Re-trigger effect? Or maybe just update class?
+    //   }
+    // };
+    // mediaQuery.addEventListener('change', handleChange);
+    // return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [theme]); // Depend only on theme state changes
 
   const value = {
     theme,
