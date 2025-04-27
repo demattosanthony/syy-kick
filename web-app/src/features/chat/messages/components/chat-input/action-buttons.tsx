@@ -12,6 +12,7 @@ import { SharePointFile } from "@/features/projects/types";
 import { useAtom } from "jotai";
 import { uploadsAtom } from "@/atoms/chat";
 import { FileUploadMimeType } from "@/types/chat";
+import sharepointLogo from "@/assets/sharepoint.svg";
 
 interface ActionButtonsProps {
   isGenerating?: boolean;
@@ -119,7 +120,7 @@ export function ActionButtons({
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <img
-                        src="/logos/sharepoint.svg"
+                        src={sharepointLogo}
                         alt="Sharepoint"
                         width={16}
                         height={16}

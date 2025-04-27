@@ -16,6 +16,7 @@ import { ProjectFileExplorer } from "@/features/projects/components";
 import { DocumentContent } from "@/types/project";
 import { toast } from "sonner";
 import { WorkflowProjectFile } from "../workflows.types";
+import sharepointLogo from "@/assets/sharepoint.svg";
 
 interface FileUploadInputProps {
   input: {
@@ -234,7 +235,7 @@ function FileUploadInput({
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <img
-                src={"/logos/sharepoint.svg"}
+                src={sharepointLogo}
                 alt="Sharepoint"
                 width={20}
                 height={20}
