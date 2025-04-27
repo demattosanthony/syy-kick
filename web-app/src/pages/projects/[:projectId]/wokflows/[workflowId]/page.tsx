@@ -8,7 +8,7 @@ export function ProjectWorkflowPage() {
     workflowId: string;
   }>();
 
-  const { data: workflow } = useWorkflowQuery(workflowId ?? "");
+  const { data: workflow, isLoading } = useWorkflowQuery(workflowId ?? "");
 
   return (
     <div className="flex flex-col flex-1 pt-4">
@@ -16,6 +16,7 @@ export function ProjectWorkflowPage() {
         projectId={projectId ?? ""}
         workflowId={workflowId ?? ""}
         workflow={workflow}
+        isLoading={isLoading}
       />
     </div>
   );
