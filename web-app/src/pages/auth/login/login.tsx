@@ -4,6 +4,8 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/features/auth/hooks";
+import googleLogo from "@/assets/logos/google.svg";
+import microsoftLogo from "@/assets/logos/msft.svg";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -84,7 +86,7 @@ export function LoginPage() {
               variant={"outline"}
             >
               <img
-                src="/logos/google.svg"
+                src={googleLogo}
                 alt="google"
                 width={20}
                 height={20}
@@ -98,7 +100,7 @@ export function LoginPage() {
               variant={"outline"}
             >
               <img
-                src="/logos/msft.svg"
+                src={microsoftLogo}
                 alt="msft"
                 width={20}
                 height={20}

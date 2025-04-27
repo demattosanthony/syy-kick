@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/hooks";
+import googleLogo from "@/assets/logos/google.svg";
+import microsoftLogo from "@/assets/logos/msft.svg";
 
 const JoinOrgHandler = ({
   token,
@@ -68,7 +70,7 @@ const JoinOrgHandler = ({
         <img
           height={20}
           width={20}
-          src="/logos/google.svg"
+          src={googleLogo}
           alt="google"
           className="h-5 w-5 mr-1"
         />
@@ -83,7 +85,7 @@ const JoinOrgHandler = ({
         <img
           height={20}
           width={20}
-          src="/logos/msft.svg"
+          src={microsoftLogo}
           alt="msft"
           className="h-5 w-5 mr-1"
         />
