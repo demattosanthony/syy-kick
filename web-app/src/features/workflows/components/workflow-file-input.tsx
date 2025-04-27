@@ -16,7 +16,7 @@ import { ProjectFileExplorer } from "@/features/projects/components";
 import { DocumentContent } from "@/types/project";
 import { toast } from "sonner";
 import { WorkflowProjectFile } from "../workflows.types";
-import sharepointLogo from "@/assets/sharepoint.svg";
+import sharepointLogo from "@/assets/logos/sharepoint.svg";
 
 interface FileUploadInputProps {
   input: {

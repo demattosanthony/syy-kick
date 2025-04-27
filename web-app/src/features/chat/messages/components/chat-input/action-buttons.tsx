@@ -12,7 +12,7 @@ import { SharePointFile } from "@/features/projects/types";
 import { useAtom } from "jotai";
 import { uploadsAtom } from "@/atoms/chat";
 import { FileUploadMimeType } from "@/types/chat";
-import sharepointLogo from "@/assets/sharepoint.svg";
+import sharepointLogo from "@/assets/logos/sharepoint.svg";
 
 interface ActionButtonsProps {
   isGenerating?: boolean;

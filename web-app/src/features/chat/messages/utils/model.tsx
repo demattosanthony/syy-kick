@@ -1,3 +1,13 @@
+import openaiLogo from "@/assets/logos/openai.ico";
+import anthropicLogo from "@/assets/logos/anthropic.ico";
+import perplexityLogo from "@/assets/logos/perplexity.ico";
+import googleLogo from "@/assets/logos/google.svg";
+import xaiLogo from "@/assets/logos/xai.svg";
+import mistralLogo from "@/assets/logos/mistral.svg";
+import groqLogo from "@/assets/logos/meta.svg";
+import deepseekLogo from "@/assets/logos/deepseek.ico";
+import metaLogo from "@/assets/logos/meta.svg";
+
 export function getModelImage(provider: string) {
   const iconPath = getModelIconPath(provider);
   if (!iconPath) return null;
@@ -10,23 +20,23 @@ export function getModelImage(provider: string) {
 export function getModelIconPath(provider: string) {
   switch (provider) {
     case "openai":
-      return "/logos/openai.ico";
+      return openaiLogo;
     case "anthropic":
-      return "/logos/anthropic.ico";
+      return anthropicLogo;
     case "perplexity":
-      return "/logos/perplexity.ico";
+      return perplexityLogo;
     case "google":
-      return "/logos/google.svg";
+      return googleLogo;
     case "xai":
-      return "/logos/xai.svg";
+      return xaiLogo;
     case "mistral":
-      return "/logos/mistral.svg";
+      return mistralLogo;
     case "groq":
-      return "/logos/meta.svg";
+      return groqLogo;
     case "meta":
-      return "/logos/meta.svg";
+      return metaLogo;
     case "deepseek":
-      return "/logos/deepseek.ico";
+      return deepseekLogo;
     default:
       return null;
   }
