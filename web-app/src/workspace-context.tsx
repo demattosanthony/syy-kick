@@ -65,6 +65,9 @@ export const WorkspaceProvider = ({
   // Effect to synchronize with user data and validate/update cookie value
   React.useEffect(() => {
     if (user) {
+      // Save user data to local storage
+      localStorage.setItem("me", JSON.stringify(user));
+
       const personalOrg = user.organizations.find(
         (org) => org.type === "personal"
       );

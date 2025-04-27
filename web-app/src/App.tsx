@@ -49,6 +49,12 @@ import { User } from "./types/user";
 const rootUserDataLoader = async (): Promise<User | null> => {
   const queryKey = ["me"];
   try {
+    // Check local storage for user data
+    const userData = localStorage.getItem("me");
+    if (userData) {
+      return JSON.parse(userData);
+    }
+
     // Try fetching from the cache first
     const cachedData = queryClient.getQueryData<User>(queryKey);
     if (cachedData) {
@@ -58,13 +64,10 @@ const rootUserDataLoader = async (): Promise<User | null> => {
     // If not in cache, fetch from API using fetchQuery
     const user = await queryClient.fetchQuery<User | null>({
       queryKey,
-      // Wrap api.auth.me() to ensure it fits the expected signature if necessary
-      // Although fetchQuery<User | null> should handle Promise<User | null>
       queryFn: async () => {
         const result = await api.auth.me();
         return result; // Return User or null
       },
-      staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     });
 
     if (user) {
@@ -85,8 +88,7 @@ const RootElement = () => {
     ReturnType<typeof rootUserDataLoader>
   >;
 
-  // Render MainAppLayout if user is logged in, otherwise LandingPage
-  // userData will be User or null based on rootUserDataLoader's resolution
+  // Unauthenticated users will see the landing page
   return userData ? <MainAppLayout /> : <LandingPage />;
 };
 

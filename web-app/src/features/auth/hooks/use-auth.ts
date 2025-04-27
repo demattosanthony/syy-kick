@@ -1,5 +1,3 @@
-"use client";
-
 import { useWorkspace } from "@/workspace-context";
 import api from "@/lib/api";
 import { Workspace } from "@/types/workspace";
@@ -17,6 +15,7 @@ const useAuth = () => {
     await api.auth.logout();
 
     queryClient.invalidateQueries({ queryKey: ["me"] });
+    localStorage.removeItem("me");
 
     navigate("/");
     window.location.reload();
