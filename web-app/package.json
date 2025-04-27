@@ -63,6 +63,7 @@
     "papaparse": "^5.5.2",
     "pdfjs-dist": "^3.4.120",
     "react": "^19.0.0",
+    "react-cookie": "^8.0.1",
     "react-day-picker": "8.10.1",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",

@@ -2,30 +2,7 @@ import * as React from "react";
 import { type Workspace } from "@/types/workspace";
 import { useMeQuery } from "@/features/user/api";
 import { PermissionsProvider } from "@/features/permissions/context/permissions-context";
-
-// Helper function to get workspace from cookie
-// This should only run client-side
-function getActiveWorkspaceFromCookie(): Workspace | null {
-  if (typeof document === "undefined") {
-    return null; // Return null on server-side
-  }
-  const cookies = document.cookie.split("; ");
-  const workspaceCookie = cookies.find((row) =>
-    row.startsWith("activeWorkspace=")
-  );
-  if (!workspaceCookie) {
-    return null;
-  }
-  try {
-    return JSON.parse(decodeURIComponent(workspaceCookie.split("=")[1]));
-  } catch (error) {
-    console.error("Error parsing workspace cookie:", error);
-    // Optionally clear the invalid cookie
-    document.cookie =
-      "activeWorkspace=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    return null;
-  }
-}
+import { useCookies } from "react-cookie";
 
 type WorkspaceContextType = {
   activeWorkspace: Workspace | null;
@@ -39,30 +16,51 @@ const WorkspaceContext = React.createContext<WorkspaceContextType | undefined>(
 
 export const WorkspaceProvider = ({
   children,
-}: // initialWorkspace is no longer needed here
-{
+}: {
   children: React.ReactNode;
-  // initialWorkspace?: Workspace | null; // Removed prop
 }) => {
-  // Initialize state lazily from cookie on client-side
+  const [cookies, setCookie] = useCookies(["activeWorkspace"]);
+  const initialWorkspace = React.useMemo(() => {
+    const cookieValue = cookies.activeWorkspace;
+    if (!cookieValue) return null;
+    try {
+      // react-cookie automatically handles URI encoding/decoding
+      return typeof cookieValue === "string"
+        ? JSON.parse(cookieValue)
+        : (cookieValue as Workspace);
+    } catch (error) {
+      console.error("Error parsing workspace cookie:", error);
+      // Optionally clear the invalid cookie - react-cookie doesn't have a specific clear function,
+      // but setting it to expire immediately works. Or just let it be overwritten.
+      // setCookie('activeWorkspace', '', { path: '/', maxAge: 0 });
+      return null;
+    }
+  }, [cookies.activeWorkspace]);
+
   const [activeWorkspace, setActiveWorkspaceState] =
-    React.useState<Workspace | null>(() => getActiveWorkspaceFromCookie());
+    React.useState<Workspace | null>(initialWorkspace);
   const { data: user } = useMeQuery();
   const [workspaces, setWorkspaces] = React.useState<Workspace[]>([]);
 
-  // Function to update both client state and cookie
-  const setActiveWorkspace = React.useCallback((workspace: Workspace) => {
-    // Also set the cookie on the client side for immediate effect
-    // Encode the JSON string before storing it in the cookie
-    const encodedWorkspace = encodeURIComponent(JSON.stringify(workspace));
-    document.cookie = `activeWorkspace=${encodedWorkspace}; path=/; max-age=2147483647; secure${
-      import.meta.env.NODE_ENV === "production"
-        ? "; domain=.syykick.com; samesite=lax"
-        : "; samesite=lax"
-    }`;
-
-    setActiveWorkspaceState(workspace);
-  }, []);
+  // Function to update both client state and cookie using react-cookie
+  const setActiveWorkspace = React.useCallback(
+    (workspace: Workspace) => {
+      const cookieOptions = {
+        path: "/",
+        maxAge: 2147483647, // approximately 68 years
+        secure: true, // Set secure flag always for safety
+        sameSite: "lax" as const, // Use lax explicitly typed
+        domain:
+          import.meta.env.NODE_ENV === "production"
+            ? ".syykick.com"
+            : undefined,
+      };
+      // react-cookie handles stringifying objects automatically
+      setCookie("activeWorkspace", workspace, cookieOptions);
+      setActiveWorkspaceState(workspace);
+    },
+    [setCookie]
+  );
 
   // Effect to synchronize with user data and validate/update cookie value
   React.useEffect(() => {
@@ -103,7 +101,7 @@ export const WorkspaceProvider = ({
         organizationWorkspaces.find((org) => org.type === "organization") ||
         personalWorkspace; // Prefer first org, fallback to personal
 
-      // Check if the current activeWorkspace (potentially from cookie) is valid
+      // Check if the current activeWorkspace (from state, initialized from cookie) is valid
       const currentWorkspaceFromState = activeWorkspace; // Capture state variable
       let workspaceToSet: Workspace | null = null;
 
@@ -112,33 +110,35 @@ export const WorkspaceProvider = ({
           (w) => w.id === currentWorkspaceFromState.id
         );
         if (updatedWorkspaceData) {
-          // Workspace from cookie/state is valid, use the updated data
+          // Workspace from state is valid, use the updated data
           workspaceToSet = updatedWorkspaceData;
         }
       }
 
-      // If no valid workspace found from state/cookie, set the default
+      // If no valid workspace found from state, set the default
       if (!workspaceToSet) {
         workspaceToSet = defaultWorkspace;
       }
 
       // Update the state and cookie only if the workspace is changing
-      // Or if the initial state was null and we are setting the default
+      // Or if the initial state was null (meaning cookie was initially empty/invalid)
+      // and we are setting the default
       if (
         workspaceToSet &&
         (workspaceToSet.id !== currentWorkspaceFromState?.id ||
-          !currentWorkspaceFromState) // Add check for initial null state
+          !currentWorkspaceFromState) // Check if state was initially null
       ) {
         setActiveWorkspace(workspaceToSet);
       } else if (
         workspaceToSet &&
-        workspaceToSet.logo !== currentWorkspaceFromState?.logo
+        currentWorkspaceFromState && // Ensure current state is not null before comparing logo
+        workspaceToSet.logo !== currentWorkspaceFromState.logo
       ) {
         // Special case: Update if only the logo (presigned URL) changed
         setActiveWorkspace(workspaceToSet);
       }
     }
-  }, [user, activeWorkspace, setActiveWorkspace]); // Add activeWorkspace and setActiveWorkspace dependencies
+  }, [user, activeWorkspace, setActiveWorkspace]); // Dependencies remain the same
 
   const contextValue = {
     activeWorkspace,
