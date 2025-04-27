@@ -1,9 +1,9 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
 import React, { useEffect, useState } from "react";
 import { codeToHtml } from "shiki";
+import { useTheme } from "@/providers/theme-provider";
 
 export type CodeBlockProps = {
   children?: React.ReactNode;
@@ -40,7 +40,7 @@ function CodeBlockCode({
   ...props
 }: CodeBlockCodeProps) {
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
-  const { resolvedTheme } = useTheme();
+  const { theme } = useTheme();
 
   useEffect(() => {
     async function highlight() {
@@ -51,8 +51,7 @@ function CodeBlockCode({
       }
 
       // Map the system theme to Shiki theme
-      const systemTheme =
-        resolvedTheme === "dark" ? "github-dark" : "github-light";
+      const systemTheme = theme === "dark" ? "github-dark" : "github-light";
       // Use provided theme or fall back to system theme
       const themeToUse = propTheme || systemTheme;
 
@@ -69,7 +68,7 @@ function CodeBlockCode({
       }
     }
     highlight();
-  }, [code, language, propTheme, resolvedTheme]);
+  }, [code, language, propTheme, theme]);
 
   const classNames = cn(
     "w-full overflow-x-auto text-[13px] [&>pre]:px-4 [&>pre]:py-4",
