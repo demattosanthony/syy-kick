@@ -1,9 +1,6 @@
 ## What is this
 
-- github for engineers (specifically buildings)
-- replit collaboration and Ai type features
-- better QA QC processes
-- automated workflows
+- Automated AI workflows for the AECO (Architecture, Engineering, Construction, Operations) Industry
 
 ## Get started
 

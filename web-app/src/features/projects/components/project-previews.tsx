@@ -23,7 +23,7 @@ const ProjectPreviews = ({
         .location-marker {
           width: 28px;
           height: 28px;
-          background-color: hsl(var(--marker-fill, 215 5% 15%));
+          background-color: hsl(25 8% 8%);
           border-radius: 50% 50% 0 50%;
           transform: rotate(45deg);
           position: relative;

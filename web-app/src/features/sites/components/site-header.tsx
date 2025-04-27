@@ -34,7 +34,7 @@ export default function SiteHeader({ site }: { site: Site }) {
       <div className="absolute inset-0 flex items-start justify-between">
         <div className="relative flex flex-1 items-center justify-start p-4 gap-2">
           <MapPin color="white" className="w-4 h-4 text-muted-foreground" />
-          <p className="text-xl font-bold text-muted-foreground">
+          <p className="text-xl font-bold text-white">
             {site.address} {site.city}, {site.state} {site.postalCode},{" "}
             {site.country}
           </p>
