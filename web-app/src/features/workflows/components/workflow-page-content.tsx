@@ -1,5 +1,3 @@
-"use client";
-
 import { useNavigate } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { Loader, Play } from "lucide-react";
@@ -12,6 +10,7 @@ import { Workflow, WorkflowProjectFile } from "../workflows.types";
 import { useAtom } from "jotai";
 import { initalInputAtom, workflowInputAtom } from "@/atoms/chat";
 import { ThreadsList } from "@/features/chat/threads/components";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type WorkflowAttachment = Attachment & {
   file_key: string;
@@ -22,10 +21,12 @@ export default function WorkflowPageContent({
   workflowId,
   projectId,
   workflow,
+  isLoading,
 }: {
   workflowId: string;
   projectId?: string;
   workflow?: Workflow;
+  isLoading: boolean;
 }) {
   const navigate = useNavigate();
   const [files, setFiles] = useState<
@@ -177,14 +178,23 @@ export default function WorkflowPageContent({
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col items-center w-full">
-      <div className="mb-6 text-center">
-        <div className="inline-block p-3 mb-6 rounded-full bg-accent">
+      <div className="mb-6 text-center w-full flex flex-col items-center gap-4">
+        <div className="inline-block p-3 mb-6 w-fit rounded-full bg-accent">
           <span className="text-4xl">📋</span>
         </div>
-        <h1 className="text-4xl font-bold mb-4">{workflow?.title}</h1>
-        <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-          {workflow?.description}
-        </p>
+        {isLoading ? (
+          <>
+            <Skeleton className="w-xl h-10" />
+            <Skeleton className="w-md h-10" />
+          </>
+        ) : (
+          <>
+            <h1 className="text-4xl font-bold mb-4">{workflow?.title}</h1>
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+              {workflow?.description}
+            </p>
+          </>
+        )}
       </div>
 
       <ErrorDisplay errorDetails={errorDetails} onReset={resetWorkflow} />

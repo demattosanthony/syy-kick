@@ -15,7 +15,7 @@ export function WorkflowPage() {
     workflowId: string;
   }>();
 
-  const { data: workflow } = useWorkflowQuery(workflowId as string);
+  const { data: workflow, isLoading } = useWorkflowQuery(workflowId as string);
 
   return (
     <div className="h-screen w-full flex flex-col">
@@ -43,6 +43,7 @@ export function WorkflowPage() {
         <WorkflowPageContent
           workflowId={workflowId as string}
           workflow={workflow}
+          isLoading={isLoading}
         />
       </div>
     </div>
