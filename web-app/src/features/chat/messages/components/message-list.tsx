@@ -104,6 +104,7 @@ import {
 import { Loader } from "@/components/ui/loader";
 import { ChatContainer } from "@/components/ui/chat-container";
 import { ScrollButton } from "@/components/ui/scroll-button";
+import logo from "@/assets/logo192.png";
 
 const LoadingMessage = React.memo(
   ({ status }: { status: "error" | "submitted" | "streaming" | "ready" }) => {
@@ -112,7 +113,7 @@ const LoadingMessage = React.memo(
         <div className="flex items-center">
           {status === "submitted" && (
             <div className="w-[22px] h-[22px] mr-2">
-              <img src="/logo192.png" width={22} height={22} alt="" />
+              <img src={logo} width={22} height={22} alt="" />
             </div>
           )}
           <div className="flex h-full items-start justify-center">

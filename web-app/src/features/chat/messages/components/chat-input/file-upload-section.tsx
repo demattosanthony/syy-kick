@@ -1,6 +1,10 @@
 import { X, File as FileIcon } from "lucide-react";
 import PdfThumbnail from "../pdf-thumbnail";
 import { FileUpload } from "@/types/chat";
+import msWordLogo from "@/assets/logos/ms-word.svg";
+import excelLogo from "@/assets/logos/excel.svg";
+import pptxLogo from "@/assets/logos/pptx.svg";
+import pdfLogo from "@/assets/logos/pdf.png";
 
 interface FileUploadSectionProps {
   uploads: Array<FileUpload>;
@@ -20,13 +24,13 @@ export function FileUploadSection({
         let customIconSrc: string | null = null;
 
         if (extension === "docx" || extension === "doc") {
-          customIconSrc = "/logos/ms-word.svg";
+          customIconSrc = msWordLogo;
         } else if (extension === "xlsx" || extension === "xls") {
-          customIconSrc = "/logos/excel.svg";
+          customIconSrc = excelLogo;
         } else if (extension === "pptx" || extension === "ppt") {
-          customIconSrc = "/logos/pptx.svg";
+          customIconSrc = pptxLogo;
         } else if (extension === "pdf") {
-          customIconSrc = "/logos/pdf.png";
+          customIconSrc = pdfLogo;
         }
 
         return (

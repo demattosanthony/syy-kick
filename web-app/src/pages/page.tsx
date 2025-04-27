@@ -21,6 +21,9 @@ import { useMeQuery } from "@/features/user/api";
 import { useProjectsQuery } from "@/features/projects/api";
 import { useNavigate } from "react-router";
 
+// Images
+import logo from "@/assets/logo192.png";
+
 export function HomePage() {
   const { data: user, isFetched: userFetched } = useMeQuery();
   const { data: recentProjects, isLoading: projectsLoading } = useProjectsQuery(
@@ -74,7 +77,7 @@ export function HomePage() {
       <div className="flex flex-col flex-1">
         <div className="flex flex-col items-center w-full gap-6 pb-4">
           <div className="w-[85px] flex items-center justify-center min-h-[85px] mt-[16vh]">
-            <img src="/logo512.png" width={85} height={85} alt="Logo" />
+            <img src={logo} width={85} height={85} alt="Logo" />
           </div>
 
           <div className="flex flex-col gap-6 min-h-[72px]">
