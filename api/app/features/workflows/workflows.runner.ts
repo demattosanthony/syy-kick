@@ -265,7 +265,11 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
             messages,
             model: MODELS[agent.model].model,
             tools: currentAgentTools,
-            experimental_activeTools: agent.activeTools,
+            experimental_activeTools: [
+              ...agent.activeTools,
+              "load-artifact",
+              "create-artifact",
+            ],
             maxSteps: 30,
             onStepFinish: onStepFinishCallback(
               messages,

@@ -5,18 +5,15 @@ const pageExtractionAgent: Agent = {
   id: "page-extraction-agent",
   name: "Page Extraction Agent",
   description: "Extracts pages from a PDF file and converts them to images.",
-  instructions: `1. Analyze the provided architectural drawings PDF file.
+  instructions: `You goal is to analyze a architectural drawings PDF file and identify which pages contain window and door schedules, then convert those pages to images.
+  
+1. Analyze the provided architectural drawings PDF file.
 2. Look for pages that contains window and door schedules. These schedules typically list details about windows and doors used in the building, such as sizes, types, and quantities.
 3. When you find the page with the schedules, note the PDF page number. This should be the actual page number in the PDF file, not the sheet number that might be printed on the drawing itself.
 4. If you cannot find a page with window and door schedules, indicate that there are no pages with window and door schedules. and stop.
 5. If you find pages with window and door schedules, use the "pdf-page-extraction" tool to extract the pages as images.`,
   model: "gemini-2.5-flash-preview",
-  activeTools: [
-    "pdf-page-extraction",
-    "create-artifact",
-    // "list-artifacts",
-    "load-artifact",
-  ],
+  activeTools: ["pdf-page-extraction"],
 };
 
 // Table extraction agent to locate the window and door schedule tables in the images and save them as image artifacts
@@ -32,7 +29,7 @@ Steps:
 
 The label you want to detect is "Window or Door Schedule table".`,
   model: "gemini-2.5-flash-preview",
-  activeTools: ["object-detection", "load-artifact"],
+  activeTools: ["object-detection"],
 };
 
 // CSV generation agent to analyze cropped images of window and door schedule tables and extract the data from them
@@ -81,7 +78,7 @@ Return only the final CSV in the specified format, without any additional commen
 
 Do not make up any information. Only include information that is present in the cropped images. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
   model: "gpt-4.1",
-  activeTools: ["create-artifact", "load-artifact"],
+  activeTools: [],
 };
 
 export const windowDoorScheduleGenWorkflow: Workflow = {
