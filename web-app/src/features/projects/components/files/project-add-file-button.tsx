@@ -11,6 +11,7 @@ import { useUploadDocsMutation } from "../../api";
 import { useUploadKnowledgeBaseFiles } from "@/features/knowledge-bases/api";
 import useMicrosoftPicker from "../../hooks/use-microsoft-picker";
 import { SharePointFile } from "../../types";
+import sharepointLogo from "@/assets/logos/sharepoint.svg";
 
 interface UploadButtonsProps {
   projectId?: string;
@@ -199,7 +200,7 @@ const ProjectAddFileButton = ({
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <img
-                src="/logos/sharepoint.svg"
+                src={sharepointLogo}
                 alt="Sharepoint"
                 width={16}
                 height={16}
