@@ -9,11 +9,8 @@ const file = Bun.file(filePath);
 const pdf = await file.arrayBuffer();
 const pdfBytes = new Uint8Array(pdf);
 
-const artifactService = new ArtifactService();
-
 const workflowRunner = new WorkflowRunner(
   windowDoorScheduleGenWorkflow,
-  artifactService,
   (update) => {
     console.log(util.inspect(update, { depth: null, colors: true }));
     console.log("\n");
@@ -28,5 +25,3 @@ await workflowRunner.run({
     filename: "architectural-drawings.pdf",
   },
 });
-
-artifactService.dumpArtifacts();

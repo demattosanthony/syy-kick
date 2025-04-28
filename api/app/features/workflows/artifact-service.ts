@@ -61,6 +61,22 @@ export class ArtifactService {
     return deleted;
   }
 
+  /**
+   * Clears all artifacts from the in-memory storage.
+   */
+  clearArtifacts(): void {
+    this.storage.clear();
+    console.log("All artifacts cleared.");
+  }
+
+  /**
+   * Get all artifacts from the in-memory storage.
+   * @returns An array of artifacts.
+   */
+  getArtifacts(): Record<string, ArtifactData> {
+    return Object.fromEntries(this.storage.entries());
+  }
+
   // --- Tool Creation Methods (now private inside the class) ---
 
   private listArtifactsTool(): Tool {
@@ -85,7 +101,7 @@ export class ArtifactService {
   private loadArtifactTool(): Tool {
     return tool({
       description:
-        "Loads an artifact from the artifact service. Returns the artifact's filename, MIME type, and base64 encoded data.",
+        "Loads an artifact from the artifact service. This tool allows you to load an artifact into your context that you are then able to process and understand. This means loading a image will let you see the image, a pdf will let you see the pdf, and a csv will let you see the csv.",
       parameters: z.object({
         fileName: z.string().describe("The file name of the artifact to load."),
       }),
@@ -156,10 +172,32 @@ export class ArtifactService {
   }
 
   /** Dump all artifacts to debug-artifacts folder */
-  dumpArtifacts() {
+  dumpArtifacts(identifier?: string) {
+    const dir = identifier
+      ? `debug-artifacts/${identifier}`
+      : "debug-artifacts";
+    // Ensure the directory exists (this might need a library or platform-specific API in a real scenario)
+    // For Bun, you might need to handle directory creation manually if Bun.write doesn't create parent dirs.
+    try {
+      // Basic check/creation - replace with more robust logic if needed
+      const { existsSync, mkdirSync } = require("fs");
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+    } catch (e) {
+      console.warn(`Could not ensure debug directory ${dir} exists:`, e);
+    }
+
     for (const [filename, artifact] of this.storage.entries()) {
-      const filePath = `debug-artifacts/${filename}`;
-      Bun.write(filePath, artifact.data);
+      const filePath = `${dir}/${filename}`;
+      try {
+        Bun.write(filePath, artifact.data);
+      } catch (e) {
+        console.error(
+          `Failed to write artifact ${filename} to ${filePath}:`,
+          e
+        );
+      }
     }
   }
 }
