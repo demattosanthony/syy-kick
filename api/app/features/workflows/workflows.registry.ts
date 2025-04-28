@@ -4,6 +4,7 @@ import {
   createPdfPageExtractionTool,
   createObjectDetectionTool,
   createDocOcrTool,
+  createWebSearchTool,
 } from "./tools";
 import {
   basisOfDesignGenWorkflow,
@@ -96,5 +97,6 @@ export const createToolSet = (toolArtifactService: ArtifactService) => {
     "pdf-page-extraction": createPdfPageExtractionTool(toolArtifactService),
     "object-detection": createObjectDetectionTool(toolArtifactService),
     "doc-ocr": createDocOcrTool(toolArtifactService),
+    "web-search": createWebSearchTool(),
   };
 };
