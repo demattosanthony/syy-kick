@@ -21,12 +21,7 @@ import {
   WorkflowSchema,
 } from "./workflows.schemas";
 
-const workflows: Workflow[] = [
-  rfpEvalWorkflow,
-  equipmentServingListWorkflow,
-  basisOfDesignGenWorkflow,
-  billOfMaterialsWorkflow,
-];
+const workflows: Workflow[] = [rfpEvalWorkflow, basisOfDesignGenWorkflow];
 
 const workflowRegistry = new Map<string, Workflow>();
 workflows.forEach((wf) => {

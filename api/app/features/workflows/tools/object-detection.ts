@@ -48,7 +48,7 @@ export function createObjectDetectionTool(
               },
               {
                 type: "text",
-                text: `Your task is to locate all instances of "${label}" and place 2d bounding boxes around them. Each bounding box should tightly enclose the identified object.
+                text: `Your task is to locate all instances of "${label}" and place 2d bounding boxes around them. Each bounding box should enclose the identified object. Make sure you capture the entire object and do not cut off any part of it, add some padding if needed.
 Output the bounding boxes in the [y_min, x_min, y_max, x_max] format.
 The top left corner is (0,0). The x axis goes left→right, the y axis top→bottom.
 Coordinate values must be normalized to 0–1000 for both width and height.

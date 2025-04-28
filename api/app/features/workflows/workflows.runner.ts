@@ -57,19 +57,41 @@ export function onStepFinishCallback(
         const fileName = toolCall.args.fileName;
         const artifact = artifactService.loadArtifact(fileName);
         if (artifact) {
-          const contentItem = artifact.mimeType.startsWith("image/")
-            ? {
-                type: "image" as const,
-                image: Buffer.from(artifact.data).toString("base64"),
-                mimeType: artifact.mimeType,
-                filename: fileName,
+          let contentItem:
+            | { type: "text"; text: string }
+            | {
+                type: "image";
+                image: string;
+                mimeType: string;
+                filename: string;
               }
-            : {
-                type: "file" as const,
-                data: Buffer.from(artifact.data).toString("base64"),
-                mimeType: artifact.mimeType,
-                filename: fileName,
+            | {
+                type: "file";
+                data: string;
+                mimeType: string;
+                filename: string;
               };
+
+          if (artifact.mimeType.startsWith("text/")) {
+            contentItem = {
+              type: "text" as const,
+              text: Buffer.from(artifact.data).toString("utf-8"),
+            };
+          } else if (artifact.mimeType.startsWith("image/")) {
+            contentItem = {
+              type: "image" as const,
+              image: Buffer.from(artifact.data).toString("base64"),
+              mimeType: artifact.mimeType,
+              filename: fileName,
+            };
+          } else {
+            contentItem = {
+              type: "file" as const,
+              data: Buffer.from(artifact.data).toString("base64"),
+              mimeType: artifact.mimeType,
+              filename: fileName,
+            };
+          }
 
           messagesArray.push({
             role: "user",
@@ -129,7 +151,7 @@ export class WorkflowRunner {
       initialArtifactService.getArtifacts();
 
     try {
-      for (const [index, agent] of this.workflow.agents.entries()) {
+      for (const agent of this.workflow.agents) {
         // Create a new artifact service for the current agent
         const currentAgentArtifactService = new ArtifactService();
 
@@ -207,28 +229,32 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
             },
           ];
 
-          // Add the current agent's artifacts state to the messages
+          // Add the current agent's artifacts state to the messages if any exist
           const artifacts = currentAgentArtifactService.getArtifacts();
-          let artifactState =
-            "Here is the current state of the artifacts available to you:";
           if (Object.keys(artifacts).length > 0) {
+            let artifactState = "<artifacts_state>\n";
+            artifactState +=
+              "  <description>Here is the current state of the artifacts available to you to help you complete your task:</description>\n";
             for (const [filename, artifact] of Object.entries(artifacts)) {
-              artifactState += `\nArtifact filename: ${filename}`;
-              artifactState += `\nMIME Type: ${artifact.mimeType}`;
-              artifactState += `\nSize: ${artifact.data.length} bytes`;
+              artifactState += "  <artifact>\n";
+              artifactState += `    <filename>${filename}</filename>\n`;
+              artifactState += `    <mime_type>${artifact.mimeType}</mime_type>\n`;
+              artifactState += `    <size_bytes>${artifact.data.length}</size_bytes>\n`;
+              artifactState += "  </artifact>\n";
             }
-          } else {
-            artifactState += "\nNo artifacts are currently available.";
-          }
-          messages.push({
-            role: "user",
-            content: [{ type: "text", text: artifactState }],
-          });
+            artifactState += "</artifacts_state>";
+            console.log("Artifact State:", artifactState);
 
-          //   if (this.debug) {
-          //     console.log("Messages:", messages);
-          //     console.log("\n");
-          //   }
+            messages.push({
+              role: "user",
+              content: [{ type: "text", text: artifactState }],
+            });
+          }
+
+          if (this.debug) {
+            console.log("Messages:", messages);
+            console.log("\n");
+          }
 
           // Store the initial artifact filenames before the agent runs
           const initialArtifactFilenames = new Set(
@@ -240,7 +266,7 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
             model: MODELS[agent.model].model,
             tools: currentAgentTools,
             experimental_activeTools: agent.activeTools,
-            maxSteps: 10,
+            maxSteps: 30,
             onStepFinish: onStepFinishCallback(
               messages,
               agent,

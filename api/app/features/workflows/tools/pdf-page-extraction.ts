@@ -8,7 +8,8 @@ export function createPdfPageExtractionTool(
   toolArtifactService: ArtifactService
 ): Tool {
   return tool({
-    description: "Extracts pages from a PDF file and converts them to images.",
+    description:
+      "Extracts pages from a PDF file and converts them to images. This tool automatically saves the images as artifacts.",
     parameters: z.object({
       fileName: z
         .string()

@@ -8,8 +8,8 @@ const pageExtractionAgent: Agent = {
   instructions: `1. Analyze the provided architectural drawings PDF file.
 2. Look for pages that contains window and door schedules. These schedules typically list details about windows and doors used in the building, such as sizes, types, and quantities.
 3. When you find the page with the schedules, note the PDF page number. This should be the actual page number in the PDF file, not the sheet number that might be printed on the drawing itself.
-4. If you cannot find a page with window and door schedules, indicate that the schedules were not found and return an empty array for pageNumbers.
-5. Use the "pdf-page-extraction" tool to extract the pages as images.`,
+4. If you cannot find a page with window and door schedules, indicate that there are no pages with window and door schedules. and stop.
+5. If you find pages with window and door schedules, use the "pdf-page-extraction" tool to extract the pages as images.`,
   model: "gemini-2.5-flash-preview",
   activeTools: [
     "pdf-page-extraction",
@@ -80,7 +80,7 @@ Quality Control:
 Return only the final CSV in the specified format, without any additional commentary or markup.
 
 Do not make up any information. Only include information that is present in the cropped images. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
-  model: "gemini-2.5-flash-preview",
+  model: "gpt-4.1",
   activeTools: ["create-artifact", "load-artifact"],
 };
 
