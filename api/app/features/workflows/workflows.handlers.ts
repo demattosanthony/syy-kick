@@ -91,7 +91,7 @@ const workflowHandlers = {
       await db
         .update(threads)
         .set({
-          title: `${workflow.title} Execution - ${new Date().toLocaleString()}`,
+          title: `${workflow.name} Execution - ${new Date().toLocaleString()}`,
           updatedAt: new Date(),
         })
         .where(eq(threads.id, threadId as string));
@@ -211,29 +211,29 @@ const workflowHandlers = {
 
           let finalMessage = "";
           // Check the workflow output type
-          if (workflow.output.type === "text/csv") {
-            res.write(
-              `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
-            );
-            res.write(
-              `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"application/vnd.ant.code\\" language=\\"csv\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
-            );
-            finalMessage = `<antThinking>Returning the artifact from the workflow run</antThinking>
+          //           if (workflow.output.type === "text/csv") {
+          //             res.write(
+          //               `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
+          //             );
+          //             res.write(
+          //               `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"application/vnd.ant.code\\" language=\\"csv\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
+          //             );
+          //             finalMessage = `<antThinking>Returning the artifact from the workflow run</antThinking>
 
-<antArtifact identifier="workflow-output" type="application/vnd.ant.code" language="csv" title="${workflow.title} Output">${update.data.output}</antArtifact>`;
-          } else if (workflow.output.type === "text/markdown") {
-            res.write(
-              `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
-            );
-            res.write(
-              `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"text/markdown\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
-            );
-            finalMessage = `<antThinking>Returning the artifact from the workflow run</antThinking>
+          // <antArtifact identifier="workflow-output" type="application/vnd.ant.code" language="csv" title="${workflow.title} Output">${update.data.output}</antArtifact>`;
+          //           } else if (workflow.output.type === "text/markdown") {
+          //             res.write(
+          //               `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
+          //             );
+          //             res.write(
+          //               `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"text/markdown\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
+          //             );
+          //             finalMessage = `<antThinking>Returning the artifact from the workflow run</antThinking>
 
-<antArtifact identifier="workflow-output" type="text/markdown" title="${workflow.title} Output">${update.data.output}</antArtifact>`;
-          } else {
-            res.write(`0:"${escapedOutput}"\n`);
-          }
+          // <antArtifact identifier="workflow-output" type="text/markdown" title="${workflow.title} Output">${update.data.output}</antArtifact>`;
+          //           } else {
+          //             res.write(`0:"${escapedOutput}"\n`);
+          //           }
 
           // Save final assistant message with workflow output
           await db.insert(messages).values({

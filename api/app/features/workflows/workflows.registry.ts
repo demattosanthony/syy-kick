@@ -1,32 +1,30 @@
+import { CONFIG } from "../../config/constants";
 import { ArtifactService } from "./artifact-service";
 import {
   createPdfPageExtractionTool,
   createObjectDetectionTool,
+  createDocOcrTool,
 } from "./tools";
 import {
   basisOfDesignGenWorkflow,
   billOfMaterialsWorkflow,
   equipmentServingListWorkflow,
   rfpEvalWorkflow,
+  windowDoorScheduleGenWorkflow,
 } from "./workflow-definitions";
-import {
-  executePdfPageExtractionStep,
-  executeObjectDetectionStep,
-  documentOcrStep,
-  executeLLMStep,
-} from "./workflow-processors";
-import {
-  StepExecutorFunction,
-  Workflow,
-  WorkflowSchema,
-} from "./workflows.schemas";
+import { Workflow } from "./workflows.types";
 
-const workflows: Workflow[] = [rfpEvalWorkflow, basisOfDesignGenWorkflow];
+const workflows: Workflow[] = [
+  rfpEvalWorkflow,
+  windowDoorScheduleGenWorkflow,
+  equipmentServingListWorkflow,
+  basisOfDesignGenWorkflow,
+  billOfMaterialsWorkflow,
+];
 
 const workflowRegistry = new Map<string, Workflow>();
 workflows.forEach((wf) => {
   try {
-    WorkflowSchema.parse(wf); // Validate schema on load
     workflowRegistry.set(wf.id, wf);
   } catch (e) {
     console.error(`Error validating workflow definition '${wf.id}':`, e);
@@ -34,16 +32,32 @@ workflows.forEach((wf) => {
 });
 
 export function getWorkflowDefinition(id: string): Workflow | undefined {
+  if (!CONFIG.__prod__) {
+    return workflowRegistry.get(id);
+  }
+
   return workflowRegistry.get(id);
 }
 
 export function getAllWorkflowDefinitions(): Workflow[] {
-  return Array.from(workflowRegistry.values());
+  if (!CONFIG.__prod__) {
+    return Array.from(workflowRegistry.values());
+  }
+
+  return Array.from(workflowRegistry.values()).filter(
+    (workflow) =>
+      !workflow.authorizedOrganizationIds ||
+      workflow.authorizedOrganizationIds.length === 0
+  );
 }
 
 export function getAuthorizedWorkflowDefinitions(
   organizationId: string
 ): Workflow[] {
+  if (!CONFIG.__prod__) {
+    return Array.from(workflowRegistry.values());
+  }
+
   return Array.from(workflowRegistry.values()).filter(
     (workflow) =>
       !workflow.authorizedOrganizationIds ||
@@ -66,11 +80,11 @@ export function isWorkflowAuthorized(
   return workflow.authorizedOrganizationIds.includes(organizationId);
 }
 
-export const stepExecutorRegistry = new Map<string, StepExecutorFunction>();
-stepExecutorRegistry.set("llm", executeLLMStep);
-stepExecutorRegistry.set("pdf_page_extract", executePdfPageExtractionStep);
-stepExecutorRegistry.set("object_detection", executeObjectDetectionStep);
-stepExecutorRegistry.set("document_ocr", documentOcrStep);
+// export const stepExecutorRegistry = new Map<string, StepExecutorFunction>();
+// stepExecutorRegistry.set("llm", executeLLMStep);
+// stepExecutorRegistry.set("pdf_page_extract", executePdfPageExtractionStep);
+// stepExecutorRegistry.set("object_detection", executeObjectDetectionStep);
+// stepExecutorRegistry.set("document_ocr", documentOcrStep);
 
 export const createToolSet = (toolArtifactService: ArtifactService) => {
   const artifactTools = toolArtifactService.getArtifactTools();
@@ -81,5 +95,6 @@ export const createToolSet = (toolArtifactService: ArtifactService) => {
 
     "pdf-page-extraction": createPdfPageExtractionTool(toolArtifactService),
     "object-detection": createObjectDetectionTool(toolArtifactService),
+    "doc-ocr": createDocOcrTool(toolArtifactService),
   };
 };

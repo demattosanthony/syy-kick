@@ -54,6 +54,7 @@ export type Workflow = {
   description: string;
   inputs: WorkflowInput[];
   agents: Agent[];
+  authorizedOrganizationIds: string[];
 };
 
 export type AgentStartData = {

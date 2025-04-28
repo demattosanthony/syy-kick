@@ -243,7 +243,6 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
               artifactState += "  </artifact>\n";
             }
             artifactState += "</artifacts_state>";
-            console.log("Artifact State:", artifactState);
 
             messages.push({
               role: "user",
