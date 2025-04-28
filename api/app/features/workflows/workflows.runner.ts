@@ -14,6 +14,7 @@ import {
   WorkflowProgressCallback,
   WorkflowToolCall,
   WorkflowToolResult,
+  WorkflowToolSet,
 } from "./workflows.types";
 import { ArtifactData, ArtifactService } from "./artifact-service";
 import { createToolSet } from "./workflows.registry";
@@ -37,7 +38,7 @@ export function onStepFinishCallback(
     toolResults,
     text,
     usage,
-  }: Parameters<GenerateTextOnStepFinishCallback<Record<string, Tool>>>[0]) => {
+  }: Parameters<GenerateTextOnStepFinishCallback<WorkflowToolSet>>[0]) => {
     progressCallback({
       type: "agent_step",
       data: {
@@ -276,7 +277,7 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
               currentAgentArtifactService,
               this.progressCallback,
               this.debug
-            ),
+            ) as GenerateTextOnStepFinishCallback<WorkflowToolSet>,
           });
 
           this.progressCallback({

@@ -1,12 +1,14 @@
 import { Request, Response } from "express";
-import { generateAttachmentData } from "../threads/threads.utils";
 import {
   getAuthorizedWorkflowDefinitions,
   getWorkflowDefinition,
   isWorkflowAuthorized,
 } from "./workflows.registry";
-import { WorkflowAttachment } from "./workflows.types";
-// import { WorkflowRunner } from "./workflows.runnner";
+import {
+  WorkflowAttachment,
+  WorkflowExecutionInputValue,
+  WorkflowProgressCallback,
+} from "./workflows.types";
 import db from "../../config/db";
 import {
   messageAttachments,
@@ -16,6 +18,8 @@ import {
 } from "../../config/schema";
 import { eq } from "drizzle-orm";
 import { CONFIG } from "../../config/constants";
+import { WorkflowRunner } from "./workflows.runner";
+import s3 from "../../config/s3";
 
 const workflowHandlers = {
   getAll: async (req: Request, res: Response) => {
@@ -127,133 +131,98 @@ const workflowHandlers = {
       }
 
       // Convert array to record structure matching FileData schema
-      //   const processedAttachments: Record<string, FileData> = {};
+      const workflowInputValues: Record<string, WorkflowExecutionInputValue> =
+        {};
 
-      //   await Promise.all(
-      //     attachments.map(async (attachment) => {
-      //       processedAttachments[attachment.inputId] = {
-      //         fileName: attachment.name || "",
-      //         mimeType: attachment.contentType || "application/pdf",
-      //         url: await generateAttachmentData(
-      //           attachment.file_key,
-      //           attachment.contentType || "application/pdf",
-      //           CONFIG.__prod__
-      //         ),
-      //       };
-      //     })
-      //   );
+      await Promise.all(
+        attachments.map(async (attachment) => {
+          const fileData = new Uint8Array(
+            await s3.file(attachment.file_key).arrayBuffer()
+          );
 
-      const [assistantMessage] = await db
-        .insert(messages)
-        .values({
-          userId: req.dbUser!.id,
-          id: crypto.randomUUID(),
-          threadId: threadId as string,
-          role: "assistant",
-          text: "Okay let me get started!\n\n",
-          createdAt: new Date(),
+          workflowInputValues[attachment.inputId] = {
+            filename: attachment.name || "",
+            mimeType: attachment.contentType || "application/pdf",
+            data: fileData,
+          };
         })
-        .returning();
+      );
 
-      //   const workflowProgressCallback = async (update: ProgressUpdate) => {
-      //     if (update.type === "workflow_start") {
-      //       res.write('0:"Okay let me get started!\\n\\n"\n');
-      //     }
+      const workflowProgressCallback: WorkflowProgressCallback = async (
+        update
+      ) => {
+        if (update.type === "agent_step") {
+          const text = update.data.text;
+          const toolCalls = update.data.toolCalls;
+          const toolResults = update.data.toolResults;
+          const finishReason = update.data.finishReason;
+          const usage = update.data.usage;
 
-      //     if (update.type === "step_start") {
-      //       const toolCallId = `step-${update.data.stepId}`;
-      //       // Tool call start
-      //       res.write(
-      //         `b:{"toolCallId":"${toolCallId}","toolName":"workflow-step"}\n`
-      //       );
-      //       // Tool call with initial message
-      //       res.write(
-      //         `9:{"toolCallId":"${toolCallId}","toolName":"workflow-step","args":{"message":"${update.data.message}"}}\n`
-      //       );
+          // Stringify and escape the text content for safe embedding
+          const escapedText = JSON.stringify(text).slice(1, -1); // remove surrounding quotes from stringify
+          res.write(`0:"${escapedText}"\n`);
 
-      //       // Attach the tool call to the initial assistant message
-      //       await db.insert(toolCallsTable).values({
-      //         id: crypto.randomUUID(),
-      //         messageId: assistantMessage.id,
-      //         toolName: "workflow-step",
-      //         toolCallId: toolCallId,
-      //         args: { message: update.data.message },
-      //         status: "pending",
-      //         createdAt: new Date(),
-      //         updatedAt: new Date(),
-      //       });
-      //     }
+          const [assistantMessage] = await db
+            .insert(messages)
+            .values({
+              userId: req.dbUser!.id,
+              id: crypto.randomUUID(),
+              threadId: threadId as string,
+              role: "assistant",
+              text: text,
+              createdAt: new Date(),
+            })
+            .returning();
 
-      //     if (update.type === "step_complete") {
-      //       const toolCallId = `step-${update.data.stepId}`;
-      //       // Tool result with completion message
-      //       res.write(
-      //         `a:{"toolCallId":"${toolCallId}","result":"${update.data.message}"}\n`
-      //       );
+          for (const toolCall of toolCalls) {
+            // Stringify args and escape the resulting string for embedding
+            const stringifiedArgs = JSON.stringify(toolCall.args);
+            res.write(
+              `9:{"toolCallId":"${toolCall.toolCallId}","toolName":"${
+                toolCall.toolName
+              }","args":${stringifiedArgs}}\n`
+            );
 
-      //       // Update tool call status and result
-      //       await db
-      //         .update(toolCallsTable)
-      //         .set({
-      //           status: "completed",
-      //           result: update.data.message,
-      //           updatedAt: new Date(),
-      //         })
-      //         .where(eq(toolCallsTable.toolCallId, toolCallId));
-      //     }
+            // Attach the tool call to the initial assistant message
+            await db.insert(toolCallsTable).values({
+              id: crypto.randomUUID(),
+              messageId: assistantMessage.id,
+              toolName: toolCall.toolName,
+              toolCallId: toolCall.toolCallId,
+              args: toolCall.args,
+              status: "pending",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
 
-      //     if (update.type === "workflow_complete") {
-      //       const escapedOutput = update.data.output
-      //         .replace(/\\/g, "\\\\") // escape backslashes
-      //         .replace(/"/g, '\\"') // escape quotes
-      //         .replace(/\n/g, "\\n"); // escape newlines
+          for (const toolResult of toolResults) {
+            // Stringify result and escape the resulting string for embedding
+            const stringifiedResult = JSON.stringify(toolResult.result);
+            res.write(
+              `a:{"toolCallId":"${toolResult.toolCallId}","result":${stringifiedResult}}\n`
+            );
 
-      //       let finalMessage = "";
-      //       // Check the workflow output type
-      //       //           if (workflow.output.type === "text/csv") {
-      //       //             res.write(
-      //       //               `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
-      //       //             );
-      //       //             res.write(
-      //       //               `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"application/vnd.ant.code\\" language=\\"csv\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
-      //       //             );
-      //       //             finalMessage = `<antThinking>Returning the artifact from the workflow run</antThinking>
+            // Update tool call status and result
+            await db
+              .update(toolCallsTable)
+              .set({
+                status: "completed",
+                result: toolResult.result,
+                updatedAt: new Date(),
+              })
+              .where(eq(toolCallsTable.toolCallId, toolResult.toolCallId));
+          }
+        }
+      };
 
-      //       // <antArtifact identifier="workflow-output" type="application/vnd.ant.code" language="csv" title="${workflow.title} Output">${update.data.output}</antArtifact>`;
-      //       //           } else if (workflow.output.type === "text/markdown") {
-      //       //             res.write(
-      //       //               `0:"<antThinking>Returning the artifact from the workflow run</antThinking>"\n`
-      //       //             );
-      //       //             res.write(
-      //       //               `0:"<antArtifact identifier=\\"workflow-output\\" type=\\"text/markdown\\" title=\\"${workflow.title} Output\\">${escapedOutput}</antArtifact>"\n`
-      //       //             );
-      //       //             finalMessage = `<antThinking>Returning the artifact from the workflow run</antThinking>
+      const runnner = new WorkflowRunner(
+        workflow,
+        workflowProgressCallback,
+        CONFIG.__prod__ ? false : true // Logging enabled in dev mode
+      );
 
-      //       // <antArtifact identifier="workflow-output" type="text/markdown" title="${workflow.title} Output">${update.data.output}</antArtifact>`;
-      //       //           } else {
-      //       //             res.write(`0:"${escapedOutput}"\n`);
-      //       //           }
-
-      //       // Save final assistant message with workflow output
-      //       await db.insert(messages).values({
-      //         userId: req.dbUser!.id,
-      //         id: crypto.randomUUID(),
-      //         threadId: threadId as string,
-      //         role: "assistant",
-      //         text: finalMessage,
-      //         createdAt: new Date(),
-      //       });
-      //     }
-      //   };
-
-      //   const runnner = new WorkflowRunner(
-      //     workflowId,
-      //     processedAttachments,
-      //     workflowProgressCallback,
-      //     CONFIG.__prod__ ? false : true // Logging enabled in dev mode
-      //   );
-
-      //   await runnner.run();
+      await runnner.run(workflowInputValues);
 
       res.write(`d:{"finishReason":"stop"}\n`);
       res.end();
