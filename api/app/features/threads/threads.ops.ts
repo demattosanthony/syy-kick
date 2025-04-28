@@ -31,6 +31,7 @@ import { getOrgIdOrUnedfined } from "../../utils";
 import { markitdown, markitdownMimeTypes } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
 import workflowHandlers from "../workflows/workflows.handlers";
+import { CONFIG } from "../../config/constants";
 
 const threadsOps = {
   async createThread(
@@ -110,8 +111,8 @@ const threadsOps = {
           type: attachment.contentType?.includes("image")
             ? "image"
             : attachment.contentType?.includes("markdown")
-            ? "markdown"
-            : "file",
+              ? "markdown"
+              : "file",
           markdown,
         });
       }
@@ -320,6 +321,14 @@ const threadsOps = {
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.setHeader("Transfer-Encoding", "chunked");
+
+    // Manually set CORS headers for SSE
+    const origin = req.headers.origin;
+    if (origin && CONFIG.CORS_ORIGINS.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
+
     res.flushHeaders();
 
     try {
@@ -391,22 +400,25 @@ const threadsOps = {
         maybeGenerateTitle(threadId, inferenceMsgs, thread.title);
       }
 
-      // 5) Create tools for the assistant if project ID exists
-      let tools = {
-        web_search: createWebSearchTool(),
-        ...(thread.knowledgeBase === null && {
-          search_project_information: createProjectSearchTool(
+      // 5) Create tools for the assistant if model supports it and context requires them
+      let tools: Record<string, any> | undefined = undefined;
+      if (modelConfig.supportsToolUse) {
+        tools = {
+          web_search: createWebSearchTool(),
+          ...(thread.knowledgeBase === null && {
+            search_project_information: createProjectSearchTool(
+              modelConfig,
+              req.workspace!,
+              req.dbUser!,
+              thread.projectId || undefined
+            ),
+          }),
+          search_knowledge_base: createKnowledgeBaseSearchTool(
             modelConfig,
-            req.workspace!,
-            req.dbUser!,
-            thread.projectId || undefined
+            thread.knowledgeBase || undefined
           ),
-        }),
-        search_knowledge_base: createKnowledgeBaseSearchTool(
-          modelConfig,
-          thread.knowledgeBase || undefined
-        ),
-      };
+        };
+      }
 
       let aiResponse = "";
       let requestCompleted = false;
@@ -416,10 +428,13 @@ const threadsOps = {
         model: modelConfig.model,
         messages: inferenceMsgs,
         temperature: 0.6,
-        tools: tools ? tools : undefined,
-        maxSteps: tools ? 8 : undefined,
-        toolChoice: "auto",
-        toolCallStreaming: true,
+        // Conditionally pass tool-related parameters only if tools are defined (i.e., supported by the model)
+        ...(tools && {
+          tools: tools,
+          maxSteps: 8,
+          toolChoice: "auto",
+          toolCallStreaming: true,
+        }),
         maxTokens: maxTokens,
         abortSignal: controller.signal,
         providerOptions: {

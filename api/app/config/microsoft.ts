@@ -2,6 +2,7 @@ import { jwtDecode } from "jwt-decode";
 import db from "./db";
 import { and, eq } from "drizzle-orm";
 import { accessTokens } from "./schema";
+import { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 export class MicrosoftAPI {
     private userId: string;
@@ -20,9 +21,16 @@ export class MicrosoftAPI {
         return await response.json() as MicrosoftSite;
     }
 
-    async saveToken(accessToken: string, refreshToken: string, domain: string, type: "picker" | "graph") {
+    async saveToken(
+        accessToken: string,
+        refreshToken: string,
+        domain: string,
+        type: "picker" | "graph",
+        tx?: NodePgDatabase<typeof import('./schema')>
+    ) {
+        const dbInstance = tx || db;
 
-        const existingToken = await db.query.accessTokens.findFirst({
+        const existingToken = await dbInstance.query.accessTokens.findFirst({
             where: and(
                 eq(accessTokens.userId, this.userId),
                 eq(accessTokens.provider, "microsoft"),
@@ -31,7 +39,7 @@ export class MicrosoftAPI {
         });
 
         if (existingToken) {
-            await db.update(accessTokens).set({
+            await dbInstance.update(accessTokens).set({
                 accessToken,
                 refreshToken,
                 domain,
@@ -39,7 +47,7 @@ export class MicrosoftAPI {
                 updatedAt: new Date()
             }).where(eq(accessTokens.id, existingToken.id));
         } else {
-            await db.insert(accessTokens).values({
+            await dbInstance.insert(accessTokens).values({
                 userId: this.userId,
                 provider: "microsoft",
                 accessToken,
@@ -110,23 +118,28 @@ export class MicrosoftAPI {
         redirect_uri?: string;
         scope: string;
     }): Promise<MicrosoftRefreshTokenResponse> {
-        const params = new URLSearchParams({
-            client_id: process.env.MICROSOFT_CLIENT_ID!,
-            client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
-            ...options
-        });
+        try {
+            const params = new URLSearchParams({
+                client_id: process.env.MICROSOFT_CLIENT_ID!,
+                client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
+                ...options
+            });
 
-        const response = await fetch(`https://${domain}/oauth2/v2.0/token`, {
-            method: "POST",
-            body: params,
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-        });
+            const response = await fetch(`https://${domain}/oauth2/v2.0/token`, {
+                method: "POST",
+                body: params,
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+            });
 
-        const data = await response.json() as MicrosoftRefreshTokenResponse;
+            const data = await response.json() as MicrosoftRefreshTokenResponse;
 
-        return data;
+            return data;
+        } catch (error) {
+            console.error(error);
+            throw error as MicrosoftRefreshTokenError;
+        }
     }
 
     async refreshTokenSilently(domain: string, refreshToken: string): Promise<MicrosoftRefreshTokenResponse> {
@@ -153,7 +166,6 @@ export class MicrosoftAPI {
             return data;
 
         } catch (error) {
-            console.error(error);
             throw error as MicrosoftRefreshTokenError;
         }
     }

@@ -206,6 +206,8 @@ export const handlers = {
 
   microsoftFilesInit: async (req: Request, res: Response) => {
     const redirectUrl = req.query.redirectUrl as string;
+    const { id, rid } = req.cookies;
+    const { userId } = await checkTokens(id, rid);
 
     const origin = new URL(redirectUrl).origin;
     if (!CONFIG.CORS_ORIGINS.includes(origin)) {
@@ -226,120 +228,141 @@ export const handlers = {
     );
     authUrl.searchParams.set(
       "scope",
-      "openid offline_access https://graph.microsoft.com/.default"
+      "openid offline_access Sites.Read.All MyFiles.Read"
     );
     authUrl.searchParams.set("state", state);
+
+    console.log(authUrl.toString());
+
+    // Check if the user has a picker token
+    if (userId) {
+      const microsoftApi = new MicrosoftAPI({ userId });
+      const pickerToken = await microsoftApi.getUserToken("picker");
+
+      if (!pickerToken) {
+        // If no picker token, display account selection
+        authUrl.searchParams.set("prompt", "select_account");
+      }
+    }
 
     res.json({ url: authUrl.toString() });
   },
 
-  microsoftFilesAuth: async (req: Request, res: Response) => {
-    myPassport.authenticate("microsoft-files", {
-      session: false,
-      failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
-      state: req.query.state as string,
-    })(req, res);
-  },
-
   microsoftFilesCallback: async (req: Request, res: Response) => {
-    const { code, state } = req.query;
+    const { code, state, error, error_description } = req.query;
     const { id, rid } = req.cookies;
     const { userId } = await checkTokens(id, rid);
 
     const stateEntry = getStateEntry(state as string);
 
     if (!stateEntry) {
-      res.status(400).send("Invalid state");
+      res.redirect(`${process.env.FRONTEND_URL}?error=missing_state`);
       return;
+    }
+
+    if (error) {
+      res.redirect(
+        `${stateEntry.redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${error_description}`
+      );
     }
 
     const { redirectUrl } = stateEntry;
 
     if (!redirectUrl) {
-      res.status(400).send("Missing redirectUrl");
+      res.redirect(`${process.env.FRONTEND_URL}?error=Missing redirect url`);
       return;
     }
 
     if (!userId) {
-      res.status(401).send("Unauthorized");
+      res.redirect(
+        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Unauthorized`
+      );
       return;
     }
 
     if (!code) {
-      res.status(400).send("Missing code");
+      console.log("missing code");
+      res.redirect(
+        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Missing code`
+      );
       return;
     }
 
     const microsoftApi = new MicrosoftAPI({ userId });
 
     try {
-      // Generate
-      const tokenData = await microsoftApi.getMicrosoftToken(
-        "login.microsoftonline.com/organizations",
-        {
-          code: code as string,
-          grant_type: "authorization_code",
-          redirect_uri: process.env.MICROSOFT_FILES_CALLBACK_URL!,
-          scope: "https://graph.microsoft.com/.default",
-        }
-      );
-
-      await microsoftApi.saveToken(
-        tokenData.access_token,
-        tokenData.refresh_token,
-        "graph.microsoft.com",
-        "graph"
-      );
-
-      if (!tokenData.access_token) {
-        res
-          .status(500)
-          .json({ error: "Token exchange failed", detail: tokenData });
-        return;
-      }
-
-      const { access_token } = tokenData as any;
-      const jwt: any = jwtDecode(access_token);
-
-      let refreshedToken: MicrosoftRefreshTokenResponse;
-
-      // Refresh token if expired
-      if (microsoftApi.isAccessTokenExpired(access_token)) {
-        refreshedToken = await microsoftApi.refreshTokenSilently(
-          "graph.microsoft.com",
-          tokenData.refresh_token
+      // start transaction
+      await db.transaction(async (tx) => {
+        // Generate
+        const tokenData = await microsoftApi.getMicrosoftToken(
+          "login.microsoftonline.com/organizations",
+          {
+            code: code as string,
+            grant_type: "authorization_code",
+            redirect_uri: process.env.MICROSOFT_FILES_CALLBACK_URL!,
+            scope: "https://graph.microsoft.com/.default",
+          }
         );
-      } else {
-        refreshedToken = tokenData;
-      }
 
-      // Get site
-      const site = await microsoftApi.getSite(access_token);
-
-      // Get token for sharepoint picker
-      const tokenForSharepointData = await microsoftApi.getMicrosoftToken(
-        `login.microsoftonline.com/${jwt.tid}`,
-        {
-          grant_type: "refresh_token",
-          refresh_token: refreshedToken.refresh_token,
-          scope: `https://${site.siteCollection.hostname}/.default`,
+        if (!tokenData.access_token) {
+          throw new Error("Token exchange failed");
         }
-      );
 
-      await microsoftApi.saveToken(
-        tokenForSharepointData.access_token,
-        tokenForSharepointData.refresh_token,
-        site.siteCollection.hostname,
-        "picker"
-      );
+        const { access_token } = tokenData as any;
+        const jwt: any = jwtDecode(access_token);
+
+        let refreshedToken: MicrosoftRefreshTokenResponse;
+
+        // Refresh token if expired
+        if (microsoftApi.isAccessTokenExpired(access_token)) {
+          refreshedToken = await microsoftApi.refreshTokenSilently(
+            "graph.microsoft.com",
+            tokenData.refresh_token
+          );
+        } else {
+          refreshedToken = tokenData;
+        }
+
+        // Get site
+        const site = await microsoftApi.getSite(access_token);
+
+        // Get token for sharepoint picker
+        const tokenForSharepointData = await microsoftApi.getMicrosoftToken(
+          `login.microsoftonline.com/${jwt.tid}`,
+          {
+            grant_type: "refresh_token",
+            refresh_token: refreshedToken.refresh_token,
+            scope: `https://${site.siteCollection.hostname}/.default`,
+          }
+        );
+
+        // Sauvegarder les deux tokens dans la même transaction
+        await Promise.all([
+          microsoftApi.saveToken(
+            tokenData.access_token,
+            tokenData.refresh_token,
+            "graph.microsoft.com",
+            "graph",
+            tx
+          ),
+          microsoftApi.saveToken(
+            tokenForSharepointData.access_token,
+            tokenForSharepointData.refresh_token,
+            site.siteCollection.hostname,
+            "picker",
+            tx
+          ),
+        ]);
+      });
 
       res.redirect(
         `${redirectUrl}?syy-connector=microsoft-files&oauth_success=true`
       );
-    } catch (err) {
-      console.error("Fetch error", err);
+    } catch (err: any) {
+      console.log(err, "Error in microsoftFilesCallback");
+
       res.redirect(
-        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false`
+        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${err.message}`
       );
     }
   },

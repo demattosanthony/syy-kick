@@ -121,6 +121,8 @@ export const users = pgTable("users", {
   }).default("google"),
   profilePicture: text("profile_picture"),
   refreshTokenVersion: integer("refresh_token_version").default(1).notNull(),
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
+  sessionCount: integer("session_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).unique(),
