@@ -12,7 +12,7 @@ const pageExtractionAgent: Agent = {
 4. If you cannot find a page with Bill of Materials tables, indicate that there are no pages with Bill of Materials tables and stop.
 5. If you find pages with bill of materials tables, use the "pdf-page-extraction" tool to convert the pages to images.`,
   model: "gemini-2.5-pro-preview",
-  activeTools: ["pdf-page-extraction", "load-artifact"],
+  activeTools: ["pdf-page-extraction"],
 };
 
 const tableExtractionAgent: Agent = {
@@ -27,7 +27,7 @@ Steps:
 
 The label you want to detect is "Bill of Materials table".`,
   model: "gemini-2.5-flash-preview",
-  activeTools: ["object-detection", "load-artifact"],
+  activeTools: ["object-detection"],
 };
 
 const tableToTextAgent: Agent = {
@@ -43,7 +43,7 @@ Steps:
 
 Make sure you process all of the images.`,
   model: "claude-3.7-sonnet",
-  activeTools: ["load-artifact", "create-artifact"],
+  activeTools: [],
 };
 
 const csvGenerationAgent: Agent = {
@@ -58,16 +58,6 @@ Steps:
 3. Group the part numbers by their make (manufacturer).
 4. Aggregate the quantities for any duplicate parts across all tables.
 5. Create a final table with two columns: Part Number and Total Quantity.
-
-Before presenting the final consolidated BOM, wrap your thought process in <bom_consolidation_process> tags inside your thinking block. This should include:
-
-- A brief description of each BOM table you're analyzing
-- The part numbers and quantities you extract from each table
-- A list of all unique part numbers across all tables
-- How you're grouping the part numbers by make
-- A temporary table for each make, listing part numbers and quantities
-- Your process for aggregating quantities for duplicate parts, showing your work
-- Any challenges you encounter and how you resolve them
 
 CSV Formatting:
 
@@ -95,8 +85,8 @@ CSV Formatting Rules:
 6. Use all caps for the make names
 
 Remember to use your expertise to provide the most accurate and comprehensive consolidated BOM possible based on the given information.`,
-  model: "gemini-2.5-pro-preview",
-  activeTools: ["create-artifact", "load-artifact"],
+  model: "claude-3.7-sonnet",
+  activeTools: [],
 };
 
 export const billOfMaterialsWorkflow: Workflow = {

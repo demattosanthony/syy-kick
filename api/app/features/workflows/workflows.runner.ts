@@ -19,6 +19,7 @@ import {
 import { ArtifactData, ArtifactService } from "./artifact-service";
 import { createToolSet } from "./workflows.registry";
 import { MODELS } from "../models";
+import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
 
 // Reusable onStepFinish callback
 // Mainly used to add a artifact to the messages after load-artifact tool is called
@@ -251,10 +252,10 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
             });
           }
 
-          if (this.debug) {
-            console.log("Messages:", messages);
-            console.log("\n");
-          }
+          //   if (this.debug) {
+          //     console.log("Messages:", messages);
+          //     console.log("\n");
+          //   }
 
           // Store the initial artifact filenames before the agent runs
           const initialArtifactFilenames = new Set(
@@ -278,6 +279,11 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
               this.progressCallback,
               this.debug
             ) as GenerateTextOnStepFinishCallback<WorkflowToolSet>,
+            providerOptions: {
+              anthropic: {
+                thinking: { type: "enabled", budgetTokens: 12000 },
+              } satisfies AnthropicProviderOptions,
+            },
           });
 
           this.progressCallback({

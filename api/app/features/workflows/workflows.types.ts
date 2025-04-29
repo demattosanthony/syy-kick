@@ -62,6 +62,7 @@ export type AgentStartData = {
   agentName: string;
 };
 
+// TODO: Add metadata, file paths of artifacts, etc.
 export type AgentStepData = {
   agentId: string;
   agentName: string;

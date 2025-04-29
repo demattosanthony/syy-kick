@@ -10,7 +10,7 @@ const pageExtractionAgent: Agent = {
 4. If you cannot find a page with mechanical schedules, indicate that there are no pages with mechanical schedules and stop.
 5. If you find pages with mechanical schedules, use the "pdf-page-extraction" tool to extract the pages as images.`,
   model: "gemini-2.5-flash-preview",
-  activeTools: ["pdf-page-extraction", "load-artifact"],
+  activeTools: ["pdf-page-extraction"],
 };
 
 const tableExtractionAgent: Agent = {
@@ -25,7 +25,7 @@ Steps:
 
 The label you want to detect is "Mechanical Schedule table".`,
   model: "gemini-2.5-flash-preview",
-  activeTools: ["object-detection", "load-artifact"],
+  activeTools: ["object-detection"],
 };
 
 const csvGenerationAgent: Agent = {
@@ -48,7 +48,7 @@ Example of correct CSV formatting:
 
 `,
   model: "gpt-4.1",
-  activeTools: ["create-artifact", "load-artifact"],
+  activeTools: [],
 };
 
 export const equipmentServingListWorkflow: Workflow = {
