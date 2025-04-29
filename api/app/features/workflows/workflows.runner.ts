@@ -17,7 +17,11 @@ import {
   WorkflowToolResult,
   WorkflowToolSet,
 } from "./workflows.types";
-import { ArtifactData, ArtifactService } from "./artifact-service";
+import {
+  ArtifactData,
+  ArtifactEvent,
+  ArtifactService,
+} from "./artifact-service";
 import { createToolSet } from "./workflows.registry";
 import { MODELS } from "../models";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
@@ -157,11 +161,15 @@ export class WorkflowRunner {
 
     try {
       for (const step of this.workflow.workflowSteps) {
+        const artifactEvents: ArtifactEvent[] = [];
         // Create the artifact service for the *current* step
         const currentStepArtifactService = new ArtifactService(
           this.workflow.id,
           workflowRunId,
-          step.id
+          step.id,
+          (event) => {
+            artifactEvents.push(event);
+          }
         );
 
         // Populate the current step's service with artifacts from the previous step/initial inputs
@@ -176,7 +184,6 @@ export class WorkflowRunner {
           data: {
             stepId: step.id,
             stepName: step.name,
-            // artifacts: currentAgentArtifactService.getArtifacts(),
           },
         });
 
@@ -249,24 +256,15 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
               artifactState += "  <artifact>\n";
               artifactState += `    <filename>${filename}</filename>\n`;
               artifactState += `    <mime_type>${artifact.mimeType}</mime_type>\n`;
-              artifactState += `    <size_bytes>${artifact.data.length}</size_bytes>\n`;
               artifactState += "  </artifact>\n";
             }
             artifactState += "</artifacts_state>";
-            if (this.debug) {
-              console.log("Artifact state:", artifactState);
-            }
 
             messages.push({
               role: "user",
               content: [{ type: "text", text: artifactState }],
             });
           }
-
-          //   if (this.debug) {
-          //     console.log("Messages:", messages);
-          //     console.log("\n");
-          //   }
 
           // Store the initial artifact filenames before the agent runs
           const initialArtifactFilenames = new Set(
@@ -317,7 +315,7 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
             data: {
               stepId: step.id,
               stepName: step.name,
-              //   artifacts: newlyCreatedArtifacts,
+              artifacts: artifactEvents,
             },
           });
 

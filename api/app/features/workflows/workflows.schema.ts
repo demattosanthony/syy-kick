@@ -57,9 +57,16 @@ export const workflowSteps = pgTable("workflow_steps", {
 
 export const workflowFiles = pgTable("workflow_files", {
   id: uuid("id").primaryKey().defaultRandom(),
-  workflowStepId: uuid("workflow_step_id").references(() => workflowSteps.id, {
-    onDelete: "cascade",
-  }),
+  workflowRunStepId: uuid("workflow_run_step_id")
+    .references(() => workflowRunSteps.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
+  workflowRunId: uuid("workflow_run_id")
+    .references(() => workflowRuns.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   mimeType: varchar("mime_type", { length: 255 }),
   fileKey: varchar("file_key", { length: 255 }),

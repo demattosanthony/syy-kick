@@ -8,15 +8,25 @@ export type ArtifactData = {
   mimeType: string;
 };
 
+export type ArtifactEvent = {
+  type: "created";
+  filename: string;
+  mimeType: string;
+  fileKey: string;
+  stepId: string;
+  ts: number;
+};
+
 export class ArtifactService {
   constructor(
     private workflowId: string,
     private workflowRunId: string,
-    private workflowStepId: string
+    private workflowStepId: string,
+    private onEvent?: (event: ArtifactEvent) => void
   ) {}
 
   /**
-   * Saves an artifact to the in-memory storage.
+   * Saves an artifact to S3
    * If an artifact with the same filename already exists, it will be overwritten.
    * @param filename The unique identifier for the artifact.
    * @param artifact The artifact data (bytes and MIME type).
@@ -29,10 +39,18 @@ export class ArtifactService {
       })
       .write(artifact.data);
     console.log(`Artifact '${filename}' saved, with file key: ${fileKey}`);
+    this.onEvent?.({
+      type: "created",
+      filename,
+      fileKey,
+      mimeType: artifact.mimeType,
+      stepId: this.workflowStepId,
+      ts: Date.now(),
+    });
   }
 
   /**
-   * Loads an artifact from the in-memory storage.
+   * Loads an artifact from S3
    * @param filename The unique identifier for the artifact.
    * @returns The artifact data if found, otherwise undefined.
    */
@@ -69,7 +87,7 @@ export class ArtifactService {
   }
 
   /**
-   * Deletes an artifact from the in-memory storage.
+   * Deletes an artifact from S3
    * @param filename The unique identifier for the artifact.
    * @returns True if the artifact was deleted, false if it wasn't found.
    */
@@ -84,7 +102,7 @@ export class ArtifactService {
   }
 
   /**
-   * Clears all artifacts from the in-memory storage.
+   * Clears all artifacts from S3
    */
   async clearArtifacts(): Promise<void> {
     const keys = await this.listArtifacts();
@@ -95,7 +113,7 @@ export class ArtifactService {
   }
 
   /**
-   * Get all artifacts from the in-memory storage.
+   * Get all artifacts from S3
    * @returns An array of artifacts.
    */
   async getArtifacts(): Promise<Record<string, ArtifactData>> {

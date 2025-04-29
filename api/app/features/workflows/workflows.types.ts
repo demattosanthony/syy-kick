@@ -6,7 +6,7 @@ import {
   ToolResultUnion,
 } from "ai";
 import { createToolSet } from "./workflows.registry";
-import { ArtifactData } from "./artifact-service";
+import { ArtifactData, ArtifactEvent } from "./artifact-service";
 
 export interface WorkflowStepFormSchema {
   fields: {
@@ -82,7 +82,7 @@ export type Workflow = {
 export type WorkflowStepStartData = {
   stepId: string;
   stepName: string;
-  //   artifacts: Record<string, ArtifactData>;
+  //   artifacts: ArtifactEvent[];
 };
 
 // TODO: Add metadata, file paths of artifacts, etc.
@@ -106,7 +106,7 @@ export type WorkflowStepErrorData = {
 export type WorkflowStepOutput = {
   stepId: string;
   stepName: string;
-  //   artifacts: Record<string, ArtifactData>;
+  artifacts: ArtifactEvent[];
 };
 
 export type WorkflowStartData = {
