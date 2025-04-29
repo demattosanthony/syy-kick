@@ -1,6 +1,6 @@
-import { Agent, Workflow } from "../workflows.types";
+import { WorkflowStep, Workflow } from "../workflows.types";
 
-const pageExtractionAgent: Agent = {
+const pageExtractionAgent: WorkflowStep = {
   id: "page-extraction-agent",
   name: "Page Extraction Agent",
   description: "Extracts pages from a PDF file and converts them to images.",
@@ -13,9 +13,19 @@ const pageExtractionAgent: Agent = {
 5. If you find pages with bill of materials tables, use the "pdf-page-extraction" tool to convert the pages to images.`,
   model: "gemini-2.5-pro-preview",
   activeTools: ["pdf-page-extraction"],
+  formSchema: {
+    fields: {
+      "controls-drawings": {
+        type: "file",
+        label: "Controls Drawings",
+        required: true,
+        acceptedFileTypes: ["application/pdf"],
+      },
+    },
+  },
 };
 
-const tableExtractionAgent: Agent = {
+const tableExtractionAgent: WorkflowStep = {
   id: "table-extraction-agent",
   name: "Table Extraction Agent",
   description: "Extracts tables from images.",
@@ -30,7 +40,7 @@ The label you want to detect is "Bill of Materials table".`,
   activeTools: ["object-detection"],
 };
 
-const tableToTextAgent: Agent = {
+const tableToTextAgent: WorkflowStep = {
   id: "table-to-text-agent",
   name: "Table to Text Agent",
   description: "Converts images to text.",
@@ -46,7 +56,7 @@ Make sure you process all of the images.`,
   activeTools: [],
 };
 
-const csvGenerationAgent: Agent = {
+const csvGenerationAgent: WorkflowStep = {
   id: "csv-generation-agent",
   name: "CSV Generation Agent",
   description: "Generates a CSV file from the Bill of Materials tables.",
@@ -94,17 +104,17 @@ export const billOfMaterialsWorkflow: Workflow = {
   name: "Bill of Materials Generator",
   description:
     "This workflow generates a Bill of Materials based on control system drawings.",
-  inputs: [
-    {
-      id: "controls-drawings",
-      type: "file",
-      title: "Controls Drawings",
-      description: "Upload the document you want to analyze",
-      required: true,
-      acceptedFileTypes: ["application/pdf"],
-    },
-  ],
-  agents: [
+  //   inputs: [
+  //     {
+  //       id: "controls-drawings",
+  //       type: "file",
+  //       title: "Controls Drawings",
+  //       description: "Upload the document you want to analyze",
+  //       required: true,
+  //       acceptedFileTypes: ["application/pdf"],
+  //     },
+  //   ],
+  workflowSteps: [
     pageExtractionAgent,
     tableExtractionAgent,
     tableToTextAgent,

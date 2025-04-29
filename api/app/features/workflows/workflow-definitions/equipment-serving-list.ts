@@ -1,6 +1,6 @@
-import { Agent, Workflow } from "../workflows.types";
+import { WorkflowStep, Workflow } from "../workflows.types";
 
-const pageExtractionAgent: Agent = {
+const pageExtractionAgent: WorkflowStep = {
   id: "page-extraction-agent",
   name: "Page Extraction Agent",
   description: "Extracts pages from a PDF file and converts them to images.",
@@ -11,9 +11,18 @@ const pageExtractionAgent: Agent = {
 5. If you find pages with mechanical schedules, use the "pdf-page-extraction" tool to extract the pages as images.`,
   model: "gemini-2.5-flash-preview",
   activeTools: ["pdf-page-extraction"],
+  formSchema: {
+    fields: {
+      "mechanical-drawings": {
+        type: "file",
+        label: "Mechanical Drawings",
+        required: true,
+        acceptedFileTypes: ["application/pdf"],
+      },
+    },
+  },
 };
-
-const tableExtractionAgent: Agent = {
+const tableExtractionAgent: WorkflowStep = {
   id: "table-extraction-agent",
   name: "Table Extraction Agent",
   description: "Extracts tables from images.",
@@ -28,7 +37,7 @@ The label you want to detect is "Mechanical Schedule table".`,
   activeTools: ["object-detection"],
 };
 
-const csvGenerationAgent: Agent = {
+const csvGenerationAgent: WorkflowStep = {
   id: "csv-generation-agent",
   name: "CSV Generation Agent",
   description: "Generates a CSV file from the mechanical schedule tables.",
@@ -54,17 +63,11 @@ export const equipmentServingListWorkflow: Workflow = {
   name: "Equipment Serving List Generator",
   description:
     "This workflow generates a equipment serving list based on mechanical drawings.",
-  inputs: [
-    {
-      id: "mechanical-drawings",
-      type: "file",
-      title: "Mechanical Drawings",
-      description: "Upload the document you want to analyze",
-      required: true,
-      acceptedFileTypes: ["application/pdf"],
-    },
+  workflowSteps: [
+    pageExtractionAgent,
+    tableExtractionAgent,
+    csvGenerationAgent,
   ],
-  agents: [pageExtractionAgent, tableExtractionAgent, csvGenerationAgent],
   authorizedOrganizationIds: [
     "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
     "a5b8c99d-9e1d-42a9-8473-b52471932d51",

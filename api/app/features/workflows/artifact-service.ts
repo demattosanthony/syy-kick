@@ -1,5 +1,6 @@
 import { Tool, tool } from "ai";
 import { z } from "zod";
+import s3 from "../../config/s3";
 
 export type ArtifactData = {
   data: Uint8Array;
@@ -7,8 +8,11 @@ export type ArtifactData = {
 };
 
 export class ArtifactService {
-  // In memory storage for artifacts
-  private storage: Map<string, ArtifactData> = new Map();
+  constructor(
+    private workflowId: string,
+    private workflowRunId: string,
+    private workflowStepId: string
+  ) {}
 
   /**
    * Saves an artifact to the in-memory storage.
@@ -16,9 +20,14 @@ export class ArtifactService {
    * @param filename The unique identifier for the artifact.
    * @param artifact The artifact data (bytes and MIME type).
    */
-  saveArtifact(filename: string, artifact: ArtifactData): void {
-    this.storage.set(filename, artifact);
-    console.log(`Artifact '${filename}' saved.`);
+  async saveArtifact(filename: string, artifact: ArtifactData): Promise<void> {
+    const fileKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`;
+    await s3
+      .file(fileKey, {
+        type: artifact.mimeType,
+      })
+      .write(artifact.data);
+    console.log(`Artifact '${filename}' saved, with file key: ${fileKey}`);
   }
 
   /**
@@ -26,24 +35,36 @@ export class ArtifactService {
    * @param filename The unique identifier for the artifact.
    * @returns The artifact data if found, otherwise undefined.
    */
-  loadArtifact(filename: string): ArtifactData | undefined {
-    const artifact = this.storage.get(filename);
-    if (artifact) {
+  async loadArtifact(filename: string): Promise<ArtifactData | undefined> {
+    const file = s3.file(
+      `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`
+    );
+    if (await file.exists()) {
       console.log(`Artifact '${filename}' loaded.`);
     } else {
       console.log(`Artifact '${filename}' not found.`);
     }
-    return artifact;
+    const stat = await file.stat();
+    const data = await file.arrayBuffer();
+    return {
+      data: new Uint8Array(data),
+      mimeType: stat.type,
+    };
   }
 
   /**
    * Lists the filenames of all artifacts currently stored in memory.
    * @returns An array of artifact filenames.
    */
-  listArtifacts(): string[] {
-    const keys = Array.from(this.storage.keys());
-    console.log("Listing artifacts:", keys);
-    return keys;
+  async listArtifacts(): Promise<string[]> {
+    const keys = await s3.list({
+      prefix: `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/`,
+    });
+    console.log(
+      "Listing artifacts:",
+      keys.contents?.map((obj) => obj.key)
+    );
+    return keys.contents?.map((obj) => obj.key.split("/").pop() ?? "") ?? [];
   }
 
   /**
@@ -51,21 +72,24 @@ export class ArtifactService {
    * @param filename The unique identifier for the artifact.
    * @returns True if the artifact was deleted, false if it wasn't found.
    */
-  deleteArtifact(filename: string): boolean {
-    const deleted = this.storage.delete(filename);
-    if (deleted) {
-      console.log(`Artifact '${filename}' deleted.`);
-    } else {
-      console.log(`Artifact '${filename}' not found for deletion.`);
-    }
-    return deleted;
+  async deleteArtifact(filename: string): Promise<boolean> {
+    await s3
+      .file(
+        `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`
+      )
+      .delete();
+    console.log(`Artifact '${filename}' deleted.`);
+    return true;
   }
 
   /**
    * Clears all artifacts from the in-memory storage.
    */
-  clearArtifacts(): void {
-    this.storage.clear();
+  async clearArtifacts(): Promise<void> {
+    const keys = await this.listArtifacts();
+    for (const key of keys) {
+      await this.deleteArtifact(key);
+    }
     console.log("All artifacts cleared.");
   }
 
@@ -73,10 +97,16 @@ export class ArtifactService {
    * Get all artifacts from the in-memory storage.
    * @returns An array of artifacts.
    */
-  getArtifacts(): Record<string, ArtifactData> {
-    return Object.fromEntries(this.storage.entries());
+  async getArtifacts(): Promise<Record<string, ArtifactData>> {
+    const keys = await this.listArtifacts();
+    const artifacts = await Promise.all(
+      keys.map(async (key) => {
+        const artifact = await this.loadArtifact(key);
+        return [key, artifact];
+      })
+    );
+    return Object.fromEntries(artifacts);
   }
-
   // --- Tool Creation Methods (now private inside the class) ---
 
   private listArtifactsTool(): Tool {
@@ -85,7 +115,7 @@ export class ArtifactService {
       parameters: z.object({}).describe("No parameters required."),
       execute: async () => {
         try {
-          const filenames = this.listArtifacts();
+          const filenames = await this.listArtifacts();
           return { filenames: filenames };
         } catch (error: any) {
           console.error("Error in listArtifactsTool:", error);
@@ -106,7 +136,7 @@ export class ArtifactService {
         fileName: z.string().describe("The file name of the artifact to load."),
       }),
       execute: async ({ fileName }) => {
-        const artifact = this.loadArtifact(fileName);
+        const artifact = await this.loadArtifact(fileName);
         if (!artifact) {
           return {
             success: false,
@@ -145,7 +175,7 @@ export class ArtifactService {
       }),
       execute: async ({ fileName, mimeType, data }) => {
         const artifactData = new TextEncoder().encode(data);
-        this.saveArtifact(fileName, {
+        await this.saveArtifact(fileName, {
           data: artifactData,
           mimeType,
         });
@@ -172,7 +202,7 @@ export class ArtifactService {
   }
 
   /** Dump all artifacts to debug-artifacts folder */
-  dumpArtifacts(identifier?: string) {
+  async dumpArtifacts(identifier?: string) {
     const dir = identifier
       ? `debug-artifacts/${identifier}`
       : "debug-artifacts";
@@ -188,7 +218,8 @@ export class ArtifactService {
       console.warn(`Could not ensure debug directory ${dir} exists:`, e);
     }
 
-    for (const [filename, artifact] of this.storage.entries()) {
+    const artifacts = await this.getArtifacts();
+    for (const [filename, artifact] of Object.entries(artifacts)) {
       const filePath = `${dir}/${filename}`;
       try {
         Bun.write(filePath, artifact.data);

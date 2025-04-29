@@ -6,7 +6,7 @@ import {
   jsonb,
   pgTable,
 } from "drizzle-orm/pg-core";
-import { users } from "../../config/schema";
+import { users, organizations } from "../../config/schema";
 import { agents } from "../agents/agents.schema";
 import { WorkflowStepFormSchema } from "./workflows.types";
 
@@ -32,6 +32,7 @@ export const workflows = pgTable("workflows", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   createdBy: uuid("created_by").references(() => users.id),
+  organizationId: uuid("organization_id").references(() => organizations.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

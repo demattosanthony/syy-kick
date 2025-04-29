@@ -17,7 +17,7 @@ export function createObjectDetectionTool(
       label: z.string().describe("The label of the object to detect."),
     }),
     execute: async ({ fileName, label }) => {
-      const imageArtifact = toolArtifactService.loadArtifact(fileName);
+      const imageArtifact = await toolArtifactService.loadArtifact(fileName);
       if (!imageArtifact) {
         return {
           success: false,

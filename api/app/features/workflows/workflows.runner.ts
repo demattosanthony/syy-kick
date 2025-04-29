@@ -8,10 +8,11 @@ import {
   generateText,
 } from "ai";
 import {
-  Agent,
   Workflow,
   WorkflowExecutionInputValues,
+  WorkflowFileExecutionInputValue,
   WorkflowProgressCallback,
+  WorkflowStep,
   WorkflowToolCall,
   WorkflowToolResult,
   WorkflowToolSet,
@@ -20,6 +21,7 @@ import { ArtifactData, ArtifactService } from "./artifact-service";
 import { createToolSet } from "./workflows.registry";
 import { MODELS } from "../models";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
+import { randomUUID } from "crypto";
 
 // Reusable onStepFinish callback
 // Mainly used to add a artifact to the messages after load-artifact tool is called
@@ -28,12 +30,12 @@ export function onStepFinishCallback(
   messagesArray: Array<
     CoreSystemMessage | CoreUserMessage | CoreAssistantMessage | CoreToolMessage
   >,
-  agent: Agent,
+  step: WorkflowStep,
   artifactService: ArtifactService,
   progressCallback: WorkflowProgressCallback,
   debug: boolean = false
 ): GenerateTextOnStepFinishCallback<Record<string, Tool>> {
-  return ({
+  return async ({
     toolCalls,
     finishReason,
     toolResults,
@@ -41,15 +43,16 @@ export function onStepFinishCallback(
     usage,
   }: Parameters<GenerateTextOnStepFinishCallback<WorkflowToolSet>>[0]) => {
     progressCallback({
-      type: "agent_step",
+      type: "workflow_step_message",
       data: {
-        agentId: agent.id,
-        agentName: agent.name,
+        stepId: step.id,
+        stepName: step.name,
         text,
         toolCalls: toolCalls as WorkflowToolCall[],
         toolResults: toolResults as WorkflowToolResult[],
         finishReason: finishReason,
         usage,
+        role: "assistant",
       },
     });
 
@@ -57,7 +60,7 @@ export function onStepFinishCallback(
     for (const toolCall of toolCalls) {
       if (toolCall.toolName === "load-artifact") {
         const fileName = toolCall.args.fileName;
-        const artifact = artifactService.loadArtifact(fileName);
+        const artifact = await artifactService.loadArtifact(fileName);
         if (artifact) {
           let contentItem:
             | { type: "text"; text: string }
@@ -136,46 +139,56 @@ export class WorkflowRunner {
     });
 
     // Create initial artifact service for workflow inputs
-    const initialArtifactService = new ArtifactService();
+    const initialArtifactService = new ArtifactService(
+      this.workflow.id,
+      randomUUID(), // TODO: Replace with a real workflow run id
+      this.workflow.workflowSteps[0].id
+    );
     for (const inputValue of Object.values(inputValues)) {
       // If theres a mime type we know its a file
-      if (inputValue.mimeType) {
+      if (inputValue.type === "file") {
         // Add the artifact to the initial artifact service
-        initialArtifactService.saveArtifact(inputValue.filename as string, {
-          data: inputValue.data as Uint8Array,
-          mimeType: inputValue.mimeType,
+        const inputFile = inputValue.value as WorkflowFileExecutionInputValue;
+        await initialArtifactService.saveArtifact(inputFile.filename, {
+          data: inputFile.data,
+          mimeType: inputFile.mimeType,
         });
       }
     }
 
     // Store the artifacts from the previous agent (or initial inputs)
-    let previousAgentArtifacts: Record<string, ArtifactData> =
-      initialArtifactService.getArtifacts();
+    // let previousAgentArtifacts: Record<string, ArtifactData> =
+    //   await initialArtifactService.getArtifacts();
 
     try {
-      for (const agent of this.workflow.agents) {
+      for (const step of this.workflow.workflowSteps) {
         // Create a new artifact service for the current agent
-        const currentAgentArtifactService = new ArtifactService();
+        // const currentAgentArtifactService = new ArtifactService(
+        //   this.workflow.id,
+        //   randomUUID(), // TODO: Replace with a real workflow run id
+        //   step.id
+        // );
 
         // Populate the current agent's service with artifacts from the previous step
-        for (const [filename, artifact] of Object.entries(
-          previousAgentArtifacts
-        )) {
-          currentAgentArtifactService.saveArtifact(filename, artifact);
-        }
+        // for (const [filename, artifact] of Object.entries(
+        //   previousAgentArtifacts
+        // )) {
+        //   currentAgentArtifactService.saveArtifact(filename, artifact);
+        // }
+
+        this.progressCallback({
+          type: "workflow_step_start",
+          data: {
+            stepId: step.id,
+            stepName: step.name,
+            // artifacts: currentAgentArtifactService.getArtifacts(),
+          },
+        });
 
         // Create the toolset for the current agent using its artifact service
-        const currentAgentTools = createToolSet(currentAgentArtifactService);
+        const currentAgentTools = createToolSet(initialArtifactService);
 
         try {
-          this.progressCallback({
-            type: "agent_start",
-            data: {
-              agentId: agent.id,
-              agentName: agent.name,
-            },
-          });
-
           let messages: Array<
             | CoreSystemMessage
             | CoreUserMessage
@@ -227,12 +240,12 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
             },
             {
               role: "user",
-              content: agent.instructions,
+              content: step.instructions,
             },
           ];
 
           // Add the current agent's artifacts state to the messages if any exist
-          const artifacts = currentAgentArtifactService.getArtifacts();
+          const artifacts = await initialArtifactService.getArtifacts();
           if (Object.keys(artifacts).length > 0) {
             let artifactState = "<artifacts_state>\n";
             artifactState +=
@@ -245,6 +258,9 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
               artifactState += "  </artifact>\n";
             }
             artifactState += "</artifacts_state>";
+            if (this.debug) {
+              console.log("Artifact state:", artifactState);
+            }
 
             messages.push({
               role: "user",
@@ -259,23 +275,23 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
 
           // Store the initial artifact filenames before the agent runs
           const initialArtifactFilenames = new Set(
-            currentAgentArtifactService.listArtifacts()
+            await initialArtifactService.listArtifacts()
           );
 
           await generateText({
             messages,
-            model: MODELS[agent.model].model,
+            model: MODELS[step.model].model,
             tools: currentAgentTools,
             experimental_activeTools: [
-              ...agent.activeTools,
+              ...step.activeTools,
               "load-artifact",
               "create-artifact",
             ],
             maxSteps: 30,
             onStepFinish: onStepFinishCallback(
               messages,
-              agent,
-              currentAgentArtifactService,
+              step,
+              initialArtifactService,
               this.progressCallback,
               this.debug
             ) as GenerateTextOnStepFinishCallback<WorkflowToolSet>,
@@ -286,16 +302,8 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
             },
           });
 
-          this.progressCallback({
-            type: "agent_finish",
-            data: {
-              agentId: agent.id,
-              agentName: agent.name,
-            },
-          });
-
           // Get the final artifact state after the agent ran
-          const finalArtifacts = currentAgentArtifactService.getArtifacts();
+          const finalArtifacts = initialArtifactService.getArtifacts();
 
           // Filter to get only newly created artifacts
           const newlyCreatedArtifacts: Record<string, ArtifactData> = {};
@@ -308,25 +316,34 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
             // Handling modifications would require comparing artifact data (e.g., hashes) or timestamps.
           }
 
+          this.progressCallback({
+            type: "workflow_step_output",
+            data: {
+              stepId: step.id,
+              stepName: step.name,
+              //   artifacts: newlyCreatedArtifacts,
+            },
+          });
+
           // Pass only the newly created artifacts to the next agent
-          previousAgentArtifacts = newlyCreatedArtifacts;
+          //   previousAgentArtifacts = newlyCreatedArtifacts;
 
           // Dump artifacts for debugging if needed (optional)
           if (this.debug) {
-            currentAgentArtifactService.dumpArtifacts(agent.id);
+            initialArtifactService.dumpArtifacts(step.id);
           }
         } catch (error: any) {
-          console.error(`Error executing agent ${agent.name}:`, error);
+          console.error(`Error executing step ${step.name}:`, error);
           this.progressCallback({
-            type: "agent_error",
+            type: "workflow_step_error",
             data: {
-              agentId: agent.id,
-              agentName: agent.name,
-              error: error.message || "Unknown agent error",
+              stepId: step.id,
+              stepName: step.name,
+              error: error.message || "Unknown step error",
             },
           });
           // For now, let's stop the workflow on agent error
-          throw new Error(`Agent ${agent.name} failed: ${error.message}`);
+          throw new Error(`Step ${step.name} failed: ${error.message}`);
         }
       }
 

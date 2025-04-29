@@ -6,6 +6,7 @@ import {
   ToolResultUnion,
 } from "ai";
 import { createToolSet } from "./workflows.registry";
+import { ArtifactData } from "./artifact-service";
 
 export interface WorkflowStepFormSchema {
   fields: {
@@ -40,69 +41,72 @@ export type ToolName = keyof WorkflowToolSet;
 export type WorkflowToolCall = ToolCallUnion<WorkflowToolSet>;
 export type WorkflowToolResult = ToolResultUnion<WorkflowToolSet>;
 
-export type Agent = {
+export type WorkflowTextExecutionInputValue = {
+  text: string;
+};
+
+export type WorkflowFileExecutionInputValue = {
+  data: Uint8Array;
+  mimeType: string;
+  filename: string;
+};
+
+// Represents the actual values provided for a workflow execution
+export type WorkflowExecutionInputValue = {
+  // value will contain the raw text data, or an S3 key/URI for files/images
+  type: "text" | "file";
+  value: WorkflowTextExecutionInputValue | WorkflowFileExecutionInputValue;
+};
+export type WorkflowExecutionInputValues = {
+  [inputId: string]: WorkflowExecutionInputValue;
+};
+
+export type WorkflowStep = {
   id: string;
   name: string;
   description: string;
   instructions: string;
   model: string;
   activeTools: ToolName[];
-};
-
-export type WorkflowInput = {
-  id: string;
-  type: "file" | "text" | "image";
-  title: string;
-  description: string;
-  required: boolean;
-  acceptedFileTypes: string[];
-};
-
-// Represents the actual values provided for a workflow execution
-export type WorkflowExecutionInputValue = {
-  data: Uint8Array | string; // Uint8Array for files/images, string for text
-  mimeType?: string; // Required for files/images
-  filename?: string; // Original filename for files/images
-};
-export type WorkflowExecutionInputValues = {
-  [inputId: string]: WorkflowExecutionInputValue;
+  formSchema?: WorkflowStepFormSchema;
 };
 
 export type Workflow = {
   id: string;
   name: string;
   description: string;
-  inputs: WorkflowInput[];
-  agents: Agent[];
+  workflowSteps: WorkflowStep[];
   authorizedOrganizationIds: string[];
 };
 
-export type AgentStartData = {
-  agentId: string;
-  agentName: string;
+export type WorkflowStepStartData = {
+  stepId: string;
+  stepName: string;
+  //   artifacts: Record<string, ArtifactData>;
 };
 
 // TODO: Add metadata, file paths of artifacts, etc.
-export type AgentStepData = {
-  agentId: string;
-  agentName: string;
+export type WorkflowStepMessage = {
+  stepId: string;
+  stepName: string;
   text: string;
   toolCalls: WorkflowToolCall[];
   toolResults: WorkflowToolResult[];
   finishReason: FinishReason;
   usage: LanguageModelUsage;
+  role: "system" | "user" | "assistant" | "tool";
 };
 
-export type AgentErrorData = {
-  agentId: string;
-  agentName: string;
+export type WorkflowStepErrorData = {
+  stepId: string;
+  stepName: string;
   error: string;
 };
 
-export type AgentFinishData = {
-  agentId: string;
-  agentName: string;
-  result?: any;
+export type WorkflowStepOutput = {
+  stepId: string;
+  stepName: string;
+  //   artifacts: Record<string, ArtifactData>;
 };
 
 export type WorkflowStartData = {
@@ -124,10 +128,10 @@ export type WorkflowErrorData = {
 // Type for progress updates
 export type WorkflowProgressUpdate =
   | { type: "workflow_start"; data: WorkflowStartData }
-  | { type: "agent_start"; data: AgentStartData }
-  | { type: "agent_step"; data: AgentStepData }
-  | { type: "agent_finish"; data: AgentFinishData }
-  | { type: "agent_error"; data: AgentErrorData }
+  | { type: "workflow_step_start"; data: WorkflowStepStartData }
+  | { type: "workflow_step_message"; data: WorkflowStepMessage }
+  | { type: "workflow_step_output"; data: WorkflowStepOutput }
+  | { type: "workflow_step_error"; data: WorkflowStepErrorData }
   | { type: "workflow_complete"; data: WorkflowCompleteData }
   | { type: "workflow_error"; data: WorkflowErrorData };
 export type WorkflowProgressCallback = (update: WorkflowProgressUpdate) => void;

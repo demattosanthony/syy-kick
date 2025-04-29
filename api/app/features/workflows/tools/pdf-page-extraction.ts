@@ -17,7 +17,7 @@ export function createPdfPageExtractionTool(
       pageNumbers: z.array(z.number()).describe("The page numbers to extract."),
     }),
     execute: async ({ fileName, pageNumbers }) => {
-      const pdfBytes = toolArtifactService.loadArtifact(fileName)?.data;
+      const pdfBytes = (await toolArtifactService.loadArtifact(fileName))?.data;
       if (!pdfBytes) {
         return {
           success: false,
@@ -40,10 +40,13 @@ export function createPdfPageExtractionTool(
           maxDimension: 8000,
         });
 
-        toolArtifactService.saveArtifact(`${fileName}-page-${pageNumber}.png`, {
-          data: Buffer.from(pageImageBase64, "base64"),
-          mimeType: "image/png",
-        });
+        await toolArtifactService.saveArtifact(
+          `${fileName}-page-${pageNumber}.png`,
+          {
+            data: Buffer.from(pageImageBase64, "base64"),
+            mimeType: "image/png",
+          }
+        );
       }
 
       return {

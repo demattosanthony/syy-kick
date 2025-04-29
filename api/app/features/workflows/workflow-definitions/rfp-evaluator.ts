@@ -1,15 +1,25 @@
-import { Agent, Workflow } from "../workflows.types";
+import { WorkflowStep, Workflow } from "../workflows.types";
 
-const documentOcrAgent: Agent = {
+const documentOcrAgent: WorkflowStep = {
   id: "document-ocr-agent",
   name: "Document OCR Agent",
   description: "Extracts text from a document",
   instructions: `Your goal is to perform document OCR on the RFP document.`,
   model: "gemini-2.5-flash-preview",
   activeTools: ["doc-ocr"],
+  formSchema: {
+    fields: {
+      "rfp-document": {
+        type: "file",
+        label: "RFP Document",
+        required: true,
+        acceptedFileTypes: ["application/pdf"],
+      },
+    },
+  },
 };
 
-const rfpEvaluatorAgent: Agent = {
+const rfpEvaluatorAgent: WorkflowStep = {
   id: "rfp-evaluator-agent",
   name: "RFP Evaluator Agent",
   description: "Evaluates the RFP document",
@@ -146,17 +156,7 @@ export const rfpEvalWorkflow: Workflow = {
   name: "RFP Evaluator",
   description:
     "This workflow evaluates a Request for Proposal (RFP) pdf file based on the setty criteria",
-  agents: [documentOcrAgent, rfpEvaluatorAgent],
-  inputs: [
-    {
-      id: "rfpDoc",
-      type: "file",
-      title: "RFP Document",
-      description: "The RFP document to be evaluated",
-      required: true,
-      acceptedFileTypes: ["application/pdf"],
-    },
-  ],
+  workflowSteps: [documentOcrAgent, rfpEvaluatorAgent],
   authorizedOrganizationIds: [
     "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
     "a5b8c99d-9e1d-42a9-8473-b52471932d51",

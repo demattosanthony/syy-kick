@@ -1,7 +1,7 @@
-import { Agent, Workflow } from "../workflows.types";
+import { WorkflowStep, Workflow } from "../workflows.types";
 
 // PDF extraction agent to find pages with window and door schedules
-const pageExtractionAgent: Agent = {
+const pageExtractionAgent: WorkflowStep = {
   id: "page-extraction-agent",
   name: "Page Extraction Agent",
   description: "Extracts pages from a PDF file and converts them to images.",
@@ -14,10 +14,19 @@ const pageExtractionAgent: Agent = {
 5. If you find pages with window and door schedules, use the "pdf-page-extraction" tool to extract the pages as images.`,
   model: "gemini-2.5-flash-preview",
   activeTools: ["pdf-page-extraction"],
+  formSchema: {
+    fields: {
+      "architectural-drawings": {
+        type: "file",
+        label: "Architectural Drawings",
+        required: true,
+        acceptedFileTypes: ["application/pdf"],
+      },
+    },
+  },
 };
-
 // Table extraction agent to locate the window and door schedule tables in the images and save them as image artifacts
-const tableExtractionAgent: Agent = {
+const tableExtractionAgent: WorkflowStep = {
   id: "table-extraction-agent",
   name: "Table Extraction Agent",
   description: "Extracts tables from images.",
@@ -33,7 +42,7 @@ The label you want to detect is "Window or Door Schedule table".`,
 };
 
 // CSV generation agent to analyze cropped images of window and door schedule tables and extract the data from them
-const csvGenerationAgent: Agent = {
+const csvGenerationAgent: WorkflowStep = {
   id: "csv-generation-agent",
   name: "CSV Generation Agent",
   description: "Generates a CSV file from the window and door schedule tables.",
@@ -86,17 +95,11 @@ export const windowDoorScheduleGenWorkflow: Workflow = {
   name: "Window & Door Schedule Generator",
   description:
     "This workflow generates a window and door schedule based on architectural drawings.",
-  inputs: [
-    {
-      id: "architectural-drawings",
-      type: "file",
-      title: "Architectural Drawings",
-      description: "Upload the document you want to analyze",
-      required: true,
-      acceptedFileTypes: ["application/pdf"],
-    },
+  workflowSteps: [
+    pageExtractionAgent,
+    tableExtractionAgent,
+    csvGenerationAgent,
   ],
-  agents: [pageExtractionAgent, tableExtractionAgent, csvGenerationAgent],
   authorizedOrganizationIds: [
     "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
     "a5b8c99d-9e1d-42a9-8473-b52471932d51",

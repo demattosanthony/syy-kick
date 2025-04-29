@@ -16,7 +16,7 @@ export function createDocOcrTool(toolArtifactService: ArtifactService): Tool {
         ),
     }),
     execute: async ({ fileName }) => {
-      const artifact = toolArtifactService.loadArtifact(fileName);
+      const artifact = await toolArtifactService.loadArtifact(fileName);
       if (!artifact?.data) {
         return {
           success: false,

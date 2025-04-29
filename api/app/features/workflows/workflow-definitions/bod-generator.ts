@@ -1,6 +1,6 @@
-import { Agent, Workflow } from "../workflows.types";
+import { WorkflowStep, Workflow } from "../workflows.types";
 
-const basisOfDesignAgent: Agent = {
+const basisOfDesignAgent: WorkflowStep = {
   id: "basis-of-design-agent",
   name: "Basis of Design Agent",
   description: "Generates a Basis of Design document",
@@ -33,6 +33,16 @@ Ensure that your BOD document is:
 Make sure to save the BOD document as an artifact.`,
   model: "gemini-2.5-pro-preview",
   activeTools: [],
+  formSchema: {
+    fields: {
+      "engineering-drawings": {
+        type: "file",
+        label: "Engineering Drawings",
+        required: true,
+        acceptedFileTypes: ["application/pdf"],
+      },
+    },
+  },
 };
 
 export const basisOfDesignGenWorkflow: Workflow = {
@@ -40,17 +50,17 @@ export const basisOfDesignGenWorkflow: Workflow = {
   name: "Basis of Design Generator",
   description:
     "This workflow generates a Basis of Design (BOD) document based engineering drawings.",
-  agents: [basisOfDesignAgent],
-  inputs: [
-    {
-      id: "engineering-drawings",
-      type: "file",
-      title: "Drawings and Plans",
-      description: "Upload the engineering drawings",
-      required: true,
-      acceptedFileTypes: ["application/pdf"],
-    },
-  ],
+  workflowSteps: [basisOfDesignAgent],
+  //   inputs: [
+  //     {
+  //       id: "engineering-drawings",
+  //       type: "file",
+  //       title: "Drawings and Plans",
+  //       description: "Upload the engineering drawings",
+  //       required: true,
+  //       acceptedFileTypes: ["application/pdf"],
+  //     },
+  //   ],
   authorizedOrganizationIds: [
     "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
     "a5b8c99d-9e1d-42a9-8473-b52471932d51",
