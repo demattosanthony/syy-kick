@@ -21,7 +21,6 @@ import { ArtifactData, ArtifactService } from "./artifact-service";
 import { createToolSet } from "./workflows.registry";
 import { MODELS } from "../models";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
-import { randomUUID } from "crypto";
 
 // Reusable onStepFinish callback
 // Mainly used to add a artifact to the messages after load-artifact tool is called
@@ -129,7 +128,7 @@ export class WorkflowRunner {
     this.debug = debug;
   }
 
-  async run(inputValues: WorkflowExecutionInputValues) {
+  async run(inputValues: WorkflowExecutionInputValues, workflowRunId: string) {
     this.progressCallback({
       type: "workflow_start",
       data: {
@@ -138,43 +137,39 @@ export class WorkflowRunner {
       },
     });
 
-    // Create initial artifact service for workflow inputs
-    const initialArtifactService = new ArtifactService(
-      this.workflow.id,
-      randomUUID(), // TODO: Replace with a real workflow run id
-      this.workflow.workflowSteps[0].id
-    );
+    // Process initial input files into an artifact map
+    let initialInputArtifacts: Record<string, ArtifactData> = {};
     for (const inputValue of Object.values(inputValues)) {
-      // If theres a mime type we know its a file
       if (inputValue.type === "file") {
-        // Add the artifact to the initial artifact service
         const inputFile = inputValue.value as WorkflowFileExecutionInputValue;
-        await initialArtifactService.saveArtifact(inputFile.filename, {
-          data: inputFile.data,
+        // Directly create artifact data, assuming data is Buffer or similar
+        // Adjust based on how ArtifactData expects the data field
+        initialInputArtifacts[inputFile.filename] = {
+          data: inputFile.data, // Ensure this matches ArtifactData['data'] type
           mimeType: inputFile.mimeType,
-        });
+        };
       }
     }
 
-    // Store the artifacts from the previous agent (or initial inputs)
-    // let previousAgentArtifacts: Record<string, ArtifactData> =
-    //   await initialArtifactService.getArtifacts();
+    // Initialize artifact state for the loop
+    let previousStepArtifacts: Record<string, ArtifactData> =
+      initialInputArtifacts;
 
     try {
       for (const step of this.workflow.workflowSteps) {
-        // Create a new artifact service for the current agent
-        // const currentAgentArtifactService = new ArtifactService(
-        //   this.workflow.id,
-        //   randomUUID(), // TODO: Replace with a real workflow run id
-        //   step.id
-        // );
+        // Create the artifact service for the *current* step
+        const currentStepArtifactService = new ArtifactService(
+          this.workflow.id,
+          workflowRunId,
+          step.id
+        );
 
-        // Populate the current agent's service with artifacts from the previous step
-        // for (const [filename, artifact] of Object.entries(
-        //   previousAgentArtifacts
-        // )) {
-        //   currentAgentArtifactService.saveArtifact(filename, artifact);
-        // }
+        // Populate the current step's service with artifacts from the previous step/initial inputs
+        for (const [filename, artifact] of Object.entries(
+          previousStepArtifacts
+        )) {
+          await currentStepArtifactService.saveArtifact(filename, artifact);
+        }
 
         this.progressCallback({
           type: "workflow_step_start",
@@ -186,7 +181,7 @@ export class WorkflowRunner {
         });
 
         // Create the toolset for the current agent using its artifact service
-        const currentAgentTools = createToolSet(initialArtifactService);
+        const currentAgentTools = createToolSet(currentStepArtifactService);
 
         try {
           let messages: Array<
@@ -245,7 +240,7 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
           ];
 
           // Add the current agent's artifacts state to the messages if any exist
-          const artifacts = await initialArtifactService.getArtifacts();
+          const artifacts = await currentStepArtifactService.getArtifacts();
           if (Object.keys(artifacts).length > 0) {
             let artifactState = "<artifacts_state>\n";
             artifactState +=
@@ -275,7 +270,7 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
 
           // Store the initial artifact filenames before the agent runs
           const initialArtifactFilenames = new Set(
-            await initialArtifactService.listArtifacts()
+            await currentStepArtifactService.listArtifacts()
           );
 
           await generateText({
@@ -291,7 +286,7 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
             onStepFinish: onStepFinishCallback(
               messages,
               step,
-              initialArtifactService,
+              currentStepArtifactService,
               this.progressCallback,
               this.debug
             ) as GenerateTextOnStepFinishCallback<WorkflowToolSet>,
@@ -303,7 +298,8 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
           });
 
           // Get the final artifact state after the agent ran
-          const finalArtifacts = initialArtifactService.getArtifacts();
+          const finalArtifacts =
+            await currentStepArtifactService.getArtifacts();
 
           // Filter to get only newly created artifacts
           const newlyCreatedArtifacts: Record<string, ArtifactData> = {};
@@ -326,11 +322,11 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
           });
 
           // Pass only the newly created artifacts to the next agent
-          //   previousAgentArtifacts = newlyCreatedArtifacts;
+          previousStepArtifacts = newlyCreatedArtifacts;
 
           // Dump artifacts for debugging if needed (optional)
           if (this.debug) {
-            initialArtifactService.dumpArtifacts(step.id);
+            await currentStepArtifactService.dumpArtifacts();
           }
         } catch (error: any) {
           console.error(`Error executing step ${step.name}:`, error);

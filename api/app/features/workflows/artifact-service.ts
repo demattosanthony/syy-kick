@@ -1,6 +1,7 @@
 import { Tool, tool } from "ai";
 import { z } from "zod";
 import s3 from "../../config/s3";
+import { existsSync, mkdirSync } from "node:fs";
 
 export type ArtifactData = {
   data: Uint8Array;
@@ -202,15 +203,12 @@ export class ArtifactService {
   }
 
   /** Dump all artifacts to debug-artifacts folder */
-  async dumpArtifacts(identifier?: string) {
-    const dir = identifier
-      ? `debug-artifacts/${identifier}`
-      : "debug-artifacts";
+  async dumpArtifacts() {
+    const dir = `debug-artifacts/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}`;
     // Ensure the directory exists (this might need a library or platform-specific API in a real scenario)
     // For Bun, you might need to handle directory creation manually if Bun.write doesn't create parent dirs.
     try {
       // Basic check/creation - replace with more robust logic if needed
-      const { existsSync, mkdirSync } = require("fs");
       if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
       }
@@ -222,7 +220,7 @@ export class ArtifactService {
     for (const [filename, artifact] of Object.entries(artifacts)) {
       const filePath = `${dir}/${filename}`;
       try {
-        Bun.write(filePath, artifact.data);
+        await Bun.write(filePath, artifact.data);
       } catch (e) {
         console.error(
           `Failed to write artifact ${filename} to ${filePath}:`,

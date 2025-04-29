@@ -3,6 +3,7 @@ import { WorkflowRunner } from "./app/features/workflows/workflows.runner";
 import { equipmentServingListWorkflow } from "./app/features/workflows/workflow-definitions/equipment-serving-list";
 import { billOfMaterialsWorkflow } from "./app/features/workflows/workflow-definitions/bill-of-materials";
 import { windowDoorScheduleGenWorkflow } from "./app/features/workflows/workflow-definitions/window-door-schedule-gen";
+import { randomUUID } from "crypto";
 
 const filePath =
   "/Users/anthonydemattos/syy-kick/workflows-dataset/window-door-gen/20250318PacificStADUPermitSetProgress.pdf";
@@ -19,16 +20,19 @@ const workflowRunner = new WorkflowRunner(
   true
 );
 
-await workflowRunner.run({
-  "architectural-drawings": {
-    type: "file",
-    value: {
-      data: pdfBytes,
-      mimeType: "application/pdf",
-      filename: "20250318PacificStADUPermitSetProgress.pdf",
+await workflowRunner.run(
+  {
+    "architectural-drawings": {
+      type: "file",
+      value: {
+        data: pdfBytes,
+        mimeType: "application/pdf",
+        filename: "20250318PacificStADUPermitSetProgress.pdf",
+      },
     },
   },
-});
+  randomUUID()
+);
 
 // const filePath =
 //   "/Users/anthonydemattos/syy-kick/workflows-dataset/equipment-serving/MechBinder.pdf";
