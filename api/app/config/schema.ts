@@ -49,6 +49,19 @@ export {
   issuesRelations,
   issueCommentsRelations,
 } from "../features/projects/issues/issues.schema";
+export { agents } from "../features/agents/agents.schema";
+export {
+  workflows,
+  workflowSteps,
+  workflowFiles,
+  workflowRuns,
+  workflowRunSteps,
+  workflowRunStepsInputs,
+  workflowRunStepsOutputs,
+  workflowRunStepMessages,
+  workflowRunStepToolCalls,
+  workflowRunStepMessagesDocuments,
+} from "../features/workflows/workflows.schema";
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),

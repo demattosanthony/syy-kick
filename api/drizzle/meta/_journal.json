@@ -330,6 +330,13 @@
       "when": 1745690630353,
       "tag": "0046_small_spot",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1745949162397,
+      "tag": "0047_hesitant_sway",
+      "breakpoints": true
     }
   ]
 }

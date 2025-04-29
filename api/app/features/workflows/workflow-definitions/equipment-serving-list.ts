@@ -44,9 +44,7 @@ Generate a CSV artifact with proper escaping using the following structure:
 Example of correct CSV formatting:
 "Equipment ID","Location,Service Area(s)"
 "AHU-1","Mechanical Room 101","1st Floor Offices","2nd Floor Laboratories"
-"DOAS-1","Roof","3rd Floor [NEEDS CONFIRMATION]"
-
-`,
+"DOAS-1","Roof","3rd Floor [NEEDS CONFIRMATION]"`,
   model: "gpt-4.1",
   activeTools: [],
 };

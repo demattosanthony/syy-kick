@@ -7,6 +7,26 @@ import {
 } from "ai";
 import { createToolSet } from "./workflows.registry";
 
+export interface WorkflowStepFormSchema {
+  fields: {
+    [key: string]: {
+      type: "text" | "file" | "select" | "number";
+      label: string;
+      required: boolean;
+      description?: string;
+      // For previous steps outputs
+      referenceType?: "previousStep" | "userInput";
+      // For files
+      acceptedFileTypes?: string[];
+      // For select
+      options?: Array<{
+        label: string;
+        value: string;
+      }>;
+    };
+  };
+}
+
 export type WorkflowAttachment = Attachment & {
   file_key: string;
   inputId: string;
