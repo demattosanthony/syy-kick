@@ -228,7 +228,7 @@ export const handlers = {
     );
     authUrl.searchParams.set(
       "scope",
-      "openid offline_access Sites.Read.All MyFiles.Read"
+      "openid offline_access Sites.Read.All"
     );
     authUrl.searchParams.set("state", state);
 
