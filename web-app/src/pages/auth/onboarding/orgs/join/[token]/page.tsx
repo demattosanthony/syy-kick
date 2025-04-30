@@ -11,10 +11,16 @@ export function JoinOrgPage() {
     return;
   }
 
-  const { data: orgDetails } = useOrgFromInviteToken(token as string);
+  const { data: orgDetails, isLoading } = useOrgFromInviteToken(
+    token as string
+  );
 
-  if (!orgDetails || !orgDetails.organization) {
-    navigate("/");
+  if (isLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center">
+        Fetching organization details...
+      </div>
+    );
   }
 
   return (
