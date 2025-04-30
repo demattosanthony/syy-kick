@@ -10,6 +10,7 @@ import runsRouter from "./runs/runs.routes";
 
 export default Router()
   .get("", workflowHandlers.getAll)
+  .post("/", workflowHandlers.create)
   .use("/agents", agentsRouter)
   .get("/:id", workflowHandlers.getById)
   .use("/:workflowId/runs", runsRouter);

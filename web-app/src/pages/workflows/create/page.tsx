@@ -1,9 +1,9 @@
-import { WorkflowForm } from "@/features/workflows/components";
+import { WorkflowBuilderForm } from "@/features/workflows/components/workflow-builder";
 
 export function CreateWorkflowPage() {
     return (
         <div>
-            <WorkflowForm />
+            <WorkflowBuilderForm />
         </div>
     )
 }

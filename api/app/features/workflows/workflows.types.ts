@@ -101,11 +101,13 @@ export const WorkflowExecutionInputValuesSchema = z.record(
 
 export type WorkflowRunStep = {
   id: string;
-  name: string;
+  agentId?: string;
+  name?: string;
   description?: string;
-  instructions: string;
-  model: string;
-  activeTools: ToolName[];
+  instructions?: string;
+  model?: string;
+  activeTools?: ToolName[];
+  formSchema?: WorkflowStepFormSchema;
 };
 
 export type WorkflowRun = {
@@ -177,3 +179,9 @@ export type WorkflowProgressUpdate =
   | { type: "workflow_complete"; data: WorkflowCompleteData }
   | { type: "workflow_error"; data: WorkflowErrorData };
 export type WorkflowProgressCallback = (update: WorkflowProgressUpdate) => void;
+
+export type WorkflowCreateRequest = {
+  name: string;
+  description?: string;
+  workflowSteps: Omit<WorkflowRunStep, "id">[];
+};

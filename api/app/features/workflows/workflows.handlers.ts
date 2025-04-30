@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { workflowsOps } from "./workflows.ops";
+import db from "../../config/db";
 
 const workflowHandlers = {
   getAll: async (req: Request, res: Response) => {
@@ -29,6 +30,23 @@ const workflowHandlers = {
     } catch (error) {
       console.log(error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  },
+  create: async (req: Request, res: Response) => {
+    const { name, description, workflowSteps } = req.body;
+
+    try {
+      db.transaction(
+        async (tx) => {
+          const workflow = await workflowsOps.createWorkflow(req.dbUser!.id, name, description, tx);
+          await workflowsOps.createWorkflowSteps(workflow.id, workflowSteps, tx);
+        }
+      );
+
+      res.status(201).json({ message: "Workflow created successfully" });
+    } catch (error) {
+      console.error("Error creating workflow:", error);
+      res.status(500).json({ error: "Failed to create workflow" });
     }
   },
 };
