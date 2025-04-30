@@ -221,31 +221,31 @@ export class ArtifactService {
     };
   }
 
-  /** Dump all artifacts to debug-artifacts folder */
-  async dumpArtifacts() {
-    const dir = `debug-artifacts/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}`;
-    // Ensure the directory exists (this might need a library or platform-specific API in a real scenario)
-    // For Bun, you might need to handle directory creation manually if Bun.write doesn't create parent dirs.
-    try {
-      // Basic check/creation - replace with more robust logic if needed
-      if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-      }
-    } catch (e) {
-      console.warn(`Could not ensure debug directory ${dir} exists:`, e);
-    }
+  //   /** Dump all artifacts to debug-artifacts folder */
+  //   async dumpArtifacts() {
+  //     const dir = `debug-artifacts/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}`;
+  //     // Ensure the directory exists (this might need a library or platform-specific API in a real scenario)
+  //     // For Bun, you might need to handle directory creation manually if Bun.write doesn't create parent dirs.
+  //     try {
+  //       // Basic check/creation - replace with more robust logic if needed
+  //       if (!existsSync(dir)) {
+  //         mkdirSync(dir, { recursive: true });
+  //       }
+  //     } catch (e) {
+  //       console.warn(`Could not ensure debug directory ${dir} exists:`, e);
+  //     }
 
-    const artifacts = await this.getArtifacts();
-    for (const [filename, artifact] of Object.entries(artifacts)) {
-      const filePath = `${dir}/${filename}`;
-      try {
-        await Bun.write(filePath, artifact.data);
-      } catch (e) {
-        console.error(
-          `Failed to write artifact ${filename} to ${filePath}:`,
-          e
-        );
-      }
-    }
-  }
+  //     const artifacts = await this.getArtifacts();
+  //     for (const [filename, artifact] of Object.entries(artifacts)) {
+  //       const filePath = `${dir}/${filename}`;
+  //       try {
+  //         await Bun.write(filePath, artifact.data);
+  //       } catch (e) {
+  //         console.error(
+  //           `Failed to write artifact ${filename} to ${filePath}:`,
+  //           e
+  //         );
+  //       }
+  //     }
+  //   }
 }

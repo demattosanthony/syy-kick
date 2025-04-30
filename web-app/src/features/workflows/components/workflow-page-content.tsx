@@ -189,7 +189,7 @@ export default function WorkflowPageContent({
           </>
         ) : (
           <>
-            <h1 className="text-4xl font-bold mb-4">{workflow?.title}</h1>
+            <h1 className="text-4xl font-bold mb-4">{workflow?.name}</h1>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
               {workflow?.description}
             </p>

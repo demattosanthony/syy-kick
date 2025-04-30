@@ -35,7 +35,7 @@ export function WorkflowPage() {
                 <Slash className="w-4 h-4" />
               </BreadcrumbSeparator>
               <BreadcrumbItem>
-                <span className="font-bold truncate">{workflow?.title}</span>
+                <span className="font-bold truncate">{workflow?.name}</span>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>

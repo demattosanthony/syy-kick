@@ -1,8 +1,15 @@
+export interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  instructions: string;
+  model: string;
+  activeTools: string[];
+}
 export interface Workflow {
   id: string;
-  title: string;
+  name: string;
   description: string;
-  modelName: string;
   inputs: {
     id: string;
     type: string;
@@ -11,8 +18,7 @@ export interface Workflow {
     acceptedFileTypes: string;
     required: boolean;
   }[];
-  output: Record<string, any>;
-  buttonText: string;
+  agents: Agent[];
 }
 
 export interface WorkflowProjectFile {

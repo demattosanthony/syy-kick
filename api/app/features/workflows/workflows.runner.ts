@@ -113,10 +113,6 @@ export function onStepFinishCallback(
               },
             ],
           });
-
-          if (debug) {
-            console.log();
-          }
         }
       }
     }
@@ -126,16 +122,10 @@ export function onStepFinishCallback(
 export class WorkflowRunner {
   private workflow: Workflow;
   private progressCallback: WorkflowProgressCallback;
-  private debug: boolean;
 
-  constructor(
-    workflow: Workflow,
-    progressCallback: WorkflowProgressCallback,
-    debug: boolean = false
-  ) {
+  constructor(workflow: Workflow, progressCallback: WorkflowProgressCallback) {
     this.workflow = workflow;
     this.progressCallback = progressCallback;
-    this.debug = debug;
   }
 
   async run(inputValues: WorkflowExecutionInputValues, workflowRunId: string) {
@@ -288,8 +278,7 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
               messages,
               step,
               currentStepArtifactService,
-              this.progressCallback,
-              this.debug
+              this.progressCallback
             ) as GenerateTextOnStepFinishCallback<ToolSet>,
             providerOptions: {
               anthropic: {
@@ -326,9 +315,9 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
           previousStepArtifacts = newlyCreatedArtifacts;
 
           // Dump artifacts for debugging if needed (optional)
-          if (this.debug) {
-            await currentStepArtifactService.dumpArtifacts();
-          }
+          //   if (this.debug) {
+          //     await currentStepArtifactService.dumpArtifacts();
+          //   }
         } catch (error: any) {
           console.error(`Error executing step ${step.name}:`, error);
           this.progressCallback({
@@ -339,9 +328,9 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
               error: error.message || "Unknown step error",
             },
           });
-          if (this.debug) {
-            await currentStepArtifactService.dumpArtifacts();
-          }
+          // if (this.debug) {
+          //   await currentStepArtifactService.dumpArtifacts();
+          // }
           // For now, let's stop the workflow on agent error
           throw new Error(`Step ${step.name} failed: ${error.message}`);
         }
