@@ -3,20 +3,18 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/hooks";
 import googleLogo from "@/assets/logos/google.svg";
 import microsoftLogo from "@/assets/logos/msft.svg";
+import { Organization } from "@/types/user";
 
 const JoinOrgHandler = ({
   token,
-  initialOrgDetails,
+  orgDetails,
 }: {
   token: string;
-  initialOrgDetails: any;
+  orgDetails: Organization;
 }) => {
   const { handleJoinOrg } = useAuth();
   const [, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // Use initialOrgDetails instead of fetching
-  const orgDetails = initialOrgDetails;
 
   const handleJoin = async (provider: "google" | "microsoft") => {
     setIsLoading(true);
@@ -50,7 +48,7 @@ const JoinOrgHandler = ({
         return;
       }
 
-      window.location.href = "/?orgId=" + orgDetails?.organization.id;
+      window.location.href = "/?orgId=" + orgDetails?.id;
     } catch {
       setError("Failed to join organization");
     } finally {
@@ -126,7 +124,7 @@ const JoinOrgHandler = ({
     </div>
   );
 
-  if (!orgDetails || !orgDetails.organization) {
+  if (!orgDetails || !orgDetails) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-lg text-red-500">
@@ -139,10 +137,10 @@ const JoinOrgHandler = ({
   return renderLayout(
     <>
       {/* Organization logo or eye */}
-      {orgDetails?.organization.logoUrl ? (
+      {orgDetails?.logoUrl ? (
         <img
-          src={orgDetails.organization.logoUrl}
-          alt={`${orgDetails.organization.name} logo`}
+          src={orgDetails.logoUrl}
+          alt={`${orgDetails.name} logo`}
           className="h-[75px] w-[75px] object-cover rounded-full"
         />
       ) : (
@@ -154,10 +152,10 @@ const JoinOrgHandler = ({
       {/* Organization info */}
       <div className="flex flex-col items-center w-[400px] gap-2">
         <h3 className="scroll-m-20 text-3xl font-semibold tracking-tight">
-          Join {orgDetails?.organization.name || "Organization"}
+          Join {orgDetails?.name || "Organization"}
         </h3>
         <p className="text-base text-muted-foreground text-center">
-          You&apos;ve been invited to join {orgDetails?.organization.name}
+          You&apos;ve been invited to join {orgDetails?.name}
         </p>
       </div>
 

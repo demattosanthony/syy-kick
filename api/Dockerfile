@@ -1,11 +1,15 @@
 FROM oven/bun:1.2.0 AS base
 WORKDIR /usr/src/app
 
-# Install ghostscript and imagemagick
+# Install ghostscript, imagemagick, and timezone data
 RUN apt-get update && \
-    apt-get install -y ghostscript imagemagick ffmpeg exiftool git && \
+    apt-get install -y --no-install-recommends tzdata ghostscript imagemagick ffmpeg exiftool git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Set the timezone
+ENV TZ=America/New_York
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Install Python 3.10 and pip
 RUN apt-get update && \
