@@ -245,7 +245,7 @@ const WorkflowForm = () => {
                                                 }}
                                             >
                                                 <div className="flex items-center">
-                                                    {getModelImage(model.provider)}
+                                                    {getModelImage(model.provider || "")}
                                                     <span className="ml-2">{model.name}</span>
                                                 </div>
                                                 <Check
@@ -430,6 +430,22 @@ const WorkflowForm = () => {
                                     </div>
                                 )}
                             </div>
+
+                            <div>
+                                <Label>Document (Optional)</Label>
+                                <FileUploadInput
+                                    input={{
+                                        id: "custom-document",
+                                        title: "",
+                                        description: "Upload a document to use in this step",
+                                        acceptedFileTypes: "application/pdf",
+                                        required: false,
+                                        maxFileSize: 50 * 1024 * 1024 // 50 MB
+                                    }}
+                                    file={step.formData["document"] || null}
+                                    onFileChange={(file) => updateStepFormData(step.id, "document", file)}
+                                />
+                            </div>
                         </div>
                     </TabsContent>
                 </Tabs>
@@ -459,8 +475,12 @@ const WorkflowForm = () => {
                 </div>
             ))}
 
-            <div className="flex gap-4">
-                <Button onClick={addStep}>
+            <div className="flex flex-col gap-4">
+                <Button
+                    onClick={addStep}
+                    variant="outline"
+                    className="w-full h-24 border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/50 text-muted-foreground"
+                >
                     Add Step
                 </Button>
                 {steps.length > 0 && (

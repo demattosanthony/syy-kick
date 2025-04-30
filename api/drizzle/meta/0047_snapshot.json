@@ -1,5 +1,5 @@
 {
-  "id": "3a6fb8b5-0596-4211-84fc-e09e1121e4eb",
+  "id": "47c5ab01-b0b9-475a-958c-b08c96a96be3",
   "prevId": "51e85d95-4699-4175-86fa-14e21152ef7e",
   "version": "7",
   "dialect": "postgresql",
@@ -381,6 +381,12 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
@@ -2651,11 +2657,17 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "workflow_step_id": {
-          "name": "workflow_step_id",
+        "workflow_run_step_id": {
+          "name": "workflow_run_step_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
+        },
+        "workflow_run_id": {
+          "name": "workflow_run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "name": {
           "name": "name",
@@ -2692,12 +2704,25 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "workflow_files_workflow_step_id_workflow_steps_id_fk": {
-          "name": "workflow_files_workflow_step_id_workflow_steps_id_fk",
+        "workflow_files_workflow_run_step_id_workflow_run_steps_id_fk": {
+          "name": "workflow_files_workflow_run_step_id_workflow_run_steps_id_fk",
           "tableFrom": "workflow_files",
-          "tableTo": "workflow_steps",
+          "tableTo": "workflow_run_steps",
           "columnsFrom": [
-            "workflow_step_id"
+            "workflow_run_step_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "workflow_files_workflow_run_id_workflow_runs_id_fk": {
+          "name": "workflow_files_workflow_run_id_workflow_runs_id_fk",
+          "tableFrom": "workflow_files",
+          "tableTo": "workflow_runs",
+          "columnsFrom": [
+            "workflow_run_id"
           ],
           "columnsTo": [
             "id"
@@ -3043,9 +3068,15 @@
           "primaryKey": false,
           "notNull": false
         },
-        "file_id": {
-          "name": "file_id",
-          "type": "uuid",
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
         },
@@ -3085,19 +3116,6 @@
           "tableTo": "workflow_run_steps",
           "columnsFrom": [
             "parent_step_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "workflow_run_steps_inputs_file_id_workflow_files_id_fk": {
-          "name": "workflow_run_steps_inputs_file_id_workflow_files_id_fk",
-          "tableFrom": "workflow_run_steps_inputs",
-          "tableTo": "workflow_files",
-          "columnsFrom": [
-            "file_id"
           ],
           "columnsTo": [
             "id"
@@ -3304,6 +3322,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "parent_step_id": {
+          "name": "parent_step_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -3340,6 +3364,19 @@
           "tableTo": "agents",
           "columnsFrom": [
             "agent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "workflow_steps_parent_step_id_workflow_steps_id_fk": {
+          "name": "workflow_steps_parent_step_id_workflow_steps_id_fk",
+          "tableFrom": "workflow_steps",
+          "tableTo": "workflow_steps",
+          "columnsFrom": [
+            "parent_step_id"
           ],
           "columnsTo": [
             "id"

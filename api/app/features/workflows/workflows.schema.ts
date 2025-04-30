@@ -5,10 +5,12 @@ import {
   text,
   jsonb,
   pgTable,
+  integer,
 } from "drizzle-orm/pg-core";
 import { users, organizations } from "../../config/schema";
 import { agents } from "./features/agents/agents.schema";
 import { WorkflowStepFormSchema } from "./workflows.types";
+import { relations } from "drizzle-orm";
 
 const TOOL_CALL_STATUS = ["pending", "completed", "failed"] as const;
 const MESSAGE_ROLES = ["system", "user", "assistant", "tool"] as const;
@@ -32,7 +34,28 @@ export const workflows = pgTable("workflows", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const workflowOrganizations = pgTable("workflow_organizations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workflowId: uuid("workflow_id").references(() => workflows.id),
   organizationId: uuid("organization_id").references(() => organizations.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const workflowUsers = pgTable("workflow_users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workflowId: uuid("workflow_id").references(() => workflows.id),
+  userId: uuid("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const workflowTags = pgTable("workflow_tags", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workflowId: uuid("workflow_id").references(() => workflows.id),
+  tag: varchar("tag", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -51,6 +74,7 @@ export const workflowSteps = pgTable("workflow_steps", {
   model: varchar("model", { length: 255 }), // override the agent model if provided
   activeTools: text("active_tools").array(), // override the agent active tools if provided
   formSchema: jsonb("form_schema").$type<WorkflowStepFormSchema>(), // override the agent form schema if provided
+  parentStepId: uuid("parent_step_id").references((): any => workflowSteps.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -106,7 +130,21 @@ export const workflowRunStepsInputs = pgTable("workflow_run_steps_inputs", {
     }
   ),
   parentStepId: uuid("parent_step_id").references(() => workflowRunSteps.id), // previous step output files
+  type: text("type", { enum: ["file", "text", "date", "number"] }).notNull(),
+  key: varchar("key", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const workflowRunStepsInputsValue = pgTable("workflow_run_steps_inputs_value", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workflowRunStepInputId: uuid("workflow_run_step_input_id").references(() => workflowRunStepsInputs.id, {
+    onDelete: "cascade",
+  }),
   fileId: uuid("file_id").references(() => workflowFiles.id),
+  text: text("text"),
+  date: timestamp("date"),
+  number: integer("number"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -172,7 +210,72 @@ export const workflowRunStepMessagesDocuments = pgTable(
   }
 );
 
-// Equipments serving list
+export const workflowRelations = relations(workflows, ({ many }) => ({
+  steps: many(workflowSteps),
+  runs: many(workflowRuns),
+  tags: many(workflowTags),
+  organizations: many(workflowOrganizations),
+  users: many(workflowUsers),
+}));
+
+export const workflowOrganizationRelations = relations(workflowOrganizations, ({ one }) => ({
+  workflow: one(workflows),
+  organization: one(organizations),
+}));
+
+export const workflowUserRelations = relations(workflowUsers, ({ one }) => ({
+  workflow: one(workflows),
+  user: one(users),
+}));
+
+export const workflowTagRelations = relations(workflowTags, ({ one }) => ({
+  workflow: one(workflows),
+}));
+
+export const workflowStepRelations = relations(workflowSteps, ({ many, one }) => ({
+  agents: one(agents),
+  workflow: one(workflows),
+  parentStep: one(workflowSteps),
+}));
+
+export const workflowRunRelations = relations(workflowRuns, ({ many, one }) => ({
+  steps: many(workflowRunSteps),
+  workflow: one(workflows),
+}));
+
+export const workflowRunStepRelations = relations(workflowRunSteps, ({ many, one }) => ({
+  workflow: one(workflows),
+  workflowRun: one(workflowRuns),
+  workflowStep: one(workflowSteps),
+}));
+
+export const workflowRunStepInputsRelations = relations(workflowRunStepsInputs, ({ one }) => ({
+  workflowRunStep: one(workflowRunSteps),
+  file: one(workflowFiles),
+  parentStep: one(workflowRunSteps),
+}));
+
+export const workflowRunStepOutputsRelations = relations(workflowRunStepsOutputs, ({ one }) => ({
+  workflowRunStep: one(workflowRunSteps),
+  file: one(workflowFiles),
+}));
+
+export const workflowRunStepMessagesRelations = relations(workflowRunStepMessages, ({ many, one }) => ({
+  workflowRunStep: one(workflowRunSteps),
+  documents: many(workflowRunStepMessagesDocuments),
+  toolCalls: many(workflowRunStepToolCalls),
+}));
+
+export const workflowRunStepToolCallsRelations = relations(workflowRunStepToolCalls, ({ one }) => ({
+  workflowRunStepMessage: one(workflowRunStepMessages),
+}));
+
+export const workflowRunStepMessagesDocumentsRelations = relations(workflowRunStepMessagesDocuments, ({ one }) => ({
+  workflowRunStepMessage: one(workflowRunStepMessages),
+  file: one(workflowFiles),
+}));
+
+
 /**
  * Before running the workflow, we need to:
  * 1:

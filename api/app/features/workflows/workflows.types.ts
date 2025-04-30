@@ -5,7 +5,7 @@ import { ToolName, ToolCall, ToolResult } from "../tools/tools.types";
 export interface WorkflowStepFormSchema {
   fields: {
     [key: string]: {
-      type: "text" | "file" | "select" | "number";
+      type: "text" | "file" | "number";
       label: string;
       required: boolean;
       description?: string;
