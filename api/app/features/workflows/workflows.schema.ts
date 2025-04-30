@@ -265,6 +265,10 @@ export const workflowStepRelations = relations(
     parentStep: one(workflowSteps, {
       fields: [workflowSteps.parentStepId],
       references: [workflowSteps.id],
+      relationName: "workflowStepParent",
+    }),
+    childSteps: many(workflowSteps, {
+      relationName: "workflowStepParent",
     }),
   })
 );
@@ -291,7 +295,14 @@ export const workflowRunStepRelations = relations(
       fields: [workflowRunSteps.workflowStepId],
       references: [workflowSteps.id],
     }),
-    inputs: many(workflowRunStepsInputs),
+    inputsForStep: many(workflowRunStepsInputs, {
+      relationName: "inputsForStep",
+    }),
+    inputsFromParentStep: many(workflowRunStepsInputs, {
+      relationName: "inputsFromParentStep",
+    }),
+    messages: many(workflowRunStepMessages),
+    outputs: many(workflowRunStepsOutputs),
   })
 );
 
@@ -301,12 +312,17 @@ export const workflowRunStepInputsRelations = relations(
     workflowRunStep: one(workflowRunSteps, {
       fields: [workflowRunStepsInputs.workflowRunStepId],
       references: [workflowRunSteps.id],
+      relationName: "inputsForStep",
     }),
     parentStep: one(workflowRunSteps, {
       fields: [workflowRunStepsInputs.parentStepId],
       references: [workflowRunSteps.id],
+      relationName: "inputsFromParentStep",
     }),
-    value: one(workflowRunStepsInputsValue),
+    value: one(workflowRunStepsInputsValue, {
+      fields: [workflowRunStepsInputs.id],
+      references: [workflowRunStepsInputsValue.workflowRunStepInputId],
+    }),
   })
 );
 
@@ -359,6 +375,43 @@ export const workflowRunStepMessagesDocumentsRelations = relations(
     }),
   })
 );
+
+export const workflowRunStepsInputsValueRelations = relations(
+  workflowRunStepsInputsValue,
+  ({ one }) => ({
+    file: one(workflowFiles, {
+      fields: [workflowRunStepsInputsValue.fileId],
+      references: [workflowFiles.id],
+    }),
+    input: one(workflowRunStepsInputs, {
+      fields: [workflowRunStepsInputsValue.workflowRunStepInputId],
+      references: [workflowRunStepsInputs.id],
+    }),
+  })
+);
+
+export const workflowFileRelations = relations(workflowFiles, ({ one }) => ({
+  workflowRunStep: one(workflowRunSteps, {
+    fields: [workflowFiles.workflowRunStepId],
+    references: [workflowRunSteps.id],
+  }),
+  workflowRun: one(workflowRuns, {
+    fields: [workflowFiles.workflowRunId],
+    references: [workflowRuns.id],
+  }),
+  inputValue: one(workflowRunStepsInputsValue, {
+    fields: [workflowFiles.id],
+    references: [workflowRunStepsInputsValue.fileId],
+  }),
+  output: one(workflowRunStepsOutputs, {
+    fields: [workflowFiles.id],
+    references: [workflowRunStepsOutputs.fileId],
+  }),
+  messageDocument: one(workflowRunStepMessagesDocuments, {
+    fields: [workflowFiles.id],
+    references: [workflowRunStepMessagesDocuments.fileId],
+  }),
+}));
 
 /**
  * Before running the workflow, we need to:

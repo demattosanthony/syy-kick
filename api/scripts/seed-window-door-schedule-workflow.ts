@@ -78,6 +78,8 @@ async function seedWorkflow() {
             formSchema: step.formSchema,
             // Use the mapped database ID for the parent step
             parentStepId: dbParentStepId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           })
           .returning({ id: schema.workflowSteps.id }); // Ensure the ID is returned
 

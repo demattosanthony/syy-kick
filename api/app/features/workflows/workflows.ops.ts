@@ -56,6 +56,7 @@ export const workflowsOps = {
           with: {
             agents: true,
           },
+          orderBy: (steps, { asc }) => [asc(steps.createdAt)],
         },
         tags: true,
       },
