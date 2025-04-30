@@ -25,6 +25,7 @@ const pageExtractionAgent: WorkflowStep = {
     },
   },
 };
+
 // Table extraction agent to locate the window and door schedule tables in the images and save them as image artifacts
 const tableExtractionAgent: WorkflowStep = {
   id: "table-extraction-agent",

@@ -1,12 +1,6 @@
-import {
-  Attachment,
-  FinishReason,
-  LanguageModelUsage,
-  ToolCallUnion,
-  ToolResultUnion,
-} from "ai";
-import { createToolSet } from "./workflows.registry";
-import { ArtifactData, ArtifactEvent } from "./artifact-service";
+import { Attachment, FinishReason, LanguageModelUsage } from "ai";
+import { ArtifactEvent } from "./artifact-service";
+import { ToolName, ToolCall, ToolResult } from "../tools/tools.types";
 
 export interface WorkflowStepFormSchema {
   fields: {
@@ -32,14 +26,6 @@ export type WorkflowAttachment = Attachment & {
   file_key: string;
   inputId: string;
 };
-
-// Define tool names based on the keys of the toolSet object
-export type WorkflowToolSet = ReturnType<typeof createToolSet>;
-export type ToolName = keyof WorkflowToolSet;
-
-// Define union types for tool calls and results based on the toolSet
-export type WorkflowToolCall = ToolCallUnion<WorkflowToolSet>;
-export type WorkflowToolResult = ToolResultUnion<WorkflowToolSet>;
 
 export type WorkflowTextExecutionInputValue = {
   text: string;
@@ -90,8 +76,8 @@ export type WorkflowStepMessage = {
   stepId: string;
   stepName: string;
   text: string;
-  toolCalls: WorkflowToolCall[];
-  toolResults: WorkflowToolResult[];
+  toolCalls: ToolCall[];
+  toolResults: ToolResult[];
   finishReason: FinishReason;
   usage: LanguageModelUsage;
   role: "system" | "user" | "assistant" | "tool";
@@ -103,7 +89,7 @@ export type WorkflowStepErrorData = {
   error: string;
 };
 
-export type WorkflowStepOutput = {
+export type WorkflowStepFinishData = {
   stepId: string;
   stepName: string;
   artifacts: ArtifactEvent[];
@@ -130,7 +116,7 @@ export type WorkflowProgressUpdate =
   | { type: "workflow_start"; data: WorkflowStartData }
   | { type: "workflow_step_start"; data: WorkflowStepStartData }
   | { type: "workflow_step_message"; data: WorkflowStepMessage }
-  | { type: "workflow_step_output"; data: WorkflowStepOutput }
+  | { type: "workflow_step_finish"; data: WorkflowStepFinishData }
   | { type: "workflow_step_error"; data: WorkflowStepErrorData }
   | { type: "workflow_complete"; data: WorkflowCompleteData }
   | { type: "workflow_error"; data: WorkflowErrorData };

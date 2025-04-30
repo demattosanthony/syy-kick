@@ -1,8 +1,8 @@
 import { WorkflowStep, Workflow } from "../workflows.types";
 
-const documentOcrAgent: WorkflowStep = {
-  id: "document-ocr-agent",
-  name: "Document OCR Agent",
+const documentOcrStep: WorkflowStep = {
+  id: "document-ocr-step",
+  name: "Document OCR Step",
   description: "Extracts text from a document",
   instructions: `Your goal is to perform document OCR on the RFP document.`,
   model: "gemini-2.5-flash-preview",
@@ -19,9 +19,9 @@ const documentOcrAgent: WorkflowStep = {
   },
 };
 
-const rfpEvaluatorAgent: WorkflowStep = {
-  id: "rfp-evaluator-agent",
-  name: "RFP Evaluator Agent",
+const rfpEvaluatorStep: WorkflowStep = {
+  id: "rfp-evaluator-step",
+  name: "RFP Evaluator Step",
   description: "Evaluates the RFP document",
   instructions: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
 
@@ -156,7 +156,7 @@ export const rfpEvalWorkflow: Workflow = {
   name: "RFP Evaluator",
   description:
     "This workflow evaluates a Request for Proposal (RFP) pdf file based on the setty criteria",
-  workflowSteps: [documentOcrAgent, rfpEvaluatorAgent],
+  workflowSteps: [documentOcrStep, rfpEvaluatorStep],
   authorizedOrganizationIds: [
     "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
     "a5b8c99d-9e1d-42a9-8473-b52471932d51",

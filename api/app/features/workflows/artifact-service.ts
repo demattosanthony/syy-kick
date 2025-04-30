@@ -62,6 +62,7 @@ export class ArtifactService {
       console.log(`Artifact '${filename}' loaded.`);
     } else {
       console.log(`Artifact '${filename}' not found.`);
+      return undefined;
     }
     const stat = await file.stat();
     const data = await file.arrayBuffer();

@@ -48,11 +48,12 @@ const tableToTextAgent: WorkflowStep = {
   
 Steps: 
 1. Open an image
-2. Create a text file that represents it. Use markdown formatting to make it easy to read.
-3. Save the text file
+2. Analyze the image to properly extract the table.
+3. Create a text file that represents it. Use markdown formatting to make it easy to read.
+4. Save the text file
 
-Make sure you process all of the images.`,
-  model: "claude-3.7-sonnet",
+Make sure you process all of the images. Don't load any files that don't exist. Once you have processed all of the images you can stop.`,
+  model: "gemini-2.5-flash-preview",
   activeTools: [],
 };
 
@@ -95,7 +96,7 @@ CSV Formatting Rules:
 6. Use all caps for the make names
 
 Remember to use your expertise to provide the most accurate and comprehensive consolidated BOM possible based on the given information.`,
-  model: "claude-3.7-sonnet",
+  model: "gpt-4.1",
   activeTools: [],
 };
 
@@ -104,16 +105,6 @@ export const billOfMaterialsWorkflow: Workflow = {
   name: "Bill of Materials Generator",
   description:
     "This workflow generates a Bill of Materials based on control system drawings.",
-  //   inputs: [
-  //     {
-  //       id: "controls-drawings",
-  //       type: "file",
-  //       title: "Controls Drawings",
-  //       description: "Upload the document you want to analyze",
-  //       required: true,
-  //       acceptedFileTypes: ["application/pdf"],
-  //     },
-  //   ],
   workflowSteps: [
     pageExtractionAgent,
     tableExtractionAgent,

@@ -1,6 +1,6 @@
 import { generateObject, tool, Tool } from "ai";
 import { z } from "zod";
-import { ArtifactService } from "../artifact-service";
+import { ArtifactService } from "../../workflows/artifact-service";
 import { google } from "@ai-sdk/google";
 import { Jimp } from "jimp";
 

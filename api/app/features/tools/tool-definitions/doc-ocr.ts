@@ -1,7 +1,7 @@
 import { tool, Tool } from "ai";
 import { z } from "zod";
 import { PDFDocument } from "pdf-lib";
-import { ArtifactService } from "../artifact-service";
+import { ArtifactService } from "../../workflows/artifact-service";
 import { mistralAi } from "../../models";
 
 export function createDocOcrTool(toolArtifactService: ArtifactService): Tool {

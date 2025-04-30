@@ -181,3 +181,4 @@ ocr-results/
 debug-images/
 *.log
 debug-artifacts/
+workflow.txt
