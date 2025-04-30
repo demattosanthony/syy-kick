@@ -102,11 +102,11 @@ export const WorkflowExecutionInputValuesSchema = z.record(
 export type WorkflowRunStep = {
   id: string;
   agentId?: string;
-  name?: string;
-  description?: string;
-  instructions?: string;
-  model?: string;
-  activeTools?: ToolName[];
+  name: string;
+  description: string;
+  instructions: string;
+  model: string;
+  activeTools: ToolName[];
   formSchema?: WorkflowStepFormSchema;
 };
 
