@@ -1,4 +1,4 @@
-w/** Drizzle */
+/** Drizzle */
 import { eq, or, exists } from "drizzle-orm";
 
 /** Schemas */
