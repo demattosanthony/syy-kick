@@ -6,18 +6,10 @@ import workflowHandlers from "./workflows.handlers";
 
 /** Routers */
 import agentsRouter from "./features/agents/agents.routes";
+import runsRouter from "./runs/runs.routes";
 
-const router = Router();
-
-// Workflow routes
-router.get("", workflowHandlers.getAll);
-
-// Workflow Agents
-router.use("/agents", agentsRouter);
-
-router.get("/:id", workflowHandlers.getById);
-
-// Run workflow
-router.post("/:workflowId/run", workflowHandlers.run);
-
-export default router;
+export default Router()
+  .get("", workflowHandlers.getAll)
+  .use("/agents", agentsRouter)
+  .get("/:id", workflowHandlers.getById)
+  .use("/:workflowId/runs", runsRouter);

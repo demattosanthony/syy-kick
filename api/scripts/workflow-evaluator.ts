@@ -1,5 +1,5 @@
 import util from "util";
-import { WorkflowRunner } from "../app/features/workflows/workflows.runner";
+import { WorkflowRunner } from "../app/features/workflows/runs/workflows.runner";
 import { equipmentServingListWorkflow } from "../app/features/workflows/workflow-definitions/equipment-serving-list";
 import { billOfMaterialsWorkflow } from "../app/features/workflows/workflow-definitions/bill-of-materials";
 import { windowDoorScheduleGenWorkflow } from "../app/features/workflows/workflow-definitions/window-door-schedule-gen";

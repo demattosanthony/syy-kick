@@ -12,13 +12,13 @@ import {
   WorkflowFileExecutionInputValue,
   WorkflowProgressCallback,
   WorkflowRunStep,
-} from "./workflows.types";
-import { ArtifactData, ArtifactService } from "./artifact-service";
-import { createToolSet } from "../tools/tools.registry";
-import { MODELS } from "../models";
+} from "../workflows.types";
+import { ArtifactData, ArtifactService } from "../artifact-service";
+import { createToolSet } from "../../tools/tools.registry";
+import { MODELS } from "../../models";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
-import { ToolSet, ToolCall, ToolResult } from "../tools/tools.types";
-import s3 from "../../config/s3";
+import { ToolSet, ToolCall, ToolResult } from "../../tools/tools.types";
+import s3 from "../../../config/s3";
 
 // Reusable onStepFinish callback
 // Mainly used to add a artifact to the messages after load-artifact tool is called
