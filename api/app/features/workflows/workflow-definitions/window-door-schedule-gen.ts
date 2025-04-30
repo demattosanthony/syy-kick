@@ -1,8 +1,13 @@
-import { WorkflowStep, Workflow } from "../workflows.types";
+import { workflows, workflowSteps } from "../workflows.schema";
+import { InferSelectModel } from "drizzle-orm";
+
+type Workflow = InferSelectModel<typeof workflows>;
+type WorkflowStep = InferSelectModel<typeof workflowSteps>;
 
 // PDF extraction agent to find pages with window and door schedules
 const pageExtractionAgent: WorkflowStep = {
   id: "page-extraction-agent",
+  agentId: null,
   name: "Page Extraction Agent",
   description: "Extracts pages from a PDF file and converts them to images.",
   instructions: `You goal is to analyze a architectural drawings PDF file and identify which pages contain window and door schedules, then convert those pages to images.
@@ -24,6 +29,10 @@ const pageExtractionAgent: WorkflowStep = {
       },
     },
   },
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "window-door-schedule-gen",
+  parentStepId: null,
 };
 
 // Table extraction agent to locate the window and door schedule tables in the images and save them as image artifacts
@@ -40,6 +49,12 @@ Steps:
 The label you want to detect is "Window or Door Schedule table".`,
   model: "gemini-2.5-flash-preview",
   activeTools: ["object-detection"],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "window-door-schedule-gen",
+  parentStepId: "page-extraction-agent",
+  agentId: null,
+  formSchema: null,
 };
 
 // CSV generation agent to analyze cropped images of window and door schedule tables and extract the data from them
@@ -89,22 +104,31 @@ Return only the final CSV in the specified format, without any additional commen
 Do not make up any information. Only include information that is present in the cropped images. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
   model: "gpt-4.1",
   activeTools: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "window-door-schedule-gen",
+  parentStepId: "table-extraction-agent",
+  agentId: null,
+  formSchema: null,
 };
+
+export const windowDoorScheduleGenWorkflowSteps: WorkflowStep[] = [
+  pageExtractionAgent,
+  tableExtractionAgent,
+  csvGenerationAgent,
+];
 
 export const windowDoorScheduleGenWorkflow: Workflow = {
   id: "window-door-schedule-gen",
   name: "Window & Door Schedule Generator",
   description:
     "This workflow generates a window and door schedule based on architectural drawings.",
-  workflowSteps: [
-    pageExtractionAgent,
-    tableExtractionAgent,
-    csvGenerationAgent,
-  ],
-  authorizedOrganizationIds: [
-    "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
-    "a5b8c99d-9e1d-42a9-8473-b52471932d51",
-    "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
-    "99b93b8d-0360-47af-bd74-0fd099f07c4e",
-  ],
+  createdBy: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
+
+export const windowAndDoorAuthOrgIds = [
+  "eb28475a-812a-4986-b5af-000b3ec9e9ba",
+  "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
+];

@@ -30,7 +30,8 @@ export const workflowsRunsHandlers = {
 
     const workflowRun = await workflowRunsOps.createWorkflowRun(
       workflowId,
-      validatedInputValues
+      validatedInputValues,
+      req.dbUser?.id as string
     );
     res.json(workflowRun);
   },

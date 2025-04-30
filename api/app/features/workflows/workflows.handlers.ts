@@ -1,15 +1,13 @@
 import { Request, Response } from "express";
-import {
-  getAuthorizedWorkflowDefinitions,
-  getWorkflowDefinition,
-} from "./workflows.registry";
+import { workflowsOps } from "./workflows.ops";
 
 const workflowHandlers = {
   getAll: async (req: Request, res: Response) => {
     try {
-      const orgWorkflows = getAuthorizedWorkflowDefinitions(
-        req.workspace?.id as string
-      );
+      const orgWorkflows = await workflowsOps.getWorkflows({
+        orgId: req.workspace?.id as string,
+      });
+
       res.json(orgWorkflows);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
@@ -20,16 +18,7 @@ const workflowHandlers = {
     const { id } = req.params;
 
     try {
-      // const isAllowedtoAcess = isWorkflowAuthorized(
-      //   id as any,
-      //   req.workspace?.id as string
-      // );
-      // if (!isAllowedtoAcess) {
-      //   res.status(403).json({ error: "Unauthorized" });
-      //   return;
-      // }
-
-      const workflow = getWorkflowDefinition(id as any);
+      const workflow = await workflowsOps.getWorkflow(id as any);
 
       if (!workflow) {
         res.status(404).json({ error: "Workflow not found" });

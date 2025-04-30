@@ -147,7 +147,8 @@ export const workflowRunsOps = {
 
   createWorkflowRun: async (
     workflowId: string,
-    inputValues: Record<string, WorkflowExecutionInputValue>
+    inputValues: Record<string, WorkflowExecutionInputValue>,
+    userId: string
   ) => {
     // 1. Get the workflow and its steps
     const workflow = await workflowsOps.getWorkflow(workflowId);
@@ -222,6 +223,7 @@ export const workflowRunsOps = {
         .values({
           workflowId,
           status: "pending",
+          userId,
           createdAt: new Date(),
           updatedAt: new Date(),
         })
