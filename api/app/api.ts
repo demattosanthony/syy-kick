@@ -83,7 +83,7 @@ export default Router()
   .use("/projects", auth, checkSub, projectsRoutes)
   .use(
     "/workflows",
-    // auth, TODO: MAKE SURE TO UNCOMMENT THIS
+    auth,
     workflowRoutes
   )
   .use("/tools", auth, toolsRoutes)
