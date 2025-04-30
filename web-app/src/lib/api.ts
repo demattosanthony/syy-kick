@@ -53,6 +53,7 @@ import {
   KnowledgeBaseAccessLogFilters,
   KnowledgeBaseAccessLogsResponse,
 } from "@/features/knowledge-bases/types";
+import { Agent, Tool } from "@/features/workflows/features/agents/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -924,6 +925,14 @@ class WorkflowsApi extends ApiRequest {
 
   async getWorkflow(id: string): Promise<Workflow> {
     return await this.request(`/workflows/${id}`);
+  }
+
+  async getAgents(): Promise<Agent[]> {
+    return await this.request("/workflows/agents");
+  }
+
+  async getTools(): Promise<Tool[]> {
+    return await this.request("/tools");
   }
 }
 

@@ -37,14 +37,14 @@ const workflowHandlers = {
     const { id } = req.params;
 
     try {
-      const isAllowedtoAcess = isWorkflowAuthorized(
-        id as any,
-        req.workspace?.id as string
-      );
-      if (!isAllowedtoAcess) {
-        res.status(403).json({ error: "Unauthorized" });
-        return;
-      }
+      // const isAllowedtoAcess = isWorkflowAuthorized(
+      //   id as any,
+      //   req.workspace?.id as string
+      // );
+      // if (!isAllowedtoAcess) {
+      //   res.status(403).json({ error: "Unauthorized" });
+      //   return;
+      // }
 
       const workflow = getWorkflowDefinition(id as any);
 

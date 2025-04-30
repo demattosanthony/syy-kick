@@ -7,7 +7,7 @@ import {
   pgTable,
 } from "drizzle-orm/pg-core";
 import { users, organizations } from "../../config/schema";
-import { agents } from "../agents/agents.schema";
+import { agents } from "./features/agents/agents.schema";
 import { WorkflowStepFormSchema } from "./workflows.types";
 
 const TOOL_CALL_STATUS = ["pending", "completed", "failed"] as const;
