@@ -188,7 +188,7 @@ const router = createBrowserRouter([
         element: <PaymentSuccessPage />,
       },
       {
-        path: "/join-org",
+        path: "/onboarding/orgs/join/:token",
         element: <JoinOrgPage />,
       },
       {
