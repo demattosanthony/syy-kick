@@ -100,9 +100,11 @@ export const workflowFiles = pgTable("workflow_files", {
 
 export const workflowRuns = pgTable("workflow_runs", {
   id: uuid("id").primaryKey().defaultRandom(),
-  workflowId: uuid("workflow_id").references(() => workflows.id, {
-    onDelete: "cascade",
-  }),
+  workflowId: uuid("workflow_id")
+    .references(() => workflows.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
   status: text("status", { enum: WORKFLOW_RUN_STATUS }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -113,9 +115,11 @@ export const workflowRunSteps = pgTable("workflow_run_steps", {
   workflowRunId: uuid("workflow_run_id").references(() => workflowRuns.id, {
     onDelete: "cascade",
   }),
-  workflowStepId: uuid("workflow_step_id").references(() => workflowSteps.id, {
-    onDelete: "cascade",
-  }),
+  workflowStepId: uuid("workflow_step_id")
+    .references(() => workflowSteps.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
   status: text("status", { enum: WORKFLOW_RUN_STEP_STATUS }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -132,22 +136,29 @@ export const workflowRunStepsInputs = pgTable("workflow_run_steps_inputs", {
   parentStepId: uuid("parent_step_id").references(() => workflowRunSteps.id), // previous step output files
   type: text("type", { enum: ["file", "text", "date", "number"] }).notNull(),
   key: varchar("key", { length: 255 }),
+  label: varchar("label", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const workflowRunStepsInputsValue = pgTable("workflow_run_steps_inputs_value", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  workflowRunStepInputId: uuid("workflow_run_step_input_id").references(() => workflowRunStepsInputs.id, {
-    onDelete: "cascade",
-  }),
-  fileId: uuid("file_id").references(() => workflowFiles.id),
-  text: text("text"),
-  date: timestamp("date"),
-  number: integer("number"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const workflowRunStepsInputsValue = pgTable(
+  "workflow_run_steps_inputs_value",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workflowRunStepInputId: uuid("workflow_run_step_input_id").references(
+      () => workflowRunStepsInputs.id,
+      {
+        onDelete: "cascade",
+      }
+    ),
+    fileId: uuid("file_id").references(() => workflowFiles.id),
+    text: text("text"),
+    date: timestamp("date"),
+    number: integer("number"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  }
+);
 
 export const workflowRunStepsOutputs = pgTable("workflow_run_steps_outputs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -218,10 +229,13 @@ export const workflowRelations = relations(workflows, ({ many }) => ({
   users: many(workflowUsers),
 }));
 
-export const workflowOrganizationRelations = relations(workflowOrganizations, ({ one }) => ({
-  workflow: one(workflows),
-  organization: one(organizations),
-}));
+export const workflowOrganizationRelations = relations(
+  workflowOrganizations,
+  ({ one }) => ({
+    workflow: one(workflows),
+    organization: one(organizations),
+  })
+);
 
 export const workflowUserRelations = relations(workflowUsers, ({ one }) => ({
   workflow: one(workflows),
@@ -232,49 +246,72 @@ export const workflowTagRelations = relations(workflowTags, ({ one }) => ({
   workflow: one(workflows),
 }));
 
-export const workflowStepRelations = relations(workflowSteps, ({ many, one }) => ({
-  agents: one(agents),
-  workflow: one(workflows),
-  parentStep: one(workflowSteps),
-}));
+export const workflowStepRelations = relations(
+  workflowSteps,
+  ({ many, one }) => ({
+    agents: one(agents),
+    workflow: one(workflows),
+    parentStep: one(workflowSteps),
+  })
+);
 
-export const workflowRunRelations = relations(workflowRuns, ({ many, one }) => ({
-  steps: many(workflowRunSteps),
-  workflow: one(workflows),
-}));
+export const workflowRunRelations = relations(
+  workflowRuns,
+  ({ many, one }) => ({
+    steps: many(workflowRunSteps),
+    workflow: one(workflows),
+  })
+);
 
-export const workflowRunStepRelations = relations(workflowRunSteps, ({ many, one }) => ({
-  workflow: one(workflows),
-  workflowRun: one(workflowRuns),
-  workflowStep: one(workflowSteps),
-}));
+export const workflowRunStepRelations = relations(
+  workflowRunSteps,
+  ({ many, one }) => ({
+    workflowRun: one(workflowRuns),
+    workflowStep: one(workflowSteps),
+    inputs: many(workflowRunStepsInputs),
+  })
+);
 
-export const workflowRunStepInputsRelations = relations(workflowRunStepsInputs, ({ one }) => ({
-  workflowRunStep: one(workflowRunSteps),
-  file: one(workflowFiles),
-  parentStep: one(workflowRunSteps),
-}));
+export const workflowRunStepInputsRelations = relations(
+  workflowRunStepsInputs,
+  ({ one }) => ({
+    workflowRunStep: one(workflowRunSteps),
+    parentStep: one(workflowRunSteps),
+    value: one(workflowRunStepsInputsValue),
+  })
+);
 
-export const workflowRunStepOutputsRelations = relations(workflowRunStepsOutputs, ({ one }) => ({
-  workflowRunStep: one(workflowRunSteps),
-  file: one(workflowFiles),
-}));
+export const workflowRunStepOutputsRelations = relations(
+  workflowRunStepsOutputs,
+  ({ one }) => ({
+    workflowRunStep: one(workflowRunSteps),
+    file: one(workflowFiles),
+  })
+);
 
-export const workflowRunStepMessagesRelations = relations(workflowRunStepMessages, ({ many, one }) => ({
-  workflowRunStep: one(workflowRunSteps),
-  documents: many(workflowRunStepMessagesDocuments),
-  toolCalls: many(workflowRunStepToolCalls),
-}));
+export const workflowRunStepMessagesRelations = relations(
+  workflowRunStepMessages,
+  ({ many, one }) => ({
+    workflowRunStep: one(workflowRunSteps),
+    documents: many(workflowRunStepMessagesDocuments),
+    toolCalls: many(workflowRunStepToolCalls),
+  })
+);
 
-export const workflowRunStepToolCallsRelations = relations(workflowRunStepToolCalls, ({ one }) => ({
-  workflowRunStepMessage: one(workflowRunStepMessages),
-}));
+export const workflowRunStepToolCallsRelations = relations(
+  workflowRunStepToolCalls,
+  ({ one }) => ({
+    workflowRunStepMessage: one(workflowRunStepMessages),
+  })
+);
 
-export const workflowRunStepMessagesDocumentsRelations = relations(workflowRunStepMessagesDocuments, ({ one }) => ({
-  workflowRunStepMessage: one(workflowRunStepMessages),
-  file: one(workflowFiles),
-}));
-
+export const workflowRunStepMessagesDocumentsRelations = relations(
+  workflowRunStepMessagesDocuments,
+  ({ one }) => ({
+    workflowRunStepMessage: one(workflowRunStepMessages),
+    file: one(workflowFiles),
+  })
+);
 
 /**
  * Before running the workflow, we need to:

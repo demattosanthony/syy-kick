@@ -8,21 +8,17 @@ import {
   generateText,
 } from "ai";
 import {
-  Workflow,
-  WorkflowExecutionInputValues,
+  WorkflowRun,
   WorkflowFileExecutionInputValue,
   WorkflowProgressCallback,
-  WorkflowStep,
+  WorkflowRunStep,
 } from "./workflows.types";
-import {
-  ArtifactData,
-  ArtifactEvent,
-  ArtifactService,
-} from "./artifact-service";
+import { ArtifactData, ArtifactService } from "./artifact-service";
 import { createToolSet } from "../tools/tools.registry";
 import { MODELS } from "../models";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
 import { ToolSet, ToolCall, ToolResult } from "../tools/tools.types";
+import s3 from "../../config/s3";
 
 // Reusable onStepFinish callback
 // Mainly used to add a artifact to the messages after load-artifact tool is called
@@ -31,7 +27,7 @@ export function onStepFinishCallback(
   messagesArray: Array<
     CoreSystemMessage | CoreUserMessage | CoreAssistantMessage | CoreToolMessage
   >,
-  step: WorkflowStep,
+  step: WorkflowRunStep,
   artifactService: ArtifactService,
   progressCallback: WorkflowProgressCallback,
   debug: boolean = false
@@ -120,32 +116,38 @@ export function onStepFinishCallback(
 }
 
 export class WorkflowRunner {
-  private workflow: Workflow;
+  private workflowRun: WorkflowRun;
   private progressCallback: WorkflowProgressCallback;
 
-  constructor(workflow: Workflow, progressCallback: WorkflowProgressCallback) {
-    this.workflow = workflow;
+  constructor(
+    workflowRun: WorkflowRun,
+    progressCallback: WorkflowProgressCallback
+  ) {
+    this.workflowRun = workflowRun;
     this.progressCallback = progressCallback;
   }
 
-  async run(inputValues: WorkflowExecutionInputValues, workflowRunId: string) {
+  async run() {
     this.progressCallback({
       type: "workflow_start",
       data: {
-        workflowId: this.workflow.id,
-        workflowName: this.workflow.name,
+        workflowId: this.workflowRun.workflowId,
+        workflowName: this.workflowRun.name,
       },
     });
 
     // Process initial input files into an artifact map
     let initialInputArtifacts: Record<string, ArtifactData> = {};
-    for (const inputValue of Object.values(inputValues)) {
+    for (const inputValue of Object.values(
+      this.workflowRun.executionInputValues
+    )) {
       if (inputValue.type === "file") {
         const inputFile = inputValue.value as WorkflowFileExecutionInputValue;
         // Directly create artifact data, assuming data is Buffer or similar
         // Adjust based on how ArtifactData expects the data field
+        const data = await s3.file(inputFile.fileKey).arrayBuffer();
         initialInputArtifacts[inputFile.filename] = {
-          data: inputFile.data, // Ensure this matches ArtifactData['data'] type
+          data: new Uint8Array(data), // Ensure this matches ArtifactData['data'] type
           mimeType: inputFile.mimeType,
         };
       }
@@ -156,15 +158,21 @@ export class WorkflowRunner {
       initialInputArtifacts;
 
     try {
-      for (const step of this.workflow.workflowSteps) {
-        const artifactEvents: ArtifactEvent[] = [];
+      for (const step of this.workflowRun.workflowSteps) {
         // Create the artifact service for the *current* step
         const currentStepArtifactService = new ArtifactService(
-          this.workflow.id,
-          workflowRunId,
+          this.workflowRun.workflowId,
+          this.workflowRun.runId,
           step.id,
           (event) => {
-            artifactEvents.push(event);
+            this.progressCallback({
+              type: "workflow_step_artifact_event",
+              data: {
+                stepId: step.id,
+                stepName: step.name,
+                artifact: event,
+              },
+            });
           }
         );
 
@@ -307,7 +315,6 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
             data: {
               stepId: step.id,
               stepName: step.name,
-              artifacts: artifactEvents,
             },
           });
 
@@ -339,17 +346,17 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
       this.progressCallback({
         type: "workflow_complete",
         data: {
-          workflowId: this.workflow.id,
-          workflowName: this.workflow.name,
+          workflowId: this.workflowRun.workflowId,
+          workflowName: this.workflowRun.name,
         },
       });
     } catch (error: any) {
-      console.error(`Workflow ${this.workflow.name} failed:`, error);
+      console.error(`Workflow ${this.workflowRun.name} failed:`, error);
       this.progressCallback({
         type: "workflow_error",
         data: {
-          workflowId: this.workflow.id,
-          workflowName: this.workflow.name,
+          workflowId: this.workflowRun.workflowId,
+          workflowName: this.workflowRun.name,
           error: error.message || "Unknown workflow error",
         },
       });

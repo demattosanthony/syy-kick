@@ -61,6 +61,22 @@ export {
   workflowRunStepMessages,
   workflowRunStepToolCalls,
   workflowRunStepMessagesDocuments,
+  workflowRunStepToolCallsRelations,
+  workflowRunStepMessagesDocumentsRelations,
+  workflowRunStepMessagesRelations,
+  workflowRunStepOutputsRelations,
+  workflowRunStepInputsRelations,
+  workflowRunStepRelations,
+  workflowRunRelations,
+  workflowRelations,
+  workflowStepRelations,
+  workflowOrganizationRelations,
+  workflowOrganizations,
+  workflowRunStepsInputsValue,
+  workflowTagRelations,
+  workflowTags,
+  workflowUserRelations,
+  workflowUsers,
 } from "../features/workflows/workflows.schema";
 
 export const organizations = pgTable("organizations", {

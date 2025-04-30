@@ -1,6 +1,7 @@
-import { Attachment, FinishReason, LanguageModelUsage } from "ai";
+import { FinishReason, LanguageModelUsage } from "ai";
 import { ArtifactEvent } from "./artifact-service";
 import { ToolName, ToolCall, ToolResult } from "../tools/tools.types";
+import { z } from "zod";
 
 export interface WorkflowStepFormSchema {
   fields: {
@@ -22,56 +23,105 @@ export interface WorkflowStepFormSchema {
   };
 }
 
-export type WorkflowAttachment = Attachment & {
-  file_key: string;
-  inputId: string;
-};
-
 export type WorkflowTextExecutionInputValue = {
   text: string;
 };
 
 export type WorkflowFileExecutionInputValue = {
-  data: Uint8Array;
+  fileKey: string;
   mimeType: string;
   filename: string;
 };
 
-// Represents the actual values provided for a workflow execution
+export type WorkflowNumberExecutionInputValue = {
+  number: number;
+};
+
 export type WorkflowExecutionInputValue = {
-  // value will contain the raw text data, or an S3 key/URI for files/images
-  type: "text" | "file";
-  value: WorkflowTextExecutionInputValue | WorkflowFileExecutionInputValue;
+  type: "text" | "file" | "number";
+  label: string;
+  value:
+    | WorkflowTextExecutionInputValue
+    | WorkflowFileExecutionInputValue
+    | WorkflowNumberExecutionInputValue;
 };
 export type WorkflowExecutionInputValues = {
   [inputId: string]: WorkflowExecutionInputValue;
 };
 
-export type WorkflowStep = {
+// Zod Schemas for Validation
+export const WorkflowTextExecutionInputValueSchema = z.object({
+  text: z.string(),
+});
+
+export const WorkflowFileExecutionInputValueSchema = z.object({
+  fileKey: z.string(),
+  mimeType: z.string(),
+  filename: z.string(),
+});
+
+export const WorkflowNumberExecutionInputValueSchema = z.object({
+  number: z.number(),
+});
+
+export const WorkflowExecutionInputValueSchema = z
+  .object({
+    type: z.enum(["text", "file", "number"]),
+    label: z.string(),
+    value: z.union([
+      WorkflowTextExecutionInputValueSchema,
+      WorkflowFileExecutionInputValueSchema,
+      WorkflowNumberExecutionInputValueSchema,
+    ]),
+  })
+  .refine(
+    (data) => {
+      // Ensure the value type matches the specified type
+      if (data.type === "text") {
+        return WorkflowTextExecutionInputValueSchema.safeParse(data.value)
+          .success;
+      } else if (data.type === "file") {
+        return WorkflowFileExecutionInputValueSchema.safeParse(data.value)
+          .success;
+      } else if (data.type === "number") {
+        return WorkflowNumberExecutionInputValueSchema.safeParse(data.value)
+          .success;
+      }
+      return false;
+    },
+    {
+      message: "Value object does not match the specified type",
+      path: ["value"], // Point the error to the value field
+    }
+  );
+
+export const WorkflowExecutionInputValuesSchema = z.record(
+  WorkflowExecutionInputValueSchema
+);
+
+export type WorkflowRunStep = {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   instructions: string;
   model: string;
   activeTools: ToolName[];
-  formSchema?: WorkflowStepFormSchema;
 };
 
-export type Workflow = {
-  id: string;
+export type WorkflowRun = {
+  runId: string;
+  workflowId: string;
   name: string;
-  description: string;
-  workflowSteps: WorkflowStep[];
-  authorizedOrganizationIds: string[];
+  description?: string;
+  executionInputValues: Record<string, WorkflowExecutionInputValue>;
+  workflowSteps: WorkflowRunStep[];
 };
 
 export type WorkflowStepStartData = {
   stepId: string;
   stepName: string;
-  //   artifacts: ArtifactEvent[];
 };
 
-// TODO: Add metadata, file paths of artifacts, etc.
 export type WorkflowStepMessage = {
   stepId: string;
   stepName: string;
@@ -92,7 +142,12 @@ export type WorkflowStepErrorData = {
 export type WorkflowStepFinishData = {
   stepId: string;
   stepName: string;
-  artifacts: ArtifactEvent[];
+};
+
+export type WorkflowStepArtifactEvent = {
+  stepId: string;
+  stepName: string;
+  artifact: ArtifactEvent;
 };
 
 export type WorkflowStartData = {
@@ -116,6 +171,7 @@ export type WorkflowProgressUpdate =
   | { type: "workflow_start"; data: WorkflowStartData }
   | { type: "workflow_step_start"; data: WorkflowStepStartData }
   | { type: "workflow_step_message"; data: WorkflowStepMessage }
+  | { type: "workflow_step_artifact_event"; data: WorkflowStepArtifactEvent }
   | { type: "workflow_step_finish"; data: WorkflowStepFinishData }
   | { type: "workflow_step_error"; data: WorkflowStepErrorData }
   | { type: "workflow_complete"; data: WorkflowCompleteData }
