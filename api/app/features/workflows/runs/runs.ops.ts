@@ -39,7 +39,7 @@ export const workflowRunsOps = {
             with: {
               workflowStep: {
                 with: {
-                  agents: true,
+                  agent: true,
                 },
               },
               inputsForStep: {

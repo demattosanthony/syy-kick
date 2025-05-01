@@ -94,7 +94,7 @@ export const workflowsRunsHandlers = {
 
       const workflowSteps: WorkflowRunStep[] = workflowRun.steps?.map(
         (step) => {
-          const agent = step.workflowStep?.agents;
+          const agent = step.workflowStep?.agent;
           const stepData = step.workflowStep;
 
           // If theres an agent use the agent info
