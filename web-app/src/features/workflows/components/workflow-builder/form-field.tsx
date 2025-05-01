@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { FileText, Type, Hash, Calendar, List, TextCursor, Plus, X, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const FormField = ({ fieldKey, field, stepIndex, onFieldChange, onDeleteField }: FormFieldProps) => {
     const getFieldIcon = (type: string) => {
@@ -116,8 +117,22 @@ const FormField = ({ fieldKey, field, stepIndex, onFieldChange, onDeleteField }:
                         }}
                     >
                         <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="userInput" id={`${fieldKey}-userInput`} />
-                            <Label htmlFor={`${fieldKey}-userInput`}>User Input</Label>
+                            <RadioGroupItem 
+                                value="userInput" 
+                                id={`${fieldKey}-userInput`} 
+                                disabled={stepIndex > 0}
+                            />
+                            <Label htmlFor={`${fieldKey}-userInput`} className={stepIndex > 0 ? "text-muted-foreground" : ""}>
+                                User Input
+                                {stepIndex > 0 && (
+                                    <Badge 
+                                        variant="default" 
+                                        className="ml-2 text-xs"
+                                    >
+                                        Coming soon
+                                    </Badge>
+                                )}
+                            </Label>
                         </div>
                         {stepIndex > 0 && (
                             <div className="flex items-center space-x-2">

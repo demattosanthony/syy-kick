@@ -107,39 +107,8 @@ export default function WorkflowPageContent({
   const onSubmit = async () => {
     if (!areAllRequiredFieldsFilled()) return;
 
-    setIsSubmitting(true);
-    try {
-      const formData = Object.entries(formValues)
-        .map(([stepId, stepValues]) => {
-          const step = workflow?.steps.find((s) => s.id === stepId);
-          return `${step?.name || stepId}: ${Object.entries(stepValues)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join(", ")}`;
-        })
-        .join("\n");
-
-      setWorkflowInput({
-        attachments: [],
-        input: formData,
-      });
-      setInitalInput(`Process the following form data:\n${formData}`);
-
-      const thread = await api.threads.createThread({
-        workflowId,
-        projectId,
-      });
-      navigate(
-        `/threads/${thread.id}?isNew=true&isWorkflow=true&workflowId=${workflowId}`
-      );
-    } catch (err) {
-      console.error("Submission error:", err);
-      setErrorDetails({
-        type: "general",
-        message: "An unexpected error occurred. Please try again.",
-      });
-    }
-
-    setIsSubmitting(false);
+    console.log(JSON.stringify(formValues, null, 2));
+  
   };
 
   if (workflow === null) {
