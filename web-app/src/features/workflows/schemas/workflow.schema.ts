@@ -31,10 +31,7 @@ export const stepSchema = z.object({
             data.name &&
             data.description &&
             data.instructions &&
-            data.model &&
-            data.activeTools?.length &&
-            data.formSchema?.fields &&
-            Object.keys(data.formSchema.fields).length > 0
+            data.model
         );
     }
     return true;

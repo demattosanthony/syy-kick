@@ -85,20 +85,28 @@ export const workflowsOps = {
     },
 
     createWorkflowSteps: async (workflowId: string, steps: WorkflowRunStep[], tx: NodePgDatabase<typeof import('../../config/schema')>): Promise<void> => {
-        const formattedSteps = steps.map((step) => {
-            if (step.agentId) {
-                return {
+        let previousStepId: string | null = null;
+
+        for (const step of steps) {
+            const { id, ...stepData } = step;
+            
+            const values = step.agentId 
+                ? {
                     workflowId,
-                    agentId: step.agentId,
+                    parentStepId: previousStepId,
+                    agentId: step.agentId
                 }
-            }
+                : {
+                    workflowId,
+                    parentStepId: previousStepId,
+                    ...stepData
+                };
 
-            return {
-                workflowId,
-                ...step,
-            }
-        });
+            const [insertedStep] = await tx.insert(workflowSteps)
+                .values(values)
+                .returning() as [typeof workflowSteps.$inferSelect];
 
-        await tx.insert(workflowSteps).values(formattedSteps);
+            previousStepId = insertedStep.id;
+        }
     }
 };
