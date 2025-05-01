@@ -12,37 +12,35 @@ import {
   billOfMaterialsWorkflow,
 } from "../app/features/workflows/workflow-definitions/bill-of-materials";
 
-const CURRENT_WORKFLOW_INDEX = 1;
+const CURRENT_WORKFLOW_INDEX = 0;
 
 const workflows = [windowDoorScheduleGenWorkflow, billOfMaterialsWorkflow];
-
-const workflowSteps = [
-  ...windowDoorScheduleGenWorkflowSteps,
-  ...billOfMaterialsWorkflowSteps,
+const allWorkflowSteps = [
+  windowDoorScheduleGenWorkflowSteps,
+  billOfMaterialsWorkflowSteps,
 ];
+const allWorkflowAuthOrgs = [windowAndDoorAuthOrgIds, billOfMaterialsAuthOrgs];
 
-const workflowAuthOrgs = [
-  ...windowAndDoorAuthOrgIds,
-  ...billOfMaterialsAuthOrgs,
-];
+// Select the workflow, steps, and auth orgs based on the index
+const selectedWorkflow = workflows[CURRENT_WORKFLOW_INDEX];
+const selectedWorkflowSteps = allWorkflowSteps[CURRENT_WORKFLOW_INDEX];
+const selectedAuthOrgs = allWorkflowAuthOrgs[CURRENT_WORKFLOW_INDEX];
 
 async function seedWorkflow() {
   console.log("Starting workflow seeding...");
 
   try {
     await db.transaction(async (tx) => {
-      console.log(
-        `Inserting workflow: ${workflows[CURRENT_WORKFLOW_INDEX].name}`
-      );
+      console.log(`Inserting workflow: ${selectedWorkflow.name}`);
 
       // Insert the main workflow
       const [insertedWorkflow] = await tx
         .insert(schema.workflows)
         .values({
           // Use the id from the definition if provided, otherwise generate a new one
-          // id: windowDoorScheduleGenWorkflow.id, // Assuming the id in the definition is desired
-          name: workflows[CURRENT_WORKFLOW_INDEX].name,
-          description: workflows[CURRENT_WORKFLOW_INDEX].description,
+          // id: selectedWorkflow.id, // Assuming the id in the definition is desired
+          name: selectedWorkflow.name,
+          description: selectedWorkflow.description,
           // createdBy: // Add createdBy user ID if available/needed
         })
         .returning();
@@ -56,8 +54,8 @@ async function seedWorkflow() {
       // Map to store definition step ID -> database step ID
       const definitionIdToDbIdMap: Record<string, string> = {}; // Assuming definition IDs are strings
 
-      // Insert workflow steps
-      for (const step of workflowSteps) {
+      // Insert workflow steps for the selected workflow only
+      for (const step of selectedWorkflowSteps) {
         // Assuming step objects have a unique 'id' property used by parentStepId
         const stepDefinitionId = (step as any).id; // Cast or ensure 'id' exists on step type
         if (!stepDefinitionId) {
@@ -121,15 +119,15 @@ async function seedWorkflow() {
       }
       console.log("Workflow steps inserted.");
 
-      // Insert authorized organizations
-      if (workflowAuthOrgs.length) {
+      // Insert authorized organizations for the selected workflow only
+      if (selectedAuthOrgs.length) {
         console.log("Inserting authorized organizations...");
 
         // Check if each org exists before inserting
         const existingOrgs = await tx
           .select({ id: schema.organizations.id })
           .from(schema.organizations)
-          .where(inArray(schema.organizations.id, workflowAuthOrgs));
+          .where(inArray(schema.organizations.id, selectedAuthOrgs));
 
         const existingOrgIds = existingOrgs.map((org) => org.id);
 

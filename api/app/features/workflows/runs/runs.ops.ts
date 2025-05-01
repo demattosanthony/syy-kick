@@ -593,6 +593,23 @@ export const workflowRunsOps = {
         },
       },
     });
+
+    // Sort steps for each run in application code based on workflowStep.createdAt
+    runs.forEach((run) => {
+      if (run.steps) {
+        run.steps.sort((a, b) => {
+          // Ensure workflowStep and createdAt exist before comparing
+          const dateA = a.workflowStep?.createdAt
+            ? new Date(a.workflowStep.createdAt).getTime()
+            : 0;
+          const dateB = b.workflowStep?.createdAt
+            ? new Date(b.workflowStep.createdAt).getTime()
+            : 0;
+          return dateA - dateB;
+        });
+      }
+    });
+
     return runs;
   },
 };

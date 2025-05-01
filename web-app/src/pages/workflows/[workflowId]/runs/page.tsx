@@ -77,10 +77,12 @@ export function WorkflowRunsPage() {
           <div className="flex flex-col gap-4 max-w-4xl mx-auto w-full  ">
             <div className="flex items-center justify-between mb-8">
               <h1 className="text-3xl font-bold">Workflow Runs</h1>
-              <Button variant="outline" onClick={() => window.history.back()}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Workflow
-              </Button>
+              <Link to={`/workflows/${workflowId}`}>
+                <Button variant="outline">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Workflow
+                </Button>
+              </Link>
             </div>
 
             {isRunsLoading ? (
