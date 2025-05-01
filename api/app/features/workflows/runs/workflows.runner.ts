@@ -36,6 +36,7 @@ export function onStepFinishCallback(
     toolCalls,
     finishReason,
     toolResults,
+    reasoning,
     text,
     usage,
   }: Parameters<GenerateTextOnStepFinishCallback<ToolSet>>[0]) => {
@@ -50,6 +51,7 @@ export function onStepFinishCallback(
         finishReason: finishReason,
         usage,
         role: "assistant",
+        reasoning: reasoning,
       },
     });
 

@@ -133,6 +133,7 @@ export type WorkflowStepMessage = {
   stepId: string;
   stepName: string;
   text: string;
+  reasoning?: string;
   toolCalls: ToolCall[];
   toolResults: ToolResult[];
   finishReason: FinishReason;

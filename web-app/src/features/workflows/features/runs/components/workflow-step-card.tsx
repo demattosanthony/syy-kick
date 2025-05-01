@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import React from "react";
+import { MarkdownViewer } from "@/features/chat/messages/components";
 
 interface WorkflowStepCardProps {
   step: WorkflowRunStep;
@@ -114,13 +115,19 @@ export function WorkflowStepCard({ step, duration }: WorkflowStepCardProps) {
             </CardTitle>
             <div
               className={cn(
-                "px-3 py-1 rounded-full text-sm font-medium",
+                "flex items-center px-3 py-1 rounded-full text-sm font-medium",
                 status === "completed" && "bg-green-100 text-green-800",
                 status === "running" && "bg-blue-100 text-blue-800",
                 status === "failed" && "bg-red-100 text-red-800",
                 status === "pending" && "bg-yellow-100 text-yellow-800"
               )}
             >
+              {status === "running" && (
+                <span className="relative flex h-2 w-2 mr-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+              )}
               {status}
             </div>
           </CardHeader>
@@ -150,8 +157,7 @@ export function WorkflowStepCard({ step, duration }: WorkflowStepCardProps) {
                 <p className="text-xs text-muted-foreground mb-1">
                   Latest Message:
                 </p>
-
-                <p className="text-sm p-2 rounded">{latestMessage.text}</p>
+                <MarkdownViewer content={latestMessage.text} />
               </div>
             )}
           </CardContent>

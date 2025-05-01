@@ -499,13 +499,15 @@ export const workflowRunsOps = {
         }
 
         if (update.type === "workflow_step_message") {
-          const { stepId, text, toolCalls, toolResults, role } = update.data;
+          const { stepId, text, toolCalls, toolResults, role, reasoning } =
+            update.data;
           try {
             const [newMessage] = await db
               .insert(workflowRunStepMessages)
               .values({
                 workflowRunStepId: stepId,
                 text,
+                reasoning,
                 role,
                 createdAt: new Date(),
                 updatedAt: new Date(),
