@@ -591,4 +591,15 @@ export const workflowRunsOps = {
       throw new Error(`Workflow execution failed: ${error}`);
     }
   },
+
+  getWorkflowRuns: async (workflowId: string) => {
+    const runs = await db.query.workflowRuns.findMany({
+      where: eq(workflowRuns.workflowId, workflowId),
+      with: {
+        steps: true,
+      },
+    });
+    return runs;
+  },
+  
 };

@@ -86,7 +86,7 @@ export function WorkflowFormFields({
         switch (field.type) {
             case "file":
                 return (
-                    <Card key={fieldId}>
+                    <Card key={fieldId} className="space-y-2 p-4">
                         <FileUploadInput
                             input={{
                                 id: fieldId,
@@ -100,9 +100,6 @@ export function WorkflowFormFields({
                             onFileChange={(file) => onChange(fieldId, file)}
                             projectId={projectId}
                         />
-                        {field.required && (
-                            <span className="text-sm text-red-500">Required</span>
-                        )}
                     </Card>
                 );
 

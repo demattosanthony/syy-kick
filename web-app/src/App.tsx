@@ -45,6 +45,8 @@ import { KnowledgeBaseLayout } from "./components/layouts/knowledge-base-layout"
 import { ShareThreadPage } from "./pages/share/[threadId]/page";
 import { User } from "./types/user";
 import { CreateWorkflowPage } from "./pages/workflows/create/page";
+import { WorkflowRunsPage } from "./pages/workflows/[workflowId]/runs/page";
+import { WorkflowRunPageDetails } from "./pages/workflows/[workflowId]/runs/[runId]/page";
 
 // Define the new loader function for the root route
 const rootUserDataLoader = async (): Promise<User | null> => {
@@ -133,6 +135,8 @@ const router = createBrowserRouter([
           { path: "threads/:threadId", element: <ThreadPage /> },
           { path: "workflows", element: <WorkflowsPage /> },
           { path: "workflows/:workflowId", element: <WorkflowPage /> },
+          { path: "workflows/:workflowId/runs", element: <WorkflowRunsPage /> },
+          { path: "workflows/:workflowId/runs/:runId", element: <WorkflowRunPageDetails /> },
           { path: "workflows/create", element: <CreateWorkflowPage /> },
           { path: "sites", element: <SitesPage /> },
           { path: "settings", element: <UserSettings /> },

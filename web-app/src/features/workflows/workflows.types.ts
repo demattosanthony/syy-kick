@@ -91,3 +91,59 @@ export interface WorkflowProjectFile {
   size: number;
   file_key: string;
 }
+
+export type WorkflowTextExecutionInputValue = {
+  text: string;
+};
+
+export type WorkflowFileExecutionInputValue = {
+  fileKey: string;
+  mimeType: string;
+  filename: string;
+};
+
+export type WorkflowNumberExecutionInputValue = {
+  number: number;
+};
+
+export type WorkflowExecutionInputValue = {
+  type: "text" | "file" | "number";
+  label: string;
+  value:
+    | WorkflowTextExecutionInputValue
+    | WorkflowFileExecutionInputValue
+    | WorkflowNumberExecutionInputValue;
+};
+
+export type WorkflowExecutionInputValues = {
+  [inputId: string]: WorkflowExecutionInputValue;
+};
+
+export type WorkflowRunRequest = {
+  workflowId: string;
+  inputValues: WorkflowExecutionInputValues;
+};
+
+export type WorkflowRunStatus = "pending" | "running" | "completed" | "failed" | "cancelled" | "waiting";
+
+export type WorkflowRunStepStatus = "pending" | "running" | "completed" | "failed";
+
+export type WorkflowRunStep = {
+  id: string;
+  workflowRunId: string;
+  workflowStepId: string;
+  status: WorkflowRunStepStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkflowRun = {
+  id: string;
+  workflowId: string;
+  userId: string;
+  status: WorkflowRunStatus;
+  inputValues?: WorkflowExecutionInputValues;
+  steps: WorkflowRunStep[];
+  createdAt: string;
+  updatedAt: string;
+};

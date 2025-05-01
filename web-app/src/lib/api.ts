@@ -9,7 +9,7 @@ import {
   UpdateOrgMemberRoleRequest,
 } from "@/features/permissions/types";
 import { Site } from "@/features/sites/types/sites";
-import { Step, Workflow } from "@/features/workflows/workflows.types";
+import { Step, Workflow, WorkflowRun, WorkflowRunRequest } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
@@ -934,6 +934,26 @@ class WorkflowsApi extends ApiRequest {
     } catch (error) {
       throw error;
     }
+  }
+
+  async createRun(data: WorkflowRunRequest): Promise<void> {
+    try {
+      await this.request(`/workflows/${data.workflowId}/runs`, "POST", data);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getRuns(workflowId: string): Promise<WorkflowRun[]> {
+    return await this.request(`/workflows/${workflowId}/runs`);
+  }
+
+  async getRun(workflowId: string, runId: string): Promise<WorkflowRun> {
+    return await this.request(`/workflows/${workflowId}/runs/${runId}`);
+  }
+
+  async triggerRun(workflowId: string, workflowRunId: string): Promise<void> {
+    return await this.request(`/workflows/${workflowId}/runs/${workflowRunId}`, "POST");
   }
 
   async getAgents(): Promise<Agent[]> {
