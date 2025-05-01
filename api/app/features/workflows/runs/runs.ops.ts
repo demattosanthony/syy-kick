@@ -586,7 +586,11 @@ export const workflowRunsOps = {
       where: eq(workflowRuns.workflowId, workflowId),
       orderBy: (workflowRuns, { desc }) => [desc(workflowRuns.createdAt)],
       with: {
-        steps: true,
+        steps: {
+          with: {
+            workflowStep: true,
+          },
+        },
       },
     });
     return runs;

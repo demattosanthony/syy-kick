@@ -9,7 +9,12 @@ import {
   UpdateOrgMemberRoleRequest,
 } from "@/features/permissions/types";
 import { Site } from "@/features/sites/types/sites";
-import { Step, Workflow, WorkflowRun, WorkflowRunRequest } from "@/features/workflows/workflows.types";
+import {
+  Step,
+  Workflow,
+  WorkflowRun,
+  WorkflowRunRequest,
+} from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
@@ -91,8 +96,8 @@ async function clientFetch<T>(
     throw new ApiError(
       response.status,
       errorData?.message ||
-      errorData?.error ||
-      `Request failed with status ${response.status}`
+        errorData?.error ||
+        `Request failed with status ${response.status}`
     );
   }
 
@@ -635,7 +640,8 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -689,7 +695,8 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`,
       "DELETE"
     );
@@ -705,7 +712,8 @@ class ProjectsApi extends ApiRequest {
     }
 
     return await this.request(
-      `/projects/${projectId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -936,9 +944,15 @@ class WorkflowsApi extends ApiRequest {
     }
   }
 
-  async createRun(data: WorkflowRunRequest): Promise<void> {
+  async createRun(data: WorkflowRunRequest): Promise<{
+    id: string;
+  }> {
     try {
-      await this.request(`/workflows/${data.workflowId}/runs`, "POST", data);
+      return await this.request(
+        `/workflows/${data.workflowId}/runs`,
+        "POST",
+        data
+      );
     } catch (error) {
       throw error;
     }
@@ -953,7 +967,10 @@ class WorkflowsApi extends ApiRequest {
   }
 
   async triggerRun(workflowId: string, workflowRunId: string): Promise<void> {
-    return await this.request(`/workflows/${workflowId}/runs/${workflowRunId}`, "POST");
+    return await this.request(
+      `/workflows/${workflowId}/runs/${workflowRunId}`,
+      "POST"
+    );
   }
 
   async getAgents(): Promise<Agent[]> {
@@ -1072,7 +1089,8 @@ export class KnowledgeBasesApi extends ApiRequest {
     const queryParams = new URLSearchParams();
     if (path) queryParams.append("path", path);
     return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/knowledge-bases/${knowledgeBaseId}/documents${
+        queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }

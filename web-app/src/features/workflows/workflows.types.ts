@@ -59,14 +59,13 @@ export interface Step {
   formSchema: WorkflowStepFormSchema | null;
 }
 
-
 export interface ModelSelectorProps {
   step: Step;
   models: Array<{
-      name: string;
-      provider: string;
-      description?: string;
-      supportedMimeTypes?: string[];
+    name: string;
+    provider: string;
+    description?: string;
+    supportedMimeTypes?: string[];
   }>;
   onModelChange: (modelName: string) => void;
   hasError: boolean;
@@ -75,13 +74,15 @@ export interface ModelSelectorProps {
 
 export interface FormFieldProps {
   fieldKey: string;
-  field: WorkflowStepFormSchema['fields'][string];
+  field: WorkflowStepFormSchema["fields"][string];
   stepId: string;
   stepIndex: number;
-  onFieldChange: (key: string, updatedField: WorkflowStepFormSchema['fields'][string]) => void;
+  onFieldChange: (
+    key: string,
+    updatedField: WorkflowStepFormSchema["fields"][string]
+  ) => void;
   onDeleteField?: (key: string) => void;
 }
-
 
 export interface WorkflowProjectFile {
   source: "project";
@@ -124,15 +125,26 @@ export type WorkflowRunRequest = {
   inputValues: WorkflowExecutionInputValues;
 };
 
-export type WorkflowRunStatus = "pending" | "running" | "completed" | "failed" | "cancelled" | "waiting";
+export type WorkflowRunStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "waiting";
 
-export type WorkflowRunStepStatus = "pending" | "running" | "completed" | "failed";
+export type WorkflowRunStepStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed";
 
 export type WorkflowRunStep = {
   id: string;
   workflowRunId: string;
   workflowStepId: string;
   status: WorkflowRunStepStatus;
+  workflowStep: Step;
   createdAt: string;
   updatedAt: string;
 };
