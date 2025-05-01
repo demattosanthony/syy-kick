@@ -14,6 +14,7 @@ export type ArtifactEvent = {
   fileKey: string;
   stepId: string;
   ts: number;
+  url: string;
 };
 
 export class ArtifactService {
@@ -50,6 +51,7 @@ export class ArtifactService {
         mimeType: artifact.mimeType,
         stepId: this.workflowStepId,
         ts: Date.now(),
+        url: s3.presign(fileKey, { expiresIn: 60 * 60 * 24 }),
       });
     }
   }

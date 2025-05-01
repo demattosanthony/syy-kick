@@ -31,7 +31,7 @@ export function WorkflowRunPageDetails() {
     workflowId as string,
     runId as string
   );
-  console.log(run);
+  console.log("[Page Render] Run data:", run);
 
   useRunSSE({
     workflowId: workflowId as string,

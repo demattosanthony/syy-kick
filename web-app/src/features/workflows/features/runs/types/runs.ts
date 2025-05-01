@@ -8,6 +8,7 @@ export type ArtifactEvent = {
   fileKey: string;
   stepId: string;
   ts: number;
+  url: string;
 };
 
 export type WorkflowStepStartData = {

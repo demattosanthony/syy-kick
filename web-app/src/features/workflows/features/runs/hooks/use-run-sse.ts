@@ -1,5 +1,12 @@
 import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { WorkflowProgressUpdate } from "../types/runs";
+import {
+  WorkflowRun,
+  WorkflowRunStepMessage,
+  WorkflowRunStepOutput,
+  WorkflowFile,
+} from "@/features/workflows/workflows.types";
 
 export function useRunSSE({
   workflowId,
@@ -8,6 +15,8 @@ export function useRunSSE({
   workflowId: string;
   workflowRunId: string;
 }) {
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     const eventSource = new EventSource(
       `${
@@ -31,10 +40,157 @@ export function useRunSSE({
 
         console.log("Parsed typed event:", typedEvent);
 
-        // TODO: Add logic here to update state based on the typedEvent
+        // Update the React Query cache immutably
+        queryClient.setQueryData<WorkflowRun>(
+          ["runs", workflowId, workflowRunId],
+          (oldData) => {
+            if (!oldData) return oldData;
+            console.log("[SSE] Old cache data:", oldData);
+
+            // Start with a shallow copy
+            let updatedData = { ...oldData };
+
+            switch (typedEvent.type) {
+              case "workflow_start":
+                updatedData = {
+                  ...updatedData,
+                  status: "running",
+                  updatedAt: new Date().toISOString(),
+                };
+                break;
+              case "workflow_step_start": {
+                updatedData = {
+                  ...updatedData,
+                  steps: updatedData.steps.map((step) =>
+                    step.id === typedEvent.data.stepId
+                      ? {
+                          ...step,
+                          status: "running",
+                          updatedAt: new Date().toISOString(),
+                        }
+                      : step
+                  ),
+                  updatedAt: new Date().toISOString(),
+                };
+                break;
+              }
+              case "workflow_step_message": {
+                updatedData = {
+                  ...updatedData,
+                  steps: updatedData.steps.map((step) => {
+                    if (step.id === typedEvent.data.stepId) {
+                      const newMessage: WorkflowRunStepMessage = {
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        role: typedEvent.data.role,
+                        text: typedEvent.data.text,
+                        reasoning: "",
+                        toolCalls: [],
+                      };
+                      return {
+                        ...step,
+                        messages: [...step.messages, newMessage],
+                        updatedAt: new Date().toISOString(),
+                      };
+                    } else {
+                      return step;
+                    }
+                  }),
+                  updatedAt: new Date().toISOString(),
+                };
+                break;
+              }
+              case "workflow_step_artifact_event": {
+                if (typedEvent.data.artifact.type !== "created") break;
+
+                updatedData = {
+                  ...updatedData,
+                  steps: updatedData.steps.map((step) => {
+                    if (step.id === typedEvent.data.stepId) {
+                      const newFile: WorkflowFile = {
+                        id: typedEvent.data.artifact.fileKey,
+                        name: typedEvent.data.artifact.filename,
+                        mimeType: typedEvent.data.artifact.mimeType,
+                        url: typedEvent.data.artifact.url,
+                        createdAt: new Date(
+                          typedEvent.data.artifact.ts * 1000
+                        ).toISOString(),
+                        updatedAt: new Date(
+                          typedEvent.data.artifact.ts * 1000
+                        ).toISOString(),
+                      };
+                      const newOutput: WorkflowRunStepOutput = {
+                        id: crypto.randomUUID(),
+                        file: newFile,
+                      };
+                      return {
+                        ...step,
+                        outputs: [...step.outputs, newOutput],
+                        updatedAt: new Date().toISOString(),
+                      };
+                    } else {
+                      return step;
+                    }
+                  }),
+                  updatedAt: new Date().toISOString(),
+                };
+                break;
+              }
+              case "workflow_step_finish": {
+                updatedData = {
+                  ...updatedData,
+                  steps: updatedData.steps.map((step) =>
+                    step.id === typedEvent.data.stepId
+                      ? {
+                          ...step,
+                          status: "completed",
+                          updatedAt: new Date().toISOString(),
+                        }
+                      : step
+                  ),
+                  updatedAt: new Date().toISOString(),
+                };
+                break;
+              }
+              case "workflow_step_error": {
+                updatedData = {
+                  ...updatedData,
+                  steps: updatedData.steps.map((step) =>
+                    step.id === typedEvent.data.stepId
+                      ? {
+                          ...step,
+                          status: "failed",
+                          updatedAt: new Date().toISOString(),
+                        }
+                      : step
+                  ),
+                  updatedAt: new Date().toISOString(),
+                };
+                break;
+              }
+              case "workflow_complete":
+                updatedData = {
+                  ...updatedData,
+                  status: "completed",
+                  updatedAt: new Date().toISOString(),
+                };
+                break;
+              case "workflow_error":
+                updatedData = {
+                  ...updatedData,
+                  status: "failed",
+                  updatedAt: new Date().toISOString(),
+                };
+                break;
+            }
+
+            console.log("[SSE] Updated cache data:", updatedData);
+            return updatedData;
+          }
+        );
       } catch (error) {
         console.error(
-          "Error parsing SSE data:",
+          "Error parsing SSE data or updating cache:",
           error,
           "Raw data:",
           event.data
@@ -64,7 +220,7 @@ export function useRunSSE({
     // Optional: Listener for errors from the EventSource connection itself
     eventSource.onerror = (error) => {
       console.error("EventSource failed:", error);
-      eventSource.close(); // Close the connection on error
+      eventSource.close();
     };
 
     console.log("EventSource connected:", eventSource);
@@ -77,5 +233,5 @@ export function useRunSSE({
       });
       eventSource.close();
     };
-  }, [workflowId, workflowRunId]); // Add dependencies
+  }, [workflowId, workflowRunId]);
 }
