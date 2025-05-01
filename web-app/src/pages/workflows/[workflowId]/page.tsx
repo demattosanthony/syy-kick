@@ -8,8 +8,9 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Link } from "react-router";
-import { Slash } from "lucide-react";
+import { PencilIcon, Slash } from "lucide-react";
 import { useMemo } from "react";
+import { Button } from "@/components/ui/button";
 
 export function WorkflowPage() {
   const { workflowId } = useParams<{
@@ -34,24 +35,31 @@ export function WorkflowPage() {
     <div className="h-screen w-full flex flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto px-4 py-4">
-          <Breadcrumb className="mb-8">
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <Link
-                  to="/workflows"
-                  className="hover:text-blue-500 hover:underline"
-                >
-                  Workflows
-                </Link>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator>
-                <Slash className="w-4 h-4" />
-              </BreadcrumbSeparator>
-              <BreadcrumbItem>
-                <span className="font-bold truncate">{workflow?.name}</span>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+          <div className="flex justify-between items-center mb-8">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <Link
+                    to="/workflows"
+                    className="hover:text-blue-500 hover:underline"
+                  >
+                    Workflows
+                  </Link>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator>
+                  <Slash className="w-4 h-4" />
+                </BreadcrumbSeparator>
+                <BreadcrumbItem>
+                  <span className="font-bold truncate">{workflow?.name}</span>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+            <Link to={`/workflows/${workflowId}/edit`}>
+              <Button variant="ghost" size={"icon"}>
+                <PencilIcon className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
         <WorkflowPageContent
           workflowId={workflowId as string}

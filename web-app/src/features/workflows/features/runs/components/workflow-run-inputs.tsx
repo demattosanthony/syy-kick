@@ -41,7 +41,7 @@ export function WorkflowRunInputs({ inputs }: WorkflowRunInputsProps) {
                         href={fileValue.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block w-24 h-24 border rounded overflow-hidden group relative hover:shadow-md transition-shadow"
+                        className="block w-32 h-32 border rounded overflow-hidden group relative hover:shadow-md transition-shadow"
                       >
                         {isPdf ? (
                           <PdfThumbnail url={fileValue.url} width={96} />

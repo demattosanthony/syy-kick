@@ -245,7 +245,7 @@ export default function WorkflowPageContent({
             <div className="h-8 w-1 bg-primary rounded-full"></div>
             <h2 className="text-2xl font-bold">Workflow Configuration</h2>
           </div> */}
-          <div className="rounded-xl  w-full">
+          <div className="rounded-xl w-full">
             <div className="flex flex-col gap-8">
               {workflow.steps.slice(0, 1).map(
                 (step, index) =>

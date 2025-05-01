@@ -36,7 +36,7 @@ export function WorkflowStepOutputs({ outputs }: WorkflowStepOutputsProps) {
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-24 h-24 border rounded overflow-hidden group relative hover:shadow-md transition-shadow bg-muted"
+              className="block w-32 h-32 border rounded overflow-hidden group relative hover:shadow-md transition-shadow bg-muted"
               title={name}
             >
               {isPdf ? (

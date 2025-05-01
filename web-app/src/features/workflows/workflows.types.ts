@@ -13,6 +13,7 @@ export interface Workflow {
   description: string;
   steps: {
     id: string;
+    agentId: string | null;
     name: string;
     description: string;
     instructions: string;
@@ -208,4 +209,14 @@ export type WorkflowRun = {
   steps: WorkflowRunStep[];
   createdAt: string;
   updatedAt: string;
+};
+
+// Type for updating a workflow step (omits fields handled by the backend)
+export type WorkflowStepUpdateInput = Omit<Step, "id">;
+
+// Type for the workflow update API request body
+export type WorkflowUpdateRequest = {
+  name?: string;
+  description?: string;
+  workflowSteps: WorkflowStepUpdateInput[];
 };

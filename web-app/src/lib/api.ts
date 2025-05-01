@@ -14,6 +14,7 @@ import {
   Workflow,
   WorkflowRun,
   WorkflowRunRequest,
+  WorkflowUpdateRequest,
 } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
@@ -939,6 +940,21 @@ class WorkflowsApi extends ApiRequest {
   }): Promise<{ message: string }> {
     try {
       return await this.request("/workflows", "POST", data);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateWorkflow(
+    workflowId: string,
+    data: WorkflowUpdateRequest
+  ): Promise<{ message: string; id: string }> {
+    try {
+      return await this.request<{ message: string; id: string }>(
+        `/workflows/${workflowId}`,
+        "PUT",
+        data
+      );
     } catch (error) {
       throw error;
     }

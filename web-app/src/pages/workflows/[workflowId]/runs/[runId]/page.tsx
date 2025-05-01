@@ -109,15 +109,15 @@ export function WorkflowRunPageDetails() {
 
           <div className="flex flex-col items-center w-full gap-8 py-8">
             {isRunLoading ? (
-              <Skeleton className="h-40 w-full max-w-lg" />
+              <Skeleton className="h-40 w-full max-w-xl" />
             ) : run?.executionInputValues &&
               Object.keys(run.executionInputValues).length > 0 ? (
               <>
                 <div className="text-center text-sm font-medium text-muted-foreground">
-                  Input
+                  Inputs
                   {Object.keys(run.executionInputValues).length > 1 ? "s" : ""}
                 </div>
-                <div className="max-w-lg w-full">
+                <div className="max-w-xl w-full">
                   <WorkflowRunInputs inputs={run.executionInputValues} />
                 </div>
                 <div className="w-px h-8 bg-border"></div>
@@ -126,17 +126,17 @@ export function WorkflowRunPageDetails() {
 
             {isRunLoading ? (
               <>
-                <Skeleton className="h-48 w-full max-w-lg" />
+                <Skeleton className="h-48 w-full max-w-xl" />
                 <div className="w-px h-8 bg-border"></div>
-                <Skeleton className="h-32 w-full max-w-lg" />
+                <Skeleton className="h-32 w-full max-w-xl" />
                 <div className="w-px h-8 bg-border"></div>
-                <Skeleton className="h-48 w-full max-w-lg" />
+                <Skeleton className="h-48 w-full max-w-xl" />
               </>
             ) : run && run.steps && run.steps.length > 0 ? (
               run.steps.map((step, index) => (
                 <div
                   key={step.id}
-                  className="flex flex-col items-center w-full max-w-lg"
+                  className="flex flex-col items-center w-full max-w-xl"
                 >
                   <WorkflowStepCard
                     step={step}
@@ -159,7 +159,7 @@ export function WorkflowRunPageDetails() {
             ) : (
               !isRunLoading &&
               !run?.steps?.length && (
-                <Card className="max-w-lg w-full p-6 text-center text-muted-foreground">
+                <Card className="max-w-xl w-full p-6 text-center text-muted-foreground">
                   No steps executed for this run yet.
                 </Card>
               )
