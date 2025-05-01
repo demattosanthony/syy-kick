@@ -1,5 +1,5 @@
-import { FinishReason, LanguageModelUsage, ToolCall, ToolResult } from "ai";
-import { ToolName } from "../../tools/types";
+import { FinishReason, LanguageModelUsage } from "ai";
+import { WorkflowRunStepMessageToolCall } from "@/features/workflows/workflows.types";
 
 export type ArtifactEvent = {
   type: "created";
@@ -20,8 +20,8 @@ export type WorkflowStepMessage = {
   stepId: string;
   stepName: string;
   text: string;
-  toolCalls: ToolCall<ToolName, any>[];
-  toolResults: ToolResult<ToolName, any, any>[];
+  reasoning: string;
+  toolCalls: WorkflowRunStepMessageToolCall[];
   finishReason: FinishReason;
   usage: LanguageModelUsage;
   role: "system" | "user" | "assistant" | "tool";

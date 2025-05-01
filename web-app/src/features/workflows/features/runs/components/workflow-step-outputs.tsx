@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { FileText, Sheet } from "lucide-react";
 import PdfThumbnail from "@/features/chat/messages/components/pdf-thumbnail";
 import { WorkflowRunStepOutput } from "../../../workflows.types";
 
@@ -28,6 +28,7 @@ export function WorkflowStepOutputs({ outputs }: WorkflowStepOutputsProps) {
 
           const isPdf = mimeType?.startsWith("application/pdf");
           const isImage = mimeType?.startsWith("image/");
+          const isCsv = mimeType === "text/csv";
 
           return (
             <a
@@ -46,6 +47,13 @@ export function WorkflowStepOutputs({ outputs }: WorkflowStepOutputsProps) {
                   alt={name}
                   className="w-full h-full object-cover"
                 />
+              ) : isCsv ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-1">
+                  <Sheet className="w-8 h-8 mb-1 flex-shrink-0" />
+                  <span className="text-xs text-center break-all overflow-hidden max-h-8 leading-tight">
+                    {name}
+                  </span>
+                </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-1">
                   <FileText className="w-8 h-8 mb-1 flex-shrink-0" />

@@ -29,7 +29,7 @@ export function useRunSSE({
 
     const handleEvent = (event: MessageEvent) => {
       try {
-        console.log(`Received event type: ${event.type}`, event);
+        // console.log(`Received event type: ${event.type}`, event);
         const parsedData = JSON.parse(event.data);
 
         // Create a typed event object based on the event type
@@ -38,14 +38,13 @@ export function useRunSSE({
           data: parsedData,
         };
 
-        console.log("Parsed typed event:", typedEvent);
+        // console.log("Parsed typed event:", typedEvent);
 
         // Update the React Query cache immutably
         queryClient.setQueryData<WorkflowRun>(
           ["runs", workflowId, workflowRunId],
           (oldData) => {
             if (!oldData) return oldData;
-            console.log("[SSE] Old cache data:", oldData);
 
             // Start with a shallow copy
             let updatedData = { ...oldData };
@@ -84,8 +83,8 @@ export function useRunSSE({
                         updatedAt: new Date().toISOString(),
                         role: typedEvent.data.role,
                         text: typedEvent.data.text,
-                        reasoning: "",
-                        toolCalls: [],
+                        reasoning: typedEvent.data.reasoning,
+                        toolCalls: typedEvent.data.toolCalls,
                       };
                       return {
                         ...step,
@@ -184,7 +183,6 @@ export function useRunSSE({
                 break;
             }
 
-            console.log("[SSE] Updated cache data:", updatedData);
             return updatedData;
           }
         );
@@ -223,11 +221,8 @@ export function useRunSSE({
       eventSource.close();
     };
 
-    console.log("EventSource connected:", eventSource);
-
     // Cleanup function to close the connection and remove listeners
     return () => {
-      console.log("Closing EventSource connection");
       eventTypes.forEach((type) => {
         eventSource.removeEventListener(type, handleEvent);
       });
