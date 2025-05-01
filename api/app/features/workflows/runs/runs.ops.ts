@@ -408,18 +408,17 @@ export const workflowRunsOps = {
         }
 
         if (update.type === "workflow_step_start") {
+          console.log("\n\n");
+          console.log("Updating workflow step status to running");
+          console.log(update.data);
+          console.log("\n\n");
           await db
             .update(workflowRunSteps)
             .set({
               status: "running",
               updatedAt: new Date(),
             })
-            .where(
-              and(
-                eq(workflowRunSteps.workflowRunId, workflowRun.runId),
-                eq(workflowRunSteps.workflowStepId, update.data.stepId)
-              )
-            );
+            .where(eq(workflowRunSteps.id, update.data.stepId));
         }
 
         if (update.type === "workflow_step_message") {
@@ -514,12 +513,7 @@ export const workflowRunsOps = {
               status: "completed",
               updatedAt: new Date(),
             })
-            .where(
-              and(
-                eq(workflowRunSteps.workflowRunId, workflowRun.runId),
-                eq(workflowRunSteps.workflowStepId, update.data.stepId)
-              )
-            );
+            .where(eq(workflowRunSteps.id, update.data.stepId));
         }
 
         if (update.type === "workflow_step_error") {
@@ -529,12 +523,7 @@ export const workflowRunsOps = {
               status: "failed",
               updatedAt: new Date(),
             })
-            .where(
-              and(
-                eq(workflowRunSteps.workflowRunId, workflowRun.runId),
-                eq(workflowRunSteps.workflowStepId, update.data.stepId)
-              )
-            );
+            .where(eq(workflowRunSteps.id, update.data.stepId));
         }
 
         if (update.type === "workflow_complete") {
@@ -595,11 +584,11 @@ export const workflowRunsOps = {
   getWorkflowRuns: async (workflowId: string) => {
     const runs = await db.query.workflowRuns.findMany({
       where: eq(workflowRuns.workflowId, workflowId),
+      orderBy: (workflowRuns, { desc }) => [desc(workflowRuns.createdAt)],
       with: {
         steps: true,
       },
     });
     return runs;
   },
-  
 };
