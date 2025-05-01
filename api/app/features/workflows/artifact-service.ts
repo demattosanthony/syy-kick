@@ -17,8 +17,6 @@ export type ArtifactEvent = {
 };
 
 export class ArtifactService {
-  private artifactKeys: Set<string> = new Set(); // Add in-memory storage for keys
-
   constructor(
     private workflowId: string,
     private workflowRunId: string,
@@ -40,7 +38,6 @@ export class ArtifactService {
       })
       .write(artifact.data);
     console.log(`Artifact '${filename}' saved, with file key: ${fileKey}`);
-    this.artifactKeys.add(filename); // Add key to in-memory set
     this.onEvent?.({
       type: "created",
       filename,
@@ -79,15 +76,18 @@ export class ArtifactService {
    * @returns An array of artifact filenames.
    */
   async listArtifacts(): Promise<string[]> {
+    const keys = await s3.list({
+      prefix: `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/`,
+    });
     console.log(
-      "Listing artifacts from memory:",
-      Array.from(this.artifactKeys)
+      "Listing artifacts:",
+      keys.contents?.map((obj) => obj.key)
     );
-    return Array.from(this.artifactKeys); // Return keys from in-memory set
+    return keys.contents?.map((obj) => obj.key.split("/").pop() ?? "") ?? [];
   }
 
   /**
-   * Deletes an artifact from S3
+   * Deletes an artifact from the in-memory storage.
    * @param filename The unique identifier for the artifact.
    * @returns True if the artifact was deleted, false if it wasn't found.
    */
@@ -97,40 +97,36 @@ export class ArtifactService {
         `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`
       )
       .delete();
-    this.artifactKeys.delete(filename); // Remove key from in-memory set
     console.log(`Artifact '${filename}' deleted.`);
     return true;
   }
 
   /**
-   * Clears all artifacts from S3
+   * Clears all artifacts from the in-memory storage.
    */
   async clearArtifacts(): Promise<void> {
-    const keys = await this.listArtifacts(); // Now uses in-memory list
+    const keys = await this.listArtifacts();
     for (const key of keys) {
-      await this.deleteArtifact(key); // deleteArtifact also removes from the set
+      await this.deleteArtifact(key);
     }
-    // The loop above will empty the set, but clear it explicitly just in case
-    this.artifactKeys.clear();
     console.log("All artifacts cleared.");
   }
 
   /**
-   * Get all artifacts from S3
+   * Get all artifacts from the in-memory storage.
    * @returns An array of artifacts.
    */
   async getArtifacts(): Promise<Record<string, ArtifactData>> {
-    const keys = await this.listArtifacts(); // Now uses in-memory list
+    const keys = await this.listArtifacts();
     const artifacts = await Promise.all(
       keys.map(async (key) => {
         const artifact = await this.loadArtifact(key);
         return [key, artifact];
       })
     );
-    return Object.fromEntries(
-      artifacts.filter(([key, artifact]) => artifact !== undefined)
-    ); // Filter out undefined artifacts
+    return Object.fromEntries(artifacts);
   }
+
   // --- Tool Creation Methods (now private inside the class) ---
 
   private listArtifactsTool(): Tool {

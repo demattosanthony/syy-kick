@@ -12,7 +12,7 @@
     "mig": "drizzle-kit generate"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.10",
+    "@types/bun": "^1.2.11",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
@@ -40,6 +40,7 @@
     "@ai-sdk/xai": "^1.2.15",
     "@mistralai/mistralai": "^1.6.0",
     "ai": "^4.3.10",
+    "bun": "^1.2.11",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.39.3",

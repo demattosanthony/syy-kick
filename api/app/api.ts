@@ -81,11 +81,7 @@ export default Router()
   .use("/organizations", auth, organizationRoutes)
   .use("/sites", auth, checkSub, sitesRoutes)
   .use("/projects", auth, checkSub, projectsRoutes)
-  .use(
-    "/workflows",
-    auth,
-    workflowRoutes
-  )
+  .use("/workflows", auth, workflowRoutes)
   .use("/tools", auth, toolsRoutes)
   .use("/knowledge-bases", auth, knowledgeBasesRoutes)
   .post(
