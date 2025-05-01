@@ -92,6 +92,11 @@ export function WorkflowStepCard({ step, duration }: WorkflowStepCardProps) {
   const agentName = step.workflowStep?.name;
   const model = step.workflowStep?.model;
 
+  const latestMessage =
+    step.messages && step.messages.length > 0
+      ? step.messages[step.messages.length - 1]
+      : null;
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -99,6 +104,7 @@ export function WorkflowStepCard({ step, duration }: WorkflowStepCardProps) {
           className={cn(
             "w-full shadow-md cursor-pointer hover:shadow-lg transition-shadow",
             isRunning && "border-blue-500 ring-1 ring-blue-500",
+            isRunning && "animate-border-pulse",
             isPending && "border-dashed"
           )}
         >
@@ -123,7 +129,7 @@ export function WorkflowStepCard({ step, duration }: WorkflowStepCardProps) {
               {step.workflowStep?.description ||
                 "Extract information from the input."}
             </p>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-4 text-sm mb-4">
               <div>
                 <p className="text-muted-foreground">Step</p>
                 <p className="font-medium">{agentName}</p>
@@ -139,6 +145,15 @@ export function WorkflowStepCard({ step, duration }: WorkflowStepCardProps) {
                 </p>
               </div>
             </div>
+            {latestMessage && latestMessage.text && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-xs text-muted-foreground mb-1">
+                  Latest Message:
+                </p>
+
+                <p className="text-sm p-2 rounded">{latestMessage.text}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </DialogTrigger>
