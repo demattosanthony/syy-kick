@@ -254,7 +254,7 @@ export const workflowTagRelations = relations(workflowTags, ({ one }) => ({
 export const workflowStepRelations = relations(
   workflowSteps,
   ({ many, one }) => ({
-    agents: one(agents, {
+    agent: one(agents, {
       fields: [workflowSteps.agentId],
       references: [agents.id],
     }),

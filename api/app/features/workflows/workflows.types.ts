@@ -2,6 +2,9 @@ import { FinishReason, LanguageModelUsage } from "ai";
 import { ArtifactEvent } from "./artifact-service";
 import { ToolName, ToolCall, ToolResult } from "../tools/tools.types";
 import { z } from "zod";
+import { InferSelectModel } from "drizzle-orm";
+import { workflows, workflowSteps } from "./workflows.schema";
+import { agents } from "./features/agents/agents.schema";
 
 export interface WorkflowStepFormSchema {
   fields: {
@@ -184,4 +187,10 @@ export type WorkflowCreateRequest = {
   name: string;
   description?: string;
   workflowSteps: Omit<WorkflowRunStep, "id">[];
+};
+
+export type WorkflowWithRelations = InferSelectModel<typeof workflows> & {
+  steps: (InferSelectModel<typeof workflowSteps> & {
+      agent: InferSelectModel<typeof agents> | null;
+  })[];
 };

@@ -23,7 +23,7 @@ interface FileUploadInputProps {
     id: string;
     title: string;
     description?: string;
-    acceptedFileTypes?: string;
+    acceptedFileTypes?: string | string[];
     required?: boolean;
     maxFileSize?: number;
   };
@@ -144,15 +144,16 @@ function FileUploadInput({
 
     // 1. Check Mime Type
     if (
-      input.acceptedFileTypes &&
-      !input.acceptedFileTypes
-        .split(",")
-        .some((type) => type.trim() === item.mimeType)
+      input.acceptedFileTypes
     ) {
-      toast.error(
-        `File type (${item.mimeType}) is not accepted for this input.`
-      );
-      return;
+      const acceptedFileTypes = Array.isArray(input.acceptedFileTypes) ? input.acceptedFileTypes : input.acceptedFileTypes ? [input.acceptedFileTypes] : [];
+      
+      if (!acceptedFileTypes.some((type) => type.trim() === item.mimeType)) {
+        toast.error(
+          `File type (${item.mimeType}) is not accepted for this input.`
+        );
+        return;
+      }
     }
 
     // 2. Validate Size (using item.size)
@@ -226,7 +227,7 @@ function FileUploadInput({
               openPicker({
                 mode: "files",
                 selectionMode: "single",
-                mimeTypes: input.acceptedFileTypes?.split(",") ?? [],
+                mimeTypes: Array.isArray(input.acceptedFileTypes) ? input.acceptedFileTypes : input.acceptedFileTypes ? [input.acceptedFileTypes] : [],
               });
             }}
             disabled={isMicrosoftPickerLoading}
@@ -261,7 +262,7 @@ function FileUploadInput({
           type="file"
           id={`file-input-${input.id}`}
           className="hidden"
-          accept={input.acceptedFileTypes}
+          accept={Array.isArray(input.acceptedFileTypes) ? input.acceptedFileTypes.join(",") : input.acceptedFileTypes}
           onChange={handleFileSelect}
         />
         <div className="text-center space-y-4">
@@ -293,11 +294,10 @@ function FileUploadInput({
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {file
-                    ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${
-                        file.type.includes("pdf")
-                          ? "PDF"
-                          : file.type.split("/")[1].toUpperCase()
-                      }`
+                    ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${file.type.includes("pdf")
+                      ? "PDF"
+                      : file.type.split("/")[1].toUpperCase()
+                    }`
                     : "or click to browse"}
                 </p>
                 {file && (
@@ -331,17 +331,15 @@ function FileUploadInput({
 
       {input.required && (
         <p
-          className={`text-xs mt-2 ${
-            file ? "text-muted-foreground" : "text-red-500"
-          }`}
+          className={`text-xs mt-2 ${file ? "text-muted-foreground" : "text-red-500"
+            }`}
         >
           {/* Adjust message based on file type */}
           {file
-            ? `✓ Required file ${
-                "source" in file && file.source === "project"
-                  ? "selected"
-                  : "uploaded"
-              }`
+            ? `✓ Required file ${"source" in file && file.source === "project"
+              ? "selected"
+              : "uploaded"
+            }`
             : "* Required"}
         </p>
       )}

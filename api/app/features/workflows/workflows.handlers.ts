@@ -6,7 +6,8 @@ const workflowHandlers = {
   getAll: async (req: Request, res: Response) => {
     try {
       const orgWorkflows = await workflowsOps.getWorkflows({
-        orgId: req.workspace?.id as string,
+        orgId: req.workspace?.type === "organization" ? req.workspace?.id : undefined,
+        userId: req.workspace?.type === "personal" ? req.dbUser?.id : undefined,
       });
 
       res.json(orgWorkflows);
@@ -40,6 +41,12 @@ const workflowHandlers = {
         async (tx) => {
           const workflow = await workflowsOps.createWorkflow(req.dbUser!.id, name, description, tx);
           await workflowsOps.createWorkflowSteps(workflow.id, workflowSteps, tx);
+
+          if (req.workspace?.type === "organization") {
+            await workflowsOps.createWorkflowOrganizationRelation(workflow.id, req.workspace.id, tx);
+          } else {
+            await workflowsOps.createWorkflowUserRelation(workflow.id, req.dbUser!.id, tx);
+          }
         }
       );
 

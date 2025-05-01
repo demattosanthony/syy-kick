@@ -14,7 +14,9 @@ import db from "../../config/db";
 
 /** Types */
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { WorkflowRunStep } from "./workflows.types";
+import { WorkflowRunStep, WorkflowWithRelations } from "./workflows.types";
+import { workflowsUtils } from "./workflows.utils";
+
 
 export const workflowsOps = {
     getWorkflows: async ({
@@ -28,7 +30,7 @@ export const workflowsOps = {
             throw new Error("Either orgId or userId must be provided");
         }
 
-        const orgWorkflows = await db.query.workflows.findMany({
+        const orgWorkflows: WorkflowWithRelations[] = await db.query.workflows.findMany({
             where: or(
                 orgId
                     ? exists(
@@ -53,25 +55,38 @@ export const workflowsOps = {
                     )
                     : undefined
             ),
+            with: {
+                steps: {
+                    with: {
+                        agent: true,
+                    },
+                    orderBy: (steps, { asc }) => [asc(steps.createdAt)],
+                },
+            },
         });
 
-        return orgWorkflows;
+        return workflowsUtils.formatWorkflows(orgWorkflows);
     },
 
     getWorkflow: async (workflowId: string) => {
-        const workflow = await db.query.workflows.findFirst({
+        const workflow: WorkflowWithRelations | undefined = await db.query.workflows.findFirst({
             where: eq(workflows.id, workflowId),
             with: {
                 steps: {
                     with: {
-                        agents: true,
+                        agent: true,
                     },
                     orderBy: (steps, { asc }) => [asc(steps.createdAt)],
                 },
                 tags: true,
             },
         });
-        return workflow;
+
+        if (!workflow) {
+            throw new Error("Workflow not found");
+        }
+
+        return workflowsUtils.formatWorkflow(workflow);
     },
 
     createWorkflow: async (userId: string, name: string, description: string, tx: NodePgDatabase<typeof import('../../config/schema')>): Promise<typeof workflows.$inferSelect> => {
@@ -89,8 +104,8 @@ export const workflowsOps = {
 
         for (const step of steps) {
             const { id, ...stepData } = step;
-            
-            const values = step.agentId 
+
+            const values = step.agentId
                 ? {
                     workflowId,
                     parentStepId: previousStepId,
@@ -108,5 +123,19 @@ export const workflowsOps = {
 
             previousStepId = insertedStep.id;
         }
+    },
+
+    createWorkflowOrganizationRelation: async (workflowId: string, organizationId: string, tx: NodePgDatabase<typeof import('../../config/schema')>): Promise<void> => {
+        await tx.insert(workflowOrganizations).values({
+            workflowId,
+            organizationId,
+        });
+    },
+
+    createWorkflowUserRelation: async (workflowId: string, userId: string, tx: NodePgDatabase<typeof import('../../config/schema')>): Promise<void> => {
+        await tx.insert(workflowUsers).values({
+            workflowId,
+            userId,
+        });
     }
 };

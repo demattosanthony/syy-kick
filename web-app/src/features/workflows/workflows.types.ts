@@ -11,15 +11,20 @@ export interface Workflow {
   id: string;
   name: string;
   description: string;
-  inputs: {
+  steps: {
     id: string;
-    type: string;
-    title: string;
+    name: string;
     description: string;
-    acceptedFileTypes: string;
-    required: boolean;
+    instructions: string;
+    model: string;
+    activeTools: string[];
+    formSchema: WorkflowStepFormSchema | null;
+    parentStepId: string | null;
+    createdAt: string;
+    updatedAt: string;
   }[];
-  agents: Agent[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface WorkflowStepFormSchema {
@@ -32,7 +37,8 @@ export interface WorkflowStepFormSchema {
       // For previous steps outputs
       referenceType?: "previousStep" | "userInput";
       // For files
-      acceptedFileTypes?: string[];
+      acceptedFileTypes?: string | string[];
+      maxFileSize?: number;
       // For select
       options?: Array<{
         label: string;
