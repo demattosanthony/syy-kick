@@ -240,4 +240,11 @@ export const workflowsRunsHandlers = {
       }
     }
   },
+
+  getRuns: async (req: Request, res: Response) => {
+    const { workflowId } = req.params;
+
+    const runs = await workflowRunsOps.getWorkflowRuns(workflowId);
+    res.json(runs);
+  },
 };

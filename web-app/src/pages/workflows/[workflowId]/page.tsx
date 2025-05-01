@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Link } from "react-router";
 import { Slash } from "lucide-react";
+import { useMemo } from "react";
 
 export function WorkflowPage() {
   const { workflowId } = useParams<{
@@ -16,6 +17,18 @@ export function WorkflowPage() {
   }>();
 
   const { data: workflow, isLoading } = useWorkflowQuery(workflowId as string);
+
+  const workflowDetails = useMemo(() => {
+    // Temporary: make each steps' input after the first step be (referenceType: previousStep)
+    workflow?.steps.forEach((step, index) => {
+      Object.keys(step.formSchema?.fields || {}).forEach((field) => {
+        if (index > 0 && step.formSchema?.fields) {
+          step.formSchema.fields[field].referenceType = "previousStep";
+        }
+      });
+    });
+    return workflow;
+  }, [workflow]);
 
   return (
     <div className="h-screen w-full flex flex-col">
@@ -42,7 +55,7 @@ export function WorkflowPage() {
         </div>
         <WorkflowPageContent
           workflowId={workflowId as string}
-          workflow={workflow}
+          workflow={workflowDetails}
           isLoading={isLoading}
         />
       </div>
