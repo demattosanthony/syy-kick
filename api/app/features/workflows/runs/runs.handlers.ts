@@ -67,13 +67,35 @@ export const workflowsRunsHandlers = {
   },
 
   getRun: async (req: Request, res: Response) => {
-    const { workflowId, workflowRunId } = req.params;
+    try {
+      const { workflowId, workflowRunId } = req.params;
 
-    const workflowRun = await workflowRunsOps.getWorkflowRun(
-      workflowId,
-      workflowRunId
-    );
-    res.json(workflowRun);
+      if (!workflowId || !workflowRunId) {
+        res.status(400).json({ error: "Missing required parameters" });
+        return;
+      }
+
+      const workflowRun = await workflowRunsOps.getWorkflowRun(
+        workflowId,
+        workflowRunId
+      );
+
+      res.json(workflowRun);
+    } catch (error: any) {
+      console.error("Error getting workflow run:", error);
+
+      // Handle specific error types
+      if (error.message?.includes("Workflow run not found")) {
+        res.status(404).json({ error: "Workflow run not found" });
+        return;
+      }
+
+      // Generic error response
+      res.status(500).json({
+        error: "An error occurred while getting the workflow run",
+        message: error.message,
+      });
+    }
   },
 
   // Kick off a workflow run

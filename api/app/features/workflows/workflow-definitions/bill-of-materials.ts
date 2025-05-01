@@ -1,4 +1,4 @@
-import { WorkflowStep, Workflow } from "../workflows.types";
+import { Workflow, WorkflowStep } from "../workflows.schema";
 
 const pageExtractionAgent: WorkflowStep = {
   id: "page-extraction-agent",
@@ -23,6 +23,11 @@ const pageExtractionAgent: WorkflowStep = {
       },
     },
   },
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "bill-of-materials",
+  agentId: null,
+  parentStepId: null,
 };
 
 const tableExtractionAgent: WorkflowStep = {
@@ -38,6 +43,12 @@ Steps:
 The label you want to detect is "Bill of Materials table".`,
   model: "gemini-2.5-flash-preview",
   activeTools: ["object-detection"],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "bill-of-materials",
+  agentId: null,
+  parentStepId: null,
+  formSchema: null,
 };
 
 const tableToTextAgent: WorkflowStep = {
@@ -55,6 +66,12 @@ Steps:
 Make sure you process all of the images. Don't load any files that don't exist. Once you have processed all of the images you can stop.`,
   model: "gemini-2.5-flash-preview",
   activeTools: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "bill-of-materials",
+  agentId: null,
+  parentStepId: null,
+  formSchema: null,
 };
 
 const csvGenerationAgent: WorkflowStep = {
@@ -98,24 +115,35 @@ CSV Formatting Rules:
 Remember to use your expertise to provide the most accurate and comprehensive consolidated BOM possible based on the given information.`,
   model: "gpt-4.1",
   activeTools: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "bill-of-materials",
+  agentId: null,
+  parentStepId: null,
+  formSchema: null,
 };
+
+export const billOfMaterialsWorkflowSteps: WorkflowStep[] = [
+  pageExtractionAgent,
+  tableExtractionAgent,
+  tableToTextAgent,
+  csvGenerationAgent,
+];
+
+export const billOfMaterialsAuthOrgs = [
+  "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+  "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+  "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
+  "282c0c89-85d7-4b94-bd31-6e87b0637cc1",
+  "99b93b8d-0360-47af-bd74-0fd099f07c4e",
+];
 
 export const billOfMaterialsWorkflow: Workflow = {
   id: "bill-of-materials",
   name: "Bill of Materials Generator",
   description:
     "This workflow generates a Bill of Materials based on control system drawings.",
-  workflowSteps: [
-    pageExtractionAgent,
-    tableExtractionAgent,
-    tableToTextAgent,
-    csvGenerationAgent,
-  ],
-  authorizedOrganizationIds: [
-    "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
-    "a5b8c99d-9e1d-42a9-8473-b52471932d51",
-    "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
-    "282c0c89-85d7-4b94-bd31-6e87b0637cc1",
-    "99b93b8d-0360-47af-bd74-0fd099f07c4e",
-  ],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: null,
 };

@@ -24,11 +24,6 @@ const tools = [
     name: "Document OCR",
     description: "Extract text from a document and returns the text",
   },
-  {
-    id: "create-artifact",
-    name: "Create Artifact",
-    description: "Create an artifact from a file",
-  },
 ];
 
 router.get("/", (req, res) => {

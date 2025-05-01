@@ -1,17 +1,39 @@
 import db from "../app/config/db";
 import * as schema from "../app/config/schema";
+import { inArray } from "drizzle-orm";
 import {
   windowDoorScheduleGenWorkflow,
   windowDoorScheduleGenWorkflowSteps,
   windowAndDoorAuthOrgIds,
 } from "../app/features/workflows/workflow-definitions/window-door-schedule-gen";
+import {
+  billOfMaterialsWorkflowSteps,
+  billOfMaterialsAuthOrgs,
+  billOfMaterialsWorkflow,
+} from "../app/features/workflows/workflow-definitions/bill-of-materials";
+
+const CURRENT_WORKFLOW_INDEX = 1;
+
+const workflows = [windowDoorScheduleGenWorkflow, billOfMaterialsWorkflow];
+
+const workflowSteps = [
+  ...windowDoorScheduleGenWorkflowSteps,
+  ...billOfMaterialsWorkflowSteps,
+];
+
+const workflowAuthOrgs = [
+  ...windowAndDoorAuthOrgIds,
+  ...billOfMaterialsAuthOrgs,
+];
 
 async function seedWorkflow() {
   console.log("Starting workflow seeding...");
 
   try {
     await db.transaction(async (tx) => {
-      console.log(`Inserting workflow: ${windowDoorScheduleGenWorkflow.name}`);
+      console.log(
+        `Inserting workflow: ${workflows[CURRENT_WORKFLOW_INDEX].name}`
+      );
 
       // Insert the main workflow
       const [insertedWorkflow] = await tx
@@ -19,8 +41,8 @@ async function seedWorkflow() {
         .values({
           // Use the id from the definition if provided, otherwise generate a new one
           // id: windowDoorScheduleGenWorkflow.id, // Assuming the id in the definition is desired
-          name: windowDoorScheduleGenWorkflow.name,
-          description: windowDoorScheduleGenWorkflow.description,
+          name: workflows[CURRENT_WORKFLOW_INDEX].name,
+          description: workflows[CURRENT_WORKFLOW_INDEX].description,
           // createdBy: // Add createdBy user ID if available/needed
         })
         .returning();
@@ -35,7 +57,7 @@ async function seedWorkflow() {
       const definitionIdToDbIdMap: Record<string, string> = {}; // Assuming definition IDs are strings
 
       // Insert workflow steps
-      for (const step of windowDoorScheduleGenWorkflowSteps) {
+      for (const step of workflowSteps) {
         // Assuming step objects have a unique 'id' property used by parentStepId
         const stepDefinitionId = (step as any).id; // Cast or ensure 'id' exists on step type
         if (!stepDefinitionId) {
@@ -100,14 +122,31 @@ async function seedWorkflow() {
       console.log("Workflow steps inserted.");
 
       // Insert authorized organizations
-      if (windowAndDoorAuthOrgIds.length) {
+      if (workflowAuthOrgs.length) {
         console.log("Inserting authorized organizations...");
-        const orgValues = windowAndDoorAuthOrgIds.map((orgId) => ({
-          workflowId: workflowId,
-          organizationId: orgId,
-        }));
-        await tx.insert(schema.workflowOrganizations).values(orgValues);
-        console.log("Authorized organizations inserted.");
+
+        // Check if each org exists before inserting
+        const existingOrgs = await tx
+          .select({ id: schema.organizations.id })
+          .from(schema.organizations)
+          .where(inArray(schema.organizations.id, workflowAuthOrgs));
+
+        const existingOrgIds = existingOrgs.map((org) => org.id);
+
+        if (existingOrgIds.length) {
+          const orgValues = existingOrgIds.map((orgId) => ({
+            workflowId: workflowId,
+            organizationId: orgId,
+          }));
+          await tx.insert(schema.workflowOrganizations).values(orgValues);
+          console.log(
+            `Inserted ${existingOrgIds.length} authorized organizations.`
+          );
+        } else {
+          console.log(
+            "No matching organizations found in database to authorize."
+          );
+        }
       } else {
         console.log("No authorized organizations to insert.");
       }

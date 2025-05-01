@@ -1,8 +1,4 @@
-import { workflows, workflowSteps } from "../workflows.schema";
-import { InferSelectModel } from "drizzle-orm";
-
-type Workflow = InferSelectModel<typeof workflows>;
-type WorkflowStep = InferSelectModel<typeof workflowSteps>;
+import { Workflow, WorkflowStep } from "../workflows.schema";
 
 // PDF extraction agent to find pages with window and door schedules
 const pageExtractionAgent: WorkflowStep = {

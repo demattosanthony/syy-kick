@@ -1,4 +1,4 @@
-import { WorkflowStep, Workflow } from "../workflows.types";
+import { WorkflowStep, Workflow } from "../workflows.schema";
 
 const documentOcrStep: WorkflowStep = {
   id: "document-ocr-step",
@@ -17,6 +17,11 @@ const documentOcrStep: WorkflowStep = {
       },
     },
   },
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "rfp-evaluator",
+  agentId: null,
+  parentStepId: null,
 };
 
 const rfpEvaluatorStep: WorkflowStep = {
@@ -149,18 +154,32 @@ The CSV should include all sections:
 Do not make up or assume any information that is not present in the RFP document. Use "unknown" for any fields where information is not available.`,
   model: "gemini-2.5-flash-preview",
   activeTools: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "rfp-evaluator",
+  agentId: null,
+  parentStepId: null,
+  formSchema: null,
 };
+
+export const rfpWorkflowSteps: WorkflowStep[] = [
+  documentOcrStep,
+  rfpEvaluatorStep,
+];
+
+export const rfpWorkflowAuthOrgs: string[] = [
+  "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+  "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+  "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
+  "99b93b8d-0360-47af-bd74-0fd099f07c4e",
+];
 
 export const rfpEvalWorkflow: Workflow = {
   id: "rfp-evaluator",
   name: "RFP Evaluator",
   description:
     "This workflow evaluates a Request for Proposal (RFP) pdf file based on the setty criteria",
-  workflowSteps: [documentOcrStep, rfpEvaluatorStep],
-  authorizedOrganizationIds: [
-    "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
-    "a5b8c99d-9e1d-42a9-8473-b52471932d51",
-    "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
-    "99b93b8d-0360-47af-bd74-0fd099f07c4e",
-  ],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: null,
 };

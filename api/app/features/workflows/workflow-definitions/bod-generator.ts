@@ -1,4 +1,4 @@
-import { WorkflowStep, Workflow } from "../workflows.types";
+import { Workflow, WorkflowStep } from "../workflows.schema";
 
 const basisOfDesignAgent: WorkflowStep = {
   id: "basis-of-design-agent",
@@ -43,28 +43,30 @@ Make sure to save the BOD document as an artifact.`,
       },
     },
   },
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "basis-of-design-gen",
+  agentId: null,
+  parentStepId: null,
 };
+
+export const basisOfDesignGenWorkflowSteps: WorkflowStep[] = [
+  basisOfDesignAgent,
+];
+
+export const basisOfDesignGenAuthOrgs = [
+  "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+  "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+  "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
+  "99b93b8d-0360-47af-bd74-0fd099f07c4e",
+];
 
 export const basisOfDesignGenWorkflow: Workflow = {
   id: "basis-of-design-gen",
   name: "Basis of Design Generator",
   description:
     "This workflow generates a Basis of Design (BOD) document based engineering drawings.",
-  workflowSteps: [basisOfDesignAgent],
-  //   inputs: [
-  //     {
-  //       id: "engineering-drawings",
-  //       type: "file",
-  //       title: "Drawings and Plans",
-  //       description: "Upload the engineering drawings",
-  //       required: true,
-  //       acceptedFileTypes: ["application/pdf"],
-  //     },
-  //   ],
-  authorizedOrganizationIds: [
-    "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
-    "a5b8c99d-9e1d-42a9-8473-b52471932d51",
-    "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
-    "99b93b8d-0360-47af-bd74-0fd099f07c4e",
-  ],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: null,
 };

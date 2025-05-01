@@ -1,4 +1,4 @@
-import { WorkflowStep, Workflow } from "../workflows.types";
+import { WorkflowStep, Workflow } from "../workflows.schema";
 
 const pageExtractionAgent: WorkflowStep = {
   id: "page-extraction-agent",
@@ -21,7 +21,13 @@ const pageExtractionAgent: WorkflowStep = {
       },
     },
   },
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "equipment-serving-list",
+  agentId: null,
+  parentStepId: null,
 };
+
 const tableExtractionAgent: WorkflowStep = {
   id: "table-extraction-agent",
   name: "Table Extraction Agent",
@@ -35,6 +41,12 @@ Steps:
 The label you want to detect is "Mechanical Schedule table".`,
   model: "gemini-2.5-flash-preview",
   activeTools: ["object-detection"],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "equipment-serving-list",
+  agentId: null,
+  parentStepId: null,
+  formSchema: null,
 };
 
 const csvGenerationAgent: WorkflowStep = {
@@ -56,23 +68,34 @@ Example of correct CSV formatting:
 "DOAS-1","Roof","3rd Floor [NEEDS CONFIRMATION]"`,
   model: "gpt-4.1",
   activeTools: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "equipment-serving-list",
+  agentId: null,
+  parentStepId: null,
+  formSchema: null,
 };
+
+export const equipmentServingListWorkflowSteps: WorkflowStep[] = [
+  pageExtractionAgent,
+  tableExtractionAgent,
+  csvGenerationAgent,
+];
+
+export const equipmentServingListAuthOrgs = [
+  "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+  "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+  "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
+  "282c0c89-85d7-4b94-bd31-6e87b0637cc1",
+  "99b93b8d-0360-47af-bd74-0fd099f07c4e",
+];
 
 export const equipmentServingListWorkflow: Workflow = {
   id: "equipment-serving-list",
   name: "Equipment Serving List Generator",
   description:
     "This workflow generates a equipment serving list based on mechanical drawings.",
-  workflowSteps: [
-    pageExtractionAgent,
-    tableExtractionAgent,
-    csvGenerationAgent,
-  ],
-  authorizedOrganizationIds: [
-    "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
-    "a5b8c99d-9e1d-42a9-8473-b52471932d51",
-    "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
-    "282c0c89-85d7-4b94-bd31-6e87b0637cc1",
-    "99b93b8d-0360-47af-bd74-0fd099f07c4e",
-  ],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: null,
 };

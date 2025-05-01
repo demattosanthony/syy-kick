@@ -79,6 +79,7 @@ export const workflowSteps = pgTable("workflow_steps", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+export type WorkflowStep = typeof workflowSteps.$inferSelect;
 
 export const workflowFiles = pgTable("workflow_files", {
   id: uuid("id").primaryKey().defaultRandom(),
