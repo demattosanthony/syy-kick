@@ -101,6 +101,7 @@ export type WorkflowFileExecutionInputValue = {
   fileKey: string;
   mimeType: string;
   filename: string;
+  url?: string;
 };
 
 export type WorkflowNumberExecutionInputValue = {
@@ -139,6 +140,52 @@ export type WorkflowRunStepStatus =
   | "completed"
   | "failed";
 
+export type WorkflowRunStepMessageToolCall = {
+  id: string;
+  args: Record<string, any>;
+  createdAt: string;
+  result: Record<string, any>;
+  status: "pending" | "completed" | "failed";
+  toolCallId: string;
+  toolName: string;
+  updatedAt: string;
+};
+
+export type WorkflowRunStepMessage = {
+  createdAt: string;
+  updatedAt: string;
+  role: "system" | "user" | "assistant" | "tool";
+  text: string;
+  reasoning: string;
+  toolCalls: WorkflowRunStepMessageToolCall[];
+};
+
+export type WorkflowFile = {
+  id: string;
+  mimeType: string;
+  name: string;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkflowRunStepOutput = {
+  id: string;
+  file: WorkflowFile;
+};
+
+export type WorkflowRunStepInputs = {
+  id: string;
+  key: string;
+  label: string;
+  type: "text" | "file" | "number";
+  value:
+    | WorkflowTextExecutionInputValue
+    | WorkflowFileExecutionInputValue
+    | WorkflowNumberExecutionInputValue;
+  parentStepId?: string;
+};
+
 export type WorkflowRunStep = {
   id: string;
   workflowRunId: string;
@@ -147,6 +194,9 @@ export type WorkflowRunStep = {
   workflowStep: Step;
   createdAt: string;
   updatedAt: string;
+  messages: WorkflowRunStepMessage[];
+  inputsForStep: WorkflowRunStepInputs[];
+  outputs: WorkflowRunStepOutput[];
 };
 
 export type WorkflowRun = {
@@ -154,7 +204,7 @@ export type WorkflowRun = {
   workflowId: string;
   userId: string;
   status: WorkflowRunStatus;
-  inputValues?: WorkflowExecutionInputValues;
+  executionInputValues: WorkflowExecutionInputValues;
   steps: WorkflowRunStep[];
   createdAt: string;
   updatedAt: string;

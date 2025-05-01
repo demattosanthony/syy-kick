@@ -180,7 +180,11 @@ export class WorkflowRunner {
         for (const [filename, artifact] of Object.entries(
           previousStepArtifacts
         )) {
-          await currentStepArtifactService.saveArtifact(filename, artifact);
+          await currentStepArtifactService.saveArtifact(
+            filename,
+            artifact,
+            false
+          );
         }
 
         this.progressCallback({

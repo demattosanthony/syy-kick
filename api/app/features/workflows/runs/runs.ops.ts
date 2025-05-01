@@ -21,6 +21,7 @@ import {
 import db from "../../../config/db";
 import { WorkflowRunner } from "./workflows.runner";
 import EventEmitter from "events";
+import s3 from "../../../config/s3";
 
 // Event bus for workflow events
 export const eventBus = new EventEmitter();
@@ -35,7 +36,6 @@ export const workflowRunsOps = {
         ),
         with: {
           steps: {
-            orderBy: (steps, { asc }) => [asc(steps.createdAt)],
             with: {
               workflowStep: {
                 with: {
@@ -44,7 +44,17 @@ export const workflowRunsOps = {
               },
               inputsForStep: {
                 with: {
-                  value: true, // Need to get the file relation separately because its too deeply nested. Was giving errors
+                  value: true,
+                },
+              },
+              messages: {
+                with: {
+                  toolCalls: true,
+                },
+              },
+              outputs: {
+                with: {
+                  file: true,
                 },
               },
             },
@@ -61,115 +71,187 @@ export const workflowRunsOps = {
         throw new Error(`No steps found for workflow run: ${workflowRunId}`);
       }
 
-      // Fetch associated file data manually for file inputs in the first step
+      // Sort steps based on the original workflow step definition creation time
+      // This ensures the order matches the workflow definition, regardless of run step creation order.
+      if (workflowRun.steps) {
+        workflowRun.steps.sort((a, b) => {
+          const dateA = a.workflowStep?.createdAt
+            ? new Date(a.workflowStep.createdAt).getTime()
+            : 0;
+          const dateB = b.workflowStep?.createdAt
+            ? new Date(b.workflowStep.createdAt).getTime()
+            : 0;
+          return dateA - dateB;
+        });
+      }
+
+      // --- Generate Presigned URLs ---
+
+      // 1. For initial file inputs (first step only)
       const firstStepInputs = workflowRun.steps[0]?.inputsForStep;
       if (firstStepInputs) {
         for (const input of firstStepInputs) {
           if (input.type === "file" && input.value?.fileId) {
-            const fileRecord = await db.query.workflowFiles.findFirst({
-              where: eq(workflowFiles.id, input.value.fileId),
-            });
-            // Attach the fetched file data to the input's value object
-            // We'll cast input.value to any temporarily to add the file property
-            if (fileRecord) {
-              (input.value as any).file = fileRecord;
-            } else {
-              console.warn(
-                `File record not found for fileId: ${input.value.fileId} in workflow run ${workflowRunId}`
+            try {
+              const fileRecord = await db.query.workflowFiles.findFirst({
+                where: eq(workflowFiles.id, input.value.fileId),
+              });
+
+              if (fileRecord && fileRecord.fileKey) {
+                const url = s3.presign(fileRecord.fileKey, {
+                  expiresIn: 60 * 60, // 1 hour
+                  method: "GET",
+                });
+                (input.value as any).file = { ...fileRecord, url };
+              } else if (fileRecord) {
+                // File record exists but has no fileKey - cannot generate URL
+                console.warn(
+                  `File record ${fileRecord.id} found but missing fileKey for input in workflow run ${workflowRunId}, step ${workflowRun.steps[0].id}`
+                );
+                (input.value as any).file = fileRecord; // Attach without URL
+              } else {
+                console.warn(
+                  `File record not found for fileId: ${input.value.fileId} in workflow run ${workflowRunId}, step ${workflowRun.steps[0].id}`
+                );
+                (input.value as any).file = null; // Indicate missing file
+              }
+            } catch (error) {
+              console.error(
+                `Error fetching/presigning file ${input.value.fileId} for initial input:`,
+                error
               );
-              (input.value as any).file = null; // Indicate missing file
+              (input.value as any).file = null; // Indicate error state
             }
           }
         }
       }
 
-      // Prepare executionInputValues from the first step's inputs
-      const executionInputValues: WorkflowExecutionInputValues = {};
-      // Reuse firstStepInputs which now potentially has file data attached
-      // const firstStepInputs = workflowRun.steps[0]?.inputsForStep; // Already defined above
-
-      if (!firstStepInputs) {
-        throw new Error(
-          `No inputs found for first step of workflow run: ${workflowRunId}`
-        );
-      }
-
-      for (const input of firstStepInputs) {
-        if (!input.key) {
-          console.warn(`Input missing key in workflow run ${workflowRunId}`);
-          continue;
-        }
-
-        if (!input.value) {
-          console.warn(
-            `Input ${input.key} missing value in workflow run ${workflowRunId}`
-          );
-          continue;
-        }
-
-        try {
-          let valueObject: WorkflowExecutionInputValue["value"] | null = null;
-
-          switch (input.type) {
-            case "text":
-              if (typeof input.value.text !== "string") {
-                throw new Error(`Invalid text value for input ${input.key}`);
-              }
-              valueObject = { text: input.value.text };
-              break;
-
-            case "number":
-              if (typeof input.value.number !== "number") {
-                throw new Error(`Invalid number value for input ${input.key}`);
-              }
-              valueObject = { number: input.value.number };
-              break;
-
-            case "file":
-              // Access the manually attached file data
-              const fileData = (input.value as any)?.file;
-              if (!fileData) {
-                // Check if fileId existed but lookup failed
-                if (input.value?.fileId) {
+      // 2. For step outputs (all steps)
+      if (workflowRun.steps) {
+        for (const step of workflowRun.steps) {
+          if (step.outputs) {
+            for (const output of step.outputs) {
+              if (output.file && output.file.fileKey) {
+                try {
+                  const url = s3.presign(output.file.fileKey, {
+                    expiresIn: 60 * 60, // 1 hour
+                    method: "GET",
+                  });
+                  // Add the URL directly to the file object within the step output
+                  (output.file as any).url = url;
+                } catch (error) {
                   console.error(
-                    `File data missing for input ${input.key} despite having fileId ${input.value.fileId}. Lookup likely failed.`
+                    `Error generating presigned URL for output file ${output.file.fileKey} in step ${step.id}:`,
+                    error
                   );
-                  throw new Error(
-                    `Missing file data for input ${input.key} (lookup failed)`
-                  );
-                } else {
-                  throw new Error(
-                    `Missing file data for input ${input.key} (no fileId)`
-                  );
+                  // Optionally add an error indicator or leave the file object as is
                 }
               }
-              valueObject = {
-                fileKey: fileData.fileKey ?? "",
-                mimeType: fileData.mimeType ?? "",
-                filename: fileData.name ?? "",
-              };
-              break;
-
-            default:
-              throw new Error(
-                `Unsupported input type: ${input.type} for key: ${input.key}`
-              );
+            }
           }
-
-          if (valueObject) {
-            executionInputValues[input.key] = {
-              type: input.type as "text" | "file" | "number",
-              label: input.label ?? "",
-              value: valueObject,
-            };
-          }
-        } catch (error) {
-          console.error(`Error processing input ${input.key}:`, error);
-          // Skip this input but continue processing others
-          continue;
         }
       }
 
+      // --- Prepare executionInputValues (initial inputs for the run) ---
+      const executionInputValues: WorkflowExecutionInputValues = {};
+      // Reuse firstStepInputs which now potentially has the manually fetched file data + URL attached
+
+      if (!firstStepInputs) {
+        console.warn(
+          `No inputs found for the first step of workflow run: ${workflowRunId}. Proceeding without initial input values.`
+        );
+      } else {
+        for (const input of firstStepInputs) {
+          if (!input.key) {
+            console.warn(
+              `Input missing key in first step of workflow run ${workflowRunId}`
+            );
+            continue;
+          }
+
+          if (!input.value) {
+            console.warn(
+              `Input ${input.key} missing value in first step of workflow run ${workflowRunId}`
+            );
+            continue;
+          }
+
+          try {
+            let valueObject: WorkflowExecutionInputValue["value"] | null = null;
+
+            switch (input.type) {
+              case "text":
+                if (
+                  input.value.text === null ||
+                  input.value.text === undefined
+                ) {
+                  // Allow empty strings, but treat null/undefined as missing/invalid
+                  throw new Error(
+                    `Invalid or missing text value for input ${input.key}`
+                  );
+                }
+                valueObject = { text: input.value.text };
+                break;
+
+              case "number":
+                if (
+                  input.value.number === null ||
+                  input.value.number === undefined
+                ) {
+                  throw new Error(
+                    `Invalid or missing number value for input ${input.key}`
+                  );
+                }
+                valueObject = { number: input.value.number };
+                break;
+
+              case "file":
+                // Access the manually attached file data (which now includes presignedUrl)
+                const fileData = (input.value as any)?.file;
+                if (!fileData) {
+                  // This means the manual fetch/presign step above failed or file was not found
+                  console.error(
+                    `File data (including presigned URL) missing for input ${input.key}. Check previous logs.`
+                  );
+                  throw new Error(
+                    `Missing file data/URL for input ${input.key}`
+                  );
+                }
+                // Include the presigned URL in the value object for executionInputValues
+                valueObject = {
+                  fileKey: fileData.fileKey ?? "",
+                  mimeType: fileData.mimeType ?? "",
+                  filename: fileData.name ?? "",
+                  url: fileData.url, // Add the URL here
+                };
+                break;
+
+              default:
+                console.warn(
+                  `Unsupported input type encountered: ${input.type} for key: ${input.key} in workflow run ${workflowRunId}`
+                );
+                continue; // Skip unsupported types
+            }
+
+            if (valueObject) {
+              executionInputValues[input.key] = {
+                type: input.type as "text" | "file" | "number",
+                label: input.label ?? "",
+                value: valueObject,
+              };
+            }
+          } catch (error) {
+            console.error(
+              `Error processing initial input ${input.key} for workflow run ${workflowRunId}:`,
+              error
+            );
+            continue;
+          }
+        }
+      }
+
+      // The workflowRun object now contains steps with outputs having presigned URLs
+      // The executionInputValues object contains formatted initial inputs with presigned URLs
       return {
         ...workflowRun,
         executionInputValues,

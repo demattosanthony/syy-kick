@@ -30,7 +30,11 @@ export class ArtifactService {
    * @param filename The unique identifier for the artifact.
    * @param artifact The artifact data (bytes and MIME type).
    */
-  async saveArtifact(filename: string, artifact: ArtifactData): Promise<void> {
+  async saveArtifact(
+    filename: string,
+    artifact: ArtifactData,
+    triggerEvent: boolean = true
+  ): Promise<void> {
     const fileKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`;
     await s3
       .file(fileKey, {
@@ -38,14 +42,16 @@ export class ArtifactService {
       })
       .write(artifact.data);
     console.log(`Artifact '${filename}' saved, with file key: ${fileKey}`);
-    this.onEvent?.({
-      type: "created",
-      filename,
-      fileKey,
-      mimeType: artifact.mimeType,
-      stepId: this.workflowStepId,
-      ts: Date.now(),
-    });
+    if (triggerEvent) {
+      this.onEvent?.({
+        type: "created",
+        filename,
+        fileKey,
+        mimeType: artifact.mimeType,
+        stepId: this.workflowStepId,
+        ts: Date.now(),
+      });
+    }
   }
 
   /**

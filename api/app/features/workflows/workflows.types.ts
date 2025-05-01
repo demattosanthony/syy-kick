@@ -34,6 +34,7 @@ export type WorkflowFileExecutionInputValue = {
   fileKey: string;
   mimeType: string;
   filename: string;
+  url?: string;
 };
 
 export type WorkflowNumberExecutionInputValue = {
@@ -61,6 +62,7 @@ export const WorkflowFileExecutionInputValueSchema = z.object({
   fileKey: z.string(),
   mimeType: z.string(),
   filename: z.string(),
+  url: z.string().optional(),
 });
 
 export const WorkflowNumberExecutionInputValueSchema = z.object({
@@ -191,6 +193,6 @@ export type WorkflowCreateRequest = {
 
 export type WorkflowWithRelations = InferSelectModel<typeof workflows> & {
   steps: (InferSelectModel<typeof workflowSteps> & {
-      agent: InferSelectModel<typeof agents> | null;
+    agent: InferSelectModel<typeof agents> | null;
   })[];
 };
