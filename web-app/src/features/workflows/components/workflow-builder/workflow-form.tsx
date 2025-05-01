@@ -148,7 +148,10 @@ const WorkflowForm = () => {
         </div>
 
         <div className="space-y-2">
-          <Label className="flex items-center gap-2">Description</Label>
+          <Label className="flex items-center gap-2">
+            Description
+            <span className="text-destructive">*</span>
+          </Label>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}

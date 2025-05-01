@@ -243,7 +243,13 @@ There is an artifact service that stores and retrieves artifacts. You can use th
 You can use load artifact to load an type of file into your context that you are then able to process and understand.
 
 You creation of artifacts is limited to text-based artifacts, but you can load and analyze any type of file.
-</artifacts_info>`,
+</artifacts_info>
+
+
+<current_date>
+${new Date().toISOString()}
+</current_date>
+`,
             },
             {
               role: "user",
@@ -292,11 +298,13 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
               currentStepArtifactService,
               this.progressCallback
             ) as GenerateTextOnStepFinishCallback<ToolSet>,
-            providerOptions: {
-              anthropic: {
-                thinking: { type: "enabled", budgetTokens: 12000 },
-              } satisfies AnthropicProviderOptions,
-            },
+            providerOptions: step.model.includes("claude-3.7-sonnet")
+              ? {
+                  anthropic: {
+                    thinking: { type: "enabled", budgetTokens: 12000 },
+                  } satisfies AnthropicProviderOptions,
+                }
+              : undefined,
           });
 
           // Get the final artifact state after the agent ran

@@ -308,10 +308,7 @@ const WorkflowStep = ({
             </div>
 
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                Description
-                {isCustomAgent && <span className="text-destructive">*</span>}
-              </Label>
+              <Label className="flex items-center gap-2">Description</Label>
               <Textarea
                 value={step.description}
                 onChange={(e) =>
@@ -341,7 +338,8 @@ const WorkflowStep = ({
                 }
                 placeholder="Enter step instructions"
                 className={cn(
-                  getFieldError(["instructions"]) && "border-destructive"
+                  getFieldError(["instructions"]) && "border-destructive",
+                  "min-h-[125px]"
                 )}
               />
               {getFieldError(["instructions"]) && (

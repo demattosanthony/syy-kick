@@ -475,7 +475,6 @@ export const workflowRunsOps = {
     const workflowRunner = new WorkflowRunner(workflowRun, async (update) => {
       try {
         // Send updates to the event bus
-        console.log("Emitting update:", update);
         eventBus.emit(workflowRun.workflowId, update);
 
         // Store the updates to the db
@@ -490,10 +489,6 @@ export const workflowRunsOps = {
         }
 
         if (update.type === "workflow_step_start") {
-          console.log("\n\n");
-          console.log("Updating workflow step status to running");
-          console.log(update.data);
-          console.log("\n\n");
           await db
             .update(workflowRunSteps)
             .set({

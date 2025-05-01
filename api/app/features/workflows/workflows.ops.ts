@@ -114,28 +114,41 @@ export const workflowsOps = {
     tx: NodePgDatabase<typeof import("../../config/schema")>
   ): Promise<void> => {
     let previousStepId: string | null = null;
+    let currentTimestamp = new Date();
 
     for (const step of steps) {
       const { id, ...stepData } = step;
 
+      const baseValues = {
+        workflowId,
+        parentStepId: previousStepId,
+        createdAt: currentTimestamp,
+        updatedAt: currentTimestamp,
+      };
+
       const values = step.agentId
         ? {
-            workflowId,
-            parentStepId: previousStepId,
+            ...baseValues,
             agentId: step.agentId,
           }
         : {
-            workflowId,
-            parentStepId: previousStepId,
+            ...baseValues,
             ...stepData,
           };
 
       const [insertedStep] = (await tx
         .insert(workflowSteps)
-        .values(values)
-        .returning()) as [typeof workflowSteps.$inferSelect];
+        .values(values as any)
+        .returning({ id: workflowSteps.id })) as [{ id: string }];
+
+      if (!insertedStep) {
+        throw new Error(
+          `Failed to insert workflow step ${(step as any).name || "(unknown name)"}`
+        );
+      }
 
       previousStepId = insertedStep.id;
+      currentTimestamp = new Date(currentTimestamp.getTime() + 1);
     }
   },
 
