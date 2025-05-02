@@ -42,18 +42,18 @@ export const WorkspaceProvider = ({
   const { data: user } = useMeQuery();
   const [workspaces, setWorkspaces] = React.useState<Workspace[]>([]);
 
+  console.log("activeWorkspace", activeWorkspace);
+
   // Function to update both client state and cookie using react-cookie
   const setActiveWorkspace = React.useCallback(
     (workspace: Workspace) => {
+      const isProduction = import.meta.env.NODE_ENV === "production";
       const cookieOptions = {
         path: "/",
         maxAge: 2147483647, // approximately 68 years
-        secure: true, // Set secure flag always for safety
+        secure: isProduction, // Set secure flag based on environment
         sameSite: "lax" as const, // Use lax explicitly typed
-        domain:
-          import.meta.env.NODE_ENV === "production"
-            ? ".syykick.com"
-            : undefined,
+        domain: isProduction ? ".syykick.com" : "localhost", // Set domain for production or localhost
       };
       // react-cookie handles stringifying objects automatically
       setCookie("activeWorkspace", workspace, cookieOptions);
