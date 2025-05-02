@@ -44,18 +44,16 @@ export const WorkspaceProvider = ({
   // Function to update both client state and cookie using react-cookie
   const setActiveWorkspace = React.useCallback((workspace: Workspace) => {
     // Delete potential old cookies first
-    // Try deleting without domain (for localhost/development)
+    // Only need to delete the non-domain version now
     document.cookie = "activeWorkspace=; path=/; max-age=0; samesite=lax";
-    // Try deleting with the production domain
-    document.cookie =
-      "activeWorkspace=; path=/; max-age=0; domain=.syykick.com; samesite=lax";
 
     // Also set the cookie on the client side for immediate effect
     const encodedValue = encodeURIComponent(JSON.stringify(workspace));
-    document.cookie = `activeWorkspace=${encodedValue}; path=/; max-age=2147483647; secure${
+    // Always set without explicit domain, add secure in prod
+    document.cookie = `activeWorkspace=${encodedValue}; path=/; max-age=2147483647; samesite=lax${
       import.meta.env.NODE_ENV === "production"
-        ? "; domain=.syykick.com; samesite=lax"
-        : "; samesite=lax"
+        ? "; secure" // Keep secure in production
+        : ""
     }`;
 
     setActiveWorkspaceState(workspace);
