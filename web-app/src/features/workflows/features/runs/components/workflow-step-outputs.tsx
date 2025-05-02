@@ -1,11 +1,13 @@
-import { FileText, Sheet } from "lucide-react";
-import PdfThumbnail from "@/features/chat/messages/components/pdf-thumbnail";
+import { FileText } from "lucide-react";
 import { WorkflowRunStepOutput } from "../../../workflows.types";
 import msWordLogo from "@/assets/logos/ms-word.svg";
 import excelLogo from "@/assets/logos/excel.svg";
 import pptxLogo from "@/assets/logos/pptx.svg";
 import pdfLogo from "@/assets/logos/pdf.png";
 import { cn } from "@/lib/utils";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkDocx from "remark-docx";
 
 interface WorkflowStepOutputsProps {
   outputs: WorkflowRunStepOutput[];
@@ -28,6 +30,52 @@ export function WorkflowStepOutputs({
     return null;
   }
 
+  const handleFileClick = async (
+    event: React.MouseEvent<HTMLDivElement>,
+    url: string,
+    fileName: string,
+    mimeType: string
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (mimeType === "text/markdown") {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const markdownText = await response.text();
+
+        const processor = unified()
+          .use(remarkParse)
+          .use(remarkDocx as any, { output: "blob" } as any);
+
+        const doc = await processor.process(markdownText);
+        const blob = (await doc.result) as Blob;
+
+        const docxFileName =
+          fileName.replace(/\.(md|markdown)$/i, ".docx") || "document.docx";
+
+        // Create a download link and trigger it
+        const downloadLink = document.createElement("a");
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = docxFileName;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(downloadLink.href);
+      } catch (error) {
+        console.error("Error processing markdown file:", error);
+        alert(
+          "Failed to convert Markdown to DOCX. Please check the console for details."
+        );
+      }
+    } else {
+      window.open(url, "_blank");
+    }
+  };
+
   return (
     <div className="w-full flex flex-col">
       <div className="flex flex-wrap gap-4 p-4 rounded-md bg-background/50">
@@ -49,16 +97,15 @@ export function WorkflowStepOutputs({
           const isPlainText = mimeType === "text/plain";
 
           return (
-            <div className="flex flex-col gap-1 w-32">
-              <a
-                key={id}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
+            <div key={id} className="flex flex-col gap-1 w-32">
+              <div
                 className="block w-28 h-28 border rounded-lg overflow-hidden group relative hover:shadow-md transition-shadow bg-muted"
                 title={name}
               >
-                <div className="h-full flex items-center justify-center p-2">
+                <div
+                  className="h-full flex items-center justify-center p-2"
+                  onClick={(e) => handleFileClick(e, url, name, mimeType)}
+                >
                   {isPdf ? (
                     <img src={pdfLogo} alt="PDF logo" className="w-16 h-16" />
                   ) : isImage ? (
@@ -73,11 +120,18 @@ export function WorkflowStepOutputs({
                       alt="Excel logo"
                       className="w-16 h-16"
                     />
-                  ) : isWord || isMarkdown ? (
+                  ) : isWord ? (
                     <img
                       src={msWordLogo}
                       alt="Word logo"
                       className="w-16 h-16"
+                    />
+                  ) : isMarkdown ? (
+                    <img
+                      src={msWordLogo}
+                      alt="Download Markdown as DOCX"
+                      title={`Download ${name} as DOCX`}
+                      className="w-16 h-16 cursor-pointer"
                     />
                   ) : isPpt ? (
                     <img
@@ -91,7 +145,7 @@ export function WorkflowStepOutputs({
                     <FileText className="w-16 h-16 text-muted-foreground" />
                   )}
                 </div>
-              </a>
+              </div>
               <p
                 className={cn(
                   "text-xs text-center w-full",

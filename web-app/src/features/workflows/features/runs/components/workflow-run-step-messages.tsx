@@ -1,27 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import {
-  WorkflowRunStep,
-  WorkflowRunStepMessage,
-  WorkflowRunStepMessageToolCall,
-} from "@/features/workflows/workflows.types";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { WorkflowRunStepMessage } from "@/features/workflows/workflows.types";
 import React, { useState } from "react";
 import { ThinkingDropdown } from "@/features/chat/messages/components";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-interface WorkflowStepCardProps {
-  step: WorkflowRunStep;
-  duration: string | null;
-}
-
-// Define a new component to display messages and tool calls
 export const StepMessagesDisplay: React.FC<{
   messages: WorkflowRunStepMessage[];
 }> = ({ messages }) => {
@@ -147,80 +129,3 @@ export const StepMessagesDisplay: React.FC<{
     </div>
   );
 };
-
-export function WorkflowStepCard({ step, duration }: WorkflowStepCardProps) {
-  const status = step.status;
-  const isRunning = status === "running";
-  const isPending = status === "pending";
-
-  const agentName = step.workflowStep?.name;
-  const model = step.workflowStep?.model;
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Card
-          className={cn(
-            "w-full shadow-md cursor-pointer hover:shadow-lg transition-shadow",
-            isRunning && "border-blue-500 ring-1 ring-blue-500",
-            isRunning && "animate-border-pulse",
-            isPending && "border-dashed"
-          )}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xl font-bold">
-              {step.workflowStep?.name || "Unnamed Step"}
-            </CardTitle>
-            <div
-              className={cn(
-                "flex items-center px-3 py-1 rounded-full text-sm font-medium",
-                status === "completed" && "bg-green-100 text-green-800",
-                status === "running" && "bg-blue-100 text-blue-800",
-                status === "failed" && "bg-red-100 text-red-800",
-                status === "pending" && "bg-yellow-100 text-yellow-800"
-              )}
-            >
-              {status === "running" && (
-                <span className="relative flex h-2 w-2 mr-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </span>
-              )}
-              {status}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              {step.workflowStep?.description ||
-                "Extract information from the input."}
-            </p>
-            <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-              <div>
-                <p className="text-muted-foreground">Step</p>
-                <p className="font-medium">{agentName}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Model</p>
-                <p className="font-medium">{model}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Duration</p>
-                <p className="font-medium">
-                  {duration ?? (isRunning || isPending ? "..." : "-")}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[60vw]">
-        <DialogHeader>
-          <DialogTitle>
-            Step Details: {step.workflowStep?.name || "Unnamed Step"}
-          </DialogTitle>
-        </DialogHeader>
-        <StepMessagesDisplay messages={step.messages} />
-      </DialogContent>
-    </Dialog>
-  );
-}

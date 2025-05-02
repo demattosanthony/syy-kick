@@ -22,7 +22,7 @@ import { useGetRunQuery } from "@/features/workflows/features/runs/api/get-run";
 import { WorkflowRunInputs } from "@/features/workflows/features/runs/components/workflow-run-inputs";
 import { WorkflowStepOutputs } from "@/features/workflows/features/runs/components/workflow-step-outputs";
 import { cn } from "@/lib/utils";
-import { StepMessagesDisplay } from "@/features/workflows/features/runs/components/workflow-step-card";
+import { StepMessagesDisplay } from "@/features/workflows/features/runs/components/workflow-run-step-messages";
 import { useState, useEffect, useRef, Fragment } from "react";
 import { WorkflowRunStep } from "@/features/workflows/workflows.types";
 import { Badge } from "@/components/ui/badge";
