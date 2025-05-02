@@ -78,22 +78,24 @@ export function onStepFinishCallback(
       if (toolCall.toolName === "load-artifact") {
         const fileName = toolCall.args.fileName;
         const artifact = await artifactService.loadArtifact(fileName);
-        if (artifact) {
-          let contentItem:
-            | { type: "text"; text: string }
-            | {
-                type: "image";
-                image: string;
-                mimeType: string;
-                filename: string;
-              }
-            | {
-                type: "file";
-                data: string;
-                mimeType: string;
-                filename: string;
-              };
 
+        let contentItem:
+          | { type: "text"; text: string }
+          | {
+              type: "image";
+              image: string;
+              mimeType: string;
+              filename: string;
+            }
+          | {
+              type: "file";
+              data: string;
+              mimeType: string;
+              filename: string;
+            }
+          | undefined = undefined;
+
+        if (artifact) {
           if (artifact.mimeType.startsWith("text/")) {
             contentItem = {
               type: "text" as const,
@@ -122,17 +124,24 @@ export function onStepFinishCallback(
                 type: "text" as const,
                 text: `Here is the markdown version of the artifact '${fileName}':\n\n${markdown}`,
               };
-            } else {
-              messagesArray.push({
-                role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: `Artifact '${fileName}' with mime type '${artifact.mimeType}' does not have a supported mime type.`,
-                  },
-                ],
-              });
             }
+          }
+
+          if (contentItem) {
+            messagesArray.push({
+              role: "user",
+              content: [contentItem],
+            });
+          } else {
+            messagesArray.push({
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Artifact '${fileName}' with mime type '${artifact.mimeType}' does not have a supported mime type.`,
+                },
+              ],
+            });
           }
         } else {
           messagesArray.push({
@@ -140,7 +149,7 @@ export function onStepFinishCallback(
             content: [
               {
                 type: "text",
-                text: `Artifact '${fileName}' does.`,
+                text: `Artifact '${fileName}' does not exist.`,
               },
             ],
           });
@@ -281,7 +290,6 @@ You creation of artifacts is limited to text-based artifacts, but you can load a
 
 Always create at least one artifact during your execution, using the pdf page extraction tool and doc ocr counts as creating an artifact.
 </artifacts_info>
-
 
 <current_date>
 ${new Date().toISOString()}
