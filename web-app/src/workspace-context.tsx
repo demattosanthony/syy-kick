@@ -23,12 +23,15 @@ export const WorkspaceProvider = ({
       const cookieValue = document.cookie
         .split("; ")
         .find((row) => row.startsWith("activeWorkspace="))
-        ?.split("=")[1];
+        ?.split("=")
+        .slice(1)
+        .join("="); // Join remaining parts in case value contains =
 
       if (!cookieValue) return null;
 
       // Decode the URI component before parsing
-      return JSON.parse(cookieValue);
+      const decodedValue = decodeURIComponent(cookieValue);
+      return JSON.parse(decodedValue);
     } catch (error) {
       console.error("Error parsing activeWorkspace cookie:", error);
       return null;
@@ -86,7 +89,7 @@ export const WorkspaceProvider = ({
         slug: personalOrg.slug,
         type: "personal",
         logo: personalOrg.logo,
-        sites: [],
+        sites: personalOrg.sites,
       };
 
       const organizationWorkspaces: Workspace[] = (
@@ -98,7 +101,7 @@ export const WorkspaceProvider = ({
         type: organization.type,
         logo: organization.logo,
         subscriptionStatus: organization.subscriptionStatus,
-        sites: [],
+        sites: organization.sites,
       }));
 
       setWorkspaces(organizationWorkspaces);
