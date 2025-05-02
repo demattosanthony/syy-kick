@@ -329,8 +329,6 @@ const threadsOps = {
       res.setHeader("Access-Control-Allow-Credentials", "true");
     }
 
-    res.flushHeaders();
-
     try {
       const { threadId } = req.params;
       const { model, maxTokens, instructions, message, workflowId } =
