@@ -24,6 +24,8 @@ declare global {
 
 // Auth middleware
 export const auth = async (req: any, res: any, next: any) => {
+  console.log("req.cookies", req.cookies);
+  console.log("req.headers.cookie", req.headers.cookie);
   try {
     const { id, rid } = req.cookies;
     if (!id || !rid) throw new Error();
