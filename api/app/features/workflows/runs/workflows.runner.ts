@@ -247,6 +247,8 @@ There is an artifact service that stores and retrieves artifacts. You can use th
 You can use load artifact to load an type of file into your context that you are then able to process and understand.
 
 You creation of artifacts is limited to text-based artifacts, but you can load and analyze any type of file.
+
+Always create at least one artifact during your execution.
 </artifacts_info>
 
 

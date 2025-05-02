@@ -48,15 +48,22 @@ export function WorkflowStepOutputs({
           const isMarkdown = mimeType === "text/markdown";
           const isPlainText = mimeType === "text/plain";
 
+          // Construct the appropriate URL
+          const downloadUrl = isMarkdown
+            ? `/api/files/${id}/download-as-pdf`
+            : url;
+          // Construct the title, potentially indicating PDF conversion for markdown
+          const linkTitle = isMarkdown ? `${name} (Download as PDF)` : name;
+
           return (
             <div className="flex flex-col gap-1 w-32">
               <a
                 key={id}
-                href={url}
+                href={downloadUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block w-28 h-28 border rounded overflow-hidden group relative hover:shadow-md transition-shadow bg-muted"
-                title={name}
+                className="block w-28 h-28 border rounded-lg overflow-hidden group relative hover:shadow-md transition-shadow bg-muted"
+                title={linkTitle}
               >
                 <div className="h-full flex items-center justify-center p-2">
                   {isPdf ? (
@@ -73,7 +80,13 @@ export function WorkflowStepOutputs({
                       alt="Excel logo"
                       className="w-16 h-16"
                     />
-                  ) : isWord || isMarkdown ? (
+                  ) : isMarkdown ? (
+                    <img
+                      src={pdfLogo}
+                      alt="Markdown as PDF logo"
+                      className="w-16 h-16"
+                    />
+                  ) : isWord ? (
                     <img
                       src={msWordLogo}
                       alt="Word logo"
@@ -94,7 +107,7 @@ export function WorkflowStepOutputs({
               </a>
               <p
                 className={cn(
-                  "text-xs text-center w-full px-2",
+                  "text-xs text-center w-full",
                   isLastStep ? "line-clamp-2" : "line-clamp-6"
                 )}
               >

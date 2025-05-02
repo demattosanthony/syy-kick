@@ -217,10 +217,7 @@ export default function WorkflowPageContent({
   return (
     <div className="max-w-2xl mx-auto flex flex-col items-center w-full">
       {/* Header Section */}
-      <div className="mb-12 text-center w-full flex flex-col items-center gap-4">
-        <div className="inline-block p-3 mb-6 w-fit rounded-full bg-accent">
-          <span className="text-4xl">📋</span>
-        </div>
+      <div className="my-12 text-center w-full flex flex-col items-center gap-4">
         {isLoading ? (
           <>
             <Skeleton className="w-xl h-10" />

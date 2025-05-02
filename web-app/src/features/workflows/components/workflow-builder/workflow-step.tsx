@@ -339,7 +339,7 @@ const WorkflowStep = ({
                 placeholder={`Your task is to, follow these steps..., do not forget to...`}
                 className={cn(
                   getFieldError(["instructions"]) && "border-destructive",
-                  "min-h-[165px]"
+                  "min-h-[125px]"
                 )}
               />
               {getFieldError(["instructions"]) && (

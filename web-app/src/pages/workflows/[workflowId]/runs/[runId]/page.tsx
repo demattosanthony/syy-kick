@@ -444,7 +444,7 @@ export function WorkflowRunPageDetails() {
                                 </div>
                                 <Button
                                   variant="link"
-                                  className="mt-1 px-0 text-xs h-auto"
+                                  className="mt-1 px-0 text-xs h-auto border-0"
                                   onClick={() =>
                                     setDescriptionExpandedStates((prev) => ({
                                       ...prev,

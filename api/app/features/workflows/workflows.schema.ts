@@ -149,10 +149,7 @@ export const workflowRunStepsInputsValue = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     workflowRunStepInputId: uuid("workflow_run_step_input_id").references(
-      () => workflowRunStepsInputs.id,
-      {
-        onDelete: "cascade",
-      }
+      () => workflowRunStepsInputs.id
     ),
     fileId: uuid("file_id").references(() => workflowFiles.id),
     text: text("text"),

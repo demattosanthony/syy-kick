@@ -45,10 +45,10 @@ export function WorkflowRunInputs({ inputs }: WorkflowRunInputsProps) {
                           href={fileValue.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block w-32 h-32 border rounded overflow-hidden group relative hover:shadow-md transition-shadow"
+                          className="block w-32 h-32 border rounded-lg overflow-hidden group relative hover:shadow-md transition-shadow"
                         >
                           {isPdf ? (
-                            <PdfThumbnail url={fileValue.url} width={96} />
+                            <PdfThumbnail url={fileValue.url} width={128} />
                           ) : isImage ? (
                             <img
                               src={fileValue.url}
@@ -69,7 +69,7 @@ export function WorkflowRunInputs({ inputs }: WorkflowRunInputsProps) {
                   } else {
                     // Fallback for files without a URL (e.g., just show filename or a disabled state)
                     return (
-                      <div className="w-24 h-24 border rounded overflow-hidden flex flex-col items-center justify-center bg-muted text-muted-foreground">
+                      <div className="w-24 h-24 border rounded-lg overflow-hidden flex flex-col items-center justify-center bg-muted text-muted-foreground">
                         <FileText className="w-8 h-8 mb-1" />
                         <span className="text-xs px-1 text-center break-all overflow-hidden max-h-8 leading-tight">
                           {fileValue.filename}
