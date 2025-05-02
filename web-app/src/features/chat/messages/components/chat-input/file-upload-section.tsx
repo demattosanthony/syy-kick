@@ -18,7 +18,7 @@ export function FileUploadSection({
   if (uploads.length === 0) return null;
 
   return (
-    <div className="flex gap-3 p-2 flex-wrap h-26 overflow-auto">
+    <div className="flex gap-3 p-2 flex-wrap h-28 overflow-auto">
       {uploads.map((upload, index) => {
         const extension = upload.file.name.split(".").pop()?.toLowerCase();
         let customIconSrc: string | null = null;

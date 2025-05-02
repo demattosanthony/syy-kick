@@ -23,7 +23,9 @@ export const WorkspaceProvider = ({
       const cookieValue = document.cookie
         .split("; ")
         .find((row) => row.startsWith("activeWorkspace="))
-        ?.split("=")[1];
+        ?.split("=")
+        .slice(1)
+        .join("="); // Join remaining parts in case value contains =
 
       if (!cookieValue) return null;
 
@@ -44,19 +46,25 @@ export const WorkspaceProvider = ({
   // Function to update both client state and cookie using react-cookie
   const setActiveWorkspace = React.useCallback((workspace: Workspace) => {
     // Delete potential old cookies first
-    // Try deleting without domain (for localhost/development)
     document.cookie = "activeWorkspace=; path=/; max-age=0; samesite=lax";
-    // Try deleting with the production domain
     document.cookie =
-      "activeWorkspace=; path=/; max-age=0; domain=.syykick.com; samesite=lax";
+      "activeWorkspace=; path=/; max-age=0; samesite=lax; domain=.syykick.com";
 
-    // Also set the cookie on the client side for immediate effect
-    const encodedValue = encodeURIComponent(JSON.stringify(workspace));
-    document.cookie = `activeWorkspace=${encodedValue}; path=/; max-age=2147483647; secure${
-      import.meta.env.NODE_ENV === "production"
-        ? "; domain=.syykick.com; samesite=lax"
-        : "; samesite=lax"
-    }`;
+    // Set the cookie on the client side for immediate effect
+    const encodedValue = JSON.stringify(workspace);
+    const cookieAttributes = [
+      `activeWorkspace=${encodedValue}`,
+      "path=/",
+      "max-age=2147483647", // Approximately 68 years
+      "samesite=lax",
+    ];
+
+    if (import.meta.env.PROD) {
+      cookieAttributes.push("secure");
+      cookieAttributes.push("domain=.syykick.com");
+    }
+
+    document.cookie = cookieAttributes.join("; ");
 
     setActiveWorkspaceState(workspace);
   }, []);
@@ -81,7 +89,7 @@ export const WorkspaceProvider = ({
         slug: personalOrg.slug,
         type: "personal",
         logo: personalOrg.logo,
-        sites: [],
+        sites: personalOrg.sites,
       };
 
       const organizationWorkspaces: Workspace[] = (
@@ -93,7 +101,7 @@ export const WorkspaceProvider = ({
         type: organization.type,
         logo: organization.logo,
         subscriptionStatus: organization.subscriptionStatus,
-        sites: [],
+        sites: organization.sites,
       }));
 
       setWorkspaces(organizationWorkspaces);
