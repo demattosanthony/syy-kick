@@ -226,10 +226,8 @@ export const handlers = {
       "redirect_uri",
       process.env.MICROSOFT_FILES_CALLBACK_URL!
     );
-    authUrl.searchParams.set(
-      "scope",
-      "openid offline_access Sites.Read.All"
-    );
+    authUrl.searchParams.set("scope", "openid offline_access Sites.Read.All");
+    authUrl.searchParams.set("prompt", "consent");
     authUrl.searchParams.set("state", state);
 
     console.log(authUrl.toString());
@@ -264,6 +262,7 @@ export const handlers = {
       res.redirect(
         `${stateEntry.redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${error_description}`
       );
+      return;
     }
 
     const { redirectUrl } = stateEntry;
