@@ -129,13 +129,21 @@ export type WorkflowStepStartData = {
   stepName: string;
 };
 
+export type WorkflowStepMessageToolCall = {
+  id: string;
+  toolName: ToolName;
+  args: Record<string, any>;
+  createdAt: string;
+  result: Record<string, any>;
+  status: "pending" | "completed" | "failed";
+};
+
 export type WorkflowStepMessage = {
   stepId: string;
   stepName: string;
   text: string;
   reasoning?: string;
-  toolCalls: ToolCall[];
-  toolResults: ToolResult[];
+  toolCalls: WorkflowStepMessageToolCall[];
   finishReason: FinishReason;
   usage: LanguageModelUsage;
   role: "system" | "user" | "assistant" | "tool";

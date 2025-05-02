@@ -499,8 +499,7 @@ export const workflowRunsOps = {
         }
 
         if (update.type === "workflow_step_message") {
-          const { stepId, text, toolCalls, toolResults, role, reasoning } =
-            update.data;
+          const { stepId, text, toolCalls, role, reasoning } = update.data;
           try {
             const [newMessage] = await db
               .insert(workflowRunStepMessages)
@@ -519,30 +518,13 @@ export const workflowRunsOps = {
                 await db.insert(workflowRunStepToolCalls).values({
                   workflowRunStepMessageId: newMessage.id,
                   toolName: toolCall.toolName,
-                  toolCallId: toolCall.toolCallId,
+                  toolCallId: toolCall.id,
                   args: toolCall.args,
-                  status: "pending",
+                  result: toolCall.result,
+                  status: toolCall.status,
                   createdAt: new Date(),
                   updatedAt: new Date(),
                 });
-              }
-            }
-
-            if (toolResults) {
-              for (const toolResult of toolResults) {
-                await db
-                  .update(workflowRunStepToolCalls)
-                  .set({
-                    result: toolResult.result,
-                    status: "completed",
-                    updatedAt: new Date(),
-                  })
-                  .where(
-                    eq(
-                      workflowRunStepToolCalls.toolCallId,
-                      toolResult.toolCallId
-                    )
-                  );
               }
             }
           } catch (error) {

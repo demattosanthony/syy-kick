@@ -99,7 +99,7 @@ export function WorkflowStepOutputs({
           return (
             <div key={id} className="flex flex-col gap-1 w-32">
               <div
-                className="block w-28 h-28 border rounded-lg overflow-hidden group relative hover:shadow-md transition-shadow bg-muted"
+                className="block w-28 h-28 border rounded-lg overflow-hidden group relative hover:shadow-md transition-shadow bg-muted cursor-pointer"
                 title={name}
               >
                 <div

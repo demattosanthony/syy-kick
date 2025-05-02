@@ -14,12 +14,13 @@ import {
   WorkflowRunStep,
   WorkflowTextExecutionInputValue,
   WorkflowNumberExecutionInputValue,
+  WorkflowStepMessageToolCall,
 } from "../workflows.types";
 import { ArtifactData, ArtifactService } from "../artifact-service";
 import { createToolSet } from "../../tools/tools.registry";
 import { MODELS } from "../../models";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
-import { ToolSet, ToolCall, ToolResult } from "../../tools/tools.types";
+import { ToolSet } from "../../tools/tools.types";
 import s3 from "../../../config/s3";
 import { markitdown, markitdownMimeTypes } from "../../../doc-processor-v2";
 
@@ -43,14 +44,28 @@ export function onStepFinishCallback(
     text,
     usage,
   }: Parameters<GenerateTextOnStepFinishCallback<ToolSet>>[0]) => {
+    // Create the tool call objects
+    const formattedToolCalls: WorkflowStepMessageToolCall[] = toolCalls.map(
+      (toolCall) => ({
+        id: toolCall.toolCallId,
+        toolName: toolCall.toolName,
+        args: toolCall.args,
+        createdAt: new Date().toISOString(),
+        result:
+          toolResults.find(
+            (result) => result.toolCallId === toolCall.toolCallId
+          ) ?? {},
+        status: "completed",
+      })
+    );
+
     progressCallback({
       type: "workflow_step_message",
       data: {
         stepId: step.id,
         stepName: step.name,
         text,
-        toolCalls: toolCalls as ToolCall[],
-        toolResults: toolResults as ToolResult[],
+        toolCalls: formattedToolCalls,
         finishReason: finishReason,
         usage,
         role: "assistant",
