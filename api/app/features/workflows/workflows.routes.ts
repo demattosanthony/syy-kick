@@ -14,4 +14,5 @@ export default Router()
   .use("/agents", agentsRouter)
   .get("/:id", workflowHandlers.getById)
   .put("/:id", workflowHandlers.update)
+  .delete("/:id", workflowHandlers.delete)
   .use("/:workflowId/runs", runsRouter);

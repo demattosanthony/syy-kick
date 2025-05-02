@@ -960,6 +960,17 @@ class WorkflowsApi extends ApiRequest {
     }
   }
 
+  async deleteWorkflow(workflowId: string): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/workflows/${workflowId}`,
+        "DELETE"
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async createRun(data: WorkflowRunRequest): Promise<{
     id: string;
   }> {

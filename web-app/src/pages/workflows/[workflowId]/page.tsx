@@ -1,4 +1,7 @@
-import { useWorkflowQuery } from "@/features/workflows/api";
+import {
+  useDeleteWorkflowMutation,
+  useWorkflowQuery,
+} from "@/features/workflows/api";
 import { WorkflowPageContent } from "@/features/workflows/components";
 import { useParams } from "react-router";
 import {
@@ -8,16 +11,36 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Link } from "react-router";
-import { PencilIcon, Slash } from "lucide-react";
+import { Loader2, PencilIcon, Slash, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router";
 
 export function WorkflowPage() {
+  const navigate = useNavigate();
   const { workflowId } = useParams<{
     workflowId: string;
   }>();
 
   const { data: workflow, isLoading } = useWorkflowQuery(workflowId as string);
+  const { mutate: deleteWorkflow, isPending: isDeleting } =
+    useDeleteWorkflowMutation();
+
+  const handleDeleteWorkflow = () => {
+    deleteWorkflow(workflowId as string);
+    navigate("/workflows");
+  };
 
   const workflowDetails = useMemo(() => {
     // Temporary: make each steps' input after the first step be (referenceType: previousStep)
@@ -54,11 +77,42 @@ export function WorkflowPage() {
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
-            <Link to={`/workflows/${workflowId}/edit`}>
-              <Button variant="ghost" size={"icon"}>
-                <PencilIcon className="w-4 h-4" />
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link to={`/workflows/${workflowId}/edit`}>
+                <Button variant="ghost" size={"icon"}>
+                  <PencilIcon className="w-4 h-4" />
+                </Button>
+              </Link>
+              {isDeleting ? (
+                <Button variant="ghost" size={"icon"} disabled>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                </Button>
+              ) : (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size={"icon"}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently
+                        delete the workflow "{workflow?.name}" and all its
+                        history.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteWorkflow}>
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
         </div>
         <WorkflowPageContent

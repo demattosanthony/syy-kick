@@ -12,6 +12,9 @@ import {
   workflowRunStepsInputsValue,
   workflowRunStepsOutputs,
   type Workflow,
+  workflowRuns,
+  workflowFiles,
+  workflowRunStepMessagesDocuments,
 } from "./workflows.schema";
 
 /** Database */
@@ -306,5 +309,79 @@ export const workflowsOps = {
       workflowId,
       userId,
     });
+  },
+
+  deleteWorkflow: async (
+    workflowId: string,
+    tx: NodePgDatabase<typeof import("../../config/schema")>
+  ): Promise<void> => {
+    // 1. Find associated workflowRuns
+    const runsToDelete = await tx
+      .select({ id: workflowRuns.id })
+      .from(workflowRuns)
+      .where(eq(workflowRuns.workflowId, workflowId));
+
+    const runIdsToDelete = runsToDelete.map((run) => run.id);
+
+    if (runIdsToDelete.length > 0) {
+      // 2. Find associated workflowFiles using workflowRunIds
+      // We need file IDs to clear references *before* deleting files.
+      const filesToDelete = await tx
+        .select({ id: workflowFiles.id })
+        .from(workflowFiles)
+        .where(inArray(workflowFiles.workflowRunId, runIdsToDelete));
+
+      const fileIdsToDelete = filesToDelete.map((file) => file.id);
+
+      if (fileIdsToDelete.length > 0) {
+        // 3. Delete records referencing workflowFiles
+        // Delete values associated with inputs that might reference files
+        await tx
+          .delete(workflowRunStepsInputsValue)
+          .where(inArray(workflowRunStepsInputsValue.fileId, fileIdsToDelete));
+
+        // Delete outputs referencing files (might be redundant due to cascade, but safer)
+        await tx
+          .delete(workflowRunStepsOutputs)
+          .where(inArray(workflowRunStepsOutputs.fileId, fileIdsToDelete));
+
+        // Delete message documents referencing files (might be redundant due to cascade, but safer)
+        await tx
+          .delete(workflowRunStepMessagesDocuments)
+          .where(
+            inArray(workflowRunStepMessagesDocuments.fileId, fileIdsToDelete)
+          );
+      }
+      // 4. Now explicitly delete the workflowFiles themselves.
+      // This must happen *before* the cascade delete attempts from workflow/workflowRun/workflowRunStep deletions.
+      await tx
+        .delete(workflowFiles)
+        .where(inArray(workflowFiles.workflowRunId, runIdsToDelete));
+
+      // Note: Further cascading deletes for run steps, messages, tool calls etc.,
+      // linked to workflowRuns or workflowSteps will be handled by the final
+      // workflow deletion cascade defined in the schema. We've cleared the blockers.
+    }
+
+    // 5. Delete relations not handled by cascade (Organizations, Users)
+    // Note: Tags deletion would also be needed here if tags table existed and didn't cascade
+    await tx
+      .delete(workflowOrganizations)
+      .where(eq(workflowOrganizations.workflowId, workflowId));
+    await tx
+      .delete(workflowUsers)
+      .where(eq(workflowUsers.workflowId, workflowId));
+
+    // 6. Delete the workflow itself. Cascading deletes will handle related steps and runs.
+    const deleteResult = await tx
+      .delete(workflows)
+      .where(eq(workflows.id, workflowId));
+
+    // Check if any rows were affected to ensure the workflow existed
+    if (deleteResult.rowCount === 0) {
+      throw new Error(
+        `Workflow with ID ${workflowId} not found or already deleted.`
+      );
+    }
   },
 };

@@ -111,6 +111,31 @@ const workflowHandlers = {
       }
     }
   },
+
+  delete: async (req: Request, res: Response) => {
+    const { id: workflowId } = req.params;
+
+    if (!workflowId) {
+      res.status(400).json({ error: "Workflow ID is required" });
+      return;
+    }
+
+    try {
+      await db.transaction(async (tx) => {
+        await workflowsOps.deleteWorkflow(workflowId, tx);
+      });
+
+      // Send 204 No Content status code upon successful deletion
+      res.status(204).send();
+    } catch (error: any) {
+      console.error("Error deleting workflow:", error);
+      if (error.message.includes("not found")) {
+        res.status(404).json({ error: "Workflow not found" });
+      } else {
+        res.status(500).json({ error: "Failed to delete workflow" });
+      }
+    }
+  },
 };
 
 export default workflowHandlers;
