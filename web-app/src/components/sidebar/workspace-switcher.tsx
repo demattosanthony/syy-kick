@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,10 @@ import { Workspace } from "@/types/workspace";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { useNavigate } from "react-router";
 
+// Needed to comment out the sites and projects columns because of issue storing sites list in workspace context
+// When theres lots of sites, the cookie gets too big and we hit the limit and the cookie doesn't save or update
+// TODO: Resolve this issue
+
 export function WorkSpaceSwitcher({
   state,
 }: {
@@ -34,52 +38,52 @@ export function WorkSpaceSwitcher({
   const [hoveredWorkspaceId, setHoveredWorkspaceId] = useState<string | null>(
     null
   );
-  const [hoveredSiteId, setHoveredSiteId] = useState<string | null>(null);
+  //   const [hoveredSiteId, setHoveredSiteId] = useState<string | null>(null);
   const [workspaceSearch, setWorkspaceSearch] = useState("");
-  const [siteSearch, setSiteSearch] = useState("");
-  const [projectSearch, setProjectSearch] = useState("");
+  //   const [siteSearch, setSiteSearch] = useState("");
+  //   const [projectSearch, setProjectSearch] = useState("");
 
   const filteredWorkspaces = workspaces.filter((w) =>
     w.name.toLowerCase().includes(workspaceSearch.toLowerCase())
   );
 
-  const hoveredWorkspace = workspaces.find((w) => w.id === hoveredWorkspaceId);
-  const hoveredSite = hoveredWorkspace?.sites.find(
-    (s) => s.id === hoveredSiteId
-  );
+  //   const hoveredWorkspace = workspaces.find((w) => w.id === hoveredWorkspaceId);
+  //   const hoveredSite = hoveredWorkspace?.sites.find(
+  //     (s) => s.id === hoveredSiteId
+  //   );
 
-  const filteredSites = useMemo(() => {
-    if (!hoveredWorkspace) return [];
+  //   const filteredSites = useMemo(() => {
+  //     if (!hoveredWorkspace) return [];
 
-    return hoveredWorkspace?.sites.filter((s) =>
-      s.address?.toLowerCase().includes(siteSearch.toLowerCase())
-    );
-  }, [hoveredWorkspace, siteSearch]);
+  //     return hoveredWorkspace?.sites.filter((s) =>
+  //       s.address?.toLowerCase().includes(siteSearch.toLowerCase())
+  //     );
+  //   }, [hoveredWorkspace, siteSearch]);
 
-  const filteredProjects =
-    hoveredSite?.projects.filter((p) =>
-      p.name.toLowerCase().includes(projectSearch.toLowerCase())
-    ) || [];
+  //   const filteredProjects =
+  //     hoveredSite?.projects.filter((p) =>
+  //       p.name.toLowerCase().includes(projectSearch.toLowerCase())
+  //     ) || [];
 
-  const onProjectSelect = (projectId: string) => {
-    const project = hoveredSite?.projects.find((p) => p.id === projectId);
-    if (!hoveredSite || !hoveredWorkspace || !project) return;
+  //   const onProjectSelect = (projectId: string) => {
+  //     const project = hoveredSite?.projects.find((p) => p.id === projectId);
+  //     if (!hoveredSite || !hoveredWorkspace || !project) return;
 
-    setActiveWorkspace(hoveredWorkspace);
-    setOpen(false);
+  //     setActiveWorkspace(hoveredWorkspace);
+  //     setOpen(false);
 
-    navigate(`/projects/${projectId}`);
-  };
+  //     navigate(`/projects/${projectId}`);
+  //   };
 
-  const onSiteSelect = (siteId: string) => {
-    const site = hoveredWorkspace?.sites.find((s) => s.id === siteId);
-    if (!hoveredWorkspace || !site) return;
+  //   const onSiteSelect = (siteId: string) => {
+  //     const site = hoveredWorkspace?.sites.find((s) => s.id === siteId);
+  //     if (!hoveredWorkspace || !site) return;
 
-    setActiveWorkspace(hoveredWorkspace);
-    setOpen(false);
+  //     setActiveWorkspace(hoveredWorkspace);
+  //     setOpen(false);
 
-    navigate(`/projects?siteId=${siteId}`);
-  };
+  //     navigate(`/projects?siteId=${siteId}`);
+  //   };
 
   const handleCreateOrgComplete = async (org: {
     id: string;
@@ -144,7 +148,7 @@ export function WorkSpaceSwitcher({
                 )}
                 onMouseEnter={() => {
                   setHoveredWorkspaceId(w.id);
-                  setHoveredSiteId(null); // Important pour reset les projets
+                  //   setHoveredSiteId(null); // Important pour reset les projets
                 }}
                 onClick={() => handleWorkspaceChange(w)}
               >
@@ -180,8 +184,7 @@ export function WorkSpaceSwitcher({
           </div>
         </div>
 
-        {/* Sites Column */}
-        {hoveredWorkspace && (
+        {/* {hoveredWorkspace && (
           <div className="flex h-[400px] w-[240px] flex-col border-r">
             <div className="p-2">
               <div className="relative">
@@ -215,10 +218,9 @@ export function WorkSpaceSwitcher({
               )}
             </div>
           </div>
-        )}
+        )} */}
 
-        {/* Projects Column */}
-        {hoveredSite && (
+        {/* {hoveredSite && (
           <div className="flex h-[400px] w-[240px] flex-col">
             <div className="p-2">
               <div className="relative">
@@ -248,7 +250,7 @@ export function WorkSpaceSwitcher({
               )}
             </div>
           </div>
-        )}
+        )} */}
       </PopoverContent>
     </Popover>
   );
