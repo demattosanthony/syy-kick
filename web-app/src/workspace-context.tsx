@@ -2,7 +2,6 @@ import * as React from "react";
 import { type Workspace } from "@/types/workspace";
 import { useMeQuery } from "@/features/user/api";
 import { PermissionsProvider } from "@/features/permissions/context/permissions-context";
-import { useCookies } from "react-cookie";
 
 type WorkspaceContextType = {
   activeWorkspace: Workspace | null;
@@ -19,23 +18,23 @@ export const WorkspaceProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [cookies, setCookie] = useCookies(["activeWorkspace"]);
   const initialWorkspace = React.useMemo(() => {
-    const cookieValue = cookies.activeWorkspace;
-    if (!cookieValue) return null;
     try {
-      // react-cookie automatically handles URI encoding/decoding
-      return typeof cookieValue === "string"
-        ? JSON.parse(cookieValue)
-        : (cookieValue as Workspace);
+      const cookieValue = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("activeWorkspace="))
+        ?.split("=")[1];
+
+      if (!cookieValue) return null;
+
+      // Decode the URI component before parsing
+      const decodedValue = decodeURIComponent(cookieValue);
+      return JSON.parse(decodedValue);
     } catch (error) {
-      console.error("Error parsing workspace cookie:", error);
-      // Optionally clear the invalid cookie - react-cookie doesn't have a specific clear function,
-      // but setting it to expire immediately works. Or just let it be overwritten.
-      // setCookie('activeWorkspace', '', { path: '/', maxAge: 0 });
+      console.error("Error parsing activeWorkspace cookie:", error);
       return null;
     }
-  }, [cookies.activeWorkspace]);
+  }, []);
 
   const [activeWorkspace, setActiveWorkspaceState] =
     React.useState<Workspace | null>(initialWorkspace);
@@ -43,24 +42,24 @@ export const WorkspaceProvider = ({
   const [workspaces, setWorkspaces] = React.useState<Workspace[]>([]);
 
   // Function to update both client state and cookie using react-cookie
-  const setActiveWorkspace = React.useCallback(
-    (workspace: Workspace) => {
-      const cookieOptions = {
-        path: "/",
-        maxAge: 2147483647, // approximately 68 years
-        secure: true, // Set secure flag always for safety
-        sameSite: "lax" as const, // Use lax explicitly typed
-        domain:
-          import.meta.env.NODE_ENV === "production"
-            ? ".syykick.com"
-            : undefined,
-      };
-      // react-cookie handles stringifying objects automatically
-      setCookie("activeWorkspace", workspace, cookieOptions);
-      setActiveWorkspaceState(workspace);
-    },
-    [setCookie]
-  );
+  const setActiveWorkspace = React.useCallback((workspace: Workspace) => {
+    // Delete potential old cookies first
+    // Try deleting without domain (for localhost/development)
+    document.cookie = "activeWorkspace=; path=/; max-age=0; samesite=lax";
+    // Try deleting with the production domain
+    document.cookie =
+      "activeWorkspace=; path=/; max-age=0; domain=.syykick.com; samesite=lax";
+
+    // Also set the cookie on the client side for immediate effect
+    const encodedValue = encodeURIComponent(JSON.stringify(workspace));
+    document.cookie = `activeWorkspace=${encodedValue}; path=/; max-age=2147483647; secure${
+      import.meta.env.NODE_ENV === "production"
+        ? "; domain=.syykick.com; samesite=lax"
+        : "; samesite=lax"
+    }`;
+
+    setActiveWorkspaceState(workspace);
+  }, []);
 
   // Effect to synchronize with user data and validate/update cookie value
   React.useEffect(() => {
@@ -82,7 +81,7 @@ export const WorkspaceProvider = ({
         slug: personalOrg.slug,
         type: "personal",
         logo: personalOrg.logo,
-        sites: personalOrg.sites,
+        sites: [],
       };
 
       const organizationWorkspaces: Workspace[] = (
@@ -94,7 +93,7 @@ export const WorkspaceProvider = ({
         type: organization.type,
         logo: organization.logo,
         subscriptionStatus: organization.subscriptionStatus,
-        sites: organization.sites,
+        sites: [],
       }));
 
       setWorkspaces(organizationWorkspaces);

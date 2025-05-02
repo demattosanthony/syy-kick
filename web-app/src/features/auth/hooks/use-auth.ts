@@ -98,7 +98,7 @@ const useAuth = () => {
             logo: orgWorkspace.logo,
             subscriptionStatus: orgWorkspace.subscriptionStatus,
             slug: orgWorkspace.slug || "",
-            sites: orgWorkspace.sites || [],
+            sites: [],
           };
           setActiveWorkspace(workspace);
         }
