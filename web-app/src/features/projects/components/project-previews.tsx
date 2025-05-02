@@ -6,6 +6,7 @@ import { usePermissions } from "@/features/permissions/context";
 import { useWorkspace } from "@/workspace-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
 
 const ProjectPreviews = ({
   projects,
@@ -121,11 +122,7 @@ const ProjectPreviews = ({
                   ? activeWorkspace.id
                   : undefined
               }
-              trigger={
-                <button className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium">
-                  New Project
-                </button>
-              }
+              trigger={<Button>New Project</Button>}
             />
           </div>
         </div>
