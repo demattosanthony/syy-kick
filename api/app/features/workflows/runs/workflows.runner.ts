@@ -12,6 +12,8 @@ import {
   WorkflowFileExecutionInputValue,
   WorkflowProgressCallback,
   WorkflowRunStep,
+  WorkflowTextExecutionInputValue,
+  WorkflowNumberExecutionInputValue,
 } from "../workflows.types";
 import { ArtifactData, ArtifactService } from "../artifact-service";
 import { createToolSet } from "../../tools/tools.registry";
@@ -258,6 +260,34 @@ ${new Date().toISOString()}
               content: step.instructions,
             },
           ];
+
+          // Add non-file execution inputs as XML to the messages for the first step
+          if (step.id === this.workflowRun.workflowSteps[0].id) {
+            let executionInputXml = "<execution_inputs>\n";
+            let hasNonFileInputs = false;
+            for (const [inputId, inputValue] of Object.entries(
+              this.workflowRun.executionInputValues
+            )) {
+              if (inputValue.type !== "file") {
+                hasNonFileInputs = true;
+                executionInputXml += `  <input id="${inputId}" type="${inputValue.type}" label="${inputValue.label}">\n`;
+                if (inputValue.type === "text") {
+                  executionInputXml += `    <value>${(inputValue.value as WorkflowTextExecutionInputValue).text}</value>\n`;
+                } else if (inputValue.type === "number") {
+                  executionInputXml += `    <value>${(inputValue.value as WorkflowNumberExecutionInputValue).number}</value>\n`;
+                }
+                executionInputXml += `  </input>\n`;
+              }
+            }
+            executionInputXml += "</execution_inputs>";
+
+            if (hasNonFileInputs) {
+              messages.push({
+                role: "user",
+                content: [{ type: "text", text: executionInputXml }],
+              });
+            }
+          }
 
           // Add the current agent's artifacts state to the messages if any exist
           const artifacts = await currentStepArtifactService.getArtifacts();

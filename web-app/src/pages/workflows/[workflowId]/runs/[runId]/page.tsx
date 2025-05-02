@@ -231,15 +231,17 @@ export function WorkflowRunPageDetails() {
   const getConnectorClassName = (status: string | undefined) => {
     switch (status) {
       case "running":
-        // Simple pulse animation for running state
-        return "bg-blue-500 animate-pulse";
+        // Pulsing grey line for running state
+        return "bg-gray-400 animate-pulse";
+      // case "completed":
+      //   return "bg-green-500"; // Removed color
+      // case "failed":
+      //   return "bg-red-500"; // Removed color
       case "completed":
-        return "bg-green-500";
       case "failed":
-        return "bg-red-500";
       case "pending":
       default:
-        // Solid grey line for pending/default
+        // Solid grey line for other states
         return "bg-gray-400";
     }
   };
@@ -346,8 +348,7 @@ export function WorkflowRunPageDetails() {
                       value="inputs"
                       key="inputs"
                       className={cn(
-                        "border rounded-md bg-card shadow-sm overflow-hidden",
-                        run.steps && run.steps.length > 0 && "mb-4"
+                        "border rounded-md bg-card shadow-sm overflow-hidden"
                       )}
                     >
                       <AccordionTrigger className="hover:bg-muted/50 px-4 py-3 text-base font-medium transition-colors cursor-pointer data-[state=open]:border-b">
@@ -362,7 +363,7 @@ export function WorkflowRunPageDetails() {
                       </AccordionContent>
                     </AccordionItem>
                     {run.steps && run.steps.length > 0 && (
-                      <div className="flex justify-center h-4 mb-4">
+                      <div className="flex justify-center h-8">
                         <div
                           className={cn(
                             "w-px h-full",
@@ -391,8 +392,7 @@ export function WorkflowRunPageDetails() {
                       <AccordionItem
                         value={step.id}
                         className={cn(
-                          "border rounded-md bg-card shadow-sm overflow-hidden",
-                          !isLastStep && "mb-4"
+                          "border rounded-md bg-card shadow-sm overflow-hidden"
                         )}
                       >
                         <AccordionTrigger className="hover:bg-muted/50 px-4 py-3 text-base font-medium transition-colors cursor-pointer data-[state=open]:border-b">
@@ -420,9 +420,7 @@ export function WorkflowRunPageDetails() {
                             </h3>
                             <StepMessagesDisplay messages={step.messages} />
                           </div>
-                          <h3 className="text-sm font-semibold mb-2 ">
-                            Outputs
-                          </h3>
+                          <h3 className="text-sm font-semibold mb-2 ">Files</h3>
                           <WorkflowStepOutputs
                             outputs={step.outputs}
                             isLastStep={isLastStep}
@@ -431,7 +429,7 @@ export function WorkflowRunPageDetails() {
                       </AccordionItem>
 
                       {!isLastStep && (
-                        <div className="flex justify-center h-4 mb-4">
+                        <div className="flex justify-center h-8">
                           <div
                             className={cn(
                               "w-px h-full",

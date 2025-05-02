@@ -13,16 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import React, { useState } from "react";
-import {
-  MarkdownViewer,
-  ThinkingDropdown,
-} from "@/features/chat/messages/components";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "@/components/ui/accordion";
+import { ThinkingDropdown } from "@/features/chat/messages/components";
 import { Button } from "@/components/ui/button";
 
 interface WorkflowStepCardProps {
@@ -35,6 +26,16 @@ export const StepMessagesDisplay: React.FC<{
   messages: WorkflowRunStepMessage[];
 }> = ({ messages }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [expandedToolResults, setExpandedToolResults] = useState<
+    Record<string, boolean>
+  >({});
+
+  const toggleToolResultExpansion = (toolCallId: string) => {
+    setExpandedToolResults((prev) => ({
+      ...prev,
+      [toolCallId]: !prev[toolCallId],
+    }));
+  };
 
   if (!messages || messages.length === 0) {
     return (
@@ -93,11 +94,30 @@ export const StepMessagesDisplay: React.FC<{
                         <p className="text-xs text-muted-foreground mb-1">
                           Result ({toolCall.status}):
                         </p>
-                        <pre className="text-xs bg-background p-2 rounded-md overflow-x-auto whitespace-pre-wrap">
-                          {typeof toolCall.result === "string"
-                            ? toolCall.result
-                            : JSON.stringify(toolCall.result, null, 2)}
-                        </pre>
+                        <div
+                          className={cn(
+                            "relative overflow-hidden transition-all duration-300 ease-in-out",
+                            !expandedToolResults[toolCall.id] && "max-h-[100px]"
+                          )}
+                        >
+                          <pre className="text-xs bg-background p-2 rounded-md overflow-x-auto whitespace-pre-wrap">
+                            {typeof toolCall.result === "string"
+                              ? toolCall.result
+                              : JSON.stringify(toolCall.result, null, 2)}
+                          </pre>
+                          {!expandedToolResults[toolCall.id] && (
+                            <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-muted/50 to-transparent pointer-events-none" />
+                          )}
+                        </div>
+                        <Button
+                          variant="link"
+                          className="mt-1 px-0 text-xs border-0 h-auto"
+                          onClick={() => toggleToolResultExpansion(toolCall.id)}
+                        >
+                          {expandedToolResults[toolCall.id]
+                            ? "See Less"
+                            : "See More"}
+                        </Button>
                       </div>
                     )}
                     {toolCall.status === "failed" && !toolCall.result && (
@@ -115,7 +135,7 @@ export const StepMessagesDisplay: React.FC<{
           <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
         )}
       </div>
-      {messages.length > 1 && (
+      {messages.length > 0 && (
         <Button
           variant="link"
           className="mt-2 px-0 text-sm border-0"

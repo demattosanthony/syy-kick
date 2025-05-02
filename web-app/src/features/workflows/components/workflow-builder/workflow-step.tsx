@@ -336,10 +336,10 @@ const WorkflowStep = ({
                 onChange={(e) =>
                   handleFieldChange("instructions", e.target.value)
                 }
-                placeholder="Enter step instructions"
+                placeholder={`Your task is to, follow these steps..., do not forget to...`}
                 className={cn(
                   getFieldError(["instructions"]) && "border-destructive",
-                  "min-h-[125px]"
+                  "min-h-[165px]"
                 )}
               />
               {getFieldError(["instructions"]) && (
