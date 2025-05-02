@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import {
   WorkflowRunStep,
   WorkflowRunStepMessage,
+  WorkflowRunStepMessageToolCall,
 } from "@/features/workflows/workflows.types";
 import {
   Dialog,
@@ -11,8 +12,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import React from "react";
-import { MarkdownViewer } from "@/features/chat/messages/components";
+import React, { useState } from "react";
+import {
+  MarkdownViewer,
+  ThinkingDropdown,
+} from "@/features/chat/messages/components";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
 
 interface WorkflowStepCardProps {
   step: WorkflowRunStep;
@@ -20,67 +31,99 @@ interface WorkflowStepCardProps {
 }
 
 // Define a new component to display messages and tool calls
-const StepMessagesDisplay: React.FC<{ messages: WorkflowRunStepMessage[] }> = ({
-  messages,
-}) => {
+export const StepMessagesDisplay: React.FC<{
+  messages: WorkflowRunStepMessage[];
+}> = ({ messages }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   if (!messages || messages.length === 0) {
-    return <p>No messages available for this step.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        No messages recorded for this step.
+      </p>
+    );
   }
 
   return (
-    <div className="space-y-4 max-h-[60vh] overflow-y-auto p-1">
-      {messages.map((message, index) => (
-        <div key={index} className="p-3 border rounded-md bg-muted/20">
-          <p className="font-semibold capitalize text-sm mb-1">
-            {message.role}
-          </p>
-          {message.text && <p className="text-sm mb-2">{message.text}</p>}
-          {message.reasoning && (
-            <details className="text-xs text-muted-foreground mb-2">
-              <summary className="cursor-pointer">Reasoning</summary>
-              <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-x-auto">
-                {message.reasoning}
-              </pre>
-            </details>
-          )}
-          {message.toolCalls && message.toolCalls.length > 0 && (
-            <div className="mt-2 space-y-2">
-              <p className="text-sm font-medium">Tool Calls:</p>
-              {message.toolCalls.map((toolCall) => (
-                <div
-                  key={toolCall.id}
-                  className="p-2 border rounded bg-muted/50 text-xs"
-                >
-                  <p>
-                    <strong>Tool:</strong> {toolCall.toolName}
-                  </p>
-                  <p>
-                    <strong>Status:</strong> {toolCall.status}
-                  </p>
-                  <details className="mt-1">
-                    <summary className="cursor-pointer text-xs">
-                      Arguments
-                    </summary>
-                    <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-x-auto">
-                      {JSON.stringify(toolCall.args, null, 2)}
-                    </pre>
-                  </details>
-                  {toolCall.result && (
-                    <details className="mt-1">
-                      <summary className="cursor-pointer text-xs">
-                        Result
-                      </summary>
-                      <pre className="mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-x-auto">
-                        {JSON.stringify(toolCall.result, null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+    <div>
+      <div
+        className={cn(
+          "space-y-4 p-2 rounded-md transition-all duration-300 ease-in-out",
+          isExpanded ? "" : "max-h-[150px] overflow-hidden relative"
+        )}
+      >
+        {messages.map((message, index) => (
+          <React.Fragment key={index}>
+            {index > 0 && <hr className="my-4 border-border/50" />}
+
+            {message.reasoning && (
+              <ThinkingDropdown>
+                <p className="text-sm mb-2 whitespace-pre-wrap">
+                  {message.reasoning}
+                </p>
+              </ThinkingDropdown>
+            )}
+
+            {message.text && (
+              <p className="text-sm mb-2 whitespace-pre-wrap">{message.text}</p>
+            )}
+
+            {message.toolCalls && message.toolCalls.length > 0 && (
+              <div className=" space-y-2">
+                {message.toolCalls.map((toolCall) => (
+                  <div
+                    key={toolCall.id}
+                    className="my-2 p-2 border rounded-md bg-muted/50"
+                  >
+                    <p className="text-sm font-semibold mb-1">
+                      Tool: {toolCall.toolName}
+                    </p>
+                    {toolCall.args && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Arguments:
+                        </p>
+                        <pre className="text-xs bg-background p-2 rounded-md overflow-x-auto">
+                          {JSON.stringify(toolCall.args, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {toolCall.result && (
+                      <div className="mt-2">
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Result ({toolCall.status}):
+                        </p>
+                        <pre className="text-xs bg-background p-2 rounded-md overflow-x-auto whitespace-pre-wrap">
+                          {typeof toolCall.result === "string"
+                            ? toolCall.result
+                            : JSON.stringify(toolCall.result, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {toolCall.status === "failed" && !toolCall.result && (
+                      <p className="text-xs text-red-600 mt-1">
+                        Status: {toolCall.status}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </React.Fragment>
+        ))}
+        {!isExpanded && messages.length > 1 && (
+          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+        )}
+      </div>
+      {messages.length > 1 && (
+        <Button
+          variant="link"
+          className="mt-2 px-0 text-sm border-0"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          {isExpanded ? "See Less" : "See More"}
+        </Button>
+      )}
     </div>
   );
 };
@@ -92,11 +135,6 @@ export function WorkflowStepCard({ step, duration }: WorkflowStepCardProps) {
 
   const agentName = step.workflowStep?.name;
   const model = step.workflowStep?.model;
-
-  const latestMessage =
-    step.messages && step.messages.length > 0
-      ? step.messages[step.messages.length - 1]
-      : null;
 
   return (
     <Dialog>
@@ -152,14 +190,6 @@ export function WorkflowStepCard({ step, duration }: WorkflowStepCardProps) {
                 </p>
               </div>
             </div>
-            {latestMessage && latestMessage.text && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-xs text-muted-foreground mb-1">
-                  Latest Message:
-                </p>
-                <MarkdownViewer content={latestMessage.text} />
-              </div>
-            )}
           </CardContent>
         </Card>
       </DialogTrigger>

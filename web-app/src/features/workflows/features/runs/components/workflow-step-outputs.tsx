@@ -1,12 +1,21 @@
 import { FileText, Sheet } from "lucide-react";
 import PdfThumbnail from "@/features/chat/messages/components/pdf-thumbnail";
 import { WorkflowRunStepOutput } from "../../../workflows.types";
+import msWordLogo from "@/assets/logos/ms-word.svg";
+import excelLogo from "@/assets/logos/excel.svg";
+import pptxLogo from "@/assets/logos/pptx.svg";
+import pdfLogo from "@/assets/logos/pdf.png";
+import { cn } from "@/lib/utils";
 
 interface WorkflowStepOutputsProps {
   outputs: WorkflowRunStepOutput[];
+  isLastStep?: boolean;
 }
 
-export function WorkflowStepOutputs({ outputs }: WorkflowStepOutputsProps) {
+export function WorkflowStepOutputs({
+  outputs,
+  isLastStep,
+}: WorkflowStepOutputsProps) {
   if (!outputs || outputs.length === 0) {
     return null;
   }
@@ -20,49 +29,78 @@ export function WorkflowStepOutputs({ outputs }: WorkflowStepOutputsProps) {
   }
 
   return (
-    <div className="w-full flex flex-col items-center">
-      <p className="text-sm font-medium text-muted-foreground mb-2">Outputs</p>
-      <div className="flex flex-wrap justify-center gap-4 p-4 rounded-md bg-background/50">
+    <div className="w-full flex flex-col">
+      <div className="flex flex-wrap gap-4 p-4 rounded-md bg-background/50">
         {fileOutputs.map((output) => {
           const { id, name, mimeType, url } = output.file;
 
           const isPdf = mimeType?.startsWith("application/pdf");
           const isImage = mimeType?.startsWith("image/");
           const isCsv = mimeType === "text/csv";
+          const isWord =
+            mimeType ===
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+            mimeType === "application/msword";
+          const isPpt =
+            mimeType ===
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+            mimeType === "application/vnd.ms-powerpoint";
+          const isMarkdown = mimeType === "text/markdown";
+          const isPlainText = mimeType === "text/plain";
 
           return (
-            <a
-              key={id}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-32 h-32 border rounded overflow-hidden group relative hover:shadow-md transition-shadow bg-muted"
-              title={name}
-            >
-              {isPdf ? (
-                <PdfThumbnail url={url} width={96} />
-              ) : isImage ? (
-                <img
-                  src={url}
-                  alt={name}
-                  className="w-full h-full object-cover"
-                />
-              ) : isCsv ? (
-                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-1">
-                  <Sheet className="w-8 h-8 mb-1 flex-shrink-0" />
-                  <span className="text-xs text-center break-all overflow-hidden max-h-8 leading-tight">
-                    {name}
-                  </span>
+            <div className="flex flex-col gap-1 w-32">
+              <a
+                key={id}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-28 h-28 border rounded overflow-hidden group relative hover:shadow-md transition-shadow bg-muted"
+                title={name}
+              >
+                <div className="h-full flex items-center justify-center p-2">
+                  {isPdf ? (
+                    <img src={pdfLogo} alt="PDF logo" className="w-16 h-16" />
+                  ) : isImage ? (
+                    <img
+                      src={url}
+                      alt={name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : isCsv ? (
+                    <img
+                      src={excelLogo}
+                      alt="Excel logo"
+                      className="w-16 h-16"
+                    />
+                  ) : isWord || isMarkdown ? (
+                    <img
+                      src={msWordLogo}
+                      alt="Word logo"
+                      className="w-16 h-16"
+                    />
+                  ) : isPpt ? (
+                    <img
+                      src={pptxLogo}
+                      alt="PowerPoint logo"
+                      className="w-16 h-16"
+                    />
+                  ) : isPlainText ? (
+                    <FileText className="w-16 h-16 text-muted-foreground" />
+                  ) : (
+                    <FileText className="w-16 h-16 text-muted-foreground" />
+                  )}
                 </div>
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-1">
-                  <FileText className="w-8 h-8 mb-1 flex-shrink-0" />
-                  <span className="text-xs text-center break-all overflow-hidden max-h-8 leading-tight">
-                    {name}
-                  </span>
-                </div>
-              )}
-            </a>
+              </a>
+              <p
+                className={cn(
+                  "text-xs text-center w-full px-2",
+                  isLastStep ? "line-clamp-2" : "line-clamp-6"
+                )}
+              >
+                {name}
+              </p>
+            </div>
           );
         })}
       </div>

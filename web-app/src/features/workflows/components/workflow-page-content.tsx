@@ -282,26 +282,26 @@ export default function WorkflowPageContent({
                     </div>
                   )
               )}
-              <Button
-                className="w-full mt-6 py-7 text-lg font-medium transition-all hover:scale-[1.02]"
-                size="lg"
-                disabled={!areAllRequiredFieldsFilled()}
-                onClick={onSubmit}
-              >
-                {isCreatingRun || isTriggeringRun ? (
-                  <>
-                    <Loader className="animate-spin h-6 w-6 mr-3" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-6 w-6 mr-3" />
-                    {areAllRequiredFieldsFilled()
-                      ? "Submit and run"
-                      : "Fill in all required fields to continue"}
-                  </>
-                )}
-              </Button>
+              <div className="flex justify-center">
+                <Button
+                  className="mt-6 py-7 text-lg font-medium transition-all hover:scale-[1.02] px-12"
+                  size="lg"
+                  disabled={!areAllRequiredFieldsFilled()}
+                  onClick={onSubmit}
+                >
+                  {isCreatingRun || isTriggeringRun ? (
+                    <>
+                      <Loader className="animate-spin h-6 w-6 mr-3" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-6 w-6 mr-3" />
+                      {"Submit and run"}
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
