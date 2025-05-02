@@ -52,7 +52,7 @@ export const WorkspaceProvider = ({
     // Always set without explicit domain, add secure in prod
     document.cookie = `activeWorkspace=${encodedValue}; path=/; max-age=2147483647; samesite=lax${
       import.meta.env.NODE_ENV === "production"
-        ? "; secure" // Keep secure in production
+        ? "; secure; domain=.syykick.com;"
         : ""
     }`;
 
