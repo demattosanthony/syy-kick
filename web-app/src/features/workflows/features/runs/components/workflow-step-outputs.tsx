@@ -48,22 +48,15 @@ export function WorkflowStepOutputs({
           const isMarkdown = mimeType === "text/markdown";
           const isPlainText = mimeType === "text/plain";
 
-          // Construct the appropriate URL
-          const downloadUrl = isMarkdown
-            ? `/api/files/${id}/download-as-pdf`
-            : url;
-          // Construct the title, potentially indicating PDF conversion for markdown
-          const linkTitle = isMarkdown ? `${name} (Download as PDF)` : name;
-
           return (
             <div className="flex flex-col gap-1 w-32">
               <a
                 key={id}
-                href={downloadUrl}
+                href={url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-28 h-28 border rounded-lg overflow-hidden group relative hover:shadow-md transition-shadow bg-muted"
-                title={linkTitle}
+                title={name}
               >
                 <div className="h-full flex items-center justify-center p-2">
                   {isPdf ? (
@@ -80,13 +73,7 @@ export function WorkflowStepOutputs({
                       alt="Excel logo"
                       className="w-16 h-16"
                     />
-                  ) : isMarkdown ? (
-                    <img
-                      src={pdfLogo}
-                      alt="Markdown as PDF logo"
-                      className="w-16 h-16"
-                    />
-                  ) : isWord ? (
+                  ) : isWord || isMarkdown ? (
                     <img
                       src={msWordLogo}
                       alt="Word logo"
