@@ -49,6 +49,9 @@ export function WorkflowRunPageDetails() {
   });
 
   const [openItemId, setOpenItemId] = useState<string | undefined>(undefined);
+  const [descriptionExpandedStates, setDescriptionExpandedStates] = useState<
+    Record<string, boolean>
+  >({}); // State for all description expansions
   const previousStepsRef = useRef<WorkflowRunStep[] | undefined>(undefined);
   const inputsExist =
     run?.executionInputValues &&
@@ -386,6 +389,8 @@ export function WorkflowRunPageDetails() {
                   }`;
                   const isLastStep = index === run.steps.length - 1;
                   const nextStepStatus = run.steps[index + 1]?.status;
+                  const isDescriptionExpanded =
+                    !!descriptionExpandedStates[step.id]; // Get state for this step
 
                   return (
                     <Fragment key={step.id}>
@@ -397,7 +402,13 @@ export function WorkflowRunPageDetails() {
                       >
                         <AccordionTrigger className="hover:bg-muted/50 px-4 py-3 text-base font-medium transition-colors cursor-pointer data-[state=open]:border-b">
                           <div className="flex items-center gap-3 flex-1">
-                            {getStatusIcon(step.status)}
+                            {/* Special handling for first step: show running if step is pending but run is running */}
+                            {index === 0 &&
+                            step.status === "pending" &&
+                            run?.status === "running"
+                              ? getStatusIcon("running")
+                              : getStatusIcon(step.status)}
+
                             <span className="font-medium flex-1 text-left truncate text-lg">
                               {stepTitle}
                             </span>
@@ -414,6 +425,44 @@ export function WorkflowRunPageDetails() {
                               Step failed.
                             </div>
                           )}
+                          <div className="mb-4">
+                            <h3 className="text-sm font-semibold mb-2">
+                              Instructions
+                            </h3>
+                            {step.workflowStep?.instructions ? (
+                              <div>
+                                <div
+                                  className={cn(
+                                    "text-sm whitespace-pre-wrap p-2 rounded-md transition-all duration-300 ease-in-out relative overflow-hidden",
+                                    isDescriptionExpanded ? "" : "max-h-[75px]"
+                                  )}
+                                >
+                                  {step.workflowStep.instructions}
+                                  {!isDescriptionExpanded && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+                                  )}
+                                </div>
+                                <Button
+                                  variant="link"
+                                  className="mt-1 px-0 text-xs h-auto"
+                                  onClick={() =>
+                                    setDescriptionExpandedStates((prev) => ({
+                                      ...prev,
+                                      [step.id]: !prev[step.id],
+                                    }))
+                                  }
+                                >
+                                  {isDescriptionExpanded
+                                    ? "See Less"
+                                    : "See More"}
+                                </Button>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic">
+                                No instructions provided for this step.
+                              </p>
+                            )}
+                          </div>
                           <div className="mb-4">
                             <h3 className="text-sm font-semibold mb-2">
                               Messages
