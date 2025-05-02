@@ -41,6 +41,7 @@ export const workflowsOps = {
 
     const orgWorkflows: WorkflowWithRelations[] =
       await db.query.workflows.findMany({
+        orderBy: (workflows, { desc }) => [desc(workflows.createdAt)],
         where: or(
           orgId
             ? exists(

@@ -21,6 +21,7 @@ import { MODELS } from "../../models";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
 import { ToolSet, ToolCall, ToolResult } from "../../tools/tools.types";
 import s3 from "../../../config/s3";
+import { markitdown, markitdownMimeTypes } from "../../../doc-processor-v2";
 
 // Reusable onStepFinish callback
 // Mainly used to add a artifact to the messages after load-artifact tool is called
@@ -90,19 +91,34 @@ export function onStepFinishCallback(
               mimeType: artifact.mimeType,
               filename: fileName,
             };
-          } else {
+          } else if (artifact.mimeType.startsWith("application/pdf")) {
             contentItem = {
               type: "file" as const,
               data: Buffer.from(artifact.data).toString("base64"),
               mimeType: artifact.mimeType,
               filename: fileName,
             };
+          } else {
+            if (markitdownMimeTypes.includes(artifact.mimeType)) {
+              // Use markitdown to convert the file to markdown
+              const buffer = Buffer.from(artifact.data);
+              const markdown = await markitdown(buffer, fileName);
+              contentItem = {
+                type: "text" as const,
+                text: `Here is the markdown version of the artifact '${fileName}':\n\n${markdown}`,
+              };
+            } else {
+              messagesArray.push({
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: `Artifact '${fileName}' with mime type '${artifact.mimeType}' does not have a supported mime type.`,
+                  },
+                ],
+              });
+            }
           }
-
-          messagesArray.push({
-            role: "user",
-            content: [contentItem],
-          });
         } else {
           messagesArray.push({
             role: "user",
@@ -248,7 +264,7 @@ You can use load artifact to load an type of file into your context that you are
 
 You creation of artifacts is limited to text-based artifacts, but you can load and analyze any type of file.
 
-Always create at least one artifact during your execution.
+Always create at least one artifact during your execution, using the pdf page extraction tool and doc ocr counts as creating an artifact.
 </artifacts_info>
 
 
