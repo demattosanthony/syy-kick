@@ -24,8 +24,6 @@ declare global {
 
 // Auth middleware
 export const auth = async (req: any, res: any, next: any) => {
-  console.log("req.cookies", req.cookies);
-  console.log("req.headers.cookie", req.headers.cookie);
   try {
     const { id, rid } = req.cookies;
     if (!id || !rid) throw new Error();
@@ -38,18 +36,9 @@ export const auth = async (req: any, res: any, next: any) => {
     }
 
     // Check the workspace
-    let workspace: Workspace | null = null;
-    if (req.cookies?.activeWorkspace) {
-      try {
-        const decodedValue = decodeURIComponent(req.cookies.activeWorkspace);
-        workspace = JSON.parse(decodedValue);
-      } catch (error) {
-        console.error("Error parsing activeWorkspace cookie:", error);
-        // Optionally clear the invalid cookie
-        res.clearCookie("activeWorkspace", { path: "/" });
-        // Consider also clearing domain-specific cookie if needed
-      }
-    }
+    const workspace: Workspace = req.cookies?.activeWorkspace
+      ? JSON.parse(req.cookies.activeWorkspace)
+      : null;
     req.workspace = workspace;
 
     console.log("workspace", workspace);

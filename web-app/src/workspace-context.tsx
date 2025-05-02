@@ -28,8 +28,7 @@ export const WorkspaceProvider = ({
       if (!cookieValue) return null;
 
       // Decode the URI component before parsing
-      const decodedValue = decodeURIComponent(cookieValue);
-      return JSON.parse(decodedValue);
+      return JSON.parse(cookieValue);
     } catch (error) {
       console.error("Error parsing activeWorkspace cookie:", error);
       return null;
@@ -49,7 +48,7 @@ export const WorkspaceProvider = ({
       "activeWorkspace=; path=/; max-age=0; samesite=lax; domain=.syykick.com";
 
     // Set the cookie on the client side for immediate effect
-    const encodedValue = encodeURIComponent(JSON.stringify(workspace));
+    const encodedValue = JSON.stringify(workspace);
     const cookieAttributes = [
       `activeWorkspace=${encodedValue}`,
       "path=/",
@@ -57,7 +56,7 @@ export const WorkspaceProvider = ({
       "samesite=lax",
     ];
 
-    if (import.meta.env.NODE_ENV === "production") {
+    if (import.meta.env.PROD) {
       cookieAttributes.push("secure");
       cookieAttributes.push("domain=.syykick.com");
     }
