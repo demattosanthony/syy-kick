@@ -36,10 +36,21 @@ export const auth = async (req: any, res: any, next: any) => {
     }
 
     // Check the workspace
-    const workspace: Workspace = req.cookies?.activeWorkspace
-      ? JSON.parse(req.cookies.activeWorkspace)
-      : null;
+    let workspace: Workspace | null = null;
+    if (req.cookies?.activeWorkspace) {
+      try {
+        const decodedValue = decodeURIComponent(req.cookies.activeWorkspace);
+        workspace = JSON.parse(decodedValue);
+      } catch (error) {
+        console.error("Error parsing activeWorkspace cookie:", error);
+        // Optionally clear the invalid cookie
+        res.clearCookie("activeWorkspace", { path: "/" });
+        // Consider also clearing domain-specific cookie if needed
+      }
+    }
     req.workspace = workspace;
+
+    console.log("workspace", workspace);
 
     next();
   } catch {
