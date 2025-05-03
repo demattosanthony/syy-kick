@@ -1,5 +1,6 @@
 /** Drizzle */
 import { eq, or, exists, inArray } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 /** Schemas */
 import {
@@ -14,7 +15,6 @@ import {
   type Workflow,
   workflowRuns,
   workflowFiles,
-  workflowRunStepMessagesDocuments,
 } from "./workflows.schema";
 
 /** Database */
@@ -186,80 +186,39 @@ export const workflowsOps = {
       .from(workflowSteps)
       .where(eq(workflowSteps.workflowId, workflowId));
 
-    // 2b. If there are workflowSteps to delete, handle cascading deletes manually.
+    // 2b. If there are workflowSteps to delete...
     if (workflowStepsToDelete.length > 0) {
       const workflowStepIdsToDelete = workflowStepsToDelete.map(
         (step) => step.id
       );
 
-      // Find associated workflowRunSteps.
-      const workflowRunStepsToDelete = await tx
-        .select({ id: workflowRunSteps.id })
-        .from(workflowRunSteps)
+      // Before deleting the workflowSteps, update referencing workflowRunSteps
+      // to set workflowStepId to NULL to prevent FK violation.
+      // The run steps retain the necessary step info via duplicated fields.
+      await tx
+        .update(workflowRunSteps)
+        .set({ workflowStepId: sql`null` })
         .where(
           inArray(workflowRunSteps.workflowStepId, workflowStepIdsToDelete)
         );
 
-      const workflowRunStepIdsToDelete = workflowRunStepsToDelete.map(
-        (runStep) => runStep.id
-      );
-
-      if (workflowRunStepIdsToDelete.length > 0) {
-        // Find associated workflowRunStepsInputs.
-        const workflowRunStepsInputsToDelete = await tx
-          .select({ id: workflowRunStepsInputs.id })
-          .from(workflowRunStepsInputs)
-          .where(
-            inArray(
-              workflowRunStepsInputs.workflowRunStepId,
-              workflowRunStepIdsToDelete
-            )
-          );
-
-        const workflowRunStepInputIdsToDelete =
-          workflowRunStepsInputsToDelete.map((input) => input.id);
-
-        // Delete associated workflowRunStepsInputsValue first.
-        if (workflowRunStepInputIdsToDelete.length > 0) {
-          await tx
-            .delete(workflowRunStepsInputsValue)
-            .where(
-              inArray(
-                workflowRunStepsInputsValue.workflowRunStepInputId,
-                workflowRunStepInputIdsToDelete
-              )
-            );
-        }
-
-        // Delete associated workflowRunStepsOutputs.
-        await tx
-          .delete(workflowRunStepsOutputs)
-          .where(
-            inArray(
-              workflowRunStepsOutputs.workflowRunStepId,
-              workflowRunStepIdsToDelete
-            )
-          );
-      }
-
-      // Now delete the workflowSteps (this will cascade delete workflowRunSteps and workflowFiles).
+      // Now delete the old workflowSteps.
       await tx
         .delete(workflowSteps)
         .where(inArray(workflowSteps.id, workflowStepIdsToDelete));
     }
 
-    // 3. Re-insert new steps with correct parent linking
+    // 3. Insert new steps
     let previousStepId: string | null = null;
     let currentTimestamp = new Date();
 
     for (const stepInput of steps) {
-      // Construct the object with a suitable type and filter undefined
       const valuesToInsert: Partial<WorkflowStep> = {
         workflowId,
         parentStepId: previousStepId,
         createdAt: currentTimestamp,
         updatedAt: currentTimestamp,
-        ...stepInput,
+        ...stepInput, // Spread the original input
       };
 
       // Remove undefined keys explicitly
@@ -283,7 +242,7 @@ export const workflowsOps = {
       }
 
       previousStepId = insertedStep.id;
-      currentTimestamp = new Date(currentTimestamp.getTime() + 1); // Ensure distinct timestamps for ordering
+      currentTimestamp = new Date(currentTimestamp.getTime() + 1);
     }
 
     return workflowId;

@@ -192,7 +192,13 @@ export type WorkflowRunStep = {
   workflowRunId: string;
   workflowStepId: string;
   status: WorkflowRunStepStatus;
-  workflowStep: Step;
+  name: string;
+  description: string;
+  instructions: string;
+  model: string;
+  activeTools: string[];
+  formSchema: WorkflowStepFormSchema | null;
+  parentStepId: string | null;
   createdAt: string;
   updatedAt: string;
   messages: WorkflowRunStepMessage[];

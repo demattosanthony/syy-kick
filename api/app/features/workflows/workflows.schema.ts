@@ -118,11 +118,14 @@ export const workflowRunSteps = pgTable("workflow_run_steps", {
   workflowRunId: uuid("workflow_run_id").references(() => workflowRuns.id, {
     onDelete: "cascade",
   }),
-  workflowStepId: uuid("workflow_step_id")
-    .references(() => workflowSteps.id, {
-      onDelete: "cascade",
-    })
-    .notNull(),
+  workflowStepId: uuid("workflow_step_id").references(() => workflowSteps.id),
+  // Duplicating fields from workflow step in case the step is updated
+  name: varchar("name", { length: 255 }),
+  description: text("description"),
+  instructions: text("instructions"),
+  model: varchar("model", { length: 255 }),
+  activeTools: text("active_tools").array(),
+  formSchema: jsonb("form_schema").$type<WorkflowStepFormSchema>(),
   status: text("status", { enum: WORKFLOW_RUN_STEP_STATUS }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

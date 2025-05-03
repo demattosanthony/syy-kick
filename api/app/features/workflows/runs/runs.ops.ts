@@ -279,7 +279,7 @@ export const workflowRunsOps = {
       }
 
       let newWorkflowRunId: string | undefined;
-      let createdRunSteps: { id: string; workflowStepId: string }[] = [];
+      let createdRunSteps: { id: string; workflowStepId: string | null }[] = [];
 
       // Use a transaction to ensure atomicity
       try {
@@ -306,6 +306,12 @@ export const workflowRunsOps = {
             workflowRunId: newWorkflowRunId!,
             workflowStepId: step.id,
             status: "pending" as const,
+            name: step.name,
+            description: step.description,
+            instructions: step.instructions,
+            model: step.model,
+            activeTools: step.activeTools,
+            formSchema: step.formSchema,
             createdAt: new Date(),
             updatedAt: new Date(),
           }));

@@ -116,19 +116,15 @@ export const workflowsRunsHandlers = {
 
       const workflowSteps: WorkflowRunStep[] = workflowRun.steps?.map(
         (step) => {
-          const agent = step.workflowStep?.agent;
           const stepData = step.workflowStep;
 
           // If theres an agent use the agent info
           // If not that means its a custom step and we use the step data
-          const name = agent?.name ?? stepData?.name ?? "";
-          const description = agent?.description ?? stepData?.description ?? "";
-          const instructions =
-            agent?.instructions ?? stepData?.instructions ?? "";
-          const model = agent?.model ?? stepData?.model ?? "";
-          const activeTools = (agent?.activeTools ??
-            stepData?.activeTools ??
-            []) as ToolName[];
+          const name = stepData?.name ?? "";
+          const description = stepData?.description ?? "";
+          const instructions = stepData?.instructions ?? "";
+          const model = stepData?.model ?? "";
+          const activeTools = (stepData?.activeTools ?? []) as ToolName[];
 
           return {
             id: step.id,

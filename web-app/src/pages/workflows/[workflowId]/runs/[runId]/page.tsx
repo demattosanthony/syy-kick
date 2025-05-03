@@ -384,9 +384,7 @@ export function WorkflowRunPageDetails() {
                     step.updatedAt,
                     step.status
                   );
-                  const stepTitle = `Step ${index + 1} - ${
-                    step.workflowStep?.name
-                  }`;
+                  const stepTitle = `Step ${index + 1} - ${step.name}`;
                   const isLastStep = index === run.steps.length - 1;
                   const nextStepStatus = run.steps[index + 1]?.status;
                   const isDescriptionExpanded =
@@ -429,7 +427,7 @@ export function WorkflowRunPageDetails() {
                             <h3 className="text-sm font-semibold mb-2">
                               Instructions
                             </h3>
-                            {step.workflowStep?.instructions ? (
+                            {step.instructions ? (
                               <div>
                                 <div
                                   className={cn(
@@ -437,7 +435,7 @@ export function WorkflowRunPageDetails() {
                                     isDescriptionExpanded ? "" : "max-h-[75px]"
                                   )}
                                 >
-                                  {step.workflowStep.instructions}
+                                  {step.instructions}
                                   {!isDescriptionExpanded && (
                                     <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent pointer-events-none" />
                                   )}

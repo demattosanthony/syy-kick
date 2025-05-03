@@ -1,0 +1,1 @@
+ALTER TABLE "workflow_run_steps" ALTER COLUMN "workflow_step_id" DROP NOT NULL;
