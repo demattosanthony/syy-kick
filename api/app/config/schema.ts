@@ -49,7 +49,7 @@ export {
   issuesRelations,
   issueCommentsRelations,
 } from "../features/projects/issues/issues.schema";
-export { agents } from "../features/workflows/features/agents/agents.schema";
+export { agents } from "../features/workflows/agents/agents.schema";
 export {
   workflows,
   workflowSteps,

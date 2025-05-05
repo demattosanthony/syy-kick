@@ -4,7 +4,7 @@ import { ToolName, ToolCall, ToolResult } from "../tools/tools.types";
 import { z } from "zod";
 import { InferSelectModel } from "drizzle-orm";
 import { workflows, workflowSteps, WorkflowStep } from "./workflows.schema";
-import { agents } from "./features/agents/agents.schema";
+import { agents } from "./agents/agents.schema";
 
 export interface WorkflowStepFormSchema {
   fields: {

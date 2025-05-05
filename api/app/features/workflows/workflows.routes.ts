@@ -5,7 +5,7 @@ import { Router } from "express";
 import workflowHandlers from "./workflows.handlers";
 
 /** Routers */
-import agentsRouter from "./features/agents/agents.routes";
+import agentsRouter from "./agents/agents.routes";
 import runsRouter from "./runs/runs.routes";
 
 export default Router()

@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 /** Schema */
-import { workflowSteps } from "../../workflows.schema";
+import { workflowSteps } from "../workflows.schema";
 
 export const agents = pgTable("agents", {
   id: uuid("id").primaryKey().defaultRandom(),
