@@ -13,9 +13,14 @@ import {
   TermsOfUsePage,
   JoinOrgPage,
   ThreadsPage,
+  ShareThreadPage,
   ThreadPage,
   WorkflowsPage,
   WorkflowPage,
+  CreateWorkflowPage,
+  EditWorkflowPage,
+  WorkflowRunPageDetails,
+  WorkflowRunsPage,
   SitesPage,
   UserSettings,
   ProjectsPage,
@@ -42,7 +47,6 @@ import ProjectPageLayout from "./components/layouts/project-layout";
 import { queryClient } from "./providers/tanstack-query-client-provider";
 import api from "./lib/api";
 import { KnowledgeBaseLayout } from "./components/layouts/knowledge-base-layout";
-import { ShareThreadPage } from "./pages/share/[threadId]/page";
 import { User } from "./types/user";
 
 // Define the new loader function for the root route
@@ -145,6 +149,13 @@ const router = createBrowserRouter([
           { path: "threads/:threadId", element: <ThreadPage /> },
           { path: "workflows", element: <WorkflowsPage /> },
           { path: "workflows/:workflowId", element: <WorkflowPage /> },
+          { path: "workflows/:workflowId/runs", element: <WorkflowRunsPage /> },
+          {
+            path: "workflows/:workflowId/runs/:runId",
+            element: <WorkflowRunPageDetails />,
+          },
+          { path: "workflows/:workflowId/edit", element: <EditWorkflowPage /> },
+          { path: "workflows/create", element: <CreateWorkflowPage /> },
           { path: "sites", element: <SitesPage /> },
           { path: "settings", element: <UserSettings /> },
           { path: "projects", element: <ProjectsPage /> },

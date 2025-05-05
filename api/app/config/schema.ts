@@ -49,6 +49,37 @@ export {
   issuesRelations,
   issueCommentsRelations,
 } from "../features/projects/issues/issues.schema";
+export { agents } from "../features/workflows/agents/agents.schema";
+export {
+  workflows,
+  workflowSteps,
+  workflowFiles,
+  workflowRuns,
+  workflowRunSteps,
+  workflowRunStepsInputs,
+  workflowRunStepsOutputs,
+  workflowRunStepMessages,
+  workflowRunStepToolCalls,
+  workflowRunStepMessagesDocuments,
+  workflowRunStepToolCallsRelations,
+  workflowRunStepMessagesDocumentsRelations,
+  workflowRunStepMessagesRelations,
+  workflowRunStepOutputsRelations,
+  workflowRunStepInputsRelations,
+  workflowRunStepRelations,
+  workflowRunRelations,
+  workflowRelations,
+  workflowStepRelations,
+  workflowOrganizationRelations,
+  workflowOrganizations,
+  workflowRunStepsInputsValue,
+  workflowTagRelations,
+  workflowTags,
+  workflowUserRelations,
+  workflowUsers,
+  workflowFileRelations,
+  workflowRunStepsInputsValueRelations,
+} from "../features/workflows/workflows.schema";
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),

@@ -334,11 +334,6 @@ const threadsOps = {
       const { model, maxTokens, instructions, message, workflowId } =
         req.body as z.infer<typeof inferenceSchema>;
 
-      // If its a inital workflow run, reroute to the workflow handler
-      if (workflowId) {
-        return await workflowHandlers.run(req, res);
-      }
-
       // 1) Store the user message
       if (message) {
         await threadsOps.createMessage(req.dbUser!.id, threadId, "user", {
