@@ -36,23 +36,27 @@ export class ArtifactService {
     artifact: ArtifactData,
     triggerEvent: boolean = true
   ): Promise<void> {
-    const fileKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`;
-    await s3
-      .file(fileKey, {
-        type: artifact.mimeType,
-      })
-      .write(artifact.data);
-    console.log(`Artifact '${filename}' saved, with file key: ${fileKey}`);
-    if (triggerEvent) {
-      this.onEvent?.({
-        type: "created",
-        filename,
-        fileKey,
-        mimeType: artifact.mimeType,
-        stepId: this.workflowStepId,
-        ts: Date.now(),
-        url: s3.presign(fileKey, { expiresIn: 60 * 60 * 24 }),
-      });
+    try {
+      const fileKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`;
+      await s3
+        .file(fileKey, {
+          type: artifact.mimeType,
+        })
+        .write(artifact.data);
+      if (triggerEvent) {
+        this.onEvent?.({
+          type: "created",
+          filename,
+          fileKey,
+          mimeType: artifact.mimeType,
+          stepId: this.workflowStepId,
+          ts: Date.now(),
+          url: s3.presign(fileKey, { expiresIn: 60 * 60 * 24 }),
+        });
+      }
+    } catch (error) {
+      console.error("Failed to save artifact:", error);
+      throw error;
     }
   }
 
@@ -62,21 +66,24 @@ export class ArtifactService {
    * @returns The artifact data if found, otherwise undefined.
    */
   async loadArtifact(filename: string): Promise<ArtifactData | undefined> {
-    const file = s3.file(
-      `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`
-    );
-    if (await file.exists()) {
-      console.log(`Artifact '${filename}' loaded.`);
-    } else {
-      console.log(`Artifact '${filename}' not found.`);
-      return undefined;
+    try {
+      const file = s3.file(
+        `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`
+      );
+      if (await file.exists()) {
+        const stat = await file.stat();
+        const data = await file.arrayBuffer();
+        return {
+          data: new Uint8Array(data),
+          mimeType: stat.type,
+        };
+      } else {
+        return undefined;
+      }
+    } catch (error) {
+      console.error("Failed to load artifact:", error);
+      throw error;
     }
-    const stat = await file.stat();
-    const data = await file.arrayBuffer();
-    return {
-      data: new Uint8Array(data),
-      mimeType: stat.type,
-    };
   }
 
   /**
@@ -84,14 +91,15 @@ export class ArtifactService {
    * @returns An array of artifact filenames.
    */
   async listArtifacts(): Promise<string[]> {
-    const keys = await s3.list({
-      prefix: `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/`,
-    });
-    console.log(
-      "Listing artifacts:",
-      keys.contents?.map((obj) => obj.key)
-    );
-    return keys.contents?.map((obj) => obj.key.split("/").pop() ?? "") ?? [];
+    try {
+      const keys = await s3.list({
+        prefix: `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/`,
+      });
+      return keys.contents?.map((obj) => obj.key.split("/").pop() ?? "") ?? [];
+    } catch (error) {
+      console.error("Failed to list artifacts:", error);
+      throw error;
+    }
   }
 
   /**
@@ -100,24 +108,32 @@ export class ArtifactService {
    * @returns True if the artifact was deleted, false if it wasn't found.
    */
   async deleteArtifact(filename: string): Promise<boolean> {
-    await s3
-      .file(
-        `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`
-      )
-      .delete();
-    console.log(`Artifact '${filename}' deleted.`);
-    return true;
+    try {
+      await s3
+        .file(
+          `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`
+        )
+        .delete();
+      return true;
+    } catch (error) {
+      console.error("Failed to delete artifact:", error);
+      throw error;
+    }
   }
 
   /**
-   * Clears all artifacts from the in-memory storage.
+   * Clears all artifacts from S3
    */
   async clearArtifacts(): Promise<void> {
-    const keys = await this.listArtifacts();
-    for (const key of keys) {
-      await this.deleteArtifact(key);
+    try {
+      const keys = await this.listArtifacts();
+      for (const key of keys) {
+        await this.deleteArtifact(key);
+      }
+    } catch (error) {
+      console.error("Failed to clear artifacts:", error);
+      throw error;
     }
-    console.log("All artifacts cleared.");
   }
 
   /**
@@ -125,14 +141,54 @@ export class ArtifactService {
    * @returns An array of artifacts.
    */
   async getArtifacts(): Promise<Record<string, ArtifactData>> {
-    const keys = await this.listArtifacts();
-    const artifacts = await Promise.all(
-      keys.map(async (key) => {
-        const artifact = await this.loadArtifact(key);
-        return [key, artifact];
-      })
-    );
-    return Object.fromEntries(artifacts);
+    try {
+      const keys = await this.listArtifacts();
+      const artifacts = await Promise.all(
+        keys.map(async (key) => {
+          const artifact = await this.loadArtifact(key);
+          return [key, artifact];
+        })
+      );
+      return Object.fromEntries(artifacts);
+    } catch (error) {
+      console.error("Failed to get artifacts:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Copies an existing S3 object into the artifact storage for this step,
+   * effectively "adopting" it without re-uploading the data.
+   * @param sourceKey The full S3 key of the object to copy.
+   * @param targetFilename The desired filename for the artifact within this step.
+   * @param mimeType The MIME type of the object being copied.
+   */
+  async adoptS3Object(
+    sourceKey: string,
+    targetFilename: string,
+    mimeType: string
+  ): Promise<void> {
+    const targetKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${targetFilename}`;
+    try {
+      const sourceFile = s3.file(sourceKey);
+      if (!(await sourceFile.exists())) {
+        throw new Error(`Source object ${sourceKey} not found for adoption.`);
+      }
+      const data = await sourceFile.arrayBuffer();
+
+      const targetFile = s3.file(targetKey);
+      await targetFile.write(data, {
+        type: mimeType,
+      });
+
+      await sourceFile.delete();
+    } catch (error) {
+      console.error(
+        `Failed to adopt S3 object from ${sourceKey} to ${targetKey}:`,
+        error
+      );
+      throw error;
+    }
   }
 
   // --- Tool Creation Methods (now private inside the class) ---
@@ -228,32 +284,4 @@ export class ArtifactService {
       "create-artifact": this.createArtifactTool(),
     };
   }
-
-  //   /** Dump all artifacts to debug-artifacts folder */
-  //   async dumpArtifacts() {
-  //     const dir = `debug-artifacts/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}`;
-  //     // Ensure the directory exists (this might need a library or platform-specific API in a real scenario)
-  //     // For Bun, you might need to handle directory creation manually if Bun.write doesn't create parent dirs.
-  //     try {
-  //       // Basic check/creation - replace with more robust logic if needed
-  //       if (!existsSync(dir)) {
-  //         mkdirSync(dir, { recursive: true });
-  //       }
-  //     } catch (e) {
-  //       console.warn(`Could not ensure debug directory ${dir} exists:`, e);
-  //     }
-
-  //     const artifacts = await this.getArtifacts();
-  //     for (const [filename, artifact] of Object.entries(artifacts)) {
-  //       const filePath = `${dir}/${filename}`;
-  //       try {
-  //         await Bun.write(filePath, artifact.data);
-  //       } catch (e) {
-  //         console.error(
-  //           `Failed to write artifact ${filename} to ${filePath}:`,
-  //           e
-  //         );
-  //       }
-  //     }
-  //   }
 }

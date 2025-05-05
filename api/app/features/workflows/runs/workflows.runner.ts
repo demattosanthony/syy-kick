@@ -180,30 +180,80 @@ export class WorkflowRunner {
       },
     });
 
-    // Process initial input files into an artifact map
-    let initialInputArtifacts: Record<string, ArtifactData> = {};
-    for (const inputValue of Object.values(
+    // --- Prepare for the first step ---
+    const firstStep = this.workflowRun.workflowSteps[0];
+    if (!firstStep) {
+      // Handle case with no steps gracefully
+      console.error("Workflow has no steps.");
+      this.progressCallback({
+        type: "workflow_error",
+        data: {
+          workflowId: this.workflowRun.workflowId,
+          workflowName: this.workflowRun.name,
+          error: "Workflow has no steps defined.",
+        },
+      });
+      return; // Exit if no steps
+    }
+
+    // Process initial non-file inputs first
+    let nonFileInputs: Record<string, any> = {};
+    for (const [inputId, inputValue] of Object.entries(
+      this.workflowRun.executionInputValues
+    )) {
+      if (inputValue.type !== "file") {
+        nonFileInputs[inputId] = inputValue;
+      }
+    }
+
+    // Adopt initial *file* inputs into the first step's S3 location
+    for (const [inputId, inputValue] of Object.entries(
       this.workflowRun.executionInputValues
     )) {
       if (inputValue.type === "file") {
         const inputFile = inputValue.value as WorkflowFileExecutionInputValue;
-        // Directly create artifact data, assuming data is Buffer or similar
-        // Adjust based on how ArtifactData expects the data field
-        const data = await s3.file(inputFile.fileKey).arrayBuffer();
-        initialInputArtifacts[inputFile.filename] = {
-          data: new Uint8Array(data), // Ensure this matches ArtifactData['data'] type
-          mimeType: inputFile.mimeType,
-        };
+        // Create a temporary service instance just for adoption
+        const tempAdoptionService = new ArtifactService(
+          this.workflowRun.workflowId,
+          this.workflowRun.runId,
+          firstStep.id, // Target the first step's ID
+          undefined // No event callback needed for temp service
+        );
+        try {
+          await tempAdoptionService.adoptS3Object(
+            inputFile.fileKey,
+            inputFile.filename,
+            inputFile.mimeType
+          );
+          console.log(
+            `Adopted initial file: ${inputFile.filename} into step ${firstStep.id} storage`
+          );
+        } catch (adoptError) {
+          console.error(
+            `Failed to adopt initial file ${inputFile.filename}:`,
+            adoptError
+          );
+          this.progressCallback({
+            type: "workflow_error",
+            data: {
+              workflowId: this.workflowRun.workflowId,
+              workflowName: this.workflowRun.name,
+              error: `Failed to adopt initial file ${inputFile.filename}: ${adoptError instanceof Error ? adoptError.message : "Unknown adoption error"}`,
+            },
+          });
+          throw adoptError; // Stop execution
+        }
       }
     }
 
-    // Initialize artifact state for the loop
-    let previousStepArtifacts: Record<string, ArtifactData> =
-      initialInputArtifacts;
+    // Initialize artifact state for passing between steps
+    let previousStepArtifacts: Record<string, ArtifactData> = {};
 
     try {
-      for (const step of this.workflowRun.workflowSteps) {
-        // Create the artifact service for the *current* step
+      for (let i = 0; i < this.workflowRun.workflowSteps.length; i++) {
+        const step = this.workflowRun.workflowSteps[i];
+
+        // Create the artifact service for the *current* step inside the loop
         const currentStepArtifactService = new ArtifactService(
           this.workflowRun.workflowId,
           this.workflowRun.runId,
@@ -220,16 +270,22 @@ export class WorkflowRunner {
           }
         );
 
-        // Populate the current step's service with artifacts from the previous step/initial inputs
-        for (const [filename, artifact] of Object.entries(
-          previousStepArtifacts
-        )) {
-          await currentStepArtifactService.saveArtifact(
-            filename,
-            artifact,
-            false
-          );
+        // --- Populate current step's service ---
+        // For subsequent steps (i > 0), populate with artifacts from the PREVIOUS step
+        if (i > 0) {
+          for (const [filename, artifact] of Object.entries(
+            previousStepArtifacts
+          )) {
+            // Save artifact (download/re-upload between steps for now)
+            await currentStepArtifactService.saveArtifact(
+              filename,
+              artifact,
+              false // Don't trigger event, it was created in previous step
+            );
+          }
         }
+        // For the first step (i === 0), artifacts were already adopted into its S3 location.
+        // currentStepArtifactService will find them when getArtifacts() is called.
 
         this.progressCallback({
           type: "workflow_step_start",
@@ -286,7 +342,7 @@ There is an artifact service that stores and retrieves artifacts. You can use th
 
 You can use load artifact to load an type of file into your context that you are then able to process and understand.
 
-You creation of artifacts is limited to text-based artifacts, but you can load and analyze any type of file.
+You creation of artifacts is limited to text-based artifacts, but you can load and analyze any type of file. This means if directed to create a excel spreadsheet you can create a CSV file. Or if directed to create a word document you can create a markdown file.
 
 Always create at least one artifact during your execution, using the pdf page extraction tool and doc ocr counts as creating an artifact.
 </artifacts_info>
@@ -302,35 +358,28 @@ ${new Date().toISOString()}
             },
           ];
 
-          // Add non-file execution inputs as XML to the messages for the first step
-          if (step.id === this.workflowRun.workflowSteps[0].id) {
+          // Add non-file execution inputs as XML to the messages for the FIRST step ONLY
+          if (i === 0 && Object.keys(nonFileInputs).length > 0) {
             let executionInputXml = "<execution_inputs>\n";
-            let hasNonFileInputs = false;
             for (const [inputId, inputValue] of Object.entries(
-              this.workflowRun.executionInputValues
+              nonFileInputs // Use the collected non-file inputs
             )) {
-              if (inputValue.type !== "file") {
-                hasNonFileInputs = true;
-                executionInputXml += `  <input id="${inputId}" type="${inputValue.type}" label="${inputValue.label}">\n`;
-                if (inputValue.type === "text") {
-                  executionInputXml += `    <value>${(inputValue.value as WorkflowTextExecutionInputValue).text}</value>\n`;
-                } else if (inputValue.type === "number") {
-                  executionInputXml += `    <value>${(inputValue.value as WorkflowNumberExecutionInputValue).number}</value>\n`;
-                }
-                executionInputXml += `  </input>\n`;
+              executionInputXml += `  <input id="${inputId}" type="${inputValue.type}" label="${inputValue.label}">\n`;
+              if (inputValue.type === "text") {
+                executionInputXml += `    <value>${(inputValue.value as WorkflowTextExecutionInputValue).text}</value>\n`;
+              } else if (inputValue.type === "number") {
+                executionInputXml += `    <value>${(inputValue.value as WorkflowNumberExecutionInputValue).number}</value>\n`;
               }
+              executionInputXml += `  </input>\n`;
             }
             executionInputXml += "</execution_inputs>";
-
-            if (hasNonFileInputs) {
-              messages.push({
-                role: "user",
-                content: [{ type: "text", text: executionInputXml }],
-              });
-            }
+            messages.push({
+              role: "user",
+              content: [{ type: "text", text: executionInputXml }],
+            });
           }
 
-          // Add the current agent's artifacts state to the messages if any exist
+          // Add the current step's artifacts state to the messages
           const artifacts = await currentStepArtifactService.getArtifacts();
           if (Object.keys(artifacts).length > 0) {
             let artifactState = "<artifacts_state>\n";
@@ -354,8 +403,6 @@ ${new Date().toISOString()}
           const initialArtifactFilenames = new Set(
             await currentStepArtifactService.listArtifacts()
           );
-
-          console.log(step.model, '<---- step model');
 
           await generateText({
             messages,
@@ -407,11 +454,6 @@ ${new Date().toISOString()}
 
           // Pass only the newly created artifacts to the next agent
           previousStepArtifacts = newlyCreatedArtifacts;
-
-          // Dump artifacts for debugging if needed (optional)
-          //   if (this.debug) {
-          //     await currentStepArtifactService.dumpArtifacts();
-          //   }
         } catch (error: any) {
           console.error(`Error executing step ${step.name}:`, error);
           this.progressCallback({
@@ -422,9 +464,7 @@ ${new Date().toISOString()}
               error: error.message || "Unknown step error",
             },
           });
-          // if (this.debug) {
-          //   await currentStepArtifactService.dumpArtifacts();
-          // }
+
           // For now, let's stop the workflow on agent error
           throw new Error(`Step ${step.name} failed: ${error.message}`);
         }
