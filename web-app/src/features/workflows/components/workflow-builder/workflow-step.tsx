@@ -122,7 +122,7 @@ const WorkflowStep = ({
     }
   };
 
-  const getFieldError = (fieldPath: string[]) => {
+  const getStepError = (fieldPath: string[]) => {
     return errors[0]?.issues.find(
       (err) =>
         err.path.length === fieldPath.length + 2 &&
@@ -132,6 +132,19 @@ const WorkflowStep = ({
     );
   };
 
+  const getStepFieldError = (fieldPath: string[]) => {
+
+    return errors[0]?.issues.find(
+      (err) => (
+        err.path.length === fieldPath.length + 5 &&
+        err.path[0] === "workflowSteps" &&
+        err.path[1] === index &&
+        err.path[2] === "formSchema" &&
+        err.path[3] === "fields" &&
+        err.path[4] === fieldPath[0]
+      )
+    );
+  };
   const hasErrors =
     errors[0]?.issues.some(
       (err) => err.path[0] === "workflowSteps" && err.path[1] === index
@@ -139,7 +152,6 @@ const WorkflowStep = ({
 
   const handleFieldChange = (field: string, value: any) => {
     onUpdateStepField(step.id, field, value);
-    // Valider après chaque changement
     validateStep();
   };
 
@@ -238,29 +250,35 @@ const WorkflowStep = ({
               </div>
               <div className="space-y-4">
                 {Object.entries(step.formSchema.fields).map(
-                  ([fieldKey, field]) => (
-                    <FormField
-                      key={fieldKey}
-                      fieldKey={fieldKey}
-                      field={field}
-                      stepId={step.id}
-                      stepIndex={index}
-                      onFieldChange={(key, updatedField) => {
-                        const updatedFormSchema = {
-                          ...step.formSchema,
-                          fields: {
-                            ...step.formSchema!.fields,
-                            [key]: updatedField,
-                          },
-                        };
-                        onUpdateStepField(
-                          step.id,
-                          "formSchema",
-                          updatedFormSchema
-                        );
-                      }}
-                    />
-                  )
+                  ([fieldKey, field]) => {
+
+                    const fieldError = getStepFieldError([fieldKey]);
+
+                    return (
+                      <FormField
+                        key={fieldKey}
+                        fieldKey={fieldKey}
+                        field={field}
+                        stepId={step.id}
+                        stepIndex={index}
+                        fieldError={fieldError}
+                        onFieldChange={(key, updatedField) => {
+                          const updatedFormSchema = {
+                            ...step.formSchema,
+                            fields: {
+                              ...step.formSchema!.fields,
+                              [key]: updatedField,
+                            },
+                          };
+                          onUpdateStepField(
+                            step.id,
+                            "formSchema",
+                            updatedFormSchema
+                          );
+                        }}
+                      />
+                    )
+                  }
                 )}
               </div>
             </div>
@@ -298,11 +316,11 @@ const WorkflowStep = ({
                 value={step.name}
                 onChange={(e) => handleFieldChange("name", e.target.value)}
                 placeholder="Enter step name"
-                className={cn(getFieldError(["name"]) && "border-destructive")}
+                className={cn(getStepError(["name"]) && "border-destructive")}
               />
-              {getFieldError(["name"]) && (
+              {getStepError(["name"]) && (
                 <p className="text-sm text-destructive mt-1">
-                  {getFieldError(["name"])?.message}
+                  {getStepError(["name"])?.message}
                 </p>
               )}
             </div>
@@ -316,12 +334,12 @@ const WorkflowStep = ({
                 }
                 placeholder="Enter step description"
                 className={cn(
-                  getFieldError(["description"]) && "border-destructive"
+                  getStepError(["description"]) && "border-destructive"
                 )}
               />
-              {getFieldError(["description"]) && (
+              {getStepError(["description"]) && (
                 <p className="text-sm text-destructive mt-1">
-                  {getFieldError(["description"])?.message}
+                  {getStepError(["description"])?.message}
                 </p>
               )}
             </div>
@@ -338,13 +356,13 @@ const WorkflowStep = ({
                 }
                 placeholder={`Your task is to, follow these steps..., do not forget to...`}
                 className={cn(
-                  getFieldError(["instructions"]) && "border-destructive",
+                  getStepError(["instructions"]) && "border-destructive",
                   "min-h-[125px]"
                 )}
               />
-              {getFieldError(["instructions"]) && (
+              {getStepError(["instructions"]) && (
                 <p className="text-sm text-destructive mt-1">
-                  {getFieldError(["instructions"])?.message}
+                  {getStepError(["instructions"])?.message}
                 </p>
               )}
             </div>
@@ -355,11 +373,11 @@ const WorkflowStep = ({
               onModelChange={(modelName) =>
                 handleFieldChange("model", modelName)
               }
-              hasError={!!getFieldError(["model"])}
+              hasError={!!getStepError(["model"])}
             />
-            {getFieldError(["model"]) && (
+            {getStepError(["model"]) && (
               <p className="text-sm text-destructive mt-1">
-                {getFieldError(["model"])?.message}
+                {getStepError(["model"])?.message}
               </p>
             )}
 
@@ -372,13 +390,12 @@ const WorkflowStep = ({
                     role="combobox"
                     className={cn(
                       "w-full justify-between",
-                      getFieldError(["activeTools"]) && "border-destructive"
+                      getStepError(["activeTools"]) && "border-destructive"
                     )}
                   >
                     {step.activeTools.length > 0
-                      ? `${step.activeTools.length} tool${
-                          step.activeTools.length > 1 ? "s" : ""
-                        } selected`
+                      ? `${step.activeTools.length} tool${step.activeTools.length > 1 ? "s" : ""
+                      } selected`
                       : "Select tools"}
                   </Button>
                 </PopoverTrigger>
@@ -497,32 +514,38 @@ const WorkflowStep = ({
 
               {step.formSchema?.fields &&
                 Object.entries(step.formSchema.fields).map(
-                  ([fieldKey, field]) => (
-                    <FormField
-                      key={fieldKey}
-                      fieldKey={fieldKey}
-                      field={field}
-                      stepId={step.id}
-                      stepIndex={index}
-                      onFieldChange={(key, updatedField) => {
-                        const updatedFormSchema = {
-                          ...step.formSchema,
-                          fields: {
-                            ...step.formSchema!.fields,
-                            [key]: updatedField,
-                          },
-                        };
-                        onUpdateStepField(
-                          step.id,
-                          "formSchema",
-                          updatedFormSchema
-                        );
-                      }}
-                      onDeleteField={
-                        !step.agentId ? handleDeleteField : undefined
-                      }
-                    />
-                  )
+                  ([fieldKey, field]) => {
+
+                    const fieldError = getStepFieldError([fieldKey]);
+
+                    return (
+                      <FormField
+                        key={fieldKey}
+                        fieldKey={fieldKey}
+                        field={field}
+                        stepId={step.id}
+                        stepIndex={index}
+                        fieldError={fieldError}
+                        onFieldChange={(key, updatedField) => {
+                          const updatedFormSchema = {
+                            ...step.formSchema,
+                            fields: {
+                              ...step.formSchema!.fields,
+                              [key]: updatedField,
+                            },
+                          };
+                          onUpdateStepField(
+                            step.id,
+                            "formSchema",
+                            updatedFormSchema
+                          );
+                        }}
+                        onDeleteField={
+                          !step.agentId ? handleDeleteField : undefined
+                        }
+                      />
+                    )
+                  }
                 )}
             </div>
             {step.formSchema &&

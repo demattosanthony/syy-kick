@@ -355,6 +355,8 @@ ${new Date().toISOString()}
             await currentStepArtifactService.listArtifacts()
           );
 
+          console.log(step.model, '<---- step model');
+
           await generateText({
             messages,
             model: MODELS[step.model].model,

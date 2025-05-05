@@ -120,11 +120,11 @@ export const workflowsRunsHandlers = {
 
           // If theres an agent use the agent info
           // If not that means its a custom step and we use the step data
-          const name = stepData?.name ?? "";
-          const description = stepData?.description ?? "";
-          const instructions = stepData?.instructions ?? "";
-          const model = stepData?.model ?? "";
-          const activeTools = (stepData?.activeTools ?? []) as ToolName[];
+          const name = stepData?.name ?? stepData?.agent?.name ?? "";
+          const description = stepData?.description ?? stepData?.agent?.description ?? "";
+          const instructions = stepData?.instructions ?? stepData?.agent?.instructions ?? "";
+          const model = stepData?.model ?? stepData?.agent?.model ?? "";
+          const activeTools = (stepData?.activeTools ?? stepData?.agent?.activeTools ?? []) as ToolName[];
 
           return {
             id: step.id,

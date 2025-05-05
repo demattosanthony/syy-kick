@@ -85,6 +85,8 @@ function FileUploadInput({
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
 
+    console.log(droppedFile, '<---- dropped file');
+
     if (droppedFile) {
       // Check file size if maxFileSize is specified
       if (input.maxFileSize && droppedFile.size > input.maxFileSize) {
@@ -103,6 +105,8 @@ function FileUploadInput({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
+
+    console.log(selectedFile, '<---- selected file');
 
     if (selectedFile) {
       // Check file size if maxFileSize is specified
@@ -147,7 +151,7 @@ function FileUploadInput({
       input.acceptedFileTypes
     ) {
       const acceptedFileTypes = Array.isArray(input.acceptedFileTypes) ? input.acceptedFileTypes : input.acceptedFileTypes ? [input.acceptedFileTypes] : [];
-      
+
       if (!acceptedFileTypes.some((type) => type.trim() === item.mimeType)) {
         toast.error(
           `File type (${item.mimeType}) is not accepted for this input.`

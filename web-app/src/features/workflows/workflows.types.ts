@@ -1,3 +1,5 @@
+import { ZodIssue } from "zod";
+
 export interface Agent {
   id: string;
   name: string;
@@ -83,6 +85,7 @@ export interface FormFieldProps {
     updatedField: WorkflowStepFormSchema["fields"][string]
   ) => void;
   onDeleteField?: (key: string) => void;
+  fieldError?: ZodIssue;
 }
 
 export interface WorkflowProjectFile {
@@ -113,9 +116,9 @@ export type WorkflowExecutionInputValue = {
   type: "text" | "file" | "number";
   label: string;
   value:
-    | WorkflowTextExecutionInputValue
-    | WorkflowFileExecutionInputValue
-    | WorkflowNumberExecutionInputValue;
+  | WorkflowTextExecutionInputValue
+  | WorkflowFileExecutionInputValue
+  | WorkflowNumberExecutionInputValue;
 };
 
 export type WorkflowExecutionInputValues = {
@@ -181,9 +184,9 @@ export type WorkflowRunStepInputs = {
   label: string;
   type: "text" | "file" | "number";
   value:
-    | WorkflowTextExecutionInputValue
-    | WorkflowFileExecutionInputValue
-    | WorkflowNumberExecutionInputValue;
+  | WorkflowTextExecutionInputValue
+  | WorkflowFileExecutionInputValue
+  | WorkflowNumberExecutionInputValue;
   parentStepId?: string;
 };
 

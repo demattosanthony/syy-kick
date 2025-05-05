@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { FileText, Type, Hash, Calendar, List, TextCursor, Plus, X, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-const FormField = ({ fieldKey, field, stepIndex, onFieldChange, onDeleteField }: FormFieldProps) => {
+const FormField = ({ fieldKey, field, stepIndex, onFieldChange, onDeleteField, fieldError }: FormFieldProps) => {
+
     const getFieldIcon = (type: string) => {
         switch (type) {
             case 'file':
@@ -59,7 +60,7 @@ const FormField = ({ fieldKey, field, stepIndex, onFieldChange, onDeleteField }:
     };
 
     return (
-        <div key={fieldKey} className="mb-4 p-4 border rounded-lg bg-card shadow-sm relative">
+        <div key={fieldKey} className={`mb-4 p-4 border rounded-lg bg-card shadow-sm relative ${fieldError ? 'border-destructive' : ''}`}>
             {onDeleteField && (
                 <Button
                     variant="outline"
@@ -117,16 +118,16 @@ const FormField = ({ fieldKey, field, stepIndex, onFieldChange, onDeleteField }:
                         }}
                     >
                         <div className="flex items-center space-x-2">
-                            <RadioGroupItem 
-                                value="userInput" 
-                                id={`${fieldKey}-userInput`} 
+                            <RadioGroupItem
+                                value="userInput"
+                                id={`${fieldKey}-userInput`}
                                 disabled={stepIndex > 0}
                             />
                             <Label htmlFor={`${fieldKey}-userInput`} className={stepIndex > 0 ? "text-muted-foreground" : ""}>
                                 User Input
                                 {stepIndex > 0 && (
-                                    <Badge 
-                                        variant="default" 
+                                    <Badge
+                                        variant="default"
                                         className="ml-2 text-xs"
                                     >
                                         Coming soon
@@ -191,6 +192,11 @@ const FormField = ({ fieldKey, field, stepIndex, onFieldChange, onDeleteField }:
                     </div>
                 )}
             </div>
+            {fieldError && (
+                <div className="text-destructive text-sm mt-2">
+                    {fieldError.message}
+                </div>
+            )}
         </div>
     );
 };
