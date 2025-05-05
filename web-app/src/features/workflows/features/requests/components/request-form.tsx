@@ -194,7 +194,7 @@ const RequestForm = () => {
         } catch (error) {
             if (error instanceof z.ZodError) {
                 setValidationErrors(error);
-                error.errors.forEach((err) => {
+                error.errors.forEach(() => {
                     toast.error(`Make sure to fill all the required fields`);
                 });
             } else {
