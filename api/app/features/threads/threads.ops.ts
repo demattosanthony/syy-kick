@@ -319,21 +319,6 @@ const threadsOps = {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("Cache-Control", "no-cache");
-    // res.flushHeaders();
-    // res.setHeader("X-Accel-Buffering", "no"); // Keep commented unless specifically needed
-    // res.setHeader("Transfer-Encoding", "chunked"); // Keep commented - likely handled by pipeDataStreamToResponse or Node automatically
-
-    // Restore CORS headers conditionally
-    // const origin = req.headers.origin;
-    // if (origin && CONFIG.CORS_ORIGINS.includes(origin)) {
-    //   res.setHeader("Access-Control-Allow-Origin", origin);
-    //   res.setHeader("Access-Control-Allow-Credentials", "true");
-    // } else {
-    //   // Maybe add a fallback or default? Or rely on global CORS middleware if any.
-    //   // For now, let's assume if origin doesn't match, it's same-origin or handled elsewhere.
-    // }
-
-    // res.flushHeaders(); // Keep REMOVED - Let ai library handle flushing/writing
 
     try {
       const { threadId } = req.params;

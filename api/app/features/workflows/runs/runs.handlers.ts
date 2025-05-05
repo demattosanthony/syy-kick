@@ -121,10 +121,14 @@ export const workflowsRunsHandlers = {
           // If theres an agent use the agent info
           // If not that means its a custom step and we use the step data
           const name = stepData?.name ?? stepData?.agent?.name ?? "";
-          const description = stepData?.description ?? stepData?.agent?.description ?? "";
-          const instructions = stepData?.instructions ?? stepData?.agent?.instructions ?? "";
+          const description =
+            stepData?.description ?? stepData?.agent?.description ?? "";
+          const instructions =
+            stepData?.instructions ?? stepData?.agent?.instructions ?? "";
           const model = stepData?.model ?? stepData?.agent?.model ?? "";
-          const activeTools = (stepData?.activeTools ?? stepData?.agent?.activeTools ?? []) as ToolName[];
+          const activeTools = (stepData?.activeTools ??
+            stepData?.agent?.activeTools ??
+            []) as ToolName[];
 
           return {
             id: step.id,
@@ -171,9 +175,6 @@ export const workflowsRunsHandlers = {
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Accel-Buffering", "no");
-      res.setHeader("Transfer-Encoding", "chunked");
-      res.flushHeaders(); // Flush the headers to establish the connection
 
       const listener = (event: WorkflowProgressUpdate) => {
         try {
