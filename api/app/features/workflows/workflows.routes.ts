@@ -1,13 +1,18 @@
+/** Express */
 import { Router } from "express";
+
+/** Handlers */
 import workflowHandlers from "./workflows.handlers";
 
-const router = Router();
+/** Routers */
+import agentsRouter from "./agents/agents.routes";
+import runsRouter from "./runs/runs.routes";
 
-// Workflow routes
-router.get("", workflowHandlers.getAll);
-router.get("/:id", workflowHandlers.getById);
-
-// Run workflow
-router.post("/:workflowId/run", workflowHandlers.run);
-
-export default router;
+export default Router()
+  .get("", workflowHandlers.getAll)
+  .post("/", workflowHandlers.create)
+  .use("/agents", agentsRouter)
+  .get("/:id", workflowHandlers.getById)
+  .put("/:id", workflowHandlers.update)
+  .delete("/:id", workflowHandlers.delete)
+  .use("/:workflowId/runs", runsRouter);

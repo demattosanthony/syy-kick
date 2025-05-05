@@ -1,16 +1,20 @@
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useEffect, useRef, useState } from "react";
-import { Loader, Play } from "lucide-react";
+import { Loader, Play, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Attachment } from "ai";
-import api from "@/lib/api";
 import ErrorDisplay from "./workflow-error-display";
-import FileUploadInput from "./workflow-file-input";
-import { Workflow, WorkflowProjectFile } from "../workflows.types";
-import { useAtom } from "jotai";
-import { initalInputAtom, workflowInputAtom } from "@/atoms/chat";
-import { ThreadsList } from "@/features/chat/threads/components";
+import { Workflow, WorkflowExecutionInputValue } from "../workflows.types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WorkflowFormFields } from "./workflow-form-fields";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import api from "@/lib/api";
+import {
+  useCreateRunMutation,
+  useTriggerRunMutation,
+} from "../features/runs/api";
+import { useGetRunsQuery } from "../features/runs/api/get-runs";
 
 export type WorkflowAttachment = Attachment & {
   file_key: string;
@@ -29,141 +33,175 @@ export default function WorkflowPageContent({
   isLoading: boolean;
 }) {
   const navigate = useNavigate();
-  const [files, setFiles] = useState<
-    Record<string, File | WorkflowProjectFile | null>
+  const [formValues, setFormValues] = useState<
+    Record<string, Record<string, any>>
   >({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorDetails, setErrorDetails] = useState<{
     type: "upload" | "processing" | "general" | "network";
     message: string;
   } | null>(null);
   const hasAutoHiddenReasoning = useRef(false);
-  const [, setWorkflowInput] = useAtom(workflowInputAtom);
-  const [, setInitalInput] = useAtom(initalInputAtom);
+  const [highlightedStepIndex, setHighlightedStepIndex] = useState<
+    number | null
+  >(null);
+  const { mutateAsync: createRunAsync, isPending: isCreatingRun } =
+    useCreateRunMutation();
+  const { mutateAsync: triggerRunAsync, isPending: isTriggeringRun } =
+    useTriggerRunMutation();
+  const { data: runs } = useGetRunsQuery(workflowId);
 
-  // Initialize files state based on workflow inputs
+  // Initialize form values based on workflow steps
   useEffect(() => {
-    if (workflow?.inputs) {
-      const initialFiles: Record<string, File | WorkflowProjectFile | null> =
-        {};
-      workflow.inputs.forEach((input) => (initialFiles[input.id] = null));
-      setFiles(initialFiles);
+    if (workflow?.steps) {
+      const initialValues: Record<string, Record<string, any>> = {};
+      workflow.steps.forEach((step) => {
+        if (step.formSchema) {
+          initialValues[step.id] = {};
+          Object.entries(step.formSchema.fields).forEach(([fieldId]) => {
+            initialValues[step.id][fieldId] = "";
+          });
+        }
+      });
+      setFormValues(initialValues);
     }
   }, [workflow]);
 
   // Reset workflow state and reload page
   const resetWorkflow = () => {
-    if (workflow?.inputs) {
-      const resetFiles: Record<string, File | WorkflowProjectFile | null> = {};
-      workflow.inputs.forEach((input) => {
-        resetFiles[input.id] = null;
-        const fileInput = document.getElementById(
-          `file-input-${input.id}`
-        ) as HTMLInputElement;
-        if (fileInput) fileInput.value = "";
+    if (workflow?.steps) {
+      const resetValues: Record<string, Record<string, any>> = {};
+      workflow.steps.forEach((step) => {
+        if (step.formSchema) {
+          resetValues[step.id] = {};
+          Object.entries(step.formSchema.fields).forEach(([fieldId]) => {
+            resetValues[step.id][fieldId] = "";
+          });
+        }
       });
-      setFiles(resetFiles);
+      setFormValues(resetValues);
     }
     setErrorDetails(null);
     hasAutoHiddenReasoning.current = false;
     if (errorDetails) window.location.reload();
   };
 
-  // Check if all required files are uploaded
-  const areRequiredFilesUploaded = () => {
-    if (!workflow?.inputs) return false;
-    return workflow.inputs
-      .filter((input) => input.required)
-      .every((input) => files[input.id]);
+  // Check if all required fields are filled for a step
+  const areRequiredFieldsFilled = (stepId: string) => {
+    const step = workflow?.steps.find((s) => s.id === stepId);
+    if (!step?.formSchema) return true;
+
+    return Object.entries(step.formSchema.fields)
+      .filter(
+        ([_, field]) => field.required && field.referenceType !== "previousStep"
+      )
+      .every(([fieldId]) => {
+        const value = formValues[stepId]?.[fieldId];
+        if (
+          value instanceof File ||
+          (value && typeof value === "object" && "source" in value)
+        ) {
+          return true;
+        }
+        return value !== null && value !== undefined && value !== "";
+      });
   };
 
-  // Handle form submission with file uploads
+  const areAllRequiredFieldsFilled = () => {
+    if (!workflow?.steps) return false;
+
+    return workflow.steps.every((step) => {
+      if (!step.formSchema) return true;
+
+      return areRequiredFieldsFilled(step.id);
+    });
+  };
+
+  // Handle form submission
   const onSubmit = async () => {
-    if (!areRequiredFilesUploaded()) return;
+    if (!areAllRequiredFieldsFilled()) return;
 
-    setIsSubmitting(true);
-    try {
-      const attachments: WorkflowAttachment[] = [];
-      for (const inputId in files) {
-        const fileOrProjectFile = files[inputId];
-        if (!fileOrProjectFile) continue;
+    // Transform formValues into inputValues
+    const inputValues: Record<string, WorkflowExecutionInputValue> = {};
 
-        // Check if it's a ProjectFile or a regular File
-        if (
-          "source" in fileOrProjectFile &&
-          fileOrProjectFile.source === "project"
-        ) {
-          // It's a ProjectFile, use its existing details
-          attachments.push({
-            name: fileOrProjectFile.name,
-            contentType: fileOrProjectFile.type, // Use 'type' from ProjectFile
-            url: fileOrProjectFile.url, // Use existing URL
-            file_key: fileOrProjectFile.file_key, // Use existing file_key
-            inputId,
-          });
-        } else {
-          // It's a regular File, proceed with upload
-          const file = fileOrProjectFile as File; // Type assertion
-          const { url, file_metadata, viewUrl } =
-            await api.uploads.getPresignedUrl(
-              file.name,
-              file.type,
-              file.size,
-              `uploads/${Date.now()}-${inputId}-${file.name}`
+    // Iterate over each step
+    for (const [stepId, stepValues] of Object.entries(formValues)) {
+      // Iterate over each field of the step
+      for (const [fieldId, value] of Object.entries(stepValues)) {
+        const step = workflow?.steps.find((s) => s.id === stepId);
+        const field = step?.formSchema?.fields[fieldId];
+
+        if (!field) continue;
+
+        // Create the input value based on the type
+        if (field.type === "file" && value) {
+          if ("source" in value && value.source === "project") {
+            // Case of an existing file from the project
+            inputValues[fieldId] = {
+              type: "file",
+              label: field.label,
+              value: {
+                fileKey: value.file_key,
+                mimeType: value.type,
+                filename: value.name,
+              },
+            };
+          } else if (value instanceof File) {
+            // Case of a new file uploaded
+            const { url, file_metadata } = await api.uploads.getPresignedUrl(
+              value.name,
+              value.type,
+              value.size,
+              `uploads/${Date.now()}-${fieldId}-${value.name}`
             );
-          await fetch(url, {
-            method: "PUT",
-            body: file,
-            headers: { "Content-Type": file.type },
-          });
-          attachments.push({
-            name: file.name,
-            contentType: file.type,
-            url: viewUrl,
-            file_key: file_metadata.file_key,
-            inputId,
-          });
+
+            await fetch(url, {
+              method: "PUT",
+              body: value,
+              headers: { "Content-Type": value.type },
+            });
+
+            inputValues[fieldId] = {
+              type: "file",
+              label: field.label,
+              value: {
+                fileKey: file_metadata.file_key,
+                mimeType: value.type,
+                filename: value.name,
+              },
+            };
+          }
+        } else if (field.type === "text") {
+          inputValues[fieldId] = {
+            type: "text",
+            label: field.label,
+            value: {
+              text: value as string,
+            },
+          };
+        } else if (field.type === "number") {
+          inputValues[fieldId] = {
+            type: "number",
+            label: field.label,
+            value: {
+              number: Number(value),
+            },
+          };
         }
       }
-      const fileNames = Object.values(files)
-        .filter(Boolean)
-        .map((file) => file?.name) // Works for both File and ProjectFile
-        .join(", ");
-
-      setWorkflowInput({
-        attachments,
-        input: "",
-      });
-      setInitalInput(`Process the following files: ${fileNames}.`);
-
-      const thread = await api.threads.createThread({
-        workflowId,
-        projectId,
-      });
-      navigate(
-        `/threads/${thread.id}?isNew=true&isWorkflow=true&workflowId=${workflowId}`
-      );
-    } catch (err) {
-      console.error("Submission error:", err);
-      setErrorDetails({
-        type: "general",
-        message: "An unexpected error occurred. Please try again.",
-      });
     }
 
-    setIsSubmitting(false);
-  };
+    const run = await createRunAsync({
+      workflowId,
+      inputValues,
+    });
 
-  const workflowInputs = workflow?.inputs || [
-    {
-      id: "default-input",
-      type: "file",
-      title: "Upload Document",
-      description: "Upload the file you want to process",
-      acceptedFileTypes: "application/pdf",
-      required: true,
-    },
-  ];
+    await triggerRunAsync({
+      workflowId,
+      workflowRunId: run.id,
+    });
+
+    navigate(`/workflows/${workflowId}/runs/${run.id}`);
+  };
 
   if (workflow === null) {
     return (
@@ -178,10 +216,8 @@ export default function WorkflowPageContent({
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col items-center w-full">
-      <div className="mb-6 text-center w-full flex flex-col items-center gap-4">
-        <div className="inline-block p-3 mb-6 w-fit rounded-full bg-accent">
-          <span className="text-4xl">📋</span>
-        </div>
+      {/* Header Section */}
+      <div className="my-12 text-center w-full flex flex-col items-center gap-4">
         {isLoading ? (
           <>
             <Skeleton className="w-xl h-10" />
@@ -189,7 +225,7 @@ export default function WorkflowPageContent({
           </>
         ) : (
           <>
-            <h1 className="text-4xl font-bold mb-4">{workflow?.title}</h1>
+            <h1 className="text-4xl font-bold mb-4">{workflow?.name}</h1>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
               {workflow?.description}
             </p>
@@ -199,52 +235,127 @@ export default function WorkflowPageContent({
 
       <ErrorDisplay errorDetails={errorDetails} onReset={resetWorkflow} />
 
-      {!errorDetails && (
-        <div className="rounded-xl p-8 w-full">
-          <div className="flex flex-col gap-8">
-            {workflowInputs.map((input) => (
-              <FileUploadInput
-                key={input.id}
-                input={{
-                  ...input,
-                  maxFileSize: 50 * 1024 * 1024 /* 50 MB */,
-                }}
-                file={files[input.id]}
-                onFileChange={(file) =>
-                  setFiles((prev) => ({ ...prev, [input.id]: file }))
-                }
-                projectId={projectId}
-              />
-            ))}
-            <Button
-              className="w-full mt-6 py-7 text-lg font-medium transition-all hover:scale-[1.02]"
-              size="lg"
-              disabled={!areRequiredFilesUploaded()}
-              onClick={onSubmit}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader className="animate-spin h-6 w-6 mr-3" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Play className="h-6 w-6 mr-3" />
-                  {areRequiredFilesUploaded()
-                    ? "Submit and run"
-                    : "Upload required files to continue"}
-                </>
+      {/* Workflow Form Section */}
+      {!errorDetails && workflow?.steps && (
+        <div className="w-full mb-12">
+          {/* <div className="flex items-center gap-3 mb-6">
+            <div className="h-8 w-1 bg-primary rounded-full"></div>
+            <h2 className="text-2xl font-bold">Workflow Configuration</h2>
+          </div> */}
+          <div className="rounded-xl w-full">
+            <div className="flex flex-col gap-8">
+              {workflow.steps.slice(0, 1).map(
+                (step, index) =>
+                  step.formSchema && (
+                    <div
+                      key={step.id}
+                      className={cn(
+                        "space-y-4",
+                        highlightedStepIndex === index - 1 && "border-primary"
+                      )}
+                    >
+                      <WorkflowFormFields
+                        onHoverPreviousStepOutputRef={() => {
+                          const stepIndex = workflow.steps.findIndex(
+                            (s) => s.id === step.id
+                          );
+                          if (stepIndex !== -1) {
+                            setHighlightedStepIndex(stepIndex - 2);
+                          }
+                        }}
+                        onLeavePreviousStepOutputRef={() => {
+                          setHighlightedStepIndex(null);
+                        }}
+                        formSchema={step.formSchema}
+                        values={formValues[step.id] || {}}
+                        onChange={(fieldId, value) =>
+                          setFormValues((prev) => ({
+                            ...prev,
+                            [step.id]: { ...prev[step.id], [fieldId]: value },
+                          }))
+                        }
+                        projectId={projectId}
+                      />
+                    </div>
+                  )
               )}
-            </Button>
+              <div className="flex justify-center">
+                <Button
+                  className="mt-6 py-7 text-lg font-medium transition-all hover:scale-[1.02] px-12"
+                  size="lg"
+                  disabled={!areAllRequiredFieldsFilled()}
+                  onClick={onSubmit}
+                >
+                  {isCreatingRun || isTriggeringRun ? (
+                    <>
+                      <Loader className="animate-spin h-6 w-6 mr-3" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-6 w-6 mr-3" />
+                      {"Submit and run"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* History section */}
-      <div className="mt-12 w-full max-w-xl">
-        <h2 className="text-2xl font-bold mb-6">History</h2>
-        <div className="">
-          <ThreadsList workflowId={workflowId} showLatestMessage={false} />
+      {/* Recent Runs Section */}
+      <div className="w-full mb-12">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-1 bg-primary rounded-full"></div>
+            <h2 className="text-2xl font-bold">Recent Runs</h2>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/workflows/${workflowId}/runs`)}
+          >
+            <History className="w-4 h-4 mr-2" />
+            View All Runs
+          </Button>
+        </div>
+
+        <div className="grid gap-4">
+          {runs?.slice(0, 3).map((run) => (
+            <Link to={`/workflows/${workflowId}/runs/${run.id}`} key={run.id}>
+              <Card
+                key={run.id}
+                className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Run #{run.id.slice(0, 8)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(run.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div
+                    className={cn(
+                      "px-2 py-1 rounded-full text-xs font-medium",
+                      run.status === "completed" &&
+                        "bg-green-100 text-green-800",
+                      run.status === "running" && "bg-blue-100 text-blue-800",
+                      run.status === "failed" && "bg-red-100 text-red-800",
+                      run.status === "pending" &&
+                        "bg-yellow-100 text-yellow-800"
+                    )}
+                  >
+                    {run.status}
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          ))}
+          {(!runs || runs.length === 0) && (
+            <p className="text-muted-foreground text-center py-4">
+              No runs yet
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -9,12 +9,9 @@ export function WorkflowsPage() {
       <div className="flex w-full items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Workflows</h1>
         <Link
-          to={
-            "https://docs.google.com/forms/d/e/1FAIpQLSemgsKiKIv5Y5i6caXIFByJbGC2wTcSRiDuKytbRUY5ai_iYQ/viewform?usp=sharing"
-          }
-          target="_blank"
+          to={"/workflows/create"}
         >
-          <Button>Request Workflow</Button>
+          <Button>Create Workflow</Button>
         </Link>
       </div>
       <SearchBar />
