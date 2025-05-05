@@ -21,7 +21,6 @@ import { createToolSet } from "../../tools/tools.registry";
 import { MODELS } from "../../models";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
 import { ToolSet } from "../../tools/tools.types";
-import s3 from "../../../config/s3";
 import { markitdown, markitdownMimeTypes } from "../../../doc-processor-v2";
 
 // Reusable onStepFinish callback

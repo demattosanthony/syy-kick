@@ -28,7 +28,6 @@ import {
   WorkflowStepUpdateInput,
 } from "./workflows.types";
 import { workflowsUtils } from "./workflows.utils";
-import { WorkflowStep } from "./workflows.schema";
 
 export const workflowsOps = {
   getWorkflows: async ({
@@ -213,7 +212,6 @@ export const workflowsOps = {
     let currentTimestamp = new Date();
 
     for (const stepInput of steps) {
-
       const baseValues = {
         workflowId,
         parentStepId: previousStepId,
@@ -230,7 +228,7 @@ export const workflowsOps = {
             ...baseValues,
             ...stepInput,
           };
-          
+
       // const valuesToInsert: Partial<WorkflowStep> = {
       //   workflowId,
       //   parentStepId: previousStepId,

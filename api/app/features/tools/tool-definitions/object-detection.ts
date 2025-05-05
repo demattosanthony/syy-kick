@@ -59,8 +59,6 @@ Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "${
         ],
       });
 
-      console.log(object.bounding_boxes);
-
       // Process image
       const image = await Jimp.read(Buffer.from(imagebase64, "base64"));
       const { width, height } = image.bitmap;

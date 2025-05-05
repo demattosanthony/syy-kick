@@ -1,5 +1,5 @@
 import fetch from "node-fetch"; // Use node-fetch or remove if using native fetch
-import s3 from "./app/config/s3";
+import s3 from "../app/config/s3";
 
 const filePath =
   "/Users/anthonydemattos/syy-kick/workflows-dataset/window-door-gen/HALLCHRISTINALAYOUTPG7FLOORPRE313.pdf";

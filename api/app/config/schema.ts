@@ -77,6 +77,8 @@ export {
   workflowTags,
   workflowUserRelations,
   workflowUsers,
+  workflowFileRelations,
+  workflowRunStepsInputsValueRelations,
 } from "../features/workflows/workflows.schema";
 
 export const organizations = pgTable("organizations", {
