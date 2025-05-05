@@ -40,6 +40,7 @@ import {
   KnowledgeBaseSettingsPage,
   ForbiddenPage,
   LandingPage,
+  RequestWorkflowPage,
 } from "./pages";
 import { Providers } from "./providers";
 import MainAppLayout from "./components/layouts/main-app-layout";
@@ -156,6 +157,7 @@ const router = createBrowserRouter([
           },
           { path: "workflows/:workflowId/edit", element: <EditWorkflowPage /> },
           { path: "workflows/create", element: <CreateWorkflowPage /> },
+          { path: "workflows/request", element: <RequestWorkflowPage /> },
           { path: "sites", element: <SitesPage /> },
           { path: "settings", element: <UserSettings /> },
           { path: "projects", element: <ProjectsPage /> },

@@ -80,6 +80,18 @@ export {
   workflowFileRelations,
   workflowRunStepsInputsValueRelations,
 } from "../features/workflows/workflows.schema";
+export {
+  workflowRequests,
+  workflowRequestSteps,
+  workflowRequestInputs,
+  workflowRequestStepsInputs,
+  workflowRequestStepsDependsOn,
+  workflowRequestRelations,
+  workflowRequestStepsRelations,
+  workflowRequestInputsRelations,
+  workflowRequestStepsInputsRelations,
+  workflowRequestStepsDependsOnRelations,
+} from "../features/workflows/requests/requests.schemas";
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),

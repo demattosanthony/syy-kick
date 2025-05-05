@@ -60,6 +60,7 @@ import {
   KnowledgeBaseAccessLogsResponse,
 } from "@/features/knowledge-bases/types";
 import { Agent, Tool } from "@/features/workflows/features/agents/types";
+import { WorkflowRequest } from "@/features/workflows/features/requests/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -97,8 +98,8 @@ async function clientFetch<T>(
     throw new ApiError(
       response.status,
       errorData?.message ||
-        errorData?.error ||
-        `Request failed with status ${response.status}`
+      errorData?.error ||
+      `Request failed with status ${response.status}`
     );
   }
 
@@ -641,8 +642,7 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -696,8 +696,7 @@ class ProjectsApi extends ApiRequest {
     const queryParams = new URLSearchParams();
 
     return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`,
       "DELETE"
     );
@@ -713,8 +712,7 @@ class ProjectsApi extends ApiRequest {
     }
 
     return await this.request(
-      `/projects/${projectId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/projects/${projectId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }
@@ -1007,6 +1005,16 @@ class WorkflowsApi extends ApiRequest {
   async getTools(): Promise<Tool[]> {
     return await this.request("/tools");
   }
+
+  async createRequest(data: Omit<WorkflowRequest, "requestedBy">): Promise<{
+    message: string;
+  }> {
+    try {
+      return await this.request("/workflows/requests", "POST", data);
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 class SitesApi extends ApiRequest {
@@ -1116,8 +1124,7 @@ export class KnowledgeBasesApi extends ApiRequest {
     const queryParams = new URLSearchParams();
     if (path) queryParams.append("path", path);
     return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
+      `/knowledge-bases/${knowledgeBaseId}/documents${queryParams.toString() ? "?" + queryParams.toString() : ""
       }`
     );
   }

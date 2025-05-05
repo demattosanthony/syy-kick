@@ -13,6 +13,7 @@ export * from "./workflows/[workflowId]/edit/page";
 export * from "./workflows/[workflowId]/runs/page";
 export * from "./workflows/[workflowId]/runs/[runId]/page";
 export * from "./workflows/create/page";
+export * from "./workflows/requests/page";
 export * from "./sites/page";
 export * from "./settings/page";
 export * from "./projects/page";
