@@ -36,6 +36,7 @@ export const workflowRunsOps = {
         ),
         with: {
           steps: {
+            orderBy: (workflowStep, { asc }) => [asc(workflowStep.createdAt)],
             with: {
               workflowStep: {
                 with: {
@@ -48,6 +49,7 @@ export const workflowRunsOps = {
                 },
               },
               messages: {
+                orderBy: (message, { asc }) => [asc(message.createdAt)],
                 with: {
                   toolCalls: true,
                 },
@@ -75,12 +77,8 @@ export const workflowRunsOps = {
       // This ensures the order matches the workflow definition, regardless of run step creation order.
       if (workflowRun.steps) {
         workflowRun.steps.sort((a, b) => {
-          const dateA = a.workflowStep?.createdAt
-            ? new Date(a.workflowStep.createdAt).getTime()
-            : 0;
-          const dateB = b.workflowStep?.createdAt
-            ? new Date(b.workflowStep.createdAt).getTime()
-            : 0;
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return dateA - dateB;
         });
       }
@@ -302,7 +300,9 @@ export const workflowRunsOps = {
           newWorkflowRunId = newWorkflowRun.id;
 
           // 3. Prepare and insert data for workflow run steps
-          const runStepsData = workflow.steps.map((step) => ({
+          // Assign slightly incrementing timestamps based on step order
+          const baseTimestamp = new Date();
+          const runStepsData = workflow.steps.map((step, index) => ({
             workflowRunId: newWorkflowRunId!,
             workflowStepId: step.id,
             status: "pending" as const,
@@ -312,8 +312,10 @@ export const workflowRunsOps = {
             model: step.model,
             activeTools: step.activeTools,
             formSchema: step.formSchema,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            // Add a small offset (e.g., milliseconds) based on index
+            createdAt: new Date(baseTimestamp.getTime() + index),
+            // Keep updatedAt the same for the initial creation
+            updatedAt: new Date(baseTimestamp.getTime() + index),
           }));
 
           try {
