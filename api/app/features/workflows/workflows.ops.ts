@@ -1,5 +1,5 @@
 /** Drizzle */
-import { eq, or, exists, inArray } from "drizzle-orm";
+import { eq, or, exists, inArray, and } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
 /** Schemas */
@@ -51,8 +51,10 @@ export const workflowsOps = {
                   .select()
                   .from(workflowOrganizations)
                   .where(
-                    eq(workflowOrganizations.workflowId, workflows.id) &&
+                    and(
+                      eq(workflowOrganizations.workflowId, workflows.id),
                       eq(workflowOrganizations.organizationId, orgId)
+                    )
                   )
               )
             : undefined,
@@ -62,8 +64,10 @@ export const workflowsOps = {
                   .select()
                   .from(workflowUsers)
                   .where(
-                    eq(workflowUsers.workflowId, workflows.id) &&
+                    and(
+                      eq(workflowUsers.workflowId, workflows.id),
                       eq(workflowUsers.userId, userId)
+                    )
                   )
               )
             : undefined
