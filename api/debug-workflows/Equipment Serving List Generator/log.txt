@@ -1,0 +1,71 @@
+{
+  "type": "workflow_start",
+  "data": {
+    "workflowId": "equipment-serving-list",
+    "workflowName": "Equipment Serving List Generator"
+  }
+}
+{
+  "type": "workflow_step_start",
+  "data": {
+    "stepId": "page-extraction-agent",
+    "stepName": "Page Extraction Agent"
+  }
+}
+{
+  "type": "workflow_step_message",
+  "data": {
+    "stepId": "page-extraction-agent",
+    "stepName": "Page Extraction Agent",
+    "text": "Okay, I will analyze the \"MechBinder.pdf\" file to find pages containing mechanical schedules. I will then extract those pages as images if found.\n\n",
+    "toolCalls": [
+      {
+        "type": "tool-call",
+        "toolCallId": "oQCITX5YpJCyyBnw",
+        "toolName": "load-artifact",
+        "args": {
+          "fileName": "MechBinder.pdf"
+        }
+      }
+    ],
+    "toolResults": [
+      {
+        "type": "tool-result",
+        "toolCallId": "oQCITX5YpJCyyBnw",
+        "toolName": "load-artifact",
+        "args": {
+          "fileName": "MechBinder.pdf"
+        },
+        "result": {
+          "success": true,
+          "message": "Successfully loaded artifact 'MechBinder.pdf'.",
+          "fileName": "MechBinder.pdf",
+          "mimeType": "application/pdf"
+        }
+      }
+    ],
+    "finishReason": "tool-calls",
+    "usage": {
+      "promptTokens": 986,
+      "completionTokens": 50,
+      "totalTokens": 1036
+    },
+    "role": "assistant"
+  }
+}
+{
+  "type": "workflow_step_error",
+  "data": {
+    "stepId": "page-extraction-agent",
+    "stepName": "Page Extraction Agent",
+    "error": "The document has no pages."
+  }
+}
+{
+  "type": "workflow_error",
+  "data": {
+    "workflowId": "equipment-serving-list",
+    "workflowName": "Equipment Serving List Generator",
+    "error": "Step Page Extraction Agent failed: The document has no pages."
+  }
+}

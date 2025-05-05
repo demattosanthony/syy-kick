@@ -52,31 +52,44 @@ const rootUserDataLoader = async (): Promise<User | null> => {
     // Check local storage for user data
     const userData = localStorage.getItem("me");
     if (userData) {
-      return JSON.parse(userData);
+      const parsedUser = JSON.parse(userData);
+      // Check that the user data is not empty
+      if (parsedUser && Object.keys(parsedUser).length > 0) {
+        return parsedUser;
+      }
+      // If the data is empty, continue with the cache or the API
     }
 
+    console.log("1. Local storage userData : ", userData);
     // Try fetching from the cache first
     const cachedData = queryClient.getQueryData<User>(queryKey);
     if (cachedData) {
       return cachedData;
     }
 
+    console.log("2. Cache userData : ", cachedData);
+
     // If not in cache, fetch from API using fetchQuery
     const user = await queryClient.fetchQuery<User | null>({
       queryKey,
       queryFn: async () => {
+        console.log("3. Fetching from API");
         const result = await api.auth.me();
-        return result; // Return User or null
+        return result;
       },
     });
 
+    console.log("3. API userData : ", user);
+
     if (user) {
-      return user; // Return user data if fetch is successful
+      console.log("4. API userData is not null, return user");
+      return user;
     } else {
-      return null; // Explicitly return null if fetchQuery resolves to null
+      console.log("4. API userData is null");
+      return null;
     }
   } catch (error) {
-    // If fetch throws an error (e.g., 401 Unauthorized), return null
+    console.error("6. Erreur:", error);
     return null;
   }
 };
