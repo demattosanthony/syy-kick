@@ -1,5 +1,5 @@
 /** Database */
-import db from "../../../../config/db";
+import db from "../../../config/db";
 
 export const agentsOps = {
     list: async () => {

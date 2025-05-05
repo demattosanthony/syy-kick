@@ -213,24 +213,42 @@ export const workflowsOps = {
     let currentTimestamp = new Date();
 
     for (const stepInput of steps) {
-      const valuesToInsert: Partial<WorkflowStep> = {
+
+      const baseValues = {
         workflowId,
         parentStepId: previousStepId,
         createdAt: currentTimestamp,
         updatedAt: currentTimestamp,
-        ...stepInput, // Spread the original input
       };
 
-      // Remove undefined keys explicitly
-      Object.keys(valuesToInsert).forEach((key) => {
-        if (valuesToInsert[key as keyof typeof valuesToInsert] === undefined) {
-          delete valuesToInsert[key as keyof typeof valuesToInsert];
-        }
-      });
+      const values = stepInput.agentId
+        ? {
+            ...baseValues,
+            agentId: stepInput.agentId,
+          }
+        : {
+            ...baseValues,
+            ...stepInput,
+          };
+          
+      // const valuesToInsert: Partial<WorkflowStep> = {
+      //   workflowId,
+      //   parentStepId: previousStepId,
+      //   createdAt: currentTimestamp,
+      //   updatedAt: currentTimestamp,
+      //   ...stepInput, // Spread the original input
+      // };
+
+      // // Remove undefined keys explicitly
+      // Object.keys(valuesToInsert).forEach((key) => {
+      //   if (valuesToInsert[key as keyof typeof valuesToInsert] === undefined) {
+      //     delete valuesToInsert[key as keyof typeof valuesToInsert];
+      //   }
+      // });
 
       const [insertedStep] = (await tx
         .insert(workflowSteps)
-        .values(valuesToInsert as any)
+        .values(values)
         .returning({ id: workflowSteps.id })) as [{ id: string }];
 
       if (!insertedStep) {
