@@ -21,9 +21,7 @@ export function WorkflowRunsPage() {
     workflowId: string;
   }>();
 
-  const { data: workflow, isLoading: isWorkflowLoading } = useWorkflowQuery(
-    workflowId as string
-  );
+  const { data: workflow } = useWorkflowQuery(workflowId as string);
   const { data: runs, isLoading: isRunsLoading } = useGetRunsQuery(
     workflowId as string
   );
@@ -152,7 +150,7 @@ export function WorkflowRunsPage() {
                             <div>
                               <p className="font-medium">Step {index + 1}</p>
                               <p className="text-sm text-muted-foreground">
-                                {step.workflowStep.name}
+                                {step.name}
                               </p>
                             </div>
                             <div

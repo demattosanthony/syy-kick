@@ -208,7 +208,7 @@ export function useRunSSE({
         "workflow_complete",
         "workflow_error",
       ] as const
-    ).filter((type): type is WorkflowProgressUpdate["type"] => true);
+    ).filter((_type): _type is WorkflowProgressUpdate["type"] => true);
 
     // Add listeners for specific event types
     eventTypes.forEach((type) => {
