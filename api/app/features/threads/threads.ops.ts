@@ -317,8 +317,9 @@ const threadsOps = {
 
     // SSE Setup - Set essential headers manually, but don't flush yet.
     res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+    res.setHeader("Cache-Control", "no-cache");
+    res.flushHeaders();
     // res.setHeader("X-Accel-Buffering", "no"); // Keep commented unless specifically needed
     // res.setHeader("Transfer-Encoding", "chunked"); // Keep commented - likely handled by pipeDataStreamToResponse or Node automatically
 
@@ -628,12 +629,10 @@ const threadsOps = {
       });
 
       // Pipe the data out as SSE
-      const streamResult = result.pipeDataStreamToResponse(res, {
+      result.pipeDataStreamToResponse(res, {
         sendReasoning: true,
         sendSources: true,
       });
-
-      return streamResult;
     } catch (error: any) {
       console.error("Error in inference:", error);
       // Check if headers are already sent before trying to send an error response
