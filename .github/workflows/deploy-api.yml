@@ -13,6 +13,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install git-lfs
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-lfs -y
+
       - name: Deploy API to Dokku
         uses: dokku/github-action@master
         with:
