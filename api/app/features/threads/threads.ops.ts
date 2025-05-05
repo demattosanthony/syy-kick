@@ -321,6 +321,8 @@ const threadsOps = {
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
 
     // Manually set CORS headers for SSE
     const origin = req.headers.origin;
