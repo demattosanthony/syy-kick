@@ -32,8 +32,7 @@ export function onStepFinishCallback(
   >,
   step: WorkflowRunStep,
   artifactService: ArtifactService,
-  progressCallback: WorkflowProgressCallback,
-  debug: boolean = false
+  progressCallback: WorkflowProgressCallback
 ): GenerateTextOnStepFinishCallback<Record<string, Tool>> {
   return async ({
     toolCalls,
