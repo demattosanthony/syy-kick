@@ -315,24 +315,25 @@ const threadsOps = {
   async inference(req: Request, res: Response) {
     const controller = new AbortController();
 
-    // SSE Setup - REMOVE MANUAL HEADERS AND FLUSH
-    // res.setHeader("Content-Type", "text/event-stream"); // REMOVED
-    // res.setHeader("Cache-Control", "no-cache"); // REMOVED
-    // res.setHeader("Connection", "keep-alive"); // REMOVED
-    // res.setHeader("X-Accel-Buffering", "no"); // REMOVED
-    // res.setHeader("Transfer-Encoding", "chunked"); // REMOVED
-    // Keep CORS headers
-    // res.setHeader("Access-Control-Allow-Origin", "*"); // Keeping this - might be needed if origins differ
-    // res.setHeader("Access-Control-Allow-Credentials", "true"); // Keeping this
+    // SSE Setup - Set essential headers manually, but don't flush yet.
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    // res.setHeader("X-Accel-Buffering", "no"); // Keep commented unless specifically needed
+    // res.setHeader("Transfer-Encoding", "chunked"); // Keep commented - likely handled by pipeDataStreamToResponse or Node automatically
 
-    // // Manually set specific CORS headers if needed
+    // Restore CORS headers
+    // res.setHeader("Access-Control-Allow-Origin", "*"); // General fallback
+    // res.setHeader("Access-Control-Allow-Credentials", "true");
+
+    // Manually set specific CORS headers if needed
     // const origin = req.headers.origin;
     // if (origin && CONFIG.CORS_ORIGINS.includes(origin)) {
     //   res.setHeader("Access-Control-Allow-Origin", origin);
     //   res.setHeader("Access-Control-Allow-Credentials", "true");
     // }
 
-    // res.flushHeaders(); // REMOVED - Let ai library handle flushing
+    // res.flushHeaders(); // Keep REMOVED - Let ai library handle flushing/writing
 
     try {
       const { threadId } = req.params;
