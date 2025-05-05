@@ -1,0 +1,1 @@
+export { default as useGetAgentsQuery } from "./get-agents";

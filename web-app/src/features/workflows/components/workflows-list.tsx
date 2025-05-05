@@ -35,7 +35,7 @@ export default function WorkflowsList(props: WorkflowsListProps) {
 
   const filteredWorkflows = search
     ? workflows?.filter((workflow) =>
-        workflow.title.toLowerCase().includes(search.toLowerCase())
+        workflow.name.toLowerCase().includes(search.toLowerCase())
       )
     : workflows;
 
@@ -65,7 +65,7 @@ function WorkflowItem({
   workflow: Workflow;
   projectId?: string;
 }) {
-  const Icon = getWorkflowIcon(workflow.title);
+  const Icon = getWorkflowIcon(workflow.name);
 
   return (
     <Link
@@ -83,7 +83,7 @@ function WorkflowItem({
 
         <div className="flex-1 min-w-0">
           <p className="text-lg font-semibold text-card-foreground mb-1">
-            {workflow.title}
+            {workflow.name}
           </p>
           <p className="text-sm text-muted-foreground line-clamp-3">
             {workflow.description}

@@ -13,9 +13,14 @@ import {
   TermsOfUsePage,
   JoinOrgPage,
   ThreadsPage,
+  ShareThreadPage,
   ThreadPage,
   WorkflowsPage,
   WorkflowPage,
+  CreateWorkflowPage,
+  EditWorkflowPage,
+  WorkflowRunPageDetails,
+  WorkflowRunsPage,
   SitesPage,
   UserSettings,
   ProjectsPage,
@@ -42,7 +47,6 @@ import ProjectPageLayout from "./components/layouts/project-layout";
 import { queryClient } from "./providers/tanstack-query-client-provider";
 import api from "./lib/api";
 import { KnowledgeBaseLayout } from "./components/layouts/knowledge-base-layout";
-import { ShareThreadPage } from "./pages/share/[threadId]/page";
 import { User } from "./types/user";
 
 // Define the new loader function for the root route
@@ -52,31 +56,44 @@ const rootUserDataLoader = async (): Promise<User | null> => {
     // Check local storage for user data
     const userData = localStorage.getItem("me");
     if (userData) {
-      return JSON.parse(userData);
+      const parsedUser = JSON.parse(userData);
+      // Check that the user data is not empty
+      if (parsedUser && Object.keys(parsedUser).length > 0) {
+        return parsedUser;
+      }
+      // If the data is empty, continue with the cache or the API
     }
 
+    console.log("1. Local storage userData : ", userData);
     // Try fetching from the cache first
     const cachedData = queryClient.getQueryData<User>(queryKey);
     if (cachedData) {
       return cachedData;
     }
 
+    console.log("2. Cache userData : ", cachedData);
+
     // If not in cache, fetch from API using fetchQuery
     const user = await queryClient.fetchQuery<User | null>({
       queryKey,
       queryFn: async () => {
+        console.log("3. Fetching from API");
         const result = await api.auth.me();
-        return result; // Return User or null
+        return result;
       },
     });
 
+    console.log("3. API userData : ", user);
+
     if (user) {
-      return user; // Return user data if fetch is successful
+      console.log("4. API userData is not null, return user");
+      return user;
     } else {
-      return null; // Explicitly return null if fetchQuery resolves to null
+      console.log("4. API userData is null");
+      return null;
     }
   } catch (error) {
-    // If fetch throws an error (e.g., 401 Unauthorized), return null
+    console.error("6. Erreur:", error);
     return null;
   }
 };
@@ -132,6 +149,13 @@ const router = createBrowserRouter([
           { path: "threads/:threadId", element: <ThreadPage /> },
           { path: "workflows", element: <WorkflowsPage /> },
           { path: "workflows/:workflowId", element: <WorkflowPage /> },
+          { path: "workflows/:workflowId/runs", element: <WorkflowRunsPage /> },
+          {
+            path: "workflows/:workflowId/runs/:runId",
+            element: <WorkflowRunPageDetails />,
+          },
+          { path: "workflows/:workflowId/edit", element: <EditWorkflowPage /> },
+          { path: "workflows/create", element: <CreateWorkflowPage /> },
           { path: "sites", element: <SitesPage /> },
           { path: "settings", element: <UserSettings /> },
           { path: "projects", element: <ProjectsPage /> },

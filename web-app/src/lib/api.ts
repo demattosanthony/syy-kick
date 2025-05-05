@@ -9,7 +9,13 @@ import {
   UpdateOrgMemberRoleRequest,
 } from "@/features/permissions/types";
 import { Site } from "@/features/sites/types/sites";
-import { Workflow } from "@/features/workflows/workflows.types";
+import {
+  Step,
+  Workflow,
+  WorkflowRun,
+  WorkflowRunRequest,
+  WorkflowUpdateRequest,
+} from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent, Project } from "@/types/project";
@@ -53,6 +59,7 @@ import {
   KnowledgeBaseAccessLogFilters,
   KnowledgeBaseAccessLogsResponse,
 } from "@/features/knowledge-bases/types";
+import { Agent, Tool } from "@/features/workflows/features/agents/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -924,6 +931,81 @@ class WorkflowsApi extends ApiRequest {
 
   async getWorkflow(id: string): Promise<Workflow> {
     return await this.request(`/workflows/${id}`);
+  }
+
+  async createWorkflow(data: {
+    name: string;
+    description: string;
+    workflowSteps: Step[];
+  }): Promise<{ message: string }> {
+    try {
+      return await this.request("/workflows", "POST", data);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateWorkflow(
+    workflowId: string,
+    data: WorkflowUpdateRequest
+  ): Promise<{ message: string; id: string }> {
+    try {
+      return await this.request<{ message: string; id: string }>(
+        `/workflows/${workflowId}`,
+        "PUT",
+        data
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteWorkflow(workflowId: string): Promise<{ message: string }> {
+    try {
+      return await this.request<{ message: string }>(
+        `/workflows/${workflowId}`,
+        "DELETE"
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createRun(data: WorkflowRunRequest): Promise<{
+    id: string;
+  }> {
+    try {
+      return await this.request(
+        `/workflows/${data.workflowId}/runs`,
+        "POST",
+        data
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getRuns(workflowId: string): Promise<WorkflowRun[]> {
+    return await this.request(`/workflows/${workflowId}/runs`);
+  }
+
+  async getRun(workflowId: string, runId: string): Promise<WorkflowRun> {
+    return await this.request(`/workflows/${workflowId}/runs/${runId}`);
+  }
+
+  async triggerRun(workflowId: string, workflowRunId: string): Promise<void> {
+    return await this.request(
+      `/workflows/${workflowId}/runs/${workflowRunId}`,
+      "POST"
+    );
+  }
+
+  async getAgents(): Promise<Agent[]> {
+    return await this.request("/workflows/agents");
+  }
+
+  async getTools(): Promise<Tool[]> {
+    return await this.request("/tools");
   }
 }
 

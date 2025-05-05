@@ -1,48 +1,34 @@
-import { Workflow } from "../workflows.schemas";
-import { z } from "zod";
+import { WorkflowStep, Workflow } from "../workflows.schema";
 
-export const rfpEvalWorkflow: Workflow = {
-  id: "rfp-evaluator",
-  title: "RFP Evaluator",
-  description:
-    "This workflow evaluates a Request for Proposal (RFP) pdf file based on the setty criteria",
-  inputs: [
-    {
-      id: "rfpDoc",
-      type: "file",
-      title: "RFP Document",
-      description: "The RFP document to be evaluated",
-      required: true,
-      acceptedFileTypes: "application/pdf",
-    },
-  ],
-  output: {
-    type: "text/csv",
-    title: "Evaluation Results",
-    description: "View the evaluation results",
-    outputKey: "evaluation",
-  },
-  authorizedOrganizationIds: [
-    "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
-    "a5b8c99d-9e1d-42a9-8473-b52471932d51",
-    "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
-    "99b93b8d-0360-47af-bd74-0fd099f07c4e"
-  ],
-  steps: [
-    {
-      id: "ai-evaluation",
-      processingMessage: "Evaluating the RFP document...",
-      processedMessage: "Evaluation completed successfully.",
-      type: "llm",
-      inputMapping: {
-        file: "workflowInput.rfpDoc",
+const documentOcrStep: WorkflowStep = {
+  id: "document-ocr-step",
+  name: "Document OCR Step",
+  description: "Extracts text from a document",
+  instructions: `Your goal is to perform document OCR on the RFP document.`,
+  model: "gemini-2.5-flash-preview",
+  activeTools: ["doc-ocr"],
+  formSchema: {
+    fields: {
+      "rfp-document": {
+        type: "file",
+        label: "RFP Document",
+        required: true,
+        acceptedFileTypes: ["application/pdf"],
       },
-      config: {
-        outputSchema: z.object({
-          evaluation: z.string(),
-        }),
-        modelName: "gemini-2.5-pro-preview",
-        promptTemplate: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
+    },
+  },
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "rfp-evaluator",
+  agentId: null,
+  parentStepId: null,
+};
+
+const rfpEvaluatorStep: WorkflowStep = {
+  id: "rfp-evaluator-step",
+  name: "RFP Evaluator Step",
+  description: "Evaluates the RFP document",
+  instructions: `You are an experienced business analyst tasked with evaluating a Request for Proposal (RFP) for a new project. Your goal is to determine whether pursuing this project is worthwhile based on specific criteria. You work at Setty & Associates.
 
 # Setty & Associates Overview
 Setty & Associates, established in 1984, is a family-owned, multidisciplinary design engineering firm specializing in mechanical, electrical, plumbing, and fire protection (MEP/FP) engineering services. Their expertise encompasses commissioning, energy services, and sustainable design, aiming to deliver high-performing, energy-efficient buildings. ​
@@ -157,7 +143,7 @@ Example of correct CSV formatting:
 "Knowledge of project before RFP","4"
 "Relationship with client/decision makers","3"
 
-Your final response must contain only the CSV artifact with no additional commentary or markup. The CSV should include all sections:
+The CSV should include all sections:
 - Project Information
 - Evaluation Criteria with scores
 - Total Score
@@ -166,7 +152,34 @@ Your final response must contain only the CSV artifact with no additional commen
 - Notes
 
 Do not make up or assume any information that is not present in the RFP document. Use "unknown" for any fields where information is not available.`,
-      },
-    },
-  ],
+  model: "gemini-2.5-flash-preview",
+  activeTools: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  workflowId: "rfp-evaluator",
+  agentId: null,
+  parentStepId: null,
+  formSchema: null,
+};
+
+export const rfpWorkflowSteps: WorkflowStep[] = [
+  documentOcrStep,
+  rfpEvaluatorStep,
+];
+
+export const rfpWorkflowAuthOrgs: string[] = [
+  "a58c6da2-4320-4aeb-8fc9-97fcfcae26d7",
+  "a5b8c99d-9e1d-42a9-8473-b52471932d51",
+  "cb9e9135-3f61-4b0b-a21f-1ecde3fcaf02",
+  "99b93b8d-0360-47af-bd74-0fd099f07c4e",
+];
+
+export const rfpEvalWorkflow: Workflow = {
+  id: "rfp-evaluator",
+  name: "RFP Evaluator",
+  description:
+    "This workflow evaluates a Request for Proposal (RFP) pdf file based on the setty criteria",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: null,
 };

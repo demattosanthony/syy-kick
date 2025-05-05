@@ -8,6 +8,7 @@ import {
   threads as threadsTable,
   messages as messagesTable,
   documentProcessingJobs,
+  documents,
 } from "../../config/schema";
 
 const router = Router();
@@ -67,9 +68,9 @@ router.get("", async (req, res) => {
       .orderBy(desc(sql`COALESCE(${users.lastActiveAt}, '1970-01-01')`));
 
     // Fetch document stats
-    const docStatsResult = await db
+    const totalDocsResult = await db.select({ count: count() }).from(documents);
+    const jobStatsResult = await db
       .select({
-        total: count(),
         processing: count(
           sql`CASE WHEN status = 'processing' THEN 1 ELSE NULL END`
         ),
@@ -77,10 +78,10 @@ router.get("", async (req, res) => {
       })
       .from(documentProcessingJobs);
 
-    const documentStats = docStatsResult[0] || {
-      total: 0,
-      processing: 0,
-      pending: 0,
+    const documentStats = {
+      total: totalDocsResult[0]?.count ?? 0,
+      processing: jobStatsResult[0]?.processing ?? 0,
+      pending: jobStatsResult[0]?.pending ?? 0,
     };
 
     const stream = await renderToReadableStream(
