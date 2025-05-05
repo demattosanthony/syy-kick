@@ -8,6 +8,7 @@ export const workflowsUtils = {
       description: workflow.description,
       steps: workflow.steps.map((step: any) => ({
         id: step.id,
+        agentId: step.agentId,
         name: step.name ?? step.agent?.name,
         description: step.description ?? step.agent?.description,
         instructions: step.instructions ?? step.agent?.instructions,
