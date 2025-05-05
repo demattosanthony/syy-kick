@@ -315,23 +315,24 @@ const threadsOps = {
   async inference(req: Request, res: Response) {
     const controller = new AbortController();
 
-    // SSE Setup
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no");
-    res.setHeader("Transfer-Encoding", "chunked");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
+    // SSE Setup - REMOVE MANUAL HEADERS AND FLUSH
+    // res.setHeader("Content-Type", "text/event-stream"); // REMOVED
+    // res.setHeader("Cache-Control", "no-cache"); // REMOVED
+    // res.setHeader("Connection", "keep-alive"); // REMOVED
+    // res.setHeader("X-Accel-Buffering", "no"); // REMOVED
+    // res.setHeader("Transfer-Encoding", "chunked"); // REMOVED
+    // Keep CORS headers
+    // res.setHeader("Access-Control-Allow-Origin", "*"); // Keeping this - might be needed if origins differ
+    // res.setHeader("Access-Control-Allow-Credentials", "true"); // Keeping this
 
-    // Manually set CORS headers for SSE
-    const origin = req.headers.origin;
-    if (origin && CONFIG.CORS_ORIGINS.includes(origin)) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
-      res.setHeader("Access-Control-Allow-Credentials", "true");
-    }
+    // // Manually set specific CORS headers if needed
+    // const origin = req.headers.origin;
+    // if (origin && CONFIG.CORS_ORIGINS.includes(origin)) {
+    //   res.setHeader("Access-Control-Allow-Origin", origin);
+    //   res.setHeader("Access-Control-Allow-Credentials", "true");
+    // }
 
-    res.flushHeaders();
+    // res.flushHeaders(); // REMOVED - Let ai library handle flushing
 
     try {
       const { threadId } = req.params;
@@ -634,9 +635,15 @@ const threadsOps = {
       return streamResult;
     } catch (error: any) {
       console.error("Error in inference:", error);
-      res.status(500).json({
-        error: "An error occurred during inference",
-      });
+      // Check if headers are already sent before trying to send an error response
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: "An error occurred during inference",
+        });
+      } else {
+        // Headers already sent, just log the error
+        console.error("Headers already sent, cannot send error response.");
+      }
     }
   },
 
