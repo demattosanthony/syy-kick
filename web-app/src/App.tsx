@@ -13,9 +13,11 @@ import {
   TermsOfUsePage,
   JoinOrgPage,
   ThreadsPage,
+  ShareThreadPage,
   ThreadPage,
   WorkflowsPage,
   WorkflowPage,
+  CreateWorkflowPage,
   EditWorkflowPage,
   WorkflowRunPageDetails,
   WorkflowRunsPage,
@@ -45,9 +47,7 @@ import ProjectPageLayout from "./components/layouts/project-layout";
 import { queryClient } from "./providers/tanstack-query-client-provider";
 import api from "./lib/api";
 import { KnowledgeBaseLayout } from "./components/layouts/knowledge-base-layout";
-import { ShareThreadPage } from "./pages/share/[threadId]/page";
 import { User } from "./types/user";
-import { CreateWorkflowPage } from "./pages/workflows/create/page";
 
 // Define the new loader function for the root route
 const rootUserDataLoader = async (): Promise<User | null> => {
