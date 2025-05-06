@@ -10,7 +10,7 @@ import {
   documentProcessingJobs,
   documents,
 } from "../../config/schema";
-import logsRoutes from "./logs/logs.routes";
+import logsRoutes from "./log_viewer/logs.routes";
 
 const router = Router();
 
