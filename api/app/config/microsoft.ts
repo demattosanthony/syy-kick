@@ -169,6 +169,23 @@ export class MicrosoftAPI {
             throw error as MicrosoftRefreshTokenError;
         }
     }
+
+    getConsentUrl(state: string) {
+        const authUrl = new URL(
+            "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize"
+        );
+        authUrl.searchParams.set("client_id", process.env.MICROSOFT_CLIENT_ID!);
+        authUrl.searchParams.set("response_type", "code");
+        authUrl.searchParams.set(
+            "redirect_uri",
+            process.env.MICROSOFT_FILES_CALLBACK_URL!
+        );
+        authUrl.searchParams.set("scope", "openid offline_access Sites.Read.All");
+        authUrl.searchParams.set("state", state);
+        authUrl.searchParams.set("prompt", "consent");
+
+        return authUrl.toString();
+    }
 }
 
 type MicrosoftSite = {

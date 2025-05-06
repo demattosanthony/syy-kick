@@ -24,7 +24,7 @@ export function useMicrosoftPicker({
 }) {
   const [loading, setLoading] = useState(false);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const oauthSuccess = searchParams.get("oauth_success");
   const [microsoftPicker] = useState(
     () => new MicrosoftPicker(onFilesSelected)
@@ -53,10 +53,11 @@ export function useMicrosoftPicker({
   const openPicker = useCallback(
     async (options: PickerOptions) => {
       setLoading(true);
+      setSearchParams({});
       await microsoftPicker.openPicker(options);
       setLoading(microsoftPicker.getLoadingState());
     },
-    [microsoftPicker]
+    [microsoftPicker, setSearchParams]
   );
 
   const pickerSelectionsToFiles = useCallback(

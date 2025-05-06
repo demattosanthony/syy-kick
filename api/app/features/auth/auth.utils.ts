@@ -27,6 +27,9 @@ export function getStateEntry(state: string): StateEntry | null {
         return null;
     }
 
-    cache.delete(state);
     return entry;
+}
+
+export function clearStateEntry(state: string): void {
+    cache.delete(state);
 }

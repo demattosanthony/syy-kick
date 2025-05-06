@@ -10,8 +10,7 @@ import {
   MicrosoftRefreshTokenError,
   MicrosoftRefreshTokenResponse,
 } from "../../config/microsoft";
-import { generateStateEntry, getStateEntry } from "./auth.utils";
-import myPassport from "../../config/passport";
+import { generateStateEntry, getStateEntry, clearStateEntry } from "./auth.utils";
 import { jwtDecode } from "jwt-decode";
 
 export const handlers = {
@@ -227,21 +226,7 @@ export const handlers = {
       process.env.MICROSOFT_FILES_CALLBACK_URL!
     );
     authUrl.searchParams.set("scope", "openid offline_access Sites.Read.All");
-    authUrl.searchParams.set("prompt", "consent");
     authUrl.searchParams.set("state", state);
-
-    console.log(authUrl.toString());
-
-    // Check if the user has a picker token
-    if (userId) {
-      const microsoftApi = new MicrosoftAPI({ userId });
-      const pickerToken = await microsoftApi.getUserToken("picker");
-
-      if (!pickerToken) {
-        // If no picker token, display account selection
-        authUrl.searchParams.set("prompt", "select_account");
-      }
-    }
 
     res.json({ url: authUrl.toString() });
   },
@@ -354,12 +339,29 @@ export const handlers = {
         ]);
       });
 
+      clearStateEntry(state as string);
       res.redirect(
         `${redirectUrl}?syy-connector=microsoft-files&oauth_success=true`
       );
-    } catch (err: any) {
-      console.log(err, "Error in microsoftFilesCallback");
+    } catch (err: any | MicrosoftRefreshTokenError) {
+      if(err?.error_codes?.includes(650053)) {
+        const stateEntry = getStateEntry(state as string);
+        if (!stateEntry?.redirectUrl) {
+          res.redirect(`${process.env.FRONTEND_URL}?error=Missing redirect url`);
+          return;
+        }
+        const newState = generateStateEntry(stateEntry.redirectUrl);
+        const authUrl = microsoftApi.getConsentUrl(newState);
+        res.redirect(authUrl);
+        return;
+      }
 
+      // After consent request
+      if(err?.error_codes?.includes(65004)) {
+        res.redirect(
+          `${stateEntry.redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Waiting for admin approval`
+        )
+      }
       res.redirect(
         `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${err.message}`
       );
