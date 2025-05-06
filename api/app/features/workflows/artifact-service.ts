@@ -181,7 +181,7 @@ export class ArtifactService {
         type: mimeType,
       });
 
-      await sourceFile.delete();
+      //   await sourceFile.delete(); // can't delete because its break the workflow input value file url
     } catch (error) {
       console.error(
         `Failed to adopt S3 object from ${sourceKey} to ${targetKey}:`,

@@ -424,6 +424,7 @@ const threadsOps = {
         providerOptions: {
           openai: {
             store: false,
+            reasoningSummary: "auto",
           },
           ...(modelConfig.provider === "anthropic" &&
           modelConfig.model.modelId.includes("claude-3-7")
