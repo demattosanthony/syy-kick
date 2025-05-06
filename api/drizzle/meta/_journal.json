@@ -386,6 +386,13 @@
       "when": 1746295441741,
       "tag": "0054_vengeful_dormammu",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1746565824570,
+      "tag": "0055_lame_red_ghost",
+      "breakpoints": true
     }
   ]
 }
