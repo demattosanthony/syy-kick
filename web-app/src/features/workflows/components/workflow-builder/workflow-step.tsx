@@ -33,6 +33,7 @@ import {
   List,
   Check,
   AlertCircle,
+  Plus,
 } from "lucide-react";
 import {
   Command,
@@ -92,6 +93,7 @@ const WorkflowStep = ({
   models,
   tools,
   errors,
+  onInsertStep,
 }: {
   step: Step;
   agents: Agent[];
@@ -101,6 +103,7 @@ const WorkflowStep = ({
   models: Model[];
   tools: Tool[];
   errors: ZodError[];
+  onInsertStep: (index: number) => void;
 }) => {
   const [isFieldTypeDialogOpen, setIsFieldTypeDialogOpen] = useState(false);
 
@@ -184,379 +187,397 @@ const WorkflowStep = ({
   };
 
   return (
-    <div className="space-y-6">
-      <Tabs defaultValue={step.agentId ? "agent" : "custom"} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger
-            value="agent"
-            onClick={() => onUpdateStepField(step.id, "agentId", null)}
-          >
-            Use Existing Agent
-          </TabsTrigger>
-          <TabsTrigger
-            value="custom"
-            onClick={() => onUpdateStepField(step.id, "agentId", null)}
-          >
-            Custom Agent
-          </TabsTrigger>
-        </TabsList>
+    <div className="relative p-4 border rounded-lg">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold tracking-tight">{`Step ${index + 1}`}</h2>
+      </div>
 
-        <TabsContent value="agent" className="space-y-4">
-          <div className="mb-4">
-            <Label>Agent</Label>
-            <Select
-              value={step.agentId || ""}
-              onValueChange={(value) => onUpdateStepAgent(step.id, value)}
+      <div className="space-y-6">
+        <Tabs defaultValue={step.agentId ? "agent" : "custom"} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger
+              value="agent"
+              onClick={() => onUpdateStepField(step.id, "agentId", null)}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select an agent" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(agentsTypesLabels).map(
-                  ([type, { label, icon: Icon }]) => {
-                    const typeAgents =
-                      agents?.filter((agent) => agent.type === type) || [];
-                    if (typeAgents.length === 0) return null;
+              Use Existing Agent
+            </TabsTrigger>
+            <TabsTrigger
+              value="custom"
+              onClick={() => onUpdateStepField(step.id, "agentId", null)}
+            >
+              Custom Agent
+            </TabsTrigger>
+          </TabsList>
 
-                    return (
-                      <SelectGroup key={type}>
-                        <SelectLabel className="flex items-center gap-2">
-                          <Icon className="h-4 w-4" />
-                          {label}
-                        </SelectLabel>
-                        {typeAgents.map((agent) => (
-                          <SelectItem key={agent.id} value={agent.id}>
-                            {agent.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    );
-                  }
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+          <TabsContent value="agent" className="space-y-4">
+            <div className="mb-4">
+              <Label>Agent</Label>
+              <Select
+                value={step.agentId || ""}
+                onValueChange={(value) => onUpdateStepAgent(step.id, value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(agentsTypesLabels).map(
+                    ([type, { label, icon: Icon }]) => {
+                      const typeAgents =
+                        agents?.filter((agent) => agent.type === type) || [];
+                      if (typeAgents.length === 0) return null;
 
-          {step.formSchema && (
-            <div className="mt-4">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold mb-2">
-                  Agent Input Fields
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Configure the input fields that will be shown to users during
-                  workflow execution.
-                </p>
+                      return (
+                        <SelectGroup key={type}>
+                          <SelectLabel className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" />
+                            {label}
+                          </SelectLabel>
+                          {typeAgents.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              {agent.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      );
+                    }
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {step.formSchema && (
+              <div className="mt-4">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold mb-2">
+                    Agent Input Fields
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Configure the input fields that will be shown to users during
+                    workflow execution.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {Object.entries(step.formSchema.fields).map(
+                    ([fieldKey, field]) => {
+
+                      const fieldError = getStepFieldError([fieldKey]);
+
+                      return (
+                        <FormField
+                          key={fieldKey}
+                          fieldKey={fieldKey}
+                          field={field}
+                          stepId={step.id}
+                          stepIndex={index}
+                          fieldError={fieldError}
+                          onFieldChange={(key, updatedField) => {
+                            const updatedFormSchema = {
+                              ...step.formSchema,
+                              fields: {
+                                ...step.formSchema!.fields,
+                                [key]: updatedField,
+                              },
+                            };
+                            onUpdateStepField(
+                              step.id,
+                              "formSchema",
+                              updatedFormSchema
+                            );
+                          }}
+                        />
+                      )
+                    }
+                  )}
+                </div>
               </div>
-              <div className="space-y-4">
-                {Object.entries(step.formSchema.fields).map(
-                  ([fieldKey, field]) => {
+            )}
+          </TabsContent>
 
-                    const fieldError = getStepFieldError([fieldKey]);
-
-                    return (
-                      <FormField
-                        key={fieldKey}
-                        fieldKey={fieldKey}
-                        field={field}
-                        stepId={step.id}
-                        stepIndex={index}
-                        fieldError={fieldError}
-                        onFieldChange={(key, updatedField) => {
-                          const updatedFormSchema = {
-                            ...step.formSchema,
-                            fields: {
-                              ...step.formSchema!.fields,
-                              [key]: updatedField,
-                            },
-                          };
-                          onUpdateStepField(
-                            step.id,
-                            "formSchema",
-                            updatedFormSchema
-                          );
-                        }}
-                      />
+          <TabsContent value="custom" className="space-y-4">
+            {hasErrors && (
+              <div className="p-4 bg-destructive/10 border border-destructive rounded-lg mb-4">
+                <div className="flex items-center gap-2 text-destructive mb-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="font-medium">Validation errors</span>
+                </div>
+                <ul className="text-sm text-destructive/80 space-y-1">
+                  {errors[0]?.issues
+                    .filter(
+                      (err) =>
+                        err.path[0] === "workflowSteps" && err.path[1] === index
                     )
-                  }
-                )}
+                    .map((err, i) => (
+                      <li key={i}>• {err.message}</li>
+                    ))}
+                </ul>
               </div>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="custom" className="space-y-4">
-          {hasErrors && (
-            <div className="p-4 bg-destructive/10 border border-destructive rounded-lg mb-4">
-              <div className="flex items-center gap-2 text-destructive mb-2">
-                <AlertCircle className="h-4 w-4" />
-                <span className="font-medium">Validation errors</span>
-              </div>
-              <ul className="text-sm text-destructive/80 space-y-1">
-                {errors[0]?.issues
-                  .filter(
-                    (err) =>
-                      err.path[0] === "workflowSteps" && err.path[1] === index
-                  )
-                  .map((err, i) => (
-                    <li key={i}>• {err.message}</li>
-                  ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold mb-2">Agent configuration</h3>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                Name
-                {isCustomAgent && <span className="text-destructive">*</span>}
-              </Label>
-              <Input
-                value={step.name}
-                onChange={(e) => handleFieldChange("name", e.target.value)}
-                placeholder="Enter step name"
-                className={cn(getStepError(["name"]) && "border-destructive")}
-              />
-              {getStepError(["name"]) && (
-                <p className="text-sm text-destructive mt-1">
-                  {getStepError(["name"])?.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">Description</Label>
-              <Textarea
-                value={step.description}
-                onChange={(e) =>
-                  handleFieldChange("description", e.target.value)
-                }
-                placeholder="Enter step description"
-                className={cn(
-                  getStepError(["description"]) && "border-destructive"
-                )}
-              />
-              {getStepError(["description"]) && (
-                <p className="text-sm text-destructive mt-1">
-                  {getStepError(["description"])?.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                Instructions
-                {isCustomAgent && <span className="text-destructive">*</span>}
-              </Label>
-              <Textarea
-                value={step.instructions}
-                onChange={(e) =>
-                  handleFieldChange("instructions", e.target.value)
-                }
-                placeholder={`Your task is to, follow these steps..., do not forget to...`}
-                className={cn(
-                  getStepError(["instructions"]) && "border-destructive",
-                  "min-h-[125px]"
-                )}
-              />
-              {getStepError(["instructions"]) && (
-                <p className="text-sm text-destructive mt-1">
-                  {getStepError(["instructions"])?.message}
-                </p>
-              )}
-            </div>
-
-            <ModelSelector
-              step={step}
-              models={models || []}
-              onModelChange={(modelName) =>
-                handleFieldChange("model", modelName)
-              }
-              hasError={!!getStepError(["model"])}
-            />
-            {getStepError(["model"]) && (
-              <p className="text-sm text-destructive mt-1">
-                {getStepError(["model"])?.message}
-              </p>
             )}
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">Active Tools</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className={cn(
-                      "w-full justify-between",
-                      getStepError(["activeTools"]) && "border-destructive"
-                    )}
-                  >
-                    {step.activeTools.length > 0
-                      ? `${step.activeTools.length} tool${step.activeTools.length > 1 ? "s" : ""
-                      } selected`
-                      : "Select tools"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search tools..." />
-                    <CommandEmpty>No tools found.</CommandEmpty>
-                    <CommandGroup>
-                      {tools?.map((tool) => (
-                        <CommandItem
-                          key={tool.id}
-                          onSelect={() => {
-                            const currentTools = step.activeTools;
-                            if (currentTools.includes(tool.id)) {
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold mb-2">Agent configuration</h3>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  Name
+                  {isCustomAgent && <span className="text-destructive">*</span>}
+                </Label>
+                <Input
+                  value={step.name}
+                  onChange={(e) => handleFieldChange("name", e.target.value)}
+                  placeholder="Enter step name"
+                  className={cn(getStepError(["name"]) && "border-destructive")}
+                />
+                {getStepError(["name"]) && (
+                  <p className="text-sm text-destructive mt-1">
+                    {getStepError(["name"])?.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">Description</Label>
+                <Textarea
+                  value={step.description}
+                  onChange={(e) =>
+                    handleFieldChange("description", e.target.value)
+                  }
+                  placeholder="Enter step description"
+                  className={cn(
+                    getStepError(["description"]) && "border-destructive"
+                  )}
+                />
+                {getStepError(["description"]) && (
+                  <p className="text-sm text-destructive mt-1">
+                    {getStepError(["description"])?.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  Instructions
+                  {isCustomAgent && <span className="text-destructive">*</span>}
+                </Label>
+                <Textarea
+                  value={step.instructions}
+                  onChange={(e) =>
+                    handleFieldChange("instructions", e.target.value)
+                  }
+                  placeholder={`Your task is to, follow these steps..., do not forget to...`}
+                  className={cn(
+                    getStepError(["instructions"]) && "border-destructive",
+                    "min-h-[125px]"
+                  )}
+                />
+                {getStepError(["instructions"]) && (
+                  <p className="text-sm text-destructive mt-1">
+                    {getStepError(["instructions"])?.message}
+                  </p>
+                )}
+              </div>
+
+              <ModelSelector
+                step={step}
+                models={models || []}
+                onModelChange={(modelName) =>
+                  handleFieldChange("model", modelName)
+                }
+                hasError={!!getStepError(["model"])}
+              />
+              {getStepError(["model"]) && (
+                <p className="text-sm text-destructive mt-1">
+                  {getStepError(["model"])?.message}
+                </p>
+              )}
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">Active Tools</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className={cn(
+                        "w-full justify-between",
+                        getStepError(["activeTools"]) && "border-destructive"
+                      )}
+                    >
+                      {step.activeTools.length > 0
+                        ? `${step.activeTools.length} tool${step.activeTools.length > 1 ? "s" : ""
+                        } selected`
+                        : "Select tools"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search tools..." />
+                      <CommandEmpty>No tools found.</CommandEmpty>
+                      <CommandGroup>
+                        {tools?.map((tool) => (
+                          <CommandItem
+                            key={tool.id}
+                            onSelect={() => {
+                              const currentTools = step.activeTools;
+                              if (currentTools.includes(tool.id)) {
+                                onUpdateStepField(
+                                  step.id,
+                                  "activeTools",
+                                  currentTools.filter((t) => t !== tool.id)
+                                );
+                              } else {
+                                onUpdateStepField(step.id, "activeTools", [
+                                  ...currentTools,
+                                  tool.id,
+                                ]);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span>{tool.name}</span>
+                              {step.activeTools.includes(tool.id) && (
+                                <Check className="h-4 w-4" />
+                              )}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {step.activeTools.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {step.activeTools.map((toolId) => {
+                      const tool = tools?.find((t) => t.id === toolId);
+                      return tool ? (
+                        <div
+                          key={toolId}
+                          className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md text-sm"
+                        >
+                          {tool.name}
+                          <button
+                            onClick={() => {
+                              const currentTools = step.activeTools;
                               onUpdateStepField(
                                 step.id,
                                 "activeTools",
-                                currentTools.filter((t) => t !== tool.id)
+                                currentTools.filter((t) => t !== toolId)
                               );
-                            } else {
-                              onUpdateStepField(step.id, "activeTools", [
-                                ...currentTools,
-                                tool.id,
-                              ]);
-                            }
-                          }}
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span>{tool.name}</span>
-                            {step.activeTools.includes(tool.id) && (
-                              <Check className="h-4 w-4" />
-                            )}
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              {step.activeTools.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {step.activeTools.map((toolId) => {
-                    const tool = tools?.find((t) => t.id === toolId);
-                    return tool ? (
-                      <div
-                        key={toolId}
-                        className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-md text-sm"
-                      >
-                        {tool.name}
-                        <button
-                          onClick={() => {
-                            const currentTools = step.activeTools;
-                            onUpdateStepField(
-                              step.id,
-                              "activeTools",
-                              currentTools.filter((t) => t !== toolId)
-                            );
-                          }}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ) : null;
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">Agent Input Fields</h2>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsFieldTypeDialogOpen(true)}
-                >
-                  Add Field
-                </Button>
-              </div>
-
-              <Dialog
-                open={isFieldTypeDialogOpen}
-                onOpenChange={setIsFieldTypeDialogOpen}
-              >
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Select Field Type</DialogTitle>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    {fieldTypes.map((fieldType) => {
-                      const Icon = fieldType.icon;
-                      return (
-                        <button
-                          key={fieldType.type}
-                          onClick={() => handleAddField(fieldType.type)}
-                          className="flex items-start gap-4 p-4 rounded-lg border hover:bg-accent transition-colors text-left"
-                        >
-                          <div className="p-2 bg-secondary rounded-md">
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div className="space-y-1">
-                            <h4 className="font-medium">{fieldType.label}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {fieldType.description}
-                            </p>
-                          </div>
-                        </button>
-                      );
+                            }}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : null;
                     })}
                   </div>
-                </DialogContent>
-              </Dialog>
+                )}
+              </div>
 
-              {step.formSchema?.fields &&
-                Object.entries(step.formSchema.fields).map(
-                  ([fieldKey, field]) => {
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-semibold">Agent Input Fields</h2>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsFieldTypeDialogOpen(true)}
+                  >
+                    Add Field
+                  </Button>
+                </div>
 
-                    const fieldError = getStepFieldError([fieldKey]);
+                <Dialog
+                  open={isFieldTypeDialogOpen}
+                  onOpenChange={setIsFieldTypeDialogOpen}
+                >
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Select Field Type</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      {fieldTypes.map((fieldType) => {
+                        const Icon = fieldType.icon;
+                        return (
+                          <button
+                            key={fieldType.type}
+                            onClick={() => handleAddField(fieldType.type)}
+                            className="flex items-start gap-4 p-4 rounded-lg border hover:bg-accent transition-colors text-left"
+                          >
+                            <div className="p-2 bg-secondary rounded-md">
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div className="space-y-1">
+                              <h4 className="font-medium">{fieldType.label}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {fieldType.description}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
-                    return (
-                      <FormField
-                        key={fieldKey}
-                        fieldKey={fieldKey}
-                        field={field}
-                        stepId={step.id}
-                        stepIndex={index}
-                        fieldError={fieldError}
-                        onFieldChange={(key, updatedField) => {
-                          const updatedFormSchema = {
-                            ...step.formSchema,
-                            fields: {
-                              ...step.formSchema!.fields,
-                              [key]: updatedField,
-                            },
-                          };
-                          onUpdateStepField(
-                            step.id,
-                            "formSchema",
-                            updatedFormSchema
-                          );
-                        }}
-                        onDeleteField={
-                          !step.agentId ? handleDeleteField : undefined
-                        }
-                      />
-                    )
-                  }
+                {step.formSchema?.fields &&
+                  Object.entries(step.formSchema.fields).map(
+                    ([fieldKey, field]) => {
+
+                      const fieldError = getStepFieldError([fieldKey]);
+
+                      return (
+                        <FormField
+                          key={fieldKey}
+                          fieldKey={fieldKey}
+                          field={field}
+                          stepId={step.id}
+                          stepIndex={index}
+                          fieldError={fieldError}
+                          onFieldChange={(key, updatedField) => {
+                            const updatedFormSchema = {
+                              ...step.formSchema,
+                              fields: {
+                                ...step.formSchema!.fields,
+                                [key]: updatedField,
+                              },
+                            };
+                            onUpdateStepField(
+                              step.id,
+                              "formSchema",
+                              updatedFormSchema
+                            );
+                          }}
+                          onDeleteField={
+                            !step.agentId ? handleDeleteField : undefined
+                          }
+                        />
+                      )
+                    }
+                  )}
+              </div>
+              {step.formSchema &&
+                Object.keys(step.formSchema?.fields || {}).length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No fields added yet.
+                  </p>
                 )}
             </div>
-            {step.formSchema &&
-              Object.keys(step.formSchema?.fields || {}).length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No fields added yet.
-                </p>
-              )}
-          </div>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Add step button that appears on hover */}
+      <div className="absolute -bottom-[18px] left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button
+          type="button"
+          onClick={() => onInsertStep(index)}
+          size="icon"
+          className="rounded-full bg-background shadow-md hover:shadow-lg"
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };
