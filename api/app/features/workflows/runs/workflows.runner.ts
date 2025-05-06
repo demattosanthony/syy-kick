@@ -418,13 +418,19 @@ ${new Date().toISOString()}
               currentStepArtifactService,
               this.progressCallback
             ) as GenerateTextOnStepFinishCallback<ToolSet>,
-            providerOptions: step.model.includes("claude-3.7-sonnet")
-              ? {
-                  anthropic: {
-                    thinking: { type: "enabled", budgetTokens: 12000 },
-                  } satisfies AnthropicProviderOptions,
-                }
-              : undefined,
+            providerOptions: {
+              openai: {
+                store: false,
+                reasoningSummary: "auto",
+              },
+              ...(step.model.includes("claude-3.7-sonnet")
+                ? {
+                    anthropic: {
+                      thinking: { type: "enabled", budgetTokens: 12000 },
+                    } satisfies AnthropicProviderOptions,
+                  }
+                : {}),
+            },
           });
 
           // Get the final artifact state after the agent ran
