@@ -107,20 +107,32 @@ const RequestForm = () => {
         });
     };
 
-    const addStep = () => {
-        setFormData((prev) => ({
-            ...prev,
-            steps: [
-                ...prev.steps,
-                {
-                    title: "",
-                    details: "",
-                    inputs: [],
-                    dependsOn: [],
-                    outputDescription: "",
-                },
-            ],
-        }));
+    const addStep = (afterIndex?: number) => {
+        setFormData((prev) => {
+            const newStep = {
+                title: "",
+                details: "",
+                inputs: [],
+                dependsOn: [],
+                outputDescription: "",
+            };
+
+            if (typeof afterIndex === 'number') {
+                return {
+                    ...prev,
+                    steps: [
+                        ...prev.steps.slice(0, afterIndex + 1),
+                        newStep,
+                        ...prev.steps.slice(afterIndex + 1),
+                    ],
+                };
+            }
+
+            return {
+                ...prev,
+                steps: [...prev.steps, newStep],
+            };
+        });
     };
 
     const removeStep = (index: number) => {
@@ -354,7 +366,7 @@ const RequestForm = () => {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Workflow Steps</CardTitle>
-                    <Button type="button" onClick={addStep} variant="outline" size="sm">
+                    <Button type="button" onClick={() => addStep()} variant="outline" size="sm">
                         <Plus className="h-4 w-4 mr-2" />
                         Add Step
                     </Button>
@@ -518,24 +530,22 @@ const RequestForm = () => {
                                     <p className="text-sm text-destructive mt-1">{getFieldError(["steps", index, "outputDescription"])}</p>
                                 )}
                             </div>
-                            {index === formData.steps.length - 1 && (
-                                <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button
-                                        type="button"
-                                        onClick={addStep}
-                                        size="icon"
-                                        className="rounded-full bg-background shadow-md hover:shadow-lg"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            )}
+                            <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                    type="button"
+                                    onClick={() => addStep(index)}
+                                    size="icon"
+                                    className="rounded-full bg-background shadow-md hover:shadow-lg"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                     ))}
                     {formData.steps.length === 0 && (
                         <div className="border-2 border-dashed rounded-lg p-8 text-center">
                             <p className="text-muted-foreground mb-4">No steps added yet</p>
-                            <Button type="button" onClick={addStep} variant="outline">
+                            <Button type="button" onClick={() => addStep()} variant="outline">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Add First Step
                             </Button>
