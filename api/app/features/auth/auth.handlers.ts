@@ -355,6 +355,13 @@ export const handlers = {
         res.redirect(authUrl);
         return;
       }
+
+      // After consent request
+      if(err?.error_codes?.includes(65004)) {
+        res.redirect(
+          `${stateEntry.redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Waiting for admin approval`
+        )
+      }
       res.redirect(
         `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${err.message}`
       );
