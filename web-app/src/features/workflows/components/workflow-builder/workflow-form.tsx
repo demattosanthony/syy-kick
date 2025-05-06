@@ -159,19 +159,19 @@ const WorkflowForm = ({ initialData }: WorkflowFormProps) => {
         steps.map((step) =>
           step.id === stepId
             ? {
-                ...step,
-                agentId,
-                name: step.name || agent.name || "",
-                description: step.description || agent.description || "",
-                instructions: step.instructions || agent.instructions || "",
-                model: step.model || agent.model || "",
-                activeTools:
-                  step.activeTools?.length > 0
-                    ? step.activeTools
-                    : agent.activeTools || [],
-                formSchema: step.formSchema ||
-                  agent.formSchema || { fields: {} },
-              }
+              ...step,
+              agentId,
+              name: step.name || agent.name || "",
+              description: step.description || agent.description || "",
+              instructions: step.instructions || agent.instructions || "",
+              model: step.model || agent.model || "",
+              activeTools:
+                step.activeTools?.length > 0
+                  ? step.activeTools
+                  : agent.activeTools || [],
+              formSchema: step.formSchema ||
+                agent.formSchema || { fields: {} },
+            }
             : step
         )
       );
@@ -184,12 +184,33 @@ const WorkflowForm = ({ initialData }: WorkflowFormProps) => {
     }
   };
 
-  const updateStepField = (stepId: string, field: keyof Step, value: any) => {
+  const updateStepField = (stepId: string, field: keyof Step | string, value: any) => {
     setSteps(
       steps.map((step) =>
         step.id === stepId ? { ...step, [field]: value } : step
       )
     );
+  };
+
+  const insertStep = (index: number) => {
+    const newStep = {
+      id: Date.now().toString(),
+      agentId: null,
+      name: "",
+      description: "",
+      instructions: "",
+      model: "",
+      activeTools: [],
+      formSchema: {
+        fields: {},
+      },
+    };
+
+    setSteps([
+      ...steps.slice(0, index + 1),
+      newStep,
+      ...steps.slice(index + 1)
+    ]);
   };
 
   const handleSubmit = () => {
@@ -286,45 +307,40 @@ const WorkflowForm = ({ initialData }: WorkflowFormProps) => {
         </div>
       </div>
 
-      {steps.map((step, index) => (
-        <div key={step.id} className="mb-8 p-4 border rounded-lg relative">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold tracking-tight">{`Step ${
-              index + 1
-            }`}</h2>
+      <div className="space-y-4">
+        {steps.map((step, index) => (
+          <div key={step.id} className="relative group">
+            <WorkflowStep
+              step={step}
+              agents={agents || []}
+              index={index}
+              onUpdateStepField={updateStepField}
+              onUpdateStepAgent={updateStepAgent}
+              models={models || []}
+              tools={tools || []}
+              errors={errors}
+              onInsertStep={insertStep}
+            />
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
+              className="absolute -right-12 top-0"
               onClick={() => removeStep(step.id)}
-              className="text-muted-foreground hover:text-destructive absolute top-2 right-2"
-              aria-label="Remove step"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-          <WorkflowStep
-            step={step}
-            agents={agents || []}
-            index={index}
-            onUpdateStepField={(stepId, field, value) =>
-              updateStepField(stepId, field as keyof Step, value)
-            }
-            onUpdateStepAgent={updateStepAgent}
-            models={models || []}
-            tools={tools || []}
-            errors={errors}
-          />
-        </div>
-      ))}
+        ))}
+      </div>
 
       <div className="flex flex-col gap-4 mt-8">
-        <Button
+        {steps.length === 0 && <Button
           onClick={addStep}
           variant="outline"
           className="w-full h-24 border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 hover:bg-muted/50 text-muted-foreground"
         >
           Add Step
-        </Button>
+        </Button>}
         {steps.length > 0 && (
           <Button variant="default" onClick={handleSubmit} disabled={isPending}>
             {isPending
@@ -332,8 +348,8 @@ const WorkflowForm = ({ initialData }: WorkflowFormProps) => {
                 ? "Updating..."
                 : "Creating..."
               : isEditing
-              ? "Update Workflow"
-              : "Create Workflow"}
+                ? "Update Workflow"
+                : "Create Workflow"}
           </Button>
         )}
       </div>

@@ -5,8 +5,9 @@ import { Router } from "express";
 import workflowHandlers from "./workflows.handlers";
 
 /** Routers */
-import agentsRouter from "./agents/agents.routes";
 import runsRouter from "./runs/runs.routes";
+import agentsRouter from "./agents/agents.routes";
+import requestsRouter from "./requests/requests.routes";
 
 export default Router()
   .get("", workflowHandlers.getAll)
@@ -15,4 +16,5 @@ export default Router()
   .get("/:id", workflowHandlers.getById)
   .put("/:id", workflowHandlers.update)
   .delete("/:id", workflowHandlers.delete)
-  .use("/:workflowId/runs", runsRouter);
+  .use("/:workflowId/runs", runsRouter)
+  .use("/requests", requestsRouter);

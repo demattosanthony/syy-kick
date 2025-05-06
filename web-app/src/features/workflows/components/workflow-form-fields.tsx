@@ -121,7 +121,7 @@ export function WorkflowFormFields({
                 required: field.required,
                 maxFileSize: 50 * 1024 * 1024, // 50 MB par défaut
               }}
-              file={values[fieldId] as File | WorkflowProjectFile | null}
+              files={values[fieldId] as File | WorkflowProjectFile | null}
               onFileChange={(file) => onChange(fieldId, file)}
               projectId={projectId}
             />
