@@ -194,7 +194,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
 
   return {
     "gemini-2.5-pro-preview": {
-      model: google("gemini-2.5-pro-preview-03-25"),
+      model: google("gemini-2.5-pro-preview-05-06"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "google",
