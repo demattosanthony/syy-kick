@@ -568,7 +568,7 @@ const WorkflowStep = ({
       </div>
 
       {/* Add step button that appears on hover */}
-      <div className="absolute -bottom-[18px] left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute -bottom-[18px] left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
         <Button
           type="button"
           onClick={() => onInsertStep(index)}
