@@ -10,6 +10,9 @@ type LogEntry = {
 // Define the props type for the component
 type LogsDashboardProps = {
   logsData: LogEntry[];
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
 };
 
 // Format Date function
@@ -25,7 +28,12 @@ const formatDate = (date: Date | null | string): string => {
   }
 };
 
-export function LogsDashboard({ logsData }: LogsDashboardProps) {
+export function LogsDashboard({
+  logsData,
+  currentPage,
+  totalPages,
+  pageSize,
+}: LogsDashboardProps) {
   return (
     <html>
       <head>
@@ -79,6 +87,27 @@ export function LogsDashboard({ logsData }: LogsDashboardProps) {
             ))}
           </tbody>
         </table>
+        <div style={{ marginTop: "20px", textAlign: "center" }}>
+          {currentPage > 1 && (
+            <a
+              href={`?page=${currentPage - 1}&pageSize=${pageSize}`}
+              style={{ marginRight: "10px" }}
+            >
+              Previous
+            </a>
+          )}
+          <span>
+            Page {currentPage} of {totalPages}
+          </span>
+          {currentPage < totalPages && (
+            <a
+              href={`?page=${currentPage + 1}&pageSize=${pageSize}`}
+              style={{ marginLeft: "10px" }}
+            >
+              Next
+            </a>
+          )}
+        </div>
       </body>
     </html>
   );
