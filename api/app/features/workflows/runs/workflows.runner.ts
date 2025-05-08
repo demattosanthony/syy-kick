@@ -347,8 +347,7 @@ Always create at least one artifact during your execution, using the pdf page ex
 
 <current_date>
 ${new Date().toISOString()}
-</current_date>
-`,
+</current_date>`,
             },
             {
               role: "user",

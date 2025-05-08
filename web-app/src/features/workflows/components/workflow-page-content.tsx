@@ -48,6 +48,7 @@ export default function WorkflowPageContent({
     useCreateRunMutation();
   const { mutateAsync: triggerRunAsync, isPending: isTriggeringRun } =
     useTriggerRunMutation();
+  const [submittingRun, setSubmittingRun] = useState<boolean>(false);
   const { data: runs } = useGetRunsQuery(workflowId);
 
   // Initialize form values based on workflow steps
@@ -119,6 +120,8 @@ export default function WorkflowPageContent({
   // Handle form submission
   const onSubmit = async () => {
     if (!areAllRequiredFieldsFilled()) return;
+
+    setSubmittingRun(true);
 
     // Transform formValues into inputValues
     const inputValues: Record<string, WorkflowExecutionInputValue> = {};
@@ -201,6 +204,7 @@ export default function WorkflowPageContent({
     });
 
     navigate(`/workflows/${workflowId}/runs/${run.id}`);
+    setSubmittingRun(false);
   };
 
   if (workflow === null) {
@@ -286,7 +290,7 @@ export default function WorkflowPageContent({
                   disabled={!areAllRequiredFieldsFilled()}
                   onClick={onSubmit}
                 >
-                  {isCreatingRun || isTriggeringRun ? (
+                  {isCreatingRun || isTriggeringRun || submittingRun ? (
                     <>
                       <Loader className="animate-spin h-6 w-6 mr-3" />
                       Processing...

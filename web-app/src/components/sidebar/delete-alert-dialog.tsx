@@ -61,10 +61,7 @@ export function DeleteAlertDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => onDelete(id)}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
+          <AlertDialogAction onClick={() => onDelete(id)}>
             Delete
           </AlertDialogAction>
         </AlertDialogFooter>

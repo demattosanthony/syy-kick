@@ -33,7 +33,7 @@ export function LandingPage() {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
+    <div className="flex flex-col h-screen overflow-y-auto w-full">
       <div className="absolute top-4 right-4 z-10">
         <LoginButtons />
       </div>

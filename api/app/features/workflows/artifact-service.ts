@@ -25,6 +25,12 @@ export class ArtifactService {
     private onEvent?: (event: ArtifactEvent) => void
   ) {}
 
+  private normalizeFilename(filename: string): string {
+    // Replace various whitespace characters (including narrow no-break space \u202f,
+    // tabs, multiple spaces) with a single standard space. Also, trim leading/trailing whitespace.
+    return filename.replace(/[\s\u202f]+/g, " ").trim();
+  }
+
   /**
    * Saves an artifact to S3
    * If an artifact with the same filename already exists, it will be overwritten.
@@ -37,7 +43,8 @@ export class ArtifactService {
     triggerEvent: boolean = true
   ): Promise<void> {
     try {
-      const fileKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`;
+      const normalizedFilename = this.normalizeFilename(filename);
+      const fileKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${normalizedFilename}`;
       await s3
         .file(fileKey, {
           type: artifact.mimeType,
@@ -46,7 +53,7 @@ export class ArtifactService {
       if (triggerEvent) {
         this.onEvent?.({
           type: "created",
-          filename,
+          filename: normalizedFilename,
           fileKey,
           mimeType: artifact.mimeType,
           stepId: this.workflowStepId,
@@ -67,9 +74,9 @@ export class ArtifactService {
    */
   async loadArtifact(filename: string): Promise<ArtifactData | undefined> {
     try {
-      const file = s3.file(
-        `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`
-      );
+      const normalizedFilename = this.normalizeFilename(filename);
+      const fileKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${normalizedFilename}`;
+      const file = s3.file(fileKey);
       if (await file.exists()) {
         const stat = await file.stat();
         const data = await file.arrayBuffer();
@@ -109,9 +116,10 @@ export class ArtifactService {
    */
   async deleteArtifact(filename: string): Promise<boolean> {
     try {
+      const normalizedFilename = this.normalizeFilename(filename);
       await s3
         .file(
-          `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${filename}`
+          `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${normalizedFilename}`
         )
         .delete();
       return true;
@@ -137,7 +145,7 @@ export class ArtifactService {
   }
 
   /**
-   * Get all artifacts from the in-memory storage.
+   * Get all artifacts from S3 storage path of the workflow run.
    * @returns An array of artifacts.
    */
   async getArtifacts(): Promise<Record<string, ArtifactData>> {
@@ -168,7 +176,8 @@ export class ArtifactService {
     targetFilename: string,
     mimeType: string
   ): Promise<void> {
-    const targetKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${targetFilename}`;
+    const normalizedTargetFilename = this.normalizeFilename(targetFilename);
+    const targetKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${normalizedTargetFilename}`;
     try {
       const sourceFile = s3.file(sourceKey);
       if (!(await sourceFile.exists())) {
