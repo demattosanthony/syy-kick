@@ -7,6 +7,7 @@ import { CONFIG } from "./config/constants";
 import db from "./config/db";
 import myPassport from "./config/passport";
 import routes from "./api";
+import logger from "./config/logger";
 
 async function main() {
   try {
@@ -29,6 +30,21 @@ async function main() {
   app.use("/payments/webhook", Express.raw({ type: "application/json" }));
   app.use("/auth/saml/:slug/callback", Express.urlencoded({ extended: false }));
   app.use(Express.json({ limit: "50mb" }));
+
+  app.use((req, res, next) => {
+    logger.info("Incoming request", {
+      method: req.method,
+      url: req.url,
+      ip: req.ip,
+      body: req.body,
+      headers: req.headers,
+      query: req.query,
+      params: req.params,
+      user: req.dbUser,
+      workspace: req.workspace,
+    });
+    next();
+  });
 
   app.use(
     cors({
