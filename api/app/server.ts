@@ -37,6 +37,11 @@ async function main() {
       url: req.url,
       ip: req.ip,
       body: req.body,
+      headers: req.headers,
+      query: req.query,
+      params: req.params,
+      user: req.dbUser,
+      workspace: req.workspace,
     });
     next();
   });
