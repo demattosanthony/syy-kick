@@ -1,8 +1,9 @@
 /** Api */
-import api, { microsoftApi } from "@/lib/api";
+import api from "@/lib/api";
+import { microsoftGraph } from "../api";
 
 /** Types */
-import { SharePointFile } from "../types";
+import { SharePointFile } from "../../../../../projects/types";
 
 interface Token {
   accessToken: string;
@@ -22,7 +23,7 @@ export class MicrosoftPicker {
   private channelId: string | null = null;
 
   constructor(
-    private readonly onFilesSelected: (files: SharePointFile[]) => void,
+    private readonly onFilesSelected: (files: SharePointFile[]) => void
   ) { }
 
   public getLoadingState(): boolean {
@@ -37,9 +38,19 @@ export class MicrosoftPicker {
     this.token = token;
   }
 
-  public async openPicker(options: PickerOptions): Promise<void> {
+  public getToken(): Token | null {
+    return this.token;
+  }
+
+  public async authenticate(queryParams: { open_picker: string }): Promise<void> {
     this.setLoading(true);
-    const redirectUri = encodeURIComponent(window.location.href);
+
+    const currentUrl = new URL(window.location.href);
+
+    Object.entries(queryParams).forEach(([key, value]) => {
+      currentUrl.searchParams.set(key, value);
+    });
+    const redirectUri = encodeURIComponent(currentUrl.toString());
 
     const userToken = await api.auth.getIntegrationToken("microsoft");
 
@@ -65,9 +76,19 @@ export class MicrosoftPicker {
       return;
     }
 
-    const sharePointConfig = await this.getSharePointConfig(options, userToken);
+    this.setLoading(false);
+  }
+
+  public async openPicker(options: PickerOptions): Promise<void> {
+    if (!this.token) {
+      await this.authenticate({ open_picker: "true" });
+      return;
+    }
+
+    this.setLoading(true);
+    const sharePointConfig = await this.getSharePointConfig(options, this.token);
     const pickerOptions = this.createPickerOptions(options, sharePointConfig);
-    await this.displayPicker(pickerOptions, userToken);
+    await this.displayPicker(pickerOptions, this.token);
   }
 
   private async getSharePointConfig(
@@ -75,7 +96,7 @@ export class MicrosoftPicker {
     userToken: Token
   ): Promise<object> {
     if (options.mode === "folders") {
-      const orgDrive = await microsoftApi.graph.getOrgDrive(
+      const orgDrive = await microsoftGraph.getOrgDrive(
         userToken.accessToken
       );
       if (orgDrive.webUrl) {
@@ -147,7 +168,8 @@ export class MicrosoftPicker {
       },
       search: {
         enabled: true,
-      }
+      },
+      title: "Select Files",
     };
   }
 
@@ -202,24 +224,6 @@ export class MicrosoftPicker {
       }
 
       try {
-        if (pickerObj.folder) {
-          const folderMetadata = {
-            name: pickerObj.name,
-            webUrl: pickerObj.webUrl,
-            id: pickerObj.id,
-            parentReference: pickerObj.parentReference,
-            sharepointIds: pickerObj.sharepointIds
-          };
-
-          const folderBlob = new Blob([JSON.stringify(folderMetadata)], { type: 'application/json' });
-          const folderFile = new File([folderBlob], pickerObj.name, {
-            type: "application/vnd.sharepoint.folder",
-            lastModified: new Date().getTime()
-          });
-          results.push(folderFile);
-          continue;
-        }
-
         const file = await this.downloadFile(pickerObj);
         if (file) results.push(file);
       } catch (err) {
@@ -238,7 +242,7 @@ export class MicrosoftPicker {
       throw new Error("Missing driveId or id");
     }
 
-    const data = await microsoftApi.graph.getFile(
+    const data = await microsoftGraph.getFile(
       parentReference.driveId,
       id,
       this.token.accessToken

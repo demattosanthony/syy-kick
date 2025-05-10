@@ -227,10 +227,7 @@ export const handlers = {
       process.env.MICROSOFT_FILES_CALLBACK_URL!
     );
     authUrl.searchParams.set("scope", "openid offline_access Sites.Read.All");
-    authUrl.searchParams.set("prompt", "consent");
     authUrl.searchParams.set("state", state);
-
-    console.log(authUrl.toString());
 
     // Check if the user has a picker token
     if (userId) {

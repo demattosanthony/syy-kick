@@ -294,7 +294,7 @@ export class WorkflowRunner {
         });
 
         // Create the toolset for the current agent using its artifact service
-        const currentAgentTools = createToolSet(currentStepArtifactService);
+        const currentAgentTools = createToolSet(currentStepArtifactService, this.workflowRun.userId);
 
         try {
           let messages: Array<

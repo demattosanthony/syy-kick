@@ -56,7 +56,7 @@ export function ActionButtons({
       setUploads([...uploads, ...fileUploads]);
       setOpen(false);
       onFileUploadComplete?.();
-    },
+    }
   });
 
   const isAnyLoading = isMicrosoftPickerLoading || isProcessingFiles;

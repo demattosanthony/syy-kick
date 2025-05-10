@@ -12,6 +12,9 @@ import db from "../../config/db";
 import { organizations } from "../../config/schema";
 import myPassport, { authenticateSaml } from "../../config/passport";
 
+/** Router */
+import integrationsRouter from "./integrations/integrations.routes";
+
 const authConfig = {
   session: false,
   failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
@@ -69,4 +72,4 @@ export default Router({ mergeParams: true })
   .post("/logout", handlers.logout)
   .post("/invite/:token", middlewares.optionalAuth, handlers.joinWithInvite)
   .get("/me", handlers.me)
-  .get("/me/upload-token", middlewares.auth, handlers.getUploadToken);
+  .use("/integrations", middlewares.auth, integrationsRouter);

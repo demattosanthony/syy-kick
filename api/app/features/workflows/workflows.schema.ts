@@ -79,6 +79,7 @@ export const workflowSteps = pgTable("workflow_steps", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
 export type WorkflowStep = typeof workflowSteps.$inferSelect;
 
 export const workflowFiles = pgTable("workflow_files", {
@@ -108,7 +109,7 @@ export const workflowRuns = pgTable("workflow_runs", {
     })
     .notNull(),
   status: text("status", { enum: WORKFLOW_RUN_STATUS }).notNull(),
-  userId: uuid("user_id").references(() => users.id),
+  userId: uuid("user_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -140,7 +141,7 @@ export const workflowRunStepsInputs = pgTable("workflow_run_steps_inputs", {
     }
   ),
   parentStepId: uuid("parent_step_id").references(() => workflowRunSteps.id), // previous step output files
-  type: text("type", { enum: ["file", "text", "date", "number"] }).notNull(),
+  type: text("type", { enum: ["file", "text", "date", "number", "sharepoint"] }).notNull(),
   key: varchar("key", { length: 255 }),
   label: varchar("label", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),

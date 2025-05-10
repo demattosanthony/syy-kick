@@ -42,7 +42,7 @@ export type WorkflowNumberExecutionInputValue = {
 };
 
 export type WorkflowExecutionInputValue = {
-  type: "text" | "file" | "number";
+  type: "text" | "file" | "number" | "sharepoint";
   label: string;
   value:
     | WorkflowTextExecutionInputValue
@@ -71,7 +71,7 @@ export const WorkflowNumberExecutionInputValueSchema = z.object({
 
 export const WorkflowExecutionInputValueSchema = z
   .object({
-    type: z.enum(["text", "file", "number"]),
+    type: z.enum(["text", "file", "number", "sharepoint"]),
     label: z.string(),
     value: z.union([
       WorkflowTextExecutionInputValueSchema,
@@ -122,6 +122,7 @@ export type WorkflowRun = {
   description?: string;
   executionInputValues: Record<string, WorkflowExecutionInputValue>;
   workflowSteps: WorkflowRunStep[];
+  userId: string;
 };
 
 export type WorkflowStepStartData = {

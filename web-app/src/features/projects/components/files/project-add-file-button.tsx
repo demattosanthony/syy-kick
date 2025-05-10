@@ -49,7 +49,7 @@ const ProjectAddFileButton = ({
           files: filesToUpload,
         });
       }
-    },
+    }
   });
 
   const {
@@ -208,15 +208,15 @@ const ProjectAddFileButton = ({
             )}
             Add from SharePoint
           </Button>
-          {/* <Button
+          <Button
             variant="ghost"
-            onClick={() => openPicker({ mode: "folder" })}
+            onClick={() => openPicker({ mode: "folders", selectionMode: "single" })}
             className="w-full justify-start gap-2 text-sm cursor-pointer"
             disabled={isMicrosoftPickerLoading}
           >
-            {isMicrosoftPickerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image src="/logos/sharepoint.svg" alt="Sharepoint" width={16} height={16} />}
+            {isMicrosoftPickerLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <img src={sharepointLogo} alt="Sharepoint" width={16} height={16} />}
             Upload folder
-          </Button> */}
+          </Button>
         </PopoverContent>
       </Popover>
 

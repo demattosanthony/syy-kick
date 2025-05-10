@@ -4,9 +4,10 @@ import {
   createPdfPageExtractionTool,
   createObjectDetectionTool,
   createWebSearchTool,
+  createSharepointFilesFinderTool,
 } from "./tool-definitions";
 
-export const createToolSet = (toolArtifactService: ArtifactService) => {
+export const createToolSet = (toolArtifactService: ArtifactService, userId: string) => {
   const artifactTools = toolArtifactService.getArtifactTools();
   return {
     "list-artifacts": artifactTools["list-artifacts"],
@@ -17,5 +18,6 @@ export const createToolSet = (toolArtifactService: ArtifactService) => {
     "object-detection": createObjectDetectionTool(toolArtifactService),
     "doc-ocr": createDocOcrTool(toolArtifactService),
     "web-search": createWebSearchTool(),
+    "sharepoint-files-finder": createSharepointFilesFinderTool({ userId }),
   };
 };

@@ -144,6 +144,7 @@ export const workflowsRunsHandlers = {
         description: workflowRun.workflow.description ?? undefined,
         workflowSteps,
         executionInputValues: workflowRun.executionInputValues,
+        userId: workflowRun.userId,
       };
 
       workflowRunsOps.runWorkflow(workflowRunData);

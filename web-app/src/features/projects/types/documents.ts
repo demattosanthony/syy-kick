@@ -6,7 +6,9 @@ export type SharePointFile = {
     webUrl?: string;
     size: number;
     id: string;
-
+    folder?: {
+        childCount?: number;
+    };
     parentReference?: {
         driveId?: string;
         sharepointIds?: {

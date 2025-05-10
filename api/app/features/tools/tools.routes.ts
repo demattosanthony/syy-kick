@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 
 const router = Router();
 
@@ -23,6 +24,14 @@ const tools = [
     id: "doc-ocr",
     name: "Document OCR",
     description: "Extract text from a document and returns the text",
+  },
+  {
+    id: "sharepoint-files-finder",
+    name: "Sharepoint Files Finder",
+    description: "Find files in a Sharepoint site",
+    parameters: z.object({
+      folderPath: z.string().describe("The path to the folder to search in").optional(),
+    }),
   },
 ];
 

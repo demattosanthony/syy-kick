@@ -232,13 +232,23 @@ class AuthApi extends ApiRequest {
     }
   }
 
-  async getUploadToken(redirectUri: string) {
+  async getIntegrationToken(provider: string) {
     try {
       return await this.request<{
         accessToken: string;
         baseUrl: string;
         pickerToken: string;
-      }>(`/auth/me/upload-token?redirectUrl=${redirectUri}`, "GET");
+      }>(`/auth/integrations/${provider}/token`, "GET");
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteIntegration(provider: string) {
+    try {
+      return await this.request<{
+        success: boolean;
+      }>(`/auth/integrations/${provider}`, "DELETE");
     } catch (error) {
       throw error;
     }
