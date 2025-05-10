@@ -24,6 +24,12 @@ const tools = [
     name: "Document OCR",
     description: "Extract text from a document and returns the text",
   },
+  {
+    id: "code-execution",
+    name: "Code Execution",
+    description:
+      "Execute code in a Jupyter notebook cell and returns the result",
+  },
 ];
 
 router.get("/", (req, res) => {

@@ -4,6 +4,7 @@ import {
   createPdfPageExtractionTool,
   createObjectDetectionTool,
   createWebSearchTool,
+  createCodeExecutionTool,
 } from "./tool-definitions";
 
 export const createToolSet = (toolArtifactService: ArtifactService) => {
@@ -17,5 +18,6 @@ export const createToolSet = (toolArtifactService: ArtifactService) => {
     "object-detection": createObjectDetectionTool(toolArtifactService),
     "doc-ocr": createDocOcrTool(toolArtifactService),
     "web-search": createWebSearchTool(),
+    "code-execution": createCodeExecutionTool(toolArtifactService),
   };
 };
