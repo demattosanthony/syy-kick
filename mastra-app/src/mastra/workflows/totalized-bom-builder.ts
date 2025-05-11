@@ -10,6 +10,7 @@ import { objectDetection } from "../../obj-detection.ts";
 import s3 from "../../s3.ts";
 import logger from "../../logger.ts";
 import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 
 const stepOne = new Step({
   id: "stepOne",
@@ -157,15 +158,15 @@ const stepThree = new Step({
             Key: fileKey,
           })
         );
-        const pdfData = await file.Body?.transformToByteArray();
+        const imageData = await file.Body?.transformToByteArray();
 
-        if (!pdfData) {
+        if (!imageData) {
           throw new Error("No data found");
         }
 
         return {
           fileKey,
-          base64: Buffer.from(pdfData).toString("base64"),
+          base64: Buffer.from(imageData).toString("base64"),
         };
       })
     );
@@ -182,13 +183,13 @@ const stepThree = new Step({
     logger.info(`Flattened ${flattenedCroppedImages.length} cropped images`);
 
     // debug - save the cropped images to disk
-    for (let i = 0; i < flattenedCroppedImages.length; i++) {
-      const image = flattenedCroppedImages[i];
-      await fs.writeFile(
-        `./logs/cropped_${i}_${image.fileName}`,
-        Buffer.from(image.base64, "base64")
-      );
-    }
+    // for (let i = 0; i < flattenedCroppedImages.length; i++) {
+    //   const image = flattenedCroppedImages[i];
+    //   await fs.writeFile(
+    //     `./logs/cropped_${i}_${image.fileName}`,
+    //     Buffer.from(image.base64, "base64")
+    //   );
+    // }
 
     // Upload the cropped images to S3
     const uploadPromises = flattenedCroppedImages.map((image) => {
@@ -226,6 +227,139 @@ const stepThree = new Step({
   },
 });
 
+type StepThreeOutput = {
+  croppedImageFileKeys: string[];
+};
+
+const stepFour = new Step({
+  id: "stepFour",
+  execute: async ({ context }) => {
+    const { croppedImageFileKeys } =
+      context.getStepResult<StepThreeOutput>("stepThree");
+
+    // For each cropped image, run OCR to get the text
+    const ocrResults = await Promise.all(
+      croppedImageFileKeys.map(async (fileKey) => {
+        const file = await s3.send(
+          new GetObjectCommand({
+            Bucket: process.env.S3_BUCKET_NAME!,
+            Key: fileKey,
+          })
+        );
+        const imageData = await file.Body?.transformToByteArray();
+
+        if (!imageData) {
+          throw new Error("No data found");
+        }
+
+        const { object } = await generateObject({
+          model: openai("gpt-4.1"),
+          schema: z.object({
+            ocrResult: z.string(),
+          }),
+          temperature: 0,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Your task is to operate an an OCR model to extract the text from an image. You will be given an image of a bill of materials table. You will need to extract the text from the image and return it as a string in markdown format. That represents the text from the image. Do not return anything else other than the markdown text. Do not make up any informaiton that is not in the image.`,
+                },
+                {
+                  type: "image",
+                  image: imageData,
+                  mimeType: "image/jpeg",
+                },
+              ],
+            },
+          ],
+        });
+
+        return object.ocrResult;
+      })
+    );
+
+    return {
+      ocrResults,
+    };
+  },
+});
+
+type StepFourOutput = {
+  ocrResults: string[];
+};
+
+const stepFive = new Step({
+  id: "stepFive",
+  execute: async ({ context }) => {
+    const { ocrResults } = context.getStepResult<StepFourOutput>("stepFour");
+
+    // Use llm to create a totalized BOM from the ocr results
+    const totalizedBom = await generateObject({
+      model: google("gemini-2.5-pro-exp-03-25"),
+      schema: z.object({
+        totalizedBomCsvContent: z.string(),
+      }),
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Your goal is to create a totalzed BOM CSV file that consolidates all bill of materials tables from a controls pdf into a single table.
+
+Steps:
+1. Read all the text files that are available.
+2. Extract all part numbers and their quantities from each BOM table.
+3. Group the part numbers by their make (manufacturer).
+4. Aggregate the quantities for any duplicate parts across all tables.
+5. Create a final table with two columns: Part Number and Total Quantity.
+
+CSV Formatting:
+
+| Part Number | Total Quantity |
+|-------------|----------------|
+| [MAKE 1] |                |
+| [Part No. 1] | [Quantity]     |
+| [Part No. 2] | [Quantity]     |
+| [MAKE 2] |                |
+| [Part No. 3] | [Quantity]     |
+| ...         | ...            |
+
+Ensure that your final consolidated BOM:
+- Includes all unique part numbers from all BOM tables
+- Groups part numbers by their make
+- Shows the total quantity for each part number
+- Is presented in a clear, easily readable format
+
+CSV Formatting Rules:
+1. Every field must be enclosed in double quotes: "field"
+2. For measurements containing inches ("), add an additional " before the inches: "8'-0"""
+3. Separate fields with single commas (no spaces): "field1","field2"
+4. Each schedule should start with its title on a separate line
+5. Headers should be quoted: "Item","Height","Width","Area (sq ft)"
+6. Use all caps for the make names
+
+Remember to use your expertise to provide the most accurate and comprehensive consolidated BOM possible based on the given information.
+
+Return only the csv string and nothing else.`,
+            },
+            {
+              type: "text",
+              text: `Here are the OCR results:\n\n ${ocrResults.join("\n\n")}`,
+            },
+          ],
+        },
+      ],
+    });
+
+    return {
+      totalizedBomCsvContent: totalizedBom.object.totalizedBomCsvContent,
+    };
+  },
+});
+
 // Build the workflow
 const totalizedBomBuilder = new Workflow({
   name: "totalized-bom-builder",
@@ -236,6 +370,8 @@ const totalizedBomBuilder = new Workflow({
   .step(stepOne)
   .then(stepTwo)
   .then(stepThree)
+  .then(stepFour)
+  .then(stepFive)
   .commit();
 
 export { totalizedBomBuilder };

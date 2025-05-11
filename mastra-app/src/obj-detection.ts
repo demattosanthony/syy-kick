@@ -72,7 +72,7 @@ Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "${
       ).toString("base64");
 
       croppedImages.push({
-        fileName: `${label}-${index}.jpeg`,
+        fileName: `${label}-${index}-${Date.now()}.jpeg`,
         base64: croppedImageBase64,
         mimeType: "image/jpeg",
       });

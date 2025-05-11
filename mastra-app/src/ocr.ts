@@ -58,8 +58,8 @@ export async function mistralOcr({
       const result = await mistral.ocr.process({
         model: "mistral-ocr-latest",
         document: {
-          documentUrl: `data:${mimeType};base64,${base64}`,
-          type: "document_url",
+          imageUrl: `data:${mimeType};base64,${base64}`,
+          type: "image_url",
         },
         includeImageBase64: includeImages,
       });

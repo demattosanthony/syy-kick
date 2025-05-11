@@ -21,7 +21,7 @@ export async function convertPdfToImages(pdfData: Buffer): Promise<
   try {
     await fs.writeFile(tempPdfPath, Buffer.from(pdfData));
 
-    const gsCommand = `gs -dNOPAUSE -dBATCH -sDEVICE=png16m -r300 -sOutputFile="${outputPattern}" "${tempPdfPath}"`;
+    const gsCommand = `gs -dNOPAUSE -dBATCH -sDEVICE=png16m -r150 -sOutputFile="${outputPattern}" "${tempPdfPath}"`;
 
     await execAsync(gsCommand);
 
