@@ -6,8 +6,9 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 const { start } = totalizedBomBuilder.createRun();
 
-const filePath =
-  "/Users/anthonydemattos/workflows-dataset/bom-consolidator/rev1-rod-n-reel/Rev1_RodnReelCasino_CtrlDwgs_04222025.pdf";
+const homeDir = process.env.HOME;
+
+const filePath = `${homeDir}/workflows-dataset/bom-consolidator/rev1-rod-n-reel/Rev1_RodnReelCasino_CtrlDwgs_04222025.pdf`;
 
 const fileKey =
   "uploads/1715516551560-Rev1_RodnReelCasino_CtrlDwgs_04222025.pdf";
