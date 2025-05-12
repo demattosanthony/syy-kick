@@ -1,8 +1,9 @@
 import "dotenv/config";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import fs from "node:fs/promises";
+
 import { totalizedBomBuilder } from "./mastra/workflows/totalized-bom-builder.ts";
 import s3 from "./s3.ts";
-import fs from "node:fs/promises";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 const { start } = totalizedBomBuilder.createRun();
 
@@ -23,7 +24,7 @@ await s3.send(
 );
 
 const res = await start({
-  triggerData: {
+  inputData: {
     fileKey,
   },
 });

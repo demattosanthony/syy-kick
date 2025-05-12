@@ -1,21 +1,26 @@
-import { Step, Workflow } from "@mastra/core/workflows";
+import { createWorkflow, createStep } from "@mastra/core/workflows/vNext";
 import { z } from "zod";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { generateObject } from "ai";
-import fs from "fs/promises";
+import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 
 import { convertPdfToImages } from "../../pdf-to-images.ts";
 import { objectDetection } from "../../obj-detection.ts";
 import s3 from "../../s3.ts";
 import logger from "../../logger.ts";
-import { openai } from "@ai-sdk/openai";
-import { google } from "@ai-sdk/google";
 
-const stepOne = new Step({
+const stepOne = createStep({
   id: "stepOne",
-  execute: async ({ context }) => {
-    const { fileKey } = context.triggerData;
+  inputSchema: z.object({
+    fileKey: z.string(),
+  }),
+  outputSchema: z.object({
+    uploadedFileKeys: z.array(z.string()),
+  }),
+  execute: async ({ inputData }) => {
+    const { fileKey } = inputData;
     const file = await s3.send(
       new GetObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME!,
@@ -63,15 +68,16 @@ const stepOne = new Step({
   },
 });
 
-type StepOneOutput = {
-  uploadedFileKeys: string[];
-};
-
-const stepTwo = new Step({
+const stepTwo = createStep({
   id: "stepTwo",
-  execute: async ({ context }) => {
-    const { uploadedFileKeys } =
-      context.getStepResult<StepOneOutput>("stepOne");
+  inputSchema: z.object({
+    uploadedFileKeys: z.array(z.string()),
+  }),
+  outputSchema: z.object({
+    fileKeysWithBomTables: z.array(z.string()),
+  }),
+  execute: async ({ inputData }) => {
+    const { uploadedFileKeys } = inputData;
 
     const images = await Promise.all(
       uploadedFileKeys.map(async (fileKey) => {
@@ -139,15 +145,16 @@ These tables typically list details about components used in the control system,
   },
 });
 
-type StepTwoOutput = {
-  fileKeysWithBomTables: string[];
-};
-
-const stepThree = new Step({
+const stepThree = createStep({
   id: "stepThree",
-  execute: async ({ context }) => {
-    const { fileKeysWithBomTables } =
-      context.getStepResult<StepTwoOutput>("stepTwo");
+  inputSchema: z.object({
+    fileKeysWithBomTables: z.array(z.string()),
+  }),
+  outputSchema: z.object({
+    croppedImageFileKeys: z.array(z.string()),
+  }),
+  execute: async ({ inputData }) => {
+    const { fileKeysWithBomTables } = inputData;
 
     // Load images that have BOM tables on them
     const images = await Promise.all(
@@ -227,15 +234,16 @@ const stepThree = new Step({
   },
 });
 
-type StepThreeOutput = {
-  croppedImageFileKeys: string[];
-};
-
-const stepFour = new Step({
+const stepFour = createStep({
   id: "stepFour",
-  execute: async ({ context }) => {
-    const { croppedImageFileKeys } =
-      context.getStepResult<StepThreeOutput>("stepThree");
+  inputSchema: z.object({
+    croppedImageFileKeys: z.array(z.string()),
+  }),
+  outputSchema: z.object({
+    ocrResults: z.array(z.string()),
+  }),
+  execute: async ({ inputData }) => {
+    const { croppedImageFileKeys } = inputData;
 
     // For each cropped image, run OCR to get the text
     const ocrResults = await Promise.all(
@@ -286,14 +294,16 @@ const stepFour = new Step({
   },
 });
 
-type StepFourOutput = {
-  ocrResults: string[];
-};
-
-const stepFive = new Step({
+const stepFive = createStep({
   id: "stepFive",
-  execute: async ({ context }) => {
-    const { ocrResults } = context.getStepResult<StepFourOutput>("stepFour");
+  inputSchema: z.object({
+    ocrResults: z.array(z.string()),
+  }),
+  outputSchema: z.object({
+    totalizedBomCsvContent: z.string(),
+  }),
+  execute: async ({ inputData }) => {
+    const { ocrResults } = inputData;
 
     // Use llm to create a totalized BOM from the ocr results
     const totalizedBom = await generateObject({
@@ -361,13 +371,17 @@ Return only the csv string and nothing else.`,
 });
 
 // Build the workflow
-const totalizedBomBuilder = new Workflow({
-  name: "totalized-bom-builder",
-  triggerSchema: z.object({
+const totalizedBomBuilder = createWorkflow({
+  id: "totalized-bom-builder",
+  inputSchema: z.object({
     fileKey: z.string(),
   }),
+  outputSchema: z.object({
+    totalizedBomCsvContent: z.string(),
+  }),
+  steps: [stepOne, stepTwo, stepThree, stepFour, stepFive],
 })
-  .step(stepOne)
+  .then(stepOne)
   .then(stepTwo)
   .then(stepThree)
   .then(stepFour)
