@@ -5,6 +5,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
+import fs from "node:fs/promises";
 
 import { convertPdfToImages } from "../../pdf-to-images.ts";
 import { objectDetection } from "../../obj-detection.ts";
@@ -15,14 +16,14 @@ import {
   type WorkflowExecutionInputValues,
   type WorkflowFile,
 } from "../../types.ts";
-import { mistralOcr } from "../../ocr.ts";
+import { randomUUID } from "node:crypto";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   controlsDrawings: z.object({
     type: z.literal("file"),
     value: z.object({
       fileKey: z.string(),
-      mimeType: z.string(),
+      mimeType: z.literal("application/pdf"),
       fileName: z.string(),
     }),
   }),
@@ -166,6 +167,23 @@ These tables typically list details about components used in the control system,
         },
       }));
 
+    // Save the images with BOM tables to disk
+    for (const output of outputs) {
+      const file = await s3.send(
+        new GetObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME!,
+          Key: output.file?.fileKey,
+        })
+      );
+      const imageData = await file.Body?.transformToByteArray();
+
+      if (!imageData) {
+        throw new Error("No data found");
+      }
+
+      await fs.writeFile(`./logs/${randomUUID()}.png`, Buffer.from(imageData));
+    }
+
     console.log("Number of images with BOM tables: ", outputs.length);
 
     return {
@@ -219,13 +237,13 @@ const stepThree = createStep({
     logger.info(`Flattened ${flattenedCroppedImages.length} cropped images`);
 
     // debug - save the cropped images to disk
-    // for (let i = 0; i < flattenedCroppedImages.length; i++) {
-    //   const image = flattenedCroppedImages[i];
-    //   await fs.writeFile(
-    //     `./logs/cropped_${i}_${image.fileName}`,
-    //     Buffer.from(image.base64, "base64")
-    //   );
-    // }
+    for (let i = 0; i < flattenedCroppedImages.length; i++) {
+      const image = flattenedCroppedImages[i];
+      await fs.writeFile(
+        `./logs/cropped_${i}_${image.fileName}`,
+        Buffer.from(image.base64, "base64")
+      );
+    }
 
     // Upload the cropped images to S3
     const uploadPromises = flattenedCroppedImages.map((image) => {
@@ -251,18 +269,18 @@ const stepThree = createStep({
     }));
 
     // Log presigned urls for the cropped images
-    for (const output of outputs) {
-      const command = new GetObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME!,
-        Key: output.file?.fileKey,
-      });
-      const presignedUrlString = await getSignedUrl(s3, command, {
-        expiresIn: 3600,
-      }); // Expires in 1 hour
-      logger.info(
-        `Presigned url for ${output.file?.fileKey}: ${presignedUrlString}`
-      );
-    }
+    // for (const output of outputs) {
+    //   const command = new GetObjectCommand({
+    //     Bucket: process.env.S3_BUCKET_NAME!,
+    //     Key: output.file?.fileKey,
+    //   });
+    //   const presignedUrlString = await getSignedUrl(s3, command, {
+    //     expiresIn: 3600,
+    //   }); // Expires in 1 hour
+    //   logger.info(
+    //     `Presigned url for ${output.file?.fileKey}: ${presignedUrlString}`
+    //   );
+    // }
 
     return {
       croppedImages: outputs,
@@ -297,11 +315,11 @@ const stepFour = createStep({
           throw new Error("No data found");
         }
 
-        const result = await mistralOcr({
-          base64: Buffer.from(imageData).toString("base64"),
-          mimeType: "image/jpeg",
-          includeImages: false,
-        });
+        // const result = await mistralOcr({
+        //   base64: Buffer.from(imageData).toString("base64"),
+        //   mimeType: "image/jpeg",
+        //   includeImages: false,
+        // });
 
         // const ocrResult = result.pages
         //   .map((page) => page.markdown)
@@ -319,7 +337,7 @@ const stepFour = createStep({
               content: [
                 {
                   type: "text",
-                  text: `Your task is to operate an an OCR model to extract the text from an image. You will be given an image of a bill of materials table. You will need to extract the text from the image and return it as a string in markdown format. That represents the text from the image. Do not return anything else other than the markdown text. Do not make up any informaiton that is not in the image.`,
+                  text: `Your task is to operate an an OCR model to extract the text from an image. You will be given an image of a bill of materials table. You will need to extract the text from the image and return it as a string in markdown format. That represents the text from the image. Do not return anything else other than the markdown text. Do not make up any informaiton that is not in the image. Only extract the columns of Tag, Qty., Part No., and Make.`,
                 },
                 {
                   type: "image",
@@ -341,6 +359,14 @@ const stepFour = createStep({
       type: "text" as const,
       text: ocrResult,
     }));
+
+    // Save the ocr results to disk
+    for (const [index, output] of outputs.entries()) {
+      await fs.writeFile(
+        `./logs/ocr_${index}.txt`,
+        Buffer.from(output.text, "utf-8")
+      );
+    }
 
     logger.info(`Returning ${outputs.length} ocr results`);
 
@@ -378,9 +404,9 @@ const stepFive = createStep({
               text: `Your goal is to create a totalzed BOM CSV file that consolidates all bill of materials tables from a controls pdf into a single table.
 
 Steps:
-1. Read all the text files that are available.
+1. Read all the separate BOM tables provided
 2. Extract all part numbers and their quantities from each BOM table.
-3. Group the part numbers by their make (manufacturer).
+3. Group the part numbers by their make (manufacturer). 
 4. Aggregate the quantities for any duplicate parts across all tables.
 5. Create a final table with two columns: Part Number and Total Quantity.
 
@@ -415,7 +441,7 @@ Return only the csv string and nothing else.`,
             },
             {
               type: "text",
-              text: `Here are the OCR results:\n\n ${ocrResults.map((ocrResult) => ocrResult.text).join("\n\n")}`,
+              text: `Here are the individual BOM tables that you need to consolidate:\n\n ${ocrResults.map((ocrResult) => ocrResult.text).join("\n\n\n")}`,
             },
           ],
         },
