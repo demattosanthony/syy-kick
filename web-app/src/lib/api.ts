@@ -28,6 +28,7 @@ import {
   SortOption,
 } from "@/features/projects/types";
 import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
+import { GetVNextWorkflowResponse } from "@mastra/client-js";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -925,11 +926,11 @@ class PermissionsApi extends ApiRequest {
  * Workflows API Module
  */
 class WorkflowsApi extends ApiRequest {
-  async listWorkflows(): Promise<Workflow[]> {
+  async listWorkflows(): Promise<GetVNextWorkflowResponse[]> {
     return await this.request("/workflows");
   }
 
-  async getWorkflow(id: string): Promise<Workflow> {
+  async getWorkflow(id: string): Promise<GetVNextWorkflowResponse> {
     return await this.request(`/workflows/${id}`);
   }
 

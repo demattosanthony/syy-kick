@@ -4,10 +4,9 @@ import { Loader, Play, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Attachment } from "ai";
 import ErrorDisplay from "./workflow-error-display";
-import { Workflow, WorkflowExecutionInputValue } from "../workflows.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkflowFormFields } from "./workflow-form-fields";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import {
@@ -15,6 +14,8 @@ import {
   useTriggerRunMutation,
 } from "../features/runs/api";
 import { useGetRunsQuery } from "../features/runs/api/get-runs";
+import { GetVNextWorkflowResponse } from "@mastra/client-js";
+import { FormField, WorkflowInputSchemaParsed } from "../workflows.types";
 
 export type WorkflowAttachment = Attachment & {
   file_key: string;
@@ -29,7 +30,7 @@ export default function WorkflowPageContent({
 }: {
   workflowId: string;
   projectId?: string;
-  workflow?: Workflow;
+  workflow?: GetVNextWorkflowResponse;
   isLoading: boolean;
 }) {
   const navigate = useNavigate();
@@ -51,19 +52,13 @@ export default function WorkflowPageContent({
   const [submittingRun, setSubmittingRun] = useState<boolean>(false);
   const { data: runs } = useGetRunsQuery(workflowId);
 
+  const [workflowInputSchema, setWorkflowInputSchema] = useState<WorkflowInputSchemaParsed>();
+
   // Initialize form values based on workflow steps
   useEffect(() => {
-    if (workflow?.steps) {
-      const initialValues: Record<string, Record<string, any>> = {};
-      workflow.steps.forEach((step) => {
-        if (step.formSchema) {
-          initialValues[step.id] = {};
-          Object.entries(step.formSchema.fields).forEach(([fieldId]) => {
-            initialValues[step.id][fieldId] = "";
-          });
-        }
-      });
-      setFormValues(initialValues);
+    if (workflow) {
+      const workflowInputSchema = JSON.parse(workflow.inputSchema) as WorkflowInputSchemaParsed;
+      setWorkflowInputSchema(workflowInputSchema);
     }
   }, [workflow]);
 
@@ -71,14 +66,14 @@ export default function WorkflowPageContent({
   const resetWorkflow = () => {
     if (workflow?.steps) {
       const resetValues: Record<string, Record<string, any>> = {};
-      workflow.steps.forEach((step) => {
-        if (step.formSchema) {
-          resetValues[step.id] = {};
-          Object.entries(step.formSchema.fields).forEach(([fieldId]) => {
-            resetValues[step.id][fieldId] = "";
-          });
-        }
-      });
+      // workflow.steps.forEach((step) => {
+      //   if (step.formSchema) {
+      //     resetValues[step.id] = {};
+      //     Object.entries(step.formSchema.fields).forEach(([fieldId]) => {
+      //       resetValues[step.id][fieldId] = "";
+      //     });
+      //   }
+      // });
       setFormValues(resetValues);
     }
     setErrorDetails(null);
@@ -86,35 +81,37 @@ export default function WorkflowPageContent({
     if (errorDetails) window.location.reload();
   };
 
+  console.log(JSON.stringify(workflowInputSchema, null, 2), '<---- workflowInputSchema')
+
   // Check if all required fields are filled for a step
   const areRequiredFieldsFilled = (stepId: string) => {
-    const step = workflow?.steps.find((s) => s.id === stepId);
-    if (!step?.formSchema) return true;
+    // const step = workflow?.steps.find((s) => s.id === stepId);
+    // if (!step?.formSchema) return true;
 
-    return Object.entries(step.formSchema.fields)
-      .filter(
-        ([_, field]) => field.required && field.referenceType !== "previousStep"
-      )
-      .every(([fieldId]) => {
-        const value = formValues[stepId]?.[fieldId];
-        if (
-          value instanceof File ||
-          (value && typeof value === "object" && "source" in value)
-        ) {
-          return true;
-        }
-        return value !== null && value !== undefined && value !== "";
-      });
+    // return Object.entries(step.formSchema.fields)
+    //   .filter(
+    //     ([_, field]) => field.required && field.referenceType !== "previousStep"
+    //   )
+    //   .every(([fieldId]) => {
+    //     const value = formValues[stepId]?.[fieldId];
+    //     if (
+    //       value instanceof File ||
+    //       (value && typeof value === "object" && "source" in value)
+    //     ) {
+    //       return true;
+    //     }
+    //     return value !== null && value !== undefined && value !== "";
+    //   });
   };
 
   const areAllRequiredFieldsFilled = () => {
     if (!workflow?.steps) return false;
 
-    return workflow.steps.every((step) => {
-      if (!step.formSchema) return true;
+    // return workflow.steps.every((step) => {
+    //   if (!step.formSchema) return true;
 
-      return areRequiredFieldsFilled(step.id);
-    });
+    //   return areRequiredFieldsFilled(step.id);
+    // });
   };
 
   // Handle form submission
@@ -124,99 +121,99 @@ export default function WorkflowPageContent({
     setSubmittingRun(true);
 
     // Transform formValues into inputValues
-    const inputValues: Record<string, WorkflowExecutionInputValue> = {};
+    // const inputValues: Record<string, WorkflowExecutionInputValue> = {};
 
-    // Iterate over each step
-    for (const [stepId, stepValues] of Object.entries(formValues)) {
-      // Iterate over each field of the step
-      for (const [fieldId, value] of Object.entries(stepValues)) {
-        const step = workflow?.steps.find((s) => s.id === stepId);
-        const field = step?.formSchema?.fields[fieldId];
+    // // Iterate over each step
+    // for (const [stepId, stepValues] of Object.entries(formValues)) {
+    //   // Iterate over each field of the step
+    //   for (const [fieldId, value] of Object.entries(stepValues)) {
+    //     const step = workflow?.steps.find((s) => s.id === stepId);
+    //     const field = step?.formSchema?.fields[fieldId];
 
-        if (!field) continue;
+    //     if (!field) continue;
 
-        // Create the input value based on the type
-        if (field.type === "file" && value) {
-          if ("source" in value && value.source === "project") {
-            // Case of an existing file from the project
-            inputValues[fieldId] = {
-              type: "file",
-              label: field.label,
-              value: {
-                fileKey: value.file_key,
-                mimeType: value.type,
-                filename: value.name,
-              },
-            };
-          } else if (value instanceof File) {
-            // Case of a new file uploaded
-            const { url, file_metadata } = await api.uploads.getPresignedUrl(
-              value.name,
-              value.type,
-              value.size,
-              `uploads/${Date.now()}-${fieldId}-${value.name}`
-            );
+    //     // Create the input value based on the type
+    //     if (field.type === "file" && value) {
+    //       if ("source" in value && value.source === "project") {
+    //         // Case of an existing file from the project
+    //         inputValues[fieldId] = {
+    //           type: "file",
+    //           label: field.label,
+    //           value: {
+    //             fileKey: value.file_key,
+    //             mimeType: value.type,
+    //             filename: value.name,
+    //           },
+    //         };
+    //       } else if (value instanceof File) {
+    //         // Case of a new file uploaded
+    //         const { url, file_metadata } = await api.uploads.getPresignedUrl(
+    //           value.name,
+    //           value.type,
+    //           value.size,
+    //           `uploads/${Date.now()}-${fieldId}-${value.name}`
+    //         );
 
-            await fetch(url, {
-              method: "PUT",
-              body: value,
-              headers: { "Content-Type": value.type },
-            });
+    //         await fetch(url, {
+    //           method: "PUT",
+    //           body: value,
+    //           headers: { "Content-Type": value.type },
+    //         });
 
-            inputValues[fieldId] = {
-              type: "file",
-              label: field.label,
-              value: {
-                fileKey: file_metadata.file_key,
-                mimeType: value.type,
-                filename: value.name,
-              },
-            };
-          }
-        } else if (field.type === "text") {
-          inputValues[fieldId] = {
-            type: "text",
-            label: field.label,
-            value: {
-              text: value as string,
-            },
-          };
-        } else if (field.type === "number") {
-          inputValues[fieldId] = {
-            type: "number",
-            label: field.label,
-            value: {
-              number: Number(value),
-            },
-          };
-        }
-      }
-    }
-
-    const run = await createRunAsync({
-      workflowId,
-      inputValues,
-    });
-
-    await triggerRunAsync({
-      workflowId,
-      workflowRunId: run.id,
-    });
-
-    navigate(`/workflows/${workflowId}/runs/${run.id}`);
-    setSubmittingRun(false);
-  };
-
-  if (workflow === null) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-4">
-        <h2 className="text-2xl font-bold">Workflow not found</h2>
-        <Button onClick={() => navigate("/workflows")}>
-          Back to Workflows
-        </Button>
-      </div>
-    );
+    //         inputValues[fieldId] = {
+    //           type: "file",
+    //           label: field.label,
+    //           value: {
+    //             fileKey: file_metadata.file_key,
+    //             mimeType: value.type,
+    //             filename: value.name,
+    //           },
+    //         };
+    //       }
+    //     } else if (field.type === "text") {
+    //       inputValues[fieldId] = {
+    //         type: "text",
+    //         label: field.label,
+    //         value: {
+    //           text: value as string,
+    //         },
+    //       };
+    //     } else if (field.type === "number") {
+    //       inputValues[fieldId] = {
+    //         type: "number",
+    //         label: field.label,
+    //         value: {
+    //           number: Number(value),
+    //         },
+    //       };
+    //     }
+    //   }
   }
+
+  //   const run = await createRunAsync({
+  //     workflowId,
+  //     inputValues,
+  //   });
+
+  //   await triggerRunAsync({
+  //     workflowId,
+  //     workflowRunId: run.id,
+  //   });
+
+  //   navigate(`/workflows/${workflowId}/runs/${run.id}`);
+  //   setSubmittingRun(false);
+  // };
+
+  // if (workflow === null) {
+  //   return (
+  //     <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+  //       <h2 className="text-2xl font-bold">Workflow not found</h2>
+  //       <Button onClick={() => navigate("/workflows")}>
+  //         Back to Workflows
+  //       </Button>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col items-center w-full">
@@ -231,7 +228,7 @@ export default function WorkflowPageContent({
           <>
             <h1 className="text-4xl font-bold mb-4">{workflow?.name}</h1>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              {workflow?.description}
+              {/* {workflow?.description} */}
             </p>
           </>
         )}
@@ -248,7 +245,7 @@ export default function WorkflowPageContent({
           </div> */}
           <div className="rounded-xl w-full">
             <div className="flex flex-col gap-8">
-              {workflow.steps.slice(0, 1).map(
+              {/* {workflow.steps.slice(0, 1).map(
                 (step, index) =>
                   step.formSchema && (
                     <div
@@ -282,7 +279,25 @@ export default function WorkflowPageContent({
                       />
                     </div>
                   )
-              )}
+              )} */}
+              {workflowInputSchema && (
+                <Card>
+                  <CardContent>
+                    <WorkflowFormFields
+                      formSchema={workflowInputSchema.json.properties}
+                      values={formValues}
+                      onChange={(fieldId, value) =>
+                        setFormValues((prev) => ({
+                          ...prev,
+                          [fieldId]: value,
+                        }))
+                      }
+                      projectId={projectId}
+                    />
+                  </CardContent>
+                </Card>
+              )
+              }
               <div className="flex justify-center">
                 <Button
                   className="mt-6 py-7 text-lg font-medium transition-all hover:scale-[1.02] px-12"
@@ -306,7 +321,8 @@ export default function WorkflowPageContent({
             </div>
           </div>
         </div>
-      )}
+      )
+      }
 
       {/* Recent Runs Section */}
       <div className="w-full mb-12">
@@ -342,11 +358,11 @@ export default function WorkflowPageContent({
                     className={cn(
                       "px-2 py-1 rounded-full text-xs font-medium",
                       run.status === "completed" &&
-                        "bg-green-100 text-green-800",
+                      "bg-green-100 text-green-800",
                       run.status === "running" && "bg-blue-100 text-blue-800",
                       run.status === "failed" && "bg-red-100 text-red-800",
                       run.status === "pending" &&
-                        "bg-yellow-100 text-yellow-800"
+                      "bg-yellow-100 text-yellow-800"
                     )}
                   >
                     {run.status}
@@ -362,6 +378,6 @@ export default function WorkflowPageContent({
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 }

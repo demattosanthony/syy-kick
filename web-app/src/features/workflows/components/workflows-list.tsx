@@ -9,9 +9,9 @@ import {
 } from "lucide-react";
 import { useWorkflowsQuery } from "../api";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Workflow } from "../workflows.types";
+import { GetVNextWorkflowResponse } from "@mastra/client-js";
 interface WorkflowsListProps {
-  initalData?: Workflow[];
+  initalData?: GetVNextWorkflowResponse[];
   projectId?: string;
 }
 
@@ -32,8 +32,6 @@ export default function WorkflowsList(props: WorkflowsListProps) {
   const search = searchParams.get("search") || "";
 
   const { data: workflows, isLoading } = useWorkflowsQuery(props.initalData);
-
-  console.log(JSON.stringify(workflows, null, 2), '<--- workflows');
 
   const filteredWorkflows = search
     ? workflows?.filter((workflow) =>
@@ -64,7 +62,7 @@ function WorkflowItem({
   workflow,
   projectId,
 }: {
-  workflow: Workflow;
+  workflow: GetVNextWorkflowResponse;
   projectId?: string;
 }) {
   const Icon = getWorkflowIcon(workflow.name);
@@ -73,8 +71,8 @@ function WorkflowItem({
     <Link
       to={
         projectId
-          ? `/projects/${projectId}/workflows/${workflow.id}`
-          : `/workflows/${workflow.id}`
+          ? `/projects/${projectId}/workflows/${workflow.name}`
+          : `/workflows/${workflow.name}`
       }
       className="block p-6 rounded-lg bg-card hover:bg-accent border transition-colors group"
     >
@@ -86,9 +84,6 @@ function WorkflowItem({
         <div className="flex-1 min-w-0">
           <p className="text-lg font-semibold text-card-foreground mb-1">
             {workflow.name}
-          </p>
-          <p className="text-sm text-muted-foreground line-clamp-3">
-            {workflow.description}
           </p>
         </div>
       </div>

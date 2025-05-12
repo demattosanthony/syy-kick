@@ -9,5 +9,5 @@ export const runsUtils = {
         } catch (error) {
             throw new Error(`Validation error: ${error}`);
         }
-    }
+    },
 }

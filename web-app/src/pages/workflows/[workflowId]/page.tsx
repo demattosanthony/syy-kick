@@ -44,13 +44,13 @@ export function WorkflowPage() {
 
   const workflowDetails = useMemo(() => {
     // Temporary: make each steps' input after the first step be (referenceType: previousStep)
-    workflow?.steps.forEach((step, index) => {
-      Object.keys(step.formSchema?.fields || {}).forEach((field) => {
-        if (index > 0 && step.formSchema?.fields) {
-          step.formSchema.fields[field].referenceType = "previousStep";
-        }
-      });
-    });
+    // workflow?.steps.forEach((step, index) => {
+    //   Object.keys(step.formSchema?.fields || {}).forEach((field) => {
+    //     if (index > 0 && step.formSchema?.fields) {
+    //       step.formSchema.fields[field].referenceType = "previousStep";
+    //     }
+    //   });
+    // });
     return workflow;
   }, [workflow]);
 
@@ -117,8 +117,8 @@ export function WorkflowPage() {
         </div>
         <WorkflowPageContent
           workflowId={workflowId as string}
-          workflow={workflowDetails}
           isLoading={isLoading}
+          workflow={workflow}
         />
       </div>
     </div>

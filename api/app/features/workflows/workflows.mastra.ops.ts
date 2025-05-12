@@ -1,4 +1,4 @@
-import { GetVNextWorkflowResponse, MastraClient } from "@mastra/client-js";
+import { GetVNextWorkflowResponse } from "@mastra/client-js";
 import db from "../../config/db";
 import { eq, exists, or } from "drizzle-orm";
 import { workflowOrganizations, workflows, workflowUsers } from "./workflows.schema";
@@ -33,13 +33,7 @@ export const workflowsMastraOps = {
 
             const mastraIds = userWorkflows.map(userWorkflow => userWorkflow.mastraId);
 
-            console.log(mastraIds, '<--- mastraIds');
-
             const workflows: Record<string, GetVNextWorkflowResponse> = await client.getVNextWorkflows();
-
-            console.log(workflows, '<--- workflows');
-
-            console.log(Object.keys(workflows), '<--- Object.keys(workflows)');
 
             const response = [];
 
@@ -57,23 +51,29 @@ export const workflowsMastraOps = {
     },
     getWorkflow: async (workflowId: string, userId: string, organizationId?: string) => {
 
-        const exists = await db.query.workflows.findFirst({
+        const workflowExists = await db.query.workflows.findFirst({
             where: eq(workflows.mastraId, workflowId)
         });
 
-        if (!exists) {
+        if (!workflowExists) {
             throw new Error("Workflow not found");
         }
 
         const conditions = [
-            eq(workflowUsers.userId, userId),
+            exists(
+                db.select({ id: workflowUsers.id }).from(workflowUsers).where(eq(workflowUsers.userId, userId))
+            ),
         ];
 
         if (organizationId) {
-            conditions.push(eq(workflowOrganizations.organizationId, organizationId));
+            conditions.push(
+                exists(
+                    db.select({ id: workflowOrganizations.id }).from(workflowOrganizations).where(eq(workflowOrganizations.organizationId, organizationId))
+                )
+            );
         }
 
-        const userHasAccess = await db.query.workflowUsers.findFirst({
+        const userHasAccess = await db.query.workflows.findFirst({
             where: or(
                 ...conditions
             )
