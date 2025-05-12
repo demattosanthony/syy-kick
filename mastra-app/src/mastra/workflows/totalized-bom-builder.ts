@@ -10,17 +10,34 @@ import { convertPdfToImages } from "../../pdf-to-images.ts";
 import { objectDetection } from "../../obj-detection.ts";
 import s3 from "../../s3.ts";
 import logger from "../../logger.ts";
+import {
+  WorkflowRunStepOutputSchema,
+  type WorkflowExecutionInputValues,
+  type WorkflowFile,
+} from "../../types.ts";
+import { mistralOcr } from "../../ocr.ts";
+
+const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
+  controlsDrawings: z.object({
+    type: z.literal("file"),
+    value: z.object({
+      fileKey: z.string(),
+      mimeType: z.string(),
+      fileName: z.string(),
+    }),
+  }),
+});
 
 const stepOne = createStep({
   id: "stepOne",
-  inputSchema: z.object({
-    fileKey: z.string(),
-  }),
+  inputSchema: inputSchema,
   outputSchema: z.object({
-    uploadedFileKeys: z.array(z.string()),
+    convertedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData }) => {
-    const { fileKey } = inputData;
+    const controlsDrawings = inputData.controlsDrawings;
+    const { fileKey } = controlsDrawings.value as WorkflowFile;
+
     const file = await s3.send(
       new GetObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME!,
@@ -34,6 +51,7 @@ const stepOne = createStep({
     }
 
     const images = await convertPdfToImages(Buffer.from(pdfData));
+    logger.info(`Extracted ${images.length} images from PDF`);
 
     // debug - save the images to disk
     // for (let i = 0; i < images.length; i++) {
@@ -53,17 +71,25 @@ const stepOne = createStep({
             Bucket: process.env.S3_BUCKET_NAME!,
             Key: fileKey,
             Body: Buffer.from(image.base64, "base64"),
+            ContentType: "image/png",
           })
         )
-        .then(() => fileKey);
+        .then(() => ({
+          type: "file" as const,
+          file: {
+            fileKey,
+            mimeType: "image/png",
+            fileName: image.name,
+          },
+        }));
     });
 
-    const uploadedFileKeys = await Promise.all(uploadPromises);
+    const uploadedImages = await Promise.all(uploadPromises);
 
-    logger.info(`Uploaded ${uploadedFileKeys.length} images to S3`);
+    logger.info(`Returning ${uploadedImages.length} images`);
 
     return {
-      uploadedFileKeys,
+      convertedImages: uploadedImages,
     };
   },
 });
@@ -71,20 +97,20 @@ const stepOne = createStep({
 const stepTwo = createStep({
   id: "stepTwo",
   inputSchema: z.object({
-    uploadedFileKeys: z.array(z.string()),
+    convertedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   outputSchema: z.object({
-    fileKeysWithBomTables: z.array(z.string()),
+    imagesWithBomTables: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData }) => {
-    const { uploadedFileKeys } = inputData;
+    const { convertedImages } = inputData;
 
     const images = await Promise.all(
-      uploadedFileKeys.map(async (fileKey) => {
+      convertedImages.map(async (image) => {
         const file = await s3.send(
           new GetObjectCommand({
             Bucket: process.env.S3_BUCKET_NAME!,
-            Key: fileKey,
+            Key: image.file?.fileKey,
           })
         );
         const pdfData = await file.Body?.transformToByteArray();
@@ -94,12 +120,11 @@ const stepTwo = createStep({
         }
 
         return {
-          fileKey,
+          fileKey: image.file?.fileKey,
           base64: Buffer.from(pdfData).toString("base64"),
         };
       })
     );
-    let fileKeysWithBomTables = [];
 
     // Check all images for BOM tables in parallel
     const results = await Promise.all(
@@ -130,17 +155,21 @@ These tables typically list details about components used in the control system,
       )
     );
 
-    fileKeysWithBomTables = images
+    const outputs = images
       .filter((_, index) => results[index].object.hasBomTable)
-      .map((image) => image.fileKey);
+      .map((image) => ({
+        type: "file" as const,
+        file: {
+          fileKey: image.fileKey!,
+          mimeType: "image/png",
+          fileName: image.fileKey!,
+        },
+      }));
 
-    console.log(
-      "Number of images with BOM tables: ",
-      fileKeysWithBomTables.length
-    );
+    console.log("Number of images with BOM tables: ", outputs.length);
 
     return {
-      fileKeysWithBomTables,
+      imagesWithBomTables: outputs,
     };
   },
 });
@@ -148,21 +177,21 @@ These tables typically list details about components used in the control system,
 const stepThree = createStep({
   id: "stepThree",
   inputSchema: z.object({
-    fileKeysWithBomTables: z.array(z.string()),
+    imagesWithBomTables: z.array(WorkflowRunStepOutputSchema),
   }),
   outputSchema: z.object({
-    croppedImageFileKeys: z.array(z.string()),
+    croppedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData }) => {
-    const { fileKeysWithBomTables } = inputData;
+    const { imagesWithBomTables } = inputData;
 
     // Load images that have BOM tables on them
     const images = await Promise.all(
-      fileKeysWithBomTables.map(async (fileKey) => {
+      imagesWithBomTables.map(async (image) => {
         const file = await s3.send(
           new GetObjectCommand({
             Bucket: process.env.S3_BUCKET_NAME!,
-            Key: fileKey,
+            Key: image.file?.fileKey,
           })
         );
         const imageData = await file.Body?.transformToByteArray();
@@ -172,7 +201,7 @@ const stepThree = createStep({
         }
 
         return {
-          fileKey,
+          fileKey: image.file?.fileKey,
           base64: Buffer.from(imageData).toString("base64"),
         };
       })
@@ -212,24 +241,31 @@ const stepThree = createStep({
 
     await Promise.all(uploadPromises);
 
-    const croppedImageFileKeys = flattenedCroppedImages.map(
-      (image) => `uploads/${image.fileName}`
-    );
+    const outputs = flattenedCroppedImages.map((image) => ({
+      type: "file" as const,
+      file: {
+        fileKey: `uploads/${image.fileName}`,
+        mimeType: image.mimeType,
+        fileName: image.fileName,
+      },
+    }));
 
     // Log presigned urls for the cropped images
-    for (const fileKey of croppedImageFileKeys) {
+    for (const output of outputs) {
       const command = new GetObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME!,
-        Key: fileKey,
+        Key: output.file?.fileKey,
       });
       const presignedUrlString = await getSignedUrl(s3, command, {
         expiresIn: 3600,
       }); // Expires in 1 hour
-      logger.info(`Presigned url for ${fileKey}: ${presignedUrlString}`);
+      logger.info(
+        `Presigned url for ${output.file?.fileKey}: ${presignedUrlString}`
+      );
     }
 
     return {
-      croppedImageFileKeys,
+      croppedImages: outputs,
     };
   },
 });
@@ -237,21 +273,22 @@ const stepThree = createStep({
 const stepFour = createStep({
   id: "stepFour",
   inputSchema: z.object({
-    croppedImageFileKeys: z.array(z.string()),
+    croppedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   outputSchema: z.object({
-    ocrResults: z.array(z.string()),
+    ocrResults: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData }) => {
-    const { croppedImageFileKeys } = inputData;
+    logger.info("Running step four");
+    const { croppedImages } = inputData;
 
     // For each cropped image, run OCR to get the text
     const ocrResults = await Promise.all(
-      croppedImageFileKeys.map(async (fileKey) => {
+      croppedImages.map(async (image) => {
         const file = await s3.send(
           new GetObjectCommand({
             Bucket: process.env.S3_BUCKET_NAME!,
-            Key: fileKey,
+            Key: image.file?.fileKey,
           })
         );
         const imageData = await file.Body?.transformToByteArray();
@@ -259,6 +296,16 @@ const stepFour = createStep({
         if (!imageData) {
           throw new Error("No data found");
         }
+
+        const result = await mistralOcr({
+          base64: Buffer.from(imageData).toString("base64"),
+          mimeType: "image/jpeg",
+          includeImages: false,
+        });
+
+        // const ocrResult = result.pages
+        //   .map((page) => page.markdown)
+        //   .join("\n\n");
 
         const { object } = await generateObject({
           model: openai("gpt-4.1"),
@@ -288,8 +335,17 @@ const stepFour = createStep({
       })
     );
 
+    logger.info(`OCR results: ${ocrResults.length}`);
+
+    const outputs = ocrResults.map((ocrResult) => ({
+      type: "text" as const,
+      text: ocrResult,
+    }));
+
+    logger.info(`Returning ${outputs.length} ocr results`);
+
     return {
-      ocrResults,
+      ocrResults: outputs,
     };
   },
 });
@@ -297,13 +353,15 @@ const stepFour = createStep({
 const stepFive = createStep({
   id: "stepFive",
   inputSchema: z.object({
-    ocrResults: z.array(z.string()),
+    ocrResults: z.array(WorkflowRunStepOutputSchema),
   }),
   outputSchema: z.object({
-    totalizedBomCsvContent: z.string(),
+    totalizedBomCsvFile: WorkflowRunStepOutputSchema,
   }),
   execute: async ({ inputData }) => {
+    logger.info("Running step five");
     const { ocrResults } = inputData;
+    logger.info(`OCR results: ${ocrResults.length}`);
 
     // Use llm to create a totalized BOM from the ocr results
     const totalizedBom = await generateObject({
@@ -357,15 +415,49 @@ Return only the csv string and nothing else.`,
             },
             {
               type: "text",
-              text: `Here are the OCR results:\n\n ${ocrResults.join("\n\n")}`,
+              text: `Here are the OCR results:\n\n ${ocrResults.map((ocrResult) => ocrResult.text).join("\n\n")}`,
             },
           ],
         },
       ],
     });
+    logger.info(`Totalized BOM: ${totalizedBom.object.totalizedBomCsvContent}`);
+
+    const totalizedBomCsvContent = totalizedBom.object.totalizedBomCsvContent;
+
+    const fileKey = `uploads/totalized-bom.csv`;
+
+    // Upload the totalized BOM CSV to S3
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.S3_BUCKET_NAME!,
+        Key: fileKey,
+        Body: Buffer.from(totalizedBomCsvContent, "utf-8"),
+        ContentType: "text/csv",
+      })
+    );
+
+    // Get the presigned url for the totalized BOM CSV
+    const command = new GetObjectCommand({
+      Bucket: process.env.S3_BUCKET_NAME!,
+      Key: fileKey,
+    });
+    const presignedUrlString = await getSignedUrl(s3, command, {
+      expiresIn: 3600,
+    });
+
+    const csvFile = {
+      type: "file" as const,
+      file: {
+        fileKey,
+        mimeType: "text/csv",
+        fileName: "totalized-bom.csv",
+        fileUrl: presignedUrlString,
+      },
+    };
 
     return {
-      totalizedBomCsvContent: totalizedBom.object.totalizedBomCsvContent,
+      totalizedBomCsvFile: csvFile,
     };
   },
 });
@@ -373,12 +465,8 @@ Return only the csv string and nothing else.`,
 // Build the workflow
 const totalizedBomBuilder = createWorkflow({
   id: "totalized-bom-builder",
-  inputSchema: z.object({
-    fileKey: z.string(),
-  }),
-  outputSchema: z.object({
-    totalizedBomCsvContent: z.string(),
-  }),
+  inputSchema: inputSchema,
+  outputSchema: z.object({}),
   steps: [stepOne, stepTwo, stepThree, stepFour, stepFive],
 })
   .then(stepOne)

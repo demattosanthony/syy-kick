@@ -26,7 +26,14 @@ const run = workflow.createRun();
 
 const res = await run.start({
   inputData: {
-    fileKey,
+    controlsDrawings: {
+      type: "file",
+      value: {
+        fileKey,
+        mimeType: "application/pdf",
+        fileName: "Rev1_RodnReelCasino_CtrlDwgs_04222025.pdf",
+      },
+    },
   },
 });
 

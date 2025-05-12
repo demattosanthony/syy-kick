@@ -47,8 +47,13 @@ export async function convertPdfToImages(pdfData: Buffer): Promise<
       }
     }
 
-    return images;
-  } finally {
     await fs.rm(tempDir, { recursive: true, force: true });
+
+    return images;
+  } catch (error) {
+    console.error(error);
+    // Delete the temp directory
+    await fs.rm(tempDir, { recursive: true, force: true });
+    throw error;
   }
 }
