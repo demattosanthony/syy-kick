@@ -2,14 +2,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import '../../../index.css';
 
-import { lodashTitleCase } from '@/lib/string';
 import { AlertCircleIcon } from 'lucide-react';
 import { ReactFlowProvider } from '@xyflow/react';
 import { VNextWorkflowGraphInner } from './v-next-workflow-graph-inner';
 import { VNextWorkflowNestedGraphProvider } from '../context/v-next-workflow-nested-graph-context';
+import { GetVNextWorkflowResponse } from '@mastra/client-js';
 
-export function VNextWorkflowGraph({ workflowId, baseUrl }: { workflowId: string; baseUrl: string }) {
-    const { vNextWorkflow, isLoading } = useVNextWorkflow(workflowId, baseUrl);
+export function VNextWorkflowGraph({ vNextWorkflow, isLoading }: { vNextWorkflow?: GetVNextWorkflowResponse, isLoading: boolean }) {
 
     if (isLoading) {
         return (
@@ -24,7 +23,7 @@ export function VNextWorkflowGraph({ workflowId, baseUrl }: { workflowId: string
             <div className="grid h-full place-items-center">
                 <div className="flex flex-col items-center gap-2">
                     <AlertCircleIcon />
-                    <div>We couldn&apos;t find {lodashTitleCase(workflowId)} workflow.</div>
+                    <div>We couldn&apos;t find this workflow.</div>
                 </div>
             </div>
         );

@@ -2,7 +2,7 @@ import {
   useDeleteWorkflowMutation,
   useWorkflowQuery,
 } from "@/features/workflows/api";
-import { WorkflowPageContent } from "@/features/workflows/components";
+import { VNextWorkflowGraph, WorkflowPageContent } from "@/features/workflows/components";
 import { useParams } from "react-router";
 import {
   Breadcrumb,
@@ -53,6 +53,13 @@ export function WorkflowPage() {
     // });
     return workflow;
   }, [workflow]);
+
+  return (
+    <VNextWorkflowGraph
+      vNextWorkflow={workflowDetails}
+      isLoading={isLoading}
+    />
+  )
 
   return (
     <div className="h-screen w-full flex flex-col">
