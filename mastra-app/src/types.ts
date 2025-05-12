@@ -27,6 +27,7 @@ export type WorkflowNumberExecutionInputValue = {
 
 export type WorkflowExecutionInputValue = {
   type: "text" | "file" | "number";
+  label: string;
   value:
     | WorkflowTextExecutionInputValue
     | WorkflowFileExecutionInputValue

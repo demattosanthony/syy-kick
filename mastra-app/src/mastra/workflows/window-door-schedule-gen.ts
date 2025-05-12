@@ -1,27 +1,35 @@
-import { createWorkflow, createStep } from "@mastra/core/workflows/vNext";
+// Core dependencies
 import { z } from "zod";
+import { randomUUID } from "node:crypto";
+import fs from "node:fs/promises";
+
+// AWS dependencies
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import s3 from "../../s3.ts";
+
+// AI/ML dependencies
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { google } from "@ai-sdk/google";
-import fs from "node:fs/promises";
-import { randomUUID } from "node:crypto";
-
-import { convertPdfToImages } from "../../pdf-to-images.ts";
 import { objectDetection } from "../../obj-detection.ts";
-import s3 from "../../s3.ts";
-import logger from "../../logger.ts";
+
+// Workflow dependencies
+import { createWorkflow, createStep } from "@mastra/core/workflows/vNext";
 import {
   WorkflowRunStepOutputSchema,
   type WorkflowExecutionInputValues,
   type WorkflowFile,
 } from "../../types.ts";
 
+// Utilities
+import { convertPdfToImages } from "../../pdf-to-images.ts";
+import logger from "../../logger.ts";
+import { google } from "@ai-sdk/google";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
-  controlsDrawings: z.object({
+  architecturalPdf: z.object({
     type: z.literal("file"),
-    label: z.literal("Controls Drawings PDF"),
+    label: z.literal("Architectural PDF"),
     value: z.object({
       fileKey: z.string(),
       mimeType: z.literal("application/pdf"),
@@ -31,7 +39,7 @@ const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
 });
 
 const finalStepOutputSchema = z.object({
-  totalizedBomCsvFile: z.object({
+  windowAndDoorScheduleCsvFile: z.object({
     type: z.literal("file"),
     file: z.object({
       fileKey: z.string(),
@@ -49,8 +57,8 @@ const stepOne = createStep({
     convertedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData }) => {
-    const controlsDrawings = inputData.controlsDrawings;
-    const { fileKey } = controlsDrawings.value as WorkflowFile;
+    const architecturalPdf = inputData.architecturalPdf;
+    const { fileKey } = architecturalPdf.value as WorkflowFile;
 
     const file = await s3.send(
       new GetObjectCommand({
@@ -114,7 +122,7 @@ const stepTwo = createStep({
     convertedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   outputSchema: z.object({
-    imagesWithBomTables: z.array(WorkflowRunStepOutputSchema),
+    imagesWithWindowOrDoorSchedules: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData }) => {
     const { convertedImages } = inputData;
@@ -150,8 +158,8 @@ const stepTwo = createStep({
               content: [
                 {
                   type: "text",
-                  text: `Your task is to analyze an image from a control drawings pdf documentand determine if there are any bill of materials embedded tables on it. 
-These tables typically list details about components used in the control system, such as sizes, types, and quantities. The table header should also be Bill of Materials.`,
+                  text: `Your task is to analyze an image from a architectural drawings pdf documentand determine if there are any window or door schedules embedded tables on it. 
+These schedules typically list details about windows and doors used in the building, such as sizes, types, and quantities. The table header will be something like "Window Schedule" or "Door Schedule".`,
                 },
                 {
                   type: "image",
@@ -163,14 +171,14 @@ These tables typically list details about components used in the control system,
           ],
           model: openai("gpt-4.1"),
           schema: z.object({
-            hasBomTable: z.boolean(),
+            hasWindowOrDoorSchedule: z.boolean(),
           }),
         })
       )
     );
 
     const outputs = images
-      .filter((_, index) => results[index].object.hasBomTable)
+      .filter((_, index) => results[index].object.hasWindowOrDoorSchedule)
       .map((image) => ({
         type: "file" as const,
         file: {
@@ -194,13 +202,16 @@ These tables typically list details about components used in the control system,
         throw new Error("No data found");
       }
 
-      //   await fs.writeFile(`./logs/${randomUUID()}.png`, Buffer.from(imageData));
+      await fs.writeFile(`./logs/${randomUUID()}.png`, Buffer.from(imageData));
     }
 
-    console.log("Number of images with BOM tables: ", outputs.length);
+    console.log(
+      "Number of images with window or door schedules: ",
+      outputs.length
+    );
 
     return {
-      imagesWithBomTables: outputs,
+      imagesWithWindowOrDoorSchedules: outputs,
     };
   },
 });
@@ -208,17 +219,17 @@ These tables typically list details about components used in the control system,
 const stepThree = createStep({
   id: "stepThree",
   inputSchema: z.object({
-    imagesWithBomTables: z.array(WorkflowRunStepOutputSchema),
+    imagesWithWindowOrDoorSchedules: z.array(WorkflowRunStepOutputSchema),
   }),
   outputSchema: z.object({
     croppedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData }) => {
-    const { imagesWithBomTables } = inputData;
+    const { imagesWithWindowOrDoorSchedules } = inputData;
 
     // Load images that have BOM tables on them
     const images = await Promise.all(
-      imagesWithBomTables.map(async (image) => {
+      imagesWithWindowOrDoorSchedules.map(async (image) => {
         const file = await s3.send(
           new GetObjectCommand({
             Bucket: process.env.S3_BUCKET_NAME!,
@@ -241,7 +252,10 @@ const stepThree = createStep({
     // Do object detection to get images of just the BOM tables
     const croppedImages = await Promise.all(
       images.map(async (image) => {
-        return await objectDetection(image.base64, "Bill of Materials Table");
+        return await objectDetection(
+          image.base64,
+          "Window or Door Schedule Table"
+        );
       })
     );
 
@@ -250,13 +264,13 @@ const stepThree = createStep({
     logger.info(`Flattened ${flattenedCroppedImages.length} cropped images`);
 
     // debug - save the cropped images to disk
-    // for (let i = 0; i < flattenedCroppedImages.length; i++) {
-    //   const image = flattenedCroppedImages[i];
-    //   await fs.writeFile(
-    //     `./logs/cropped_${i}_${image.fileName}`,
-    //     Buffer.from(image.base64, "base64")
-    //   );
-    // }
+    for (let i = 0; i < flattenedCroppedImages.length; i++) {
+      const image = flattenedCroppedImages[i];
+      await fs.writeFile(
+        `./logs/cropped_${i}_${image.fileName}`,
+        Buffer.from(image.base64, "base64")
+      );
+    }
 
     // Upload the cropped images to S3
     const uploadPromises = flattenedCroppedImages.map((image) => {
@@ -340,7 +354,7 @@ const stepFour = createStep({
               content: [
                 {
                   type: "text",
-                  text: `Your task is to operate an an OCR model to extract the text from an image. You will be given an image of a bill of materials table. You will need to extract the text from the image and return it as a string in markdown format. That represents the text from the image. Do not return anything else other than the markdown text. Do not make up any informaiton that is not in the image. Only extract the columns of Tag, Qty., Part No., and Make.`,
+                  text: `Your task is to operate an an OCR model to extract the text from an image. You will be given an image of a window or door schedule table. You will need to extract the text from the image and return it as a string in markdown format. That represents the text from the image. Do not return anything else other than the markdown text (make sure to add the proper lines for the table formatting). Do not make up any informaiton that is not in the image.`,
                 },
                 {
                   type: "image",
@@ -386,21 +400,21 @@ const stepFour = createStep({
     logger.info(`Returning ${files.length} markdown files`);
 
     // Save the markdown files to disk
-    // for (const [index, file] of files.entries()) {
-    //   const fileData = await s3.send(
-    //     new GetObjectCommand({
-    //       Bucket: process.env.S3_BUCKET_NAME!,
-    //       Key: file.file?.fileKey,
-    //     })
-    //   );
-    //   const markdownData = await fileData.Body?.transformToString();
+    for (const [index, file] of files.entries()) {
+      const fileData = await s3.send(
+        new GetObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME!,
+          Key: file.file?.fileKey,
+        })
+      );
+      const markdownData = await fileData.Body?.transformToString();
 
-    //   if (!markdownData) {
-    //     throw new Error("No data found");
-    //   }
+      if (!markdownData) {
+        throw new Error("No data found");
+      }
 
-    //   await fs.writeFile(`./logs/ocr_${index}.md`, markdownData);
-    // }
+      await fs.writeFile(`./logs/ocr_${index}.md`, markdownData);
+    }
 
     return {
       markdownFiles: files,
@@ -445,7 +459,7 @@ const stepFive = createStep({
     const totalizedBom = await generateObject({
       model: google("gemini-2.5-pro-exp-03-25"),
       schema: z.object({
-        totalizedBomCsvContent: z.string(),
+        windowAndDoorScheduleCsvContent: z.string(),
       }),
       messages: [
         {
@@ -453,31 +467,25 @@ const stepFive = createStep({
           content: [
             {
               type: "text",
-              text: `Your goal is to create a totalzed BOM CSV file that consolidates all bill of materials tables from a controls pdf into a single table.
+              text: `Your task is to too read the text extracted from the window and door schedule tables and create a CSV file that contains the data from the tables.
 
 Steps:
-1. Read all the separate BOM tables provided
-2. Extract all part numbers and their quantities from each BOM table.
-3. Group the part numbers by their make (manufacturer). 
-4. Aggregate the quantities for any duplicate parts across all tables.
-5. Create a final table with two columns: Part Number and Total Quantity.
+1. Analyze the cropped images of the window and door schedule tables.
+2. Extract the data from the tables and save it as a CSV file.
 
-CSV Formatting:
+Output Format:
+Generate a CSV artifact with proper escaping using the following structure:
 
-| Part Number | Total Quantity |
-|-------------|----------------|
-| [MAKE 1] |                |
-| [Part No. 1] | [Quantity]     |
-| [Part No. 2] | [Quantity]     |
-| [MAKE 2] |                |
-| [Part No. 3] | [Quantity]     |
-| ...         | ...            |
+Example of correct CSV formatting:
+"WINDOW SCHEDULE"
+"Item","Height","Width","Area (sq ft)"
+"A","8'-0""","2'-4""","18.67"
+"B","4'-8""","2'-8""","12.44"
 
-Ensure that your final consolidated BOM:
-- Includes all unique part numbers from all BOM tables
-- Groups part numbers by their make
-- Shows the total quantity for each part number
-- Is presented in a clear, easily readable format
+"DOOR SCHEDULE"
+"Item","Height","Width","Area (sq ft)"
+"01A","8'-0""","3'-0""","24.00"
+"01B","8'-0""","3'-0""","24.00"
 
 CSV Formatting Rules:
 1. Every field must be enclosed in double quotes: "field"
@@ -485,11 +493,20 @@ CSV Formatting Rules:
 3. Separate fields with single commas (no spaces): "field1","field2"
 4. Each schedule should start with its title on a separate line
 5. Headers should be quoted: "Item","Height","Width","Area (sq ft)"
-6. Use all caps for the make names
 
-Remember to use your expertise to provide the most accurate and comprehensive consolidated BOM possible based on the given information.
+Example of a single properly formatted line:
+"A","8'-0""","2'-4""","18.67"
 
-Return only the csv string and nothing else.`,
+Quality Control:
+- Verify all measurements are properly formatted (X'-Y""")
+- Confirm area calculations are accurate and rounded
+- Ensure unique identifiers are consistent and logical
+- Validate that no required data fields are missing
+- Check that all fields are properly quoted and escaped
+
+Return only the final CSV in the specified format, without any additional commentary or markup.
+
+Do not make up any information. Only include information that is present in the cropped images. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
             },
             {
               type: "text",
@@ -499,18 +516,21 @@ Return only the csv string and nothing else.`,
         },
       ],
     });
-    logger.info(`Totalized BOM: ${totalizedBom.object.totalizedBomCsvContent}`);
+    logger.info(
+      `Totalized BOM: ${totalizedBom.object.windowAndDoorScheduleCsvContent}`
+    );
 
-    const totalizedBomCsvContent = totalizedBom.object.totalizedBomCsvContent;
+    const windowAndDoorScheduleCsvContent =
+      totalizedBom.object.windowAndDoorScheduleCsvContent;
 
-    const fileKey = `uploads/totalized-bom.csv`;
+    const fileKey = `uploads/window-door-schedule.csv`;
 
     // Upload the totalized BOM CSV to S3
     await s3.send(
       new PutObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME!,
         Key: fileKey,
-        Body: Buffer.from(totalizedBomCsvContent, "utf-8"),
+        Body: Buffer.from(windowAndDoorScheduleCsvContent, "utf-8"),
         ContentType: "text/csv",
       })
     );
@@ -529,20 +549,20 @@ Return only the csv string and nothing else.`,
       file: {
         fileKey,
         mimeType: "text/csv",
-        fileName: "totalized-bom.csv",
+        fileName: "window-door-schedule.csv",
         fileUrl: presignedUrlString,
       },
     };
 
     return {
-      totalizedBomCsvFile: csvFile,
+      windowAndDoorScheduleCsvFile: csvFile,
     };
   },
 });
 
 // Build the workflow
-const totalizedBomBuilder = createWorkflow({
-  id: "totalized-bom-builder",
+const windowDoorScheduleGen = createWorkflow({
+  id: "window-door-schedule-gen",
   inputSchema: inputSchema,
   outputSchema: finalStepOutputSchema,
   steps: [stepOne, stepTwo, stepThree, stepFour, stepFive],
@@ -554,4 +574,4 @@ const totalizedBomBuilder = createWorkflow({
   .then(stepFive)
   .commit();
 
-export { totalizedBomBuilder };
+export { windowDoorScheduleGen };

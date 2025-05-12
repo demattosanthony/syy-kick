@@ -7,9 +7,10 @@ import { mastra } from "./mastra/index.ts";
 
 const homeDir = process.env.HOME;
 
-const filePath = `${homeDir}/workflows-dataset/bom-consolidator/Blue Halo/WorkingAB_BlueHalo_CtrlDwgs_03282025.pdf`;
+const filePath = `${homeDir}/workflows-dataset/window-door-gen/coleman-valley/250401_ColemanValleyRoadRes_PROGRESSPLANSFORSUBCOORD.pdf`;
 
-const fileKey = "uploads/WorkingAB_BlueHalo_CtrlDwgs_03282025.pdf";
+const fileKey =
+  "uploads/250401_ColemanValleyRoadRes_PROGRESSPLANSFORSUBCOORD.pdf";
 const data = await fs.readFile(filePath);
 
 await s3.send(
@@ -20,17 +21,18 @@ await s3.send(
   })
 );
 
-const workflow = mastra.vnext_getWorkflow("totalized-bom-builder");
+const workflow = mastra.vnext_getWorkflow("window-door-schedule-gen");
 const run = workflow.createRun();
 
 const res = await run.start({
   inputData: {
-    controlsDrawings: {
+    architecturalPdf: {
       type: "file",
+      label: "Architectural PDF",
       value: {
         fileKey,
         mimeType: "application/pdf",
-        fileName: "WorkingAB_BlueHalo_CtrlDwgs_03282025.pdf",
+        fileName: "250401_ColemanValleyRoadRes_PROGRESSPLANSFORSUBCOORD.pdf",
       },
     },
   },
