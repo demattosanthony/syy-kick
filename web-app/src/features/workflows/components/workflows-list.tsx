@@ -33,10 +33,12 @@ export default function WorkflowsList(props: WorkflowsListProps) {
 
   const { data: workflows, isLoading } = useWorkflowsQuery(props.initalData);
 
+  console.log(JSON.stringify(workflows, null, 2), '<--- workflows');
+
   const filteredWorkflows = search
     ? workflows?.filter((workflow) =>
-        workflow.name.toLowerCase().includes(search.toLowerCase())
-      )
+      workflow.name.toLowerCase().includes(search.toLowerCase())
+    )
     : workflows;
 
   return (

@@ -38,6 +38,7 @@
     "@ai-sdk/perplexity": "^0.0.7",
     "@ai-sdk/togetherai": "^0.1.18",
     "@ai-sdk/xai": "^1.2.15",
+    "@mastra/client-js": "^0.1.21",
     "@mistralai/mistralai": "^1.6.0",
     "ai": "^4.3.13",
     "bun": "^1.2.11",
