@@ -6,6 +6,7 @@ import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 import fs from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 
 import { convertPdfToImages } from "../../pdf-to-images.ts";
 import { objectDetection } from "../../obj-detection.ts";
@@ -16,7 +17,6 @@ import {
   type WorkflowExecutionInputValues,
   type WorkflowFile,
 } from "../../types.ts";
-import { randomUUID } from "node:crypto";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   controlsDrawings: z.object({
@@ -237,13 +237,13 @@ const stepThree = createStep({
     logger.info(`Flattened ${flattenedCroppedImages.length} cropped images`);
 
     // debug - save the cropped images to disk
-    for (let i = 0; i < flattenedCroppedImages.length; i++) {
-      const image = flattenedCroppedImages[i];
-      await fs.writeFile(
-        `./logs/cropped_${i}_${image.fileName}`,
-        Buffer.from(image.base64, "base64")
-      );
-    }
+    // for (let i = 0; i < flattenedCroppedImages.length; i++) {
+    //   const image = flattenedCroppedImages[i];
+    //   await fs.writeFile(
+    //     `./logs/cropped_${i}_${image.fileName}`,
+    //     Buffer.from(image.base64, "base64")
+    //   );
+    // }
 
     // Upload the cropped images to S3
     const uploadPromises = flattenedCroppedImages.map((image) => {
@@ -294,7 +294,7 @@ const stepFour = createStep({
     croppedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   outputSchema: z.object({
-    ocrResults: z.array(WorkflowRunStepOutputSchema),
+    markdownFiles: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData }) => {
     logger.info("Running step four");
@@ -314,16 +314,6 @@ const stepFour = createStep({
         if (!imageData) {
           throw new Error("No data found");
         }
-
-        // const result = await mistralOcr({
-        //   base64: Buffer.from(imageData).toString("base64"),
-        //   mimeType: "image/jpeg",
-        //   includeImages: false,
-        // });
-
-        // const ocrResult = result.pages
-        //   .map((page) => page.markdown)
-        //   .join("\n\n");
 
         const { object } = await generateObject({
           model: openai("gpt-4.1"),
@@ -355,39 +345,100 @@ const stepFour = createStep({
 
     logger.info(`OCR results: ${ocrResults.length}`);
 
-    const outputs = ocrResults.map((ocrResult) => ({
-      type: "text" as const,
-      text: ocrResult,
-    }));
+    // Upload OCR results to S3 and create file references
+    const files = await Promise.all(
+      ocrResults.map(async (ocrResult, index) => {
+        const fileKey = `uploads/ocr_${index}.md`;
 
-    // Save the ocr results to disk
-    for (const [index, output] of outputs.entries()) {
-      await fs.writeFile(
-        `./logs/ocr_${index}.txt`,
-        Buffer.from(output.text, "utf-8")
-      );
-    }
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: process.env.S3_BUCKET_NAME!,
+            Key: fileKey,
+            Body: Buffer.from(ocrResult, "utf-8"),
+            ContentType: "text/markdown",
+          })
+        );
 
-    logger.info(`Returning ${outputs.length} ocr results`);
+        return {
+          type: "file" as const,
+          file: {
+            fileKey,
+            mimeType: "text/markdown",
+            fileName: `ocr_${index}.md`,
+          },
+        };
+      })
+    );
+
+    logger.info(`Returning ${files.length} markdown files`);
+
+    // Save the markdown files to disk
+    // for (const [index, file] of files.entries()) {
+    //   const fileData = await s3.send(
+    //     new GetObjectCommand({
+    //       Bucket: process.env.S3_BUCKET_NAME!,
+    //       Key: file.file?.fileKey,
+    //     })
+    //   );
+    //   const markdownData = await fileData.Body?.transformToString();
+
+    //   if (!markdownData) {
+    //     throw new Error("No data found");
+    //   }
+
+    //   await fs.writeFile(`./logs/ocr_${index}.md`, markdownData);
+    // }
 
     return {
-      ocrResults: outputs,
+      markdownFiles: files,
     };
   },
+});
+
+const finalStepOutputSchema = z.object({
+  totalizedBomCsvFile: z.object({
+    type: z.literal("file"),
+    file: z.object({
+      fileKey: z.string(),
+      mimeType: z.string(),
+      fileName: z.string(),
+      fileUrl: z.string().optional(),
+    }),
+  }),
 });
 
 const stepFive = createStep({
   id: "stepFive",
   inputSchema: z.object({
-    ocrResults: z.array(WorkflowRunStepOutputSchema),
+    markdownFiles: z.array(WorkflowRunStepOutputSchema),
   }),
-  outputSchema: z.object({
-    totalizedBomCsvFile: WorkflowRunStepOutputSchema,
-  }),
+  outputSchema: finalStepOutputSchema,
   execute: async ({ inputData }) => {
     logger.info("Running step five");
-    const { ocrResults } = inputData;
-    logger.info(`OCR results: ${ocrResults.length}`);
+    const { markdownFiles } = inputData;
+    logger.info(`Markdown files: ${markdownFiles.length}`);
+
+    // Load all the markdown files
+    const markdownFilesContent = await Promise.all(
+      markdownFiles.map(async (mdFile) => {
+        const file = await s3.send(
+          new GetObjectCommand({
+            Bucket: process.env.S3_BUCKET_NAME!,
+            Key: mdFile.file?.fileKey,
+          })
+        );
+        const markdownData = await file.Body?.transformToString();
+
+        if (!markdownData) {
+          throw new Error("No data found");
+        }
+
+        return markdownData;
+      })
+    );
+
+    logger.info(`Markdown files content: ${markdownFilesContent.length}`);
+    logger.info(markdownFilesContent[0]);
 
     // Use llm to create a totalized BOM from the ocr results
     const totalizedBom = await generateObject({
@@ -441,7 +492,7 @@ Return only the csv string and nothing else.`,
             },
             {
               type: "text",
-              text: `Here are the individual BOM tables that you need to consolidate:\n\n ${ocrResults.map((ocrResult) => ocrResult.text).join("\n\n\n")}`,
+              text: `Here are the individual BOM tables that you need to consolidate:\n\n ${markdownFilesContent.join("\n\n\n")}`,
             },
           ],
         },
@@ -492,7 +543,7 @@ Return only the csv string and nothing else.`,
 const totalizedBomBuilder = createWorkflow({
   id: "totalized-bom-builder",
   inputSchema: inputSchema,
-  outputSchema: z.object({}),
+  outputSchema: finalStepOutputSchema,
   steps: [stepOne, stepTwo, stepThree, stepFour, stepFive],
 })
   .then(stepOne)
