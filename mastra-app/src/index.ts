@@ -2,10 +2,8 @@ import "dotenv/config";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import fs from "node:fs/promises";
 
-import { totalizedBomBuilder } from "./mastra/workflows/totalized-bom-builder.ts";
 import s3 from "./s3.ts";
-
-const { start } = totalizedBomBuilder.createRun();
+import { mastra } from "./mastra/index.ts";
 
 const homeDir = process.env.HOME;
 
@@ -23,7 +21,10 @@ await s3.send(
   })
 );
 
-const res = await start({
+const workflow = mastra.vnext_getWorkflow("totalized-bom-builder");
+const run = workflow.createRun();
+
+const res = await run.start({
   inputData: {
     fileKey,
   },

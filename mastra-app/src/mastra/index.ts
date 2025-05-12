@@ -1,7 +1,8 @@
 import "dotenv/config";
 import { Mastra } from "@mastra/core";
-import { totalizedBomBuilder } from "./workflows/totalized-bom-builder";
 import { PostgresStore } from "@mastra/pg";
+
+import { totalizedBomBuilder } from "./workflows/totalized-bom-builder.ts";
 import logger from "../logger.ts";
 
 const storage = new PostgresStore({
@@ -10,7 +11,7 @@ const storage = new PostgresStore({
 
 export const mastra = new Mastra({
   vnext_workflows: {
-    totalizedBomBuilder,
+    "totalized-bom-builder": totalizedBomBuilder,
   },
   logger: logger,
   storage,
