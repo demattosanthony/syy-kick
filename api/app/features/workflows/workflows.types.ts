@@ -1,6 +1,6 @@
 import { FinishReason, LanguageModelUsage } from "ai";
 import { ArtifactEvent } from "./artifact-service";
-import { ToolName, ToolCall, ToolResult } from "../tools/tools.types";
+import { ToolName } from "../tools/tools.types";
 import { z } from "zod";
 import { InferSelectModel } from "drizzle-orm";
 import { workflows, workflowSteps, WorkflowStep } from "./workflows.schema";

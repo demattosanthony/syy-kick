@@ -7,6 +7,7 @@ import {
   text,
   timestamp,
   jsonb,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 /** Schema */
@@ -20,8 +21,30 @@ export const agents = pgTable("agents", {
   model: varchar("model", { length: 255 }).notNull(),
   activeTools: text("active_tools").array(),
   requiredTools: text("required_tools").array(),
-  formSchema: jsonb("form_schema"),
   type: varchar("type", { length: 255 }).notNull(), // Mechanical, Electrical, Plumbing, ? etc...
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const agentsOutputs = pgTable("agents_outputs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  agentId: uuid("agent_id")
+    .references(() => agents.id, { onDelete: "cascade" })
+    .notNull(),
+
+  // Type of output
+  type: text("type", {
+    enum: ["text", "json", "csv", "pdf", "image", "markdown"],
+  }).notNull(),
+
+  // True if the output is a list of items
+  isList: boolean("is_list").default(false).notNull(),
+
+  // Metadata by type
+  description: text("description"), // text, pdf, markdown, image
+  csvColumns: text("csv_columns").array(), // csv
+  jsonSchema: jsonb("json_schema"), // json
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -6,6 +6,7 @@ import {
   jsonb,
   pgTable,
   integer,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { users, organizations } from "../../config/schema";
 import { agents } from "./agents/agents.schema";
@@ -38,6 +39,20 @@ export const workflows = pgTable("workflows", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 export type Workflow = typeof workflows.$inferSelect;
+
+export const workflowInputsFields = pgTable("workflow_inputs_fields", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workflowId: uuid("workflow_id").references(() => workflows.id).notNull(),
+  type: text("type", { enum: ["file", "text", "date", "number", "sharepoint"] }),
+  key: varchar("key", { length: 255 }),
+  label: varchar("label", { length: 255 }),
+  description: text("description"),
+  options: jsonb("options").$type<Array<{ label: string; value: string }>>(),
+  required: boolean("required").notNull().default(false),
+  acceptedFileTypes: text("accepted_file_types").array(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const workflowOrganizations = pgTable("workflow_organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -74,12 +89,46 @@ export const workflowSteps = pgTable("workflow_steps", {
   instructions: text("instructions"), // override the agent instructions if provided
   model: varchar("model", { length: 255 }), // override the agent model if provided
   activeTools: text("active_tools").array(), // override the agent active tools if provided
-  formSchema: jsonb("form_schema").$type<WorkflowStepFormSchema>(), // override the agent form schema if provided
+  outputId: uuid("output_id").references((): any => workflowStepOutputs.id), // override the agent output if provided
   parentStepId: uuid("parent_step_id").references((): any => workflowSteps.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
 export type WorkflowStep = typeof workflowSteps.$inferSelect;
+
+export const workflowStepInputs = pgTable("workflow_step_inputs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workflowStepId: uuid("workflow_step_id").references(() => workflowSteps.id).notNull(),
+  fieldId: uuid("field_id").references(() => workflowInputsFields.id),
+  sourceStepId: uuid("source_step_id").references(() => workflowSteps.id), // Output from a previous step
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const workflowStepOutputs = pgTable("workflow_step_outputs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workflowStepId: uuid("workflow_step_id")
+    .references(() => workflowSteps.id, { onDelete: "cascade" })
+    .notNull(),
+
+  // Type of output
+  type: text("type", {
+    enum: ["text", "json", "csv", "pdf", "markdown", "image"],
+  }).notNull(),
+
+  // True if the output is a list of items
+  isList: boolean("is_list").default(false).notNull(),
+
+  // Metadata by type
+  description: text("description"), // pdf, markdown, image
+  csvColumns: text("csv_columns").array(), // csv
+  jsonSchema: jsonb("json_schema"), // json
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 
 export const workflowFiles = pgTable("workflow_files", {
   id: uuid("id").primaryKey().defaultRandom(),
