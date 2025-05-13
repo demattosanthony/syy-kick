@@ -1,10 +1,10 @@
-import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { generateObject } from "ai";
-import s3, { getFileFromS3, uploadFileToS3 } from "./s3.ts";
-import type { WorkflowFile, WorkflowRunStepOutput } from "./types.ts";
-import { z } from "zod";
 import { google } from "@ai-sdk/google";
+import { z } from "zod";
 import { Jimp } from "jimp";
+
+import { getFileFromS3, uploadFileToS3 } from "./s3.ts";
+import type { WorkflowFile, WorkflowRunStepOutput } from "./types.ts";
 
 /**
  * Detects objects in an image and returns the cropped images.

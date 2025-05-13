@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { Mastra } from "@mastra/core";
 import { PostgresStore } from "@mastra/pg";
+import { NetlifyDeployer } from "@mastra/deployer-netlify";
 
 import logger from "../logger.ts";
 import {
@@ -52,6 +53,11 @@ export const mastra = new Mastra({
       },
     ],
   },
+  deployer: new NetlifyDeployer({
+    scope: process.env.NETLIFY_SCOPE!,
+    projectName: process.env.NETLIFY_PROJECT_NAME!,
+    token: process.env.NETLIFY_TOKEN!,
+  }),
 });
 
 // Function to decode and verify basic auth credentials

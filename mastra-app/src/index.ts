@@ -1,11 +1,10 @@
 import "dotenv/config";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import fs from "node:fs/promises";
+import { RuntimeContext } from "@mastra/core/runtime-context";
 
 import s3 from "./s3.ts";
 import { mastra } from "./mastra/index.ts";
-import { RuntimeContext } from "@mastra/core/runtime-context";
-import { randomUUID } from "node:crypto";
 
 const homeDir = process.env.HOME;
 

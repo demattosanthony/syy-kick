@@ -1,8 +1,9 @@
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { z } from "zod";
+
 import { getFileFromS3, uploadFileToS3 } from "./s3.ts";
 import type { WorkflowFile, WorkflowRunStepOutput } from "./types.ts";
-import { z } from "zod";
 
 interface OcrOptions {
   tableType: string;

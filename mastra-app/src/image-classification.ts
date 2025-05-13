@@ -1,9 +1,10 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
-import s3 from "./s3.ts";
-import type { WorkflowRunStepOutput } from "./types.ts";
 import { z } from "zod";
+
+import type { WorkflowRunStepOutput } from "./types.ts";
+import s3 from "./s3.ts";
 
 interface ImageClassificationOptions {
   prompt: string;

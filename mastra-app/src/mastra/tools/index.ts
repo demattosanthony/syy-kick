@@ -1,1 +1,1 @@
-export * from "./web-search.ts";
+export { webSearchTool } from "./web-search.ts";

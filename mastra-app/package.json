@@ -19,6 +19,7 @@
     "@aws-sdk/client-s3": "^3.806.0",
     "@aws-sdk/s3-request-presigner": "^3.806.0",
     "@mastra/core": "^0.9.4-alpha.2",
+    "@mastra/deployer-netlify": "^0.1.23-alpha.3",
     "@mastra/libsql": "^0.0.4-alpha.0",
     "@mastra/memory": "^0.3.4-alpha.0",
     "@mastra/pg": "^0.3.4-alpha.1",
