@@ -11,8 +11,11 @@ import { s3 } from "bun";
 
 const presignFiles = async (files: any[]) => {
   if (!Array.isArray(files)) return files;
+  
+  const uniqueFiles = Array.from(new Set(files.map(file => JSON.stringify(file)))).map(file => JSON.parse(file));
+  
   return Promise.all(
-    files.map(async (file) => {
+    uniqueFiles.map(async (file) => {
       if (file.type === "file" && file.file) {
         return {
           ...file,
@@ -31,7 +34,8 @@ const presignStepOutput = async (output: any) => {
   for (const key in presignedOutput) {
     const value = presignedOutput[key];
     if (Array.isArray(value)) {
-      presignedOutput[key] = await presignFiles(value);
+      const uniqueValues = Array.from(new Set(value.map(item => JSON.stringify(item)))).map(item => JSON.parse(item));
+      presignedOutput[key] = await presignFiles(uniqueValues);
     }
   }
   
@@ -122,7 +126,6 @@ export const workflowRunsOps = {
   watchRun: async (workflowId: string, runId: string, onEvent: (event: VNextWorkflowWatchResult) => void) => {
     const workflow = client.getVNextWorkflow(workflowId);
     await workflow.watch({ runId }, async (record) => {
-      console.log("record ---- ", record.payload.workflowState);
       const formattedRecord = {
         ...record,
         payload: {
