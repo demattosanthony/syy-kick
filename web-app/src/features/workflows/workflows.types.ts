@@ -1,3 +1,5 @@
+import { WorkflowRun, WorkflowRuns, WorkflowRunState } from "@mastra/core";
+
 // Base types for form fields
 type BaseFieldType = {
   type: string;
@@ -43,6 +45,7 @@ export interface TextFormField extends BaseFieldStructure {
   properties: {
     type: TextFieldType;
     value: TextFieldValue;
+    label: BaseFieldType;
   };
 }
 
@@ -73,6 +76,7 @@ export interface FileFormField extends BaseFieldStructure {
   properties: {
     type: FileFieldType;
     value: FileFieldValue;
+    label: BaseFieldType;
   };
 }
 
@@ -101,4 +105,28 @@ export interface WorkflowProjectFile {
   url: string;
   size: number;
   file_key: string;
+}
+
+/** ---- Runs ---- */
+
+/** @todo: use their type when available */
+export interface VNextWorkflowRunState extends Omit<WorkflowRunState, 'context'> {
+  context: {
+    input: Record<string, any>;
+  } & {
+    [stepId: string]: {
+      status: 'success' | 'failed' | 'suspended' | 'waiting' | 'skipped';
+      output?: any;
+      error?: any;
+    };
+  }
+}
+
+export interface CustomWorkflowRun extends Omit<WorkflowRun, 'snapshot'> {
+  snapshot: VNextWorkflowRunState;
+}
+
+/** @todo: use their type when available */
+export interface CustomWorkflowRuns extends Omit<WorkflowRuns, 'runs'> {
+  runs: CustomWorkflowRun[];
 }

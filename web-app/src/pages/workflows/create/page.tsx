@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { WorkflowBuilderForm } from "@/features/workflows/components/workflow-builder";
+// import { WorkflowBuilderForm } from "@/features/workflows/components/workflow-builder";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router";
 
@@ -14,7 +14,7 @@ export function CreateWorkflowPage() {
           Back to Workflows
         </Button>
       </div>
-      <WorkflowBuilderForm />
+      {/* <WorkflowBuilderForm /> */}
     </div>
   );
 }

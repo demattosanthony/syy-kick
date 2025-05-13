@@ -37,6 +37,11 @@ export const mastra = new Mastra({
         // Authorization: Basic <base64 encoded username:password>
         handler: async (c, next) => {
           const authHeader = c.req.header("Authorization");
+          const path = new URL(c.req.url).pathname;
+
+          // if (path === "/api" || path.startsWith("/api/")) {
+          //   return next();
+          // }
 
           if (
             !authHeader ||

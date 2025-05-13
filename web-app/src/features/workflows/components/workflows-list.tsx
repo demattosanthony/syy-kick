@@ -10,10 +10,8 @@ import {
 import { useWorkflowsQuery } from "../api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GetVNextWorkflowResponse } from "@mastra/client-js";
-interface WorkflowsListProps {
-  initalData?: GetVNextWorkflowResponse[];
-  projectId?: string;
-}
+import { useMemo } from "react";
+
 
 const workflowIcons: { [key: string]: LucideIcon } = {
   "Smart Page Finder": Search,
@@ -27,17 +25,17 @@ const getWorkflowIcon = (title: string): LucideIcon => {
   return workflowIcons[title] || workflowIcons.default;
 };
 
-export default function WorkflowsList(props: WorkflowsListProps) {
+export default function WorkflowsList() {
   const [searchParams] = useSearchParams();
   const search = searchParams.get("search") || "";
 
-  const { data: workflows, isLoading } = useWorkflowsQuery(props.initalData);
+  const { data: workflows, isLoading } = useWorkflowsQuery();
 
-  const filteredWorkflows = search
-    ? workflows?.filter((workflow) =>
-      workflow.name.toLowerCase().includes(search.toLowerCase())
-    )
-    : workflows;
+  const filteredWorkflows = workflows;
+
+  const workflowsListIsEmpty = useMemo(() => {
+    return Object.keys(filteredWorkflows || {}).length === 0;
+  }, [filteredWorkflows]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -45,23 +43,25 @@ export default function WorkflowsList(props: WorkflowsListProps) {
         !filteredWorkflows &&
         Array.from({ length: 4 }).map((_, i) => <WorkflowSkeleton key={i} />)}
 
-      {!isLoading && filteredWorkflows?.length === 0 && (
+      {!isLoading && workflowsListIsEmpty && (
         <div className="col-span-1 md:col-span-2 flex items-center justify-center h-full py-10">
           <p className="text-muted-foreground">No workflows found</p>
         </div>
       )}
 
-      {filteredWorkflows?.map((workflow, i) => (
-        <WorkflowItem key={i} workflow={workflow} projectId={props.projectId} />
+      {Object.entries(filteredWorkflows || {}).map(([id, workflow], i) => (
+        <WorkflowItem key={i} id={id} workflow={workflow} />
       ))}
     </div>
   );
 }
 
 function WorkflowItem({
+  id,
   workflow,
   projectId,
 }: {
+  id: string;
   workflow: GetVNextWorkflowResponse;
   projectId?: string;
 }) {
@@ -71,8 +71,8 @@ function WorkflowItem({
     <Link
       to={
         projectId
-          ? `/projects/${projectId}/workflows/${workflow.name}`
-          : `/workflows/${workflow.name}`
+          ? `/projects/${projectId}/workflows/${id}`
+          : `/workflows/${id}`
       }
       className="block p-6 rounded-lg bg-card hover:bg-accent border transition-colors group"
     >

@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router";
 import { useWorkflowQuery } from "@/features/workflows/api/get-workflow";
-import WorkflowForm from "@/features/workflows/components/workflow-builder/workflow-form";
+// import WorkflowForm from "@/features/workflows/components/workflow-builder/workflow-form";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,7 +48,8 @@ export function EditWorkflowPage() {
     }
 
     if (workflow) {
-      return <WorkflowForm initialData={workflow} />;
+      return null;
+      // return <WorkflowForm initialData={workflow} />;
     }
 
     return null; // Should not happen if no error and not loading

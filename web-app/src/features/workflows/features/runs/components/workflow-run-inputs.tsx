@@ -1,21 +1,15 @@
-import {
-  WorkflowExecutionInputValues,
-  WorkflowFileExecutionInputValue,
-  WorkflowNumberExecutionInputValue,
-  WorkflowTextExecutionInputValue,
-} from "@/features/workflows/workflows.types";
 import { FileText } from "lucide-react";
 import PdfThumbnail from "@/features/chat/messages/components/pdf-thumbnail";
 
 interface WorkflowRunInputsProps {
-  inputs: WorkflowExecutionInputValues;
+  inputs: Record<string, any>;
 }
 
 export function WorkflowRunInputs({ inputs }: WorkflowRunInputsProps) {
   const inputEntries = Object.entries(inputs);
-
+  
   if (inputEntries.length === 0) {
-    return null; // Don't render anything if there are no inputs
+    return null;
   }
 
   return (
@@ -26,11 +20,11 @@ export function WorkflowRunInputs({ inputs }: WorkflowRunInputsProps) {
             {/* <p className="text-sm font-medium">{inputData.label}</p> */}
             <div className="text-sm text-muted-foreground break-words w-full">
               {inputData.type === "text" &&
-                (inputData.value as WorkflowTextExecutionInputValue).text}
+                (inputData.value).text}
               {inputData.type === "file" &&
                 (() => {
                   const fileValue =
-                    inputData.value as WorkflowFileExecutionInputValue;
+                    inputData.value;
                   const isPdf =
                     fileValue.mimeType?.startsWith("application/pdf");
                   const isImage = fileValue.mimeType?.startsWith("image/");
@@ -83,7 +77,7 @@ export function WorkflowRunInputs({ inputs }: WorkflowRunInputsProps) {
                   }
                 })()}
               {inputData.type === "number" &&
-                (inputData.value as WorkflowNumberExecutionInputValue).number}
+                inputData.value.number}
             </div>
           </div>
         ))}

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 interface WorkflowFormFieldsProps {
   formSchema: WorkflowInputSchemaParsed["json"]["properties"];
   values: Record<string, any>;
-  onChange: (fieldId: string, value: any) => void;
+  onChange: (fieldId: string, value: any, type: string) => void;
   className?: string;
   projectId?: string;
 }
@@ -31,29 +31,26 @@ export function WorkflowFormFields({
     const commonProps = {
       id: fieldId,
       value: values[fieldId] || "",
-      onChange: (e: any) => onChange(fieldId, e.target.value),
       required: true,
       className: "w-full",
     };
 
-    console.log(JSON.stringify(field, null, 2), '<---- field.type.const')
     switch (field.properties.type.const) {
       case "file":
         const fileField = field.properties as FileFormField["properties"];
-        console.log("---- case file")
         return (
           <div key={fieldId} className="space-y-2 p-4">
             <FileUploadInput
               input={{
                 id: fieldId,
-                title: fieldId,
+                title: field.properties.label.const,
                 description: fieldId,
                 acceptedFileTypes: fileField.value.properties.mimeType.const,
                 required: true,
                 maxFileSize: 50 * 1024 * 1024, // 50 MB par défaut
               }}
               file={values[fieldId] as File}
-              onFileChange={(file) => onChange(fieldId, file)}
+              onFileChange={(file) => onChange(fieldId, file, "file")}
               projectId={projectId}
             />
           </div>
@@ -63,7 +60,7 @@ export function WorkflowFormFields({
         return (
           <div key={fieldId} className="space-y-2 p-4">
             <Label htmlFor={fieldId}>{fieldId}</Label>
-            <Textarea {...commonProps} placeholder={"Enter text"} />
+            <Textarea {...commonProps} onChange={(e) => onChange(fieldId, e.target.value, "text")} placeholder={"Enter text"} />
             <span className="text-sm text-red-500">Required</span>
           </div>
         );

@@ -35,13 +35,12 @@ export const workflowsMastraOps = {
 
             const workflows: Record<string, GetVNextWorkflowResponse> = await client.getVNextWorkflows();
 
-            const response = [];
-
-            for (const [key, value] of Object.entries(workflows)) {
+            const response: Record<string, GetVNextWorkflowResponse> = {};
+            Object.entries(workflows).forEach(([key, value]) => {
                 if (mastraIds.includes(key)) {
-                    response.push(value);
+                    response[key] = value;
                 }
-            }
+            });
 
             return response;
         } catch (error: any) {

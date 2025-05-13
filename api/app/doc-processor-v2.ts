@@ -30,7 +30,7 @@ export const markitdown = async (input: string | Buffer, fileName: string) => {
   } else {
     filePath = input;
   }
-  console.log("filePath", filePath);
+
   const expandedPath = filePath.replace(/^~(?=$|\/|\\)/, os.homedir());
 
   try {

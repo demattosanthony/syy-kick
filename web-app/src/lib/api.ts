@@ -10,11 +10,8 @@ import {
 } from "@/features/permissions/types";
 import { Site } from "@/features/sites/types/sites";
 import {
-  Step,
-  Workflow,
-  WorkflowRun,
-  WorkflowRunRequest,
-  WorkflowUpdateRequest,
+  CustomWorkflowRun,
+  CustomWorkflowRuns,
 } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
@@ -28,7 +25,7 @@ import {
   SortOption,
 } from "@/features/projects/types";
 import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
-import { GetVNextWorkflowResponse } from "@mastra/client-js";
+import { GetVNextWorkflowResponse, GetWorkflowRunsResponse } from "@mastra/client-js";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -926,7 +923,7 @@ class PermissionsApi extends ApiRequest {
  * Workflows API Module
  */
 class WorkflowsApi extends ApiRequest {
-  async listWorkflows(): Promise<GetVNextWorkflowResponse[]> {
+  async listWorkflows(): Promise<Record<string, GetVNextWorkflowResponse>> {
     return await this.request("/workflows");
   }
 
@@ -934,63 +931,25 @@ class WorkflowsApi extends ApiRequest {
     return await this.request(`/workflows/${id}`);
   }
 
-  async createWorkflow(data: {
-    name: string;
-    description: string;
-    workflowSteps: Step[];
-  }): Promise<{ message: string }> {
-    try {
-      return await this.request("/workflows", "POST", data);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async updateWorkflow(
-    workflowId: string,
-    data: WorkflowUpdateRequest
-  ): Promise<{ message: string; id: string }> {
-    try {
-      return await this.request<{ message: string; id: string }>(
-        `/workflows/${workflowId}`,
-        "PUT",
-        data
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async deleteWorkflow(workflowId: string): Promise<{ message: string }> {
-    try {
-      return await this.request<{ message: string }>(
-        `/workflows/${workflowId}`,
-        "DELETE"
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async createRun(data: WorkflowRunRequest): Promise<{
-    id: string;
+  async createRun(workflowId: string, input: any): Promise<{
+    runId: string;
   }> {
     try {
       return await this.request(
-        `/workflows/${data.workflowId}/runs`,
+        `/workflows/${workflowId}/runs`,
         "POST",
-        data
+        input
       );
     } catch (error) {
       throw error;
     }
   }
 
-  async getRuns(workflowId: string): Promise<WorkflowRun[]> {
+  async getRuns(workflowId: string): Promise<CustomWorkflowRuns> {
     return await this.request(`/workflows/${workflowId}/runs`);
   }
 
-  async getRun(workflowId: string, runId: string): Promise<WorkflowRun> {
+  async getRun(workflowId: string, runId: string): Promise<CustomWorkflowRun> {
     return await this.request(`/workflows/${workflowId}/runs/${runId}`);
   }
 
