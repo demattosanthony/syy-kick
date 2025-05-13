@@ -1,31 +1,23 @@
-// Core dependencies
 import { z } from "zod";
+import { createStep, createWorkflow } from "@mastra/core/workflows/vNext";
 
-// AWS dependencies
-import { getFileFromS3, getPresignedUrl, uploadFileToS3 } from "../../s3.ts";
-
-// AI/ML dependencies
-import { classifyImages } from "../../image-classification.ts";
-import { detectObjectsInS3Images } from "../../obj-detection.ts";
-
-// Workflow dependencies
-import { createWorkflow, createStep } from "@mastra/core/workflows/vNext";
 import {
   WorkflowRunStepOutputSchema,
   type WorkflowExecutionInputValues,
   type WorkflowFile,
 } from "../../types.ts";
-
-// Utilities
-import { convertPdfFromS3ToImages } from "../../pdf-to-images.ts";
 import logger from "../../logger.ts";
+import { convertPdfFromS3ToImages } from "../../pdf-to-images.ts";
+import { classifyImages } from "../../image-classification.ts";
+import { detectObjectsInS3Images } from "../../obj-detection.ts";
 import { performOcrOnS3Images } from "../../llm-ocr.ts";
+import { getFileFromS3, getPresignedUrl, uploadFileToS3 } from "../../s3.ts";
 import { csvWriter } from "../agents/index.ts";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
-  architecturalPdf: z.object({
+  mechanicalDrawings: z.object({
     type: z.literal("file"),
-    label: z.literal("Architectural PDF"),
+    label: z.literal("Mechanical Drawings PDF"),
     value: z.object({
       fileKey: z.string(),
       mimeType: z.literal("application/pdf"),
@@ -35,7 +27,7 @@ const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
 });
 
 const finalStepOutputSchema = z.object({
-  windowAndDoorScheduleCsvFile: z.object({
+  equipmentServingListCsvFile: z.object({
     type: z.literal("file"),
     file: z.object({
       fileKey: z.string(),
@@ -54,8 +46,8 @@ const stepOne = createStep({
     convertedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData, runtimeContext }) => {
-    const architecturalPdf = inputData.architecturalPdf;
-    const { fileKey } = architecturalPdf.value as WorkflowFile;
+    const mechanicalDrawings = inputData.mechanicalDrawings;
+    const { fileKey } = mechanicalDrawings.value as WorkflowFile;
 
     const uploadedImages = await convertPdfFromS3ToImages(
       fileKey,
@@ -72,48 +64,50 @@ const stepOne = createStep({
 
 const stepTwo = createStep({
   id: "stepTwo",
+  description: "Classify the images to find the mechanical schedules",
   inputSchema: z.object({
     convertedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   outputSchema: z.object({
-    imagesWithWindowOrDoorSchedules: z.array(WorkflowRunStepOutputSchema),
+    imagesWithMechanicalSchedules: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData }) => {
     const { convertedImages } = inputData;
 
     const outputs = await classifyImages(convertedImages, {
-      prompt: `Your task is to analyze an image from a architectural drawings pdf documentand determine if there are any window or door schedules embedded tables on it. 
-These schedules typically list details about windows and doors used in the building, such as sizes, types, and quantities. The table header will be something like "Window Schedule" or "Door Schedule".`,
+      prompt: `Your task is to analyze an image from a mechanical drawings pdf document and determine if there are any mechanical schedules or equipment lists embedded as tables.
+These schedules typically list details about mechanical equipment used in the building, such as AHUs, RTUs, VAVs, pumps, etc. The table header may be labeled as "Mechanical Equipment Schedule", "HVAC Equipment Schedule", "Equipment Schedule" or similar. Look for tables that show equipment types, sizes, capacities, locations and other technical specifications.`,
       schema: z.object({
-        hasWindowOrDoorSchedule: z.boolean(),
+        hasMechanicalSchedule: z.boolean(),
       }),
     });
 
     console.log(
-      "Number of images with window or door schedules: ",
+      "Number of images with equipment serving lists: ",
       outputs.length
     );
 
     return {
-      imagesWithWindowOrDoorSchedules: outputs,
+      imagesWithMechanicalSchedules: outputs,
     };
   },
 });
 
 const stepThree = createStep({
   id: "stepThree",
+  description: "Detect the mechanical equipment schedule tables",
   inputSchema: z.object({
-    imagesWithWindowOrDoorSchedules: z.array(WorkflowRunStepOutputSchema),
+    imagesWithMechanicalSchedules: z.array(WorkflowRunStepOutputSchema),
   }),
   outputSchema: z.object({
     croppedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData, runtimeContext }) => {
-    const { imagesWithWindowOrDoorSchedules } = inputData;
+    const { imagesWithMechanicalSchedules } = inputData;
 
     const outputs = await detectObjectsInS3Images(
-      imagesWithWindowOrDoorSchedules,
-      "Window or Door Schedule Table",
+      imagesWithMechanicalSchedules,
+      "Mechanical Equipment Schedule Table",
       runtimeContext.get("workflowId"),
       runtimeContext.get("runId")
     );
@@ -128,6 +122,7 @@ const stepThree = createStep({
 
 const stepFour = createStep({
   id: "stepFour",
+  description: "Perform OCR on the cropped images to get the markdown",
   inputSchema: z.object({
     croppedImages: z.array(WorkflowRunStepOutputSchema),
   }),
@@ -141,10 +136,7 @@ const stepFour = createStep({
     const files = await performOcrOnS3Images(
       croppedImages,
       {
-        tableType: "window or door schedule",
-        columns: ["Item", "Height", "Width", "Area (sq ft)"],
-        additionalInstructions:
-          'For measurements containing inches ("), add an additional " before the inches: "8\'-0"""',
+        tableType: "mechanical equipment schedule",
       },
       runtimeContext.get("workflowId"),
       runtimeContext.get("runId")
@@ -160,6 +152,7 @@ const stepFour = createStep({
 
 const stepFive = createStep({
   id: "stepFive",
+  description: "Generate the equipment serving list CSV",
   inputSchema: z.object({
     markdownFiles: z.array(WorkflowRunStepOutputSchema),
   }),
@@ -194,46 +187,44 @@ const stepFive = createStep({
           content: [
             {
               type: "text",
-              text: `Your task is to too read the text extracted from the window and door schedule tables and create a CSV file that contains the data from the tables.
+              text: `Your task is to analyze the mechanical schedule markdown tables and extract the data from them.
 
 Steps:
-1. Analyze all the markdown tables of the window and door schedule tables.
-2. Create a single CSV file that contains the data from all the tables.
+1. Analyze the mechanical schedule markdown tables.
+2. Extract the data from the tables and save it as a CSV file.
 
-Example of a single properly formatted line:
-"A","8'-0""","2'-4""","18.67"
+Output Format:
+Generate a CSV artifact with proper escaping using the following structure:
 
-Quality Control:
-- Verify all measurements are properly formatted (X'-Y""")
-- Confirm area calculations are accurate and rounded
-- Ensure unique identifiers are consistent and logical
-- Validate that no required data fields are missing
-- Check that all fields are properly quoted and escaped`,
+Example of correct CSV formatting:
+"Equipment ID","Location,Service Area(s)"
+"AHU-1","Mechanical Room 101","1st Floor Offices","2nd Floor Laboratories"
+"DOAS-1","Roof","3rd Floor [NEEDS CONFIRMATION]"`,
             },
             {
               type: "text",
-              text: `Here are the individual window and door schedule tables:\n\n ${markdownFilesContent.join("\n\n\n")}`,
+              text: `Here are the individual mechanical schedule tables:\n\n ${markdownFilesContent.join("\n\n\n")}`,
             },
           ],
         },
       ],
       {
         output: z.object({
-          windowAndDoorScheduleCsvContent: z.string(),
+          equipmentServingListCsvContent: z.string(),
         }),
       }
     );
-    const windowAndDoorScheduleCsvContent =
-      object.windowAndDoorScheduleCsvContent;
+    const equipmentServingListCsvContent =
+      object.equipmentServingListCsvContent;
 
     logger.info(
-      `Window and Door Schedule CSV: ${windowAndDoorScheduleCsvContent}`
+      `Equipment Serving List CSV: ${equipmentServingListCsvContent}`
     );
 
-    const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/window-door-schedule.csv`;
-    const csvFileData = Buffer.from(windowAndDoorScheduleCsvContent, "utf-8");
+    const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/equipment-serving-list.csv`;
+    const csvFileData = Buffer.from(equipmentServingListCsvContent, "utf-8");
 
-    // Upload the window and door schedule CSV to S3 and get the presigned url
+    // Upload the equipment serving list CSV to S3 and get the presigned url
     await uploadFileToS3(fileKey, csvFileData, "text/csv");
     const presignedUrlString = await getPresignedUrl(fileKey);
 
@@ -242,23 +233,22 @@ Quality Control:
       file: {
         fileKey,
         mimeType: "text/csv",
-        fileName: "window-door-schedule.csv",
+        fileName: "equipment-serving-list.csv",
         fileUrl: presignedUrlString,
       },
     };
 
     return {
-      windowAndDoorScheduleCsvFile: csvFile,
+      equipmentServingListCsvFile: csvFile,
     };
   },
 });
 
-// Build the workflow
-const windowDoorScheduleGen = createWorkflow({
-  id: "Window and Door Schedule Generator",
+const equipmentServingListWorkflow = createWorkflow({
+  id: "Equipment Serving List",
   description:
-    "This workflow generates a window and door schedule based on architectural drawings.",
-  inputSchema: inputSchema,
+    "This workflow generates a equipment serving list based on mechanical drawings.",
+  inputSchema,
   outputSchema: finalStepOutputSchema,
   steps: [stepOne, stepTwo, stepThree, stepFour, stepFive],
 })
@@ -269,4 +259,4 @@ const windowDoorScheduleGen = createWorkflow({
   .then(stepFive)
   .commit();
 
-export { windowDoorScheduleGen };
+export { equipmentServingListWorkflow };

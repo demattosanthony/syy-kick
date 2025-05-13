@@ -8,6 +8,8 @@ import {
   totalizedBomBuilder,
   windowDoorScheduleGen,
   settyRfpEval,
+  equipmentServingListWorkflow,
+  rfpResearcherWorkflow,
 } from "./workflows/index.ts";
 import { csvWriter, webResearcher } from "./agents/index.ts";
 
@@ -24,6 +26,8 @@ export const mastra = new Mastra({
     "totalized-bom-builder": totalizedBomBuilder,
     "window-door-schedule-gen": windowDoorScheduleGen,
     "setty-rfp-eval": settyRfpEval,
+    "equipment-serving-list": equipmentServingListWorkflow,
+    "rfp-researcher": rfpResearcherWorkflow,
   },
   logger: logger,
   storage,
