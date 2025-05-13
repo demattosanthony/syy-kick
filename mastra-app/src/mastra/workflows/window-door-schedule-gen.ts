@@ -8,7 +8,6 @@ import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import s3 from "../../s3.ts";
 
 // AI/ML dependencies
-import { generateObject } from "ai";
 import { classifyImages } from "../../image-classification.ts";
 import { detectObjectsInS3Images } from "../../obj-detection.ts";
 
@@ -23,9 +22,9 @@ import {
 // Utilities
 import { convertPdfFromS3ToImages } from "../../pdf-to-images.ts";
 import logger from "../../logger.ts";
-import { google } from "@ai-sdk/google";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { performOcrOnS3Images } from "../../llm-ocr.ts";
+import { csvWriter } from "../agents/index.ts";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   architecturalPdf: z.object({
@@ -195,13 +194,8 @@ const stepFive = createStep({
     logger.info(`Markdown files content: ${markdownFilesContent.length}`);
     logger.info(markdownFilesContent[0]);
 
-    // Use llm to create a totalized BOM from the ocr results
-    const totalizedBom = await generateObject({
-      model: google("gemini-2.5-pro-exp-03-25"),
-      schema: z.object({
-        windowAndDoorScheduleCsvContent: z.string(),
-      }),
-      messages: [
+    const { object } = await csvWriter.generate(
+      [
         {
           role: "user",
           content: [
@@ -210,29 +204,8 @@ const stepFive = createStep({
               text: `Your task is to too read the text extracted from the window and door schedule tables and create a CSV file that contains the data from the tables.
 
 Steps:
-1. Analyze the cropped images of the window and door schedule tables.
-2. Extract the data from the tables and save it as a CSV file.
-
-Output Format:
-Generate a CSV artifact with proper escaping using the following structure:
-
-Example of correct CSV formatting:
-"WINDOW SCHEDULE"
-"Item","Height","Width","Area (sq ft)"
-"A","8'-0""","2'-4""","18.67"
-"B","4'-8""","2'-8""","12.44"
-
-"DOOR SCHEDULE"
-"Item","Height","Width","Area (sq ft)"
-"01A","8'-0""","3'-0""","24.00"
-"01B","8'-0""","3'-0""","24.00"
-
-CSV Formatting Rules:
-1. Every field must be enclosed in double quotes: "field"
-2. For measurements containing inches ("), add an additional " before the inches: "8'-0"""
-3. Separate fields with single commas (no spaces): "field1","field2"
-4. Each schedule should start with its title on a separate line
-5. Headers should be quoted: "Item","Height","Width","Area (sq ft)"
+1. Analyze all the markdown tables of the window and door schedule tables.
+2. Create a single CSV file that contains the data from all the tables.
 
 Example of a single properly formatted line:
 "A","8'-0""","2'-4""","18.67"
@@ -242,26 +215,27 @@ Quality Control:
 - Confirm area calculations are accurate and rounded
 - Ensure unique identifiers are consistent and logical
 - Validate that no required data fields are missing
-- Check that all fields are properly quoted and escaped
-
-Return only the final CSV in the specified format, without any additional commentary or markup.
-
-Do not make up any information. Only include information that is present in the cropped images. If you are unsure about a measurement or detail, indicate it as "unknown" in the output. Do not attempt to fill in gaps with assumptions or estimates.`,
+- Check that all fields are properly quoted and escaped`,
             },
             {
               type: "text",
-              text: `Here are the individual BOM tables that you need to consolidate:\n\n ${markdownFilesContent.join("\n\n\n")}`,
+              text: `Here are the individual window and door schedule tables:\n\n ${markdownFilesContent.join("\n\n\n")}`,
             },
           ],
         },
       ],
-    });
-    logger.info(
-      `Totalized BOM: ${totalizedBom.object.windowAndDoorScheduleCsvContent}`
+      {
+        output: z.object({
+          windowAndDoorScheduleCsvContent: z.string(),
+        }),
+      }
     );
-
     const windowAndDoorScheduleCsvContent =
-      totalizedBom.object.windowAndDoorScheduleCsvContent;
+      object.windowAndDoorScheduleCsvContent;
+
+    logger.info(
+      `Window and Door Schedule CSV: ${windowAndDoorScheduleCsvContent}`
+    );
 
     const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/window-door-schedule.csv`;
 
@@ -302,9 +276,9 @@ Do not make up any information. Only include information that is present in the 
 
 // Build the workflow
 const windowDoorScheduleGen = createWorkflow({
-  id: "window-door-schedule-gen",
+  id: "Window and Door Schedule Generator",
   description:
-    "Generate a window and door schedule CSV file from an architectural PDF",
+    "This workflow generates a window and door schedule based on architectural drawings.",
   inputSchema: inputSchema,
   outputSchema: finalStepOutputSchema,
   steps: [stepOne, stepTwo, stepThree, stepFour, stepFive],

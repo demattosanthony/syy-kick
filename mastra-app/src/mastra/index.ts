@@ -7,12 +7,16 @@ import {
   totalizedBomBuilder,
   windowDoorScheduleGen,
 } from "./workflows/index.ts";
+import { csvWriter } from "./agents/index.ts";
 
 const storage = new PostgresStore({
   connectionString: process.env.DATABASE_URL!,
 });
 
 export const mastra = new Mastra({
+  agents: {
+    "csv-writer": csvWriter,
+  },
   vnext_workflows: {
     "totalized-bom-builder": totalizedBomBuilder,
     "window-door-schedule-gen": windowDoorScheduleGen,

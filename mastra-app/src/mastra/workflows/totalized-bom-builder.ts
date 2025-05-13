@@ -18,6 +18,7 @@ import {
 } from "../../types.ts";
 import { classifyImages } from "../../image-classification.ts";
 import { performOcrOnS3Images } from "../../llm-ocr.ts";
+import { csvWriter } from "../agents/index.ts";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   controlsDrawings: z.object({
@@ -184,13 +185,8 @@ const stepFive = createStep({
     logger.info(`Markdown files content: ${markdownFilesContent.length}`);
     logger.info(markdownFilesContent[0]);
 
-    // Use llm to create a totalized BOM from the ocr results
-    const totalizedBom = await generateObject({
-      model: google("gemini-2.5-pro-exp-03-25"),
-      schema: z.object({
-        totalizedBomCsvContent: z.string(),
-      }),
-      messages: [
+    const { object } = await csvWriter.generate(
+      [
         {
           role: "user",
           content: [
@@ -222,17 +218,8 @@ Ensure that your final consolidated BOM:
 - Shows the total quantity for each part number
 - Is presented in a clear, easily readable format
 
-CSV Formatting Rules:
-1. Every field must be enclosed in double quotes: "field"
-2. For measurements containing inches ("), add an additional " before the inches: "8'-0"""
-3. Separate fields with single commas (no spaces): "field1","field2"
-4. Each schedule should start with its title on a separate line
-5. Headers should be quoted: "Item","Height","Width","Area (sq ft)"
-6. Use all caps for the make names
 
-Remember to use your expertise to provide the most accurate and comprehensive consolidated BOM possible based on the given information.
-
-Return only the csv string and nothing else.`,
+Remember to use your expertise to provide the most accurate and comprehensive consolidated BOM possible based on the given information..`,
             },
             {
               type: "text",
@@ -241,10 +228,15 @@ Return only the csv string and nothing else.`,
           ],
         },
       ],
-    });
-    logger.info(`Totalized BOM: ${totalizedBom.object.totalizedBomCsvContent}`);
+      {
+        output: z.object({
+          totalizedBomCsvContent: z.string(),
+        }),
+      }
+    );
+    const totalizedBomCsvContent = object.totalizedBomCsvContent;
 
-    const totalizedBomCsvContent = totalizedBom.object.totalizedBomCsvContent;
+    logger.info(`Totalized BOM: ${totalizedBomCsvContent}`);
 
     const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/totalized-bom.csv`;
 
@@ -285,7 +277,9 @@ Return only the csv string and nothing else.`,
 
 // Build the workflow
 const totalizedBomBuilder = createWorkflow({
-  id: "totalized-bom-builder",
+  id: "Bill of Materials Generator",
+  description:
+    "This workflow consolidates bill of materials tables that are embedded in controls system drawings",
   inputSchema: inputSchema,
   outputSchema: finalStepOutputSchema,
   steps: [stepOne, stepTwo, stepThree, stepFour, stepFive],
