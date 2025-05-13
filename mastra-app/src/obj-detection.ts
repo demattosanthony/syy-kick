@@ -1,7 +1,7 @@
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { generateObject } from "ai";
-import s3 from "./s3.ts";
-import type { WorkflowRunStepOutput } from "./types.ts";
+import s3, { getFileFromS3, uploadFileToS3 } from "./s3.ts";
+import type { WorkflowFile, WorkflowRunStepOutput } from "./types.ts";
 import { z } from "zod";
 import { google } from "@ai-sdk/google";
 import { Jimp } from "jimp";
@@ -109,12 +109,8 @@ export async function detectObjectsInS3Images(
   // Load images from S3
   const loadedImages = await Promise.all(
     images.map(async (image) => {
-      const file = await s3.send(
-        new GetObjectCommand({
-          Bucket: process.env.S3_BUCKET_NAME!,
-          Key: image.file?.fileKey,
-        })
-      );
+      const { fileKey } = image.file as WorkflowFile;
+      const file = await getFileFromS3(fileKey);
       const imageData = await file.Body?.transformToByteArray();
 
       if (!imageData) {
@@ -138,13 +134,10 @@ export async function detectObjectsInS3Images(
 
   // Upload the cropped images to S3
   const uploadPromises = flattenedResults.map((image) => {
-    return s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME!,
-        Key: `workflows/${workflowId}/${workflowRunId}/${image.fileName}`,
-        Body: Buffer.from(image.base64, "base64"),
-        ContentType: image.mimeType,
-      })
+    return uploadFileToS3(
+      `workflows/${workflowId}/${workflowRunId}/${image.fileName}`,
+      Buffer.from(image.base64, "base64"),
+      image.mimeType
     );
   });
 

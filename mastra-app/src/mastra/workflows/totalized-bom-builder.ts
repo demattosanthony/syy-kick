@@ -1,15 +1,8 @@
 import { createWorkflow, createStep } from "@mastra/core/workflows/vNext";
 import { z } from "zod";
-import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { generateObject } from "ai";
-import { google } from "@ai-sdk/google";
-import fs from "node:fs/promises";
-import { randomUUID } from "node:crypto";
-
 import { convertPdfFromS3ToImages } from "../../pdf-to-images.ts";
 import { detectObjectsInS3Images } from "../../obj-detection.ts";
-import s3 from "../../s3.ts";
+import { getFileFromS3, getPresignedUrl, uploadFileToS3 } from "../../s3.ts";
 import logger from "../../logger.ts";
 import {
   WorkflowRunStepOutputSchema,
@@ -166,12 +159,8 @@ const stepFive = createStep({
     // Load all the markdown files
     const markdownFilesContent = await Promise.all(
       markdownFiles.map(async (mdFile) => {
-        const file = await s3.send(
-          new GetObjectCommand({
-            Bucket: process.env.S3_BUCKET_NAME!,
-            Key: mdFile.file?.fileKey,
-          })
-        );
+        const { fileKey } = mdFile.file as WorkflowFile;
+        const file = await getFileFromS3(fileKey);
         const markdownData = await file.Body?.transformToString();
 
         if (!markdownData) {
@@ -239,25 +228,10 @@ Remember to use your expertise to provide the most accurate and comprehensive co
     logger.info(`Totalized BOM: ${totalizedBomCsvContent}`);
 
     const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/totalized-bom.csv`;
+    const csvFileData = Buffer.from(totalizedBomCsvContent, "utf-8");
+    await uploadFileToS3(fileKey, csvFileData, "text/csv");
 
-    // Upload the totalized BOM CSV to S3
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME!,
-        Key: fileKey,
-        Body: Buffer.from(totalizedBomCsvContent, "utf-8"),
-        ContentType: "text/csv",
-      })
-    );
-
-    // Get the presigned url for the totalized BOM CSV
-    const command = new GetObjectCommand({
-      Bucket: process.env.S3_BUCKET_NAME!,
-      Key: fileKey,
-    });
-    const presignedUrlString = await getSignedUrl(s3, command, {
-      expiresIn: 3600,
-    });
+    const presignedUrlString = await getPresignedUrl(fileKey);
 
     const csvFile = {
       type: "file" as const,

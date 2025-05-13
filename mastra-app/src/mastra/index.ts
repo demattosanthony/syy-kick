@@ -6,6 +6,7 @@ import logger from "../logger.ts";
 import {
   totalizedBomBuilder,
   windowDoorScheduleGen,
+  settyRfpEval,
 } from "./workflows/index.ts";
 import { csvWriter, webResearcher } from "./agents/index.ts";
 
@@ -21,6 +22,7 @@ export const mastra = new Mastra({
   vnext_workflows: {
     "totalized-bom-builder": totalizedBomBuilder,
     "window-door-schedule-gen": windowDoorScheduleGen,
+    "setty-rfp-eval": settyRfpEval,
   },
   logger: logger,
   storage,

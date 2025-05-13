@@ -1,11 +1,8 @@
 // Core dependencies
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
-import fs from "node:fs/promises";
 
 // AWS dependencies
-import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import s3 from "../../s3.ts";
+import { getFileFromS3, getPresignedUrl, uploadFileToS3 } from "../../s3.ts";
 
 // AI/ML dependencies
 import { classifyImages } from "../../image-classification.ts";
@@ -22,7 +19,6 @@ import {
 // Utilities
 import { convertPdfFromS3ToImages } from "../../pdf-to-images.ts";
 import logger from "../../logger.ts";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { performOcrOnS3Images } from "../../llm-ocr.ts";
 import { csvWriter } from "../agents/index.ts";
 
@@ -175,12 +171,8 @@ const stepFive = createStep({
     // Load all the markdown files
     const markdownFilesContent = await Promise.all(
       markdownFiles.map(async (mdFile) => {
-        const file = await s3.send(
-          new GetObjectCommand({
-            Bucket: process.env.S3_BUCKET_NAME!,
-            Key: mdFile.file?.fileKey,
-          })
-        );
+        const { fileKey } = mdFile.file as WorkflowFile;
+        const file = await getFileFromS3(fileKey);
         const markdownData = await file.Body?.transformToString();
 
         if (!markdownData) {
@@ -238,25 +230,11 @@ Quality Control:
     );
 
     const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/window-door-schedule.csv`;
+    const csvFileData = Buffer.from(windowAndDoorScheduleCsvContent, "utf-8");
 
-    // Upload the totalized BOM CSV to S3
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME!,
-        Key: fileKey,
-        Body: Buffer.from(windowAndDoorScheduleCsvContent, "utf-8"),
-        ContentType: "text/csv",
-      })
-    );
-
-    // Get the presigned url for the totalized BOM CSV
-    const command = new GetObjectCommand({
-      Bucket: process.env.S3_BUCKET_NAME!,
-      Key: fileKey,
-    });
-    const presignedUrlString = await getSignedUrl(s3, command, {
-      expiresIn: 3600,
-    });
+    // Upload the window and door schedule CSV to S3 and get the presigned url
+    await uploadFileToS3(fileKey, csvFileData, "text/csv");
+    const presignedUrlString = await getPresignedUrl(fileKey);
 
     const csvFile = {
       type: "file" as const,

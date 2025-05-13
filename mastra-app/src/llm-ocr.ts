@@ -1,8 +1,7 @@
-import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
-import s3 from "./s3.ts";
-import type { WorkflowRunStepOutput } from "./types.ts";
+import { getFileFromS3, uploadFileToS3 } from "./s3.ts";
+import type { WorkflowFile, WorkflowRunStepOutput } from "./types.ts";
 import { z } from "zod";
 
 interface OcrOptions {
@@ -47,12 +46,8 @@ export async function performOcrOnS3Images(
   // Load images from S3
   const loadedImages = await Promise.all(
     images.map(async (image) => {
-      const file = await s3.send(
-        new GetObjectCommand({
-          Bucket: process.env.S3_BUCKET_NAME!,
-          Key: image.file?.fileKey,
-        })
-      );
+      const { fileKey } = image.file as WorkflowFile;
+      const file = await getFileFromS3(fileKey);
       const imageData = await file.Body?.transformToByteArray();
 
       if (!imageData) {
@@ -98,16 +93,9 @@ export async function performOcrOnS3Images(
   // Upload OCR results to S3 and create file references
   const files = await Promise.all(
     ocrResults.map(async (result, index) => {
-      const fileKey = `uploads/ocr_${index}.md`;
-
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: process.env.S3_BUCKET_NAME!,
-          Key: fileKey,
-          Body: Buffer.from(result.object.ocrResult, "utf-8"),
-          ContentType: "text/markdown",
-        })
-      );
+      const fileKey = `workflows/${workflowId}/${workflowRunId}/ocr_${index}.md`;
+      const markdownFileData = Buffer.from(result.object.ocrResult, "utf-8");
+      await uploadFileToS3(fileKey, markdownFileData, "text/markdown");
 
       return {
         type: "file" as const,
