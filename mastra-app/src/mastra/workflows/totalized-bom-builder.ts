@@ -33,7 +33,7 @@ const finalStepOutputSchema = z.object({
       fileKey: z.string(),
       mimeType: z.string(),
       fileName: z.string(),
-      fileUrl: z.string().optional(),
+      url: z.string().optional(),
     }),
   }),
 });
@@ -240,7 +240,7 @@ Remember to use your expertise to provide the most accurate and comprehensive co
         fileKey,
         mimeType: "text/csv",
         fileName: "totalized-bom.csv",
-        fileUrl: presignedUrlString,
+        url: presignedUrlString,
       },
     };
 

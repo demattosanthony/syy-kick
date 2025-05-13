@@ -41,7 +41,7 @@ const finalStepOutputSchema = z.object({
       fileKey: z.string(),
       mimeType: z.string(),
       fileName: z.string(),
-      fileUrl: z.string().optional(),
+      url: z.string().optional(),
     }),
   }),
 });
@@ -243,7 +243,7 @@ Quality Control:
         fileKey,
         mimeType: "text/csv",
         fileName: "window-door-schedule.csv",
-        fileUrl: presignedUrlString,
+        url: presignedUrlString,
       },
     };
 

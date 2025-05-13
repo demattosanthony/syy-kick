@@ -33,7 +33,7 @@ const finalStepOutputSchema = z.object({
       fileKey: z.string(),
       mimeType: z.string(),
       fileName: z.string(),
-      fileUrl: z.string().optional(),
+      url: z.string().optional(),
     }),
   }),
 });
@@ -234,7 +234,7 @@ Example of correct CSV formatting:
         fileKey,
         mimeType: "text/csv",
         fileName: "equipment-serving-list.csv",
-        fileUrl: presignedUrlString,
+        url: presignedUrlString,
       },
     };
 

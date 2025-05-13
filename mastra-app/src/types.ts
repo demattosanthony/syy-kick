@@ -5,7 +5,7 @@ export type WorkflowFile = {
   mimeType: string;
   fileName: string;
   fileSize?: number;
-  fileUrl?: string;
+  url?: string;
 };
 
 export type WorkflowRunStepOutput = {
@@ -43,7 +43,7 @@ export const WorkflowFileSchema = z.object({
   mimeType: z.string(),
   fileName: z.string(),
   fileSize: z.number().optional(),
-  fileUrl: z.string().optional(),
+  url: z.string().optional(),
 });
 
 export const WorkflowRunStepOutputSchema = z

@@ -56,6 +56,10 @@ export const mastra = new Mastra({
         path: "/*",
       },
     ],
+    cors: {
+      origin: ["https://mastra.ai"],
+      credentials: true,
+    },
   },
   deployer: new NetlifyDeployer({
     scope: process.env.NETLIFY_SCOPE!,
