@@ -4,6 +4,8 @@ import fs from "node:fs/promises";
 
 import s3 from "./s3.ts";
 import { mastra } from "./mastra/index.ts";
+import { RuntimeContext } from "@mastra/core/runtime-context";
+import { randomUUID } from "node:crypto";
 
 const homeDir = process.env.HOME;
 
@@ -24,6 +26,10 @@ await s3.send(
 const workflow = mastra.vnext_getWorkflow("window-door-schedule-gen");
 const run = workflow.createRun();
 
+const context = new RuntimeContext();
+context.set("workflowId", workflow.id);
+context.set("runId", run.runId);
+
 const res = await run.start({
   inputData: {
     architecturalPdf: {
@@ -36,6 +42,7 @@ const res = await run.start({
       },
     },
   },
+  runtimeContext: context,
 });
 
 console.log(JSON.stringify(res, null, 2));

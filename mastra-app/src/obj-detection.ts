@@ -1,8 +1,17 @@
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { generateObject } from "ai";
+import s3 from "./s3.ts";
+import type { WorkflowRunStepOutput } from "./types.ts";
 import { z } from "zod";
 import { google } from "@ai-sdk/google";
 import { Jimp } from "jimp";
 
+/**
+ * Detects objects in an image and returns the cropped images.
+ * @param imageBase64 - The base64 encoded image to detect objects in.
+ * @param label - The type of object to detect.
+ * @returns An array of cropped images.
+ */
 export async function objectDetection(imageBase64: string, label: string) {
   try {
     const { object } = await generateObject({
@@ -83,4 +92,71 @@ Each entry should contain { "box_2d": [y_min, x_min, y_max, x_max], "label": "${
     console.error(error);
     return [];
   }
+}
+
+/**
+ * Detects objects in images from S3 and uploads the cropped images back to S3.
+ * @param images - The images to detect objects in.
+ * @param objectType - The type of object to detect.
+ * @returns The cropped images as workflow outputs.
+ */
+export async function detectObjectsInS3Images(
+  images: WorkflowRunStepOutput[],
+  objectType: string,
+  workflowId: string,
+  workflowRunId: string
+): Promise<WorkflowRunStepOutput[]> {
+  // Load images from S3
+  const loadedImages = await Promise.all(
+    images.map(async (image) => {
+      const file = await s3.send(
+        new GetObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME!,
+          Key: image.file?.fileKey,
+        })
+      );
+      const imageData = await file.Body?.transformToByteArray();
+
+      if (!imageData) {
+        throw new Error("No data found");
+      }
+
+      return {
+        fileKey: image.file?.fileKey,
+        base64: Buffer.from(imageData).toString("base64"),
+      };
+    })
+  );
+
+  // Run object detection on all images in parallel
+  const detectionResults = await Promise.all(
+    loadedImages.map((image) => objectDetection(image.base64, objectType))
+  );
+
+  // Flatten the results
+  const flattenedResults = detectionResults.flat();
+
+  // Upload the cropped images to S3
+  const uploadPromises = flattenedResults.map((image) => {
+    return s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.S3_BUCKET_NAME!,
+        Key: `workflows/${workflowId}/${workflowRunId}/${image.fileName}`,
+        Body: Buffer.from(image.base64, "base64"),
+        ContentType: image.mimeType,
+      })
+    );
+  });
+
+  await Promise.all(uploadPromises);
+
+  // Return the workflow outputs
+  return flattenedResults.map((image) => ({
+    type: "file" as const,
+    file: {
+      fileKey: `workflows/${workflowId}/${workflowRunId}/${image.fileName}`,
+      mimeType: image.mimeType,
+      fileName: image.fileName,
+    },
+  }));
 }

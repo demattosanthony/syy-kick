@@ -3,6 +3,8 @@ import { promisify } from "node:util";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs/promises";
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import s3 from "./s3.ts";
 
 export async function convertPdfToImages(pdfData: Buffer): Promise<
   {
@@ -56,4 +58,59 @@ export async function convertPdfToImages(pdfData: Buffer): Promise<
     await fs.rm(tempDir, { recursive: true, force: true });
     throw error;
   }
+}
+
+export async function convertPdfFromS3ToImages(
+  fileKey: string,
+  workflowId: string,
+  workflowRunId: string
+): Promise<
+  {
+    type: "file";
+    file: {
+      fileKey: string;
+      mimeType: string;
+      fileName: string;
+    };
+  }[]
+> {
+  // Download PDF from S3
+  const file = await s3.send(
+    new GetObjectCommand({
+      Bucket: process.env.S3_BUCKET_NAME!,
+      Key: fileKey,
+    })
+  );
+  const pdfData = await file.Body?.transformToByteArray();
+
+  if (!pdfData) {
+    throw new Error("No data found");
+  }
+
+  // Convert PDF to images
+  const images = await convertPdfToImages(Buffer.from(pdfData));
+
+  // Upload images to S3
+  const uploadPromises = images.map((image) => {
+    const uploadFileKey = `workflows/${workflowId}/${workflowRunId}/${image.name}`;
+    return s3
+      .send(
+        new PutObjectCommand({
+          Bucket: process.env.S3_BUCKET_NAME!,
+          Key: uploadFileKey,
+          Body: Buffer.from(image.base64, "base64"),
+          ContentType: "image/png",
+        })
+      )
+      .then(() => ({
+        type: "file" as const,
+        file: {
+          fileKey: uploadFileKey,
+          mimeType: "image/png",
+          fileName: image.name,
+        },
+      }));
+  });
+
+  return Promise.all(uploadPromises);
 }
