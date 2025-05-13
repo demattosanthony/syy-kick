@@ -24,7 +24,7 @@ import { WorkflowStepOutputs } from "@/features/workflows/features/runs/componen
 import { cn } from "@/lib/utils";
 import { useState, Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { CustomWorkflowRun } from "@/features/workflows/workflows.types";
 
 export function WorkflowRunPageDetails() {
@@ -52,7 +52,7 @@ export function WorkflowRunPageDetails() {
   const formatRunDate = (date: Date | undefined) => {
     if (!date) return "-";
     try {
-      return formatDistanceToNow(date, { addSuffix: true });
+      return format(new Date(date), "dd/MM/yyyy HH:mm:ss");
     } catch (e) {
       console.error("Error formatting date:", e);
       return "Invalid Date";
@@ -93,18 +93,6 @@ export function WorkflowRunPageDetails() {
       default:
         return "bg-gray-400";
     }
-  };
-
-  const getStepStatus = (run: CustomWorkflowRun, stepId: string) => {
-    return run.snapshot.context[stepId]?.status;
-  };
-
-  const getStepError = (run: CustomWorkflowRun, stepId: string) => {
-    return run.snapshot.context[stepId]?.error;
-  };
-
-  const getStepOutput = (run: CustomWorkflowRun, stepId: string) => {
-    return run.snapshot.context[stepId]?.output;
   };
 
   return (
@@ -166,15 +154,6 @@ export function WorkflowRunPageDetails() {
               Back to Runs
             </Button>
           </div>
-
-          {!isRunLoading && run && (
-            <div className="mb-8 max-w-3xl mx-auto w-full text-sm text-muted-foreground flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Started:</span>
-                <span>{formatRunDate(run.createdAt)}</span>
-              </div>
-            </div>
-          )}
 
           {isRunLoading && (
             <div className="mb-8 max-w-3xl mx-auto w-full flex items-center gap-6">
@@ -242,6 +221,8 @@ export function WorkflowRunPageDetails() {
                               <span className="font-medium flex-1 text-left truncate text-lg">
                                 Step {index + 1} - {stepId}
                               </span>
+
+                              
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="p-4 pt-2 bg-card text-card-foreground">
