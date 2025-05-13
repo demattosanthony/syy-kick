@@ -13,6 +13,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: mastra-app
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,9 +27,7 @@ jobs:
 
       - name: Install Netlify CLI
         run: npm install -g netlify-cli
-
-      - name: Go to mastra-app
-        run: cd mastra-app
+        working-directory: .
 
       - name: Install dependencies
         run: npm ci
@@ -38,6 +40,4 @@ jobs:
           NETLIFY_TOKEN: ${{ secrets.NETLIFY_TOKEN }}
 
       - name: Deploy to Netlify
-        run: |
-          cd .mastra/output
-          netlify deploy --dir . --functions ./netlify/functions --prod --auth ${{ secrets.NETLIFY_TOKEN }} --site ${{ secrets.NETLIFY_SITE_ID }}
+        run: netlify deploy --dir ./output --functions ./netlify/functions --prod --auth ${{ secrets.NETLIFY_TOKEN }} --site ${{ secrets.NETLIFY_SITE_ID }}
