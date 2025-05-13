@@ -7,7 +7,7 @@ interface WorkflowRunInputsProps {
 
 export function WorkflowRunInputs({ inputs }: WorkflowRunInputsProps) {
   const inputEntries = Object.entries(inputs);
-  
+
   if (inputEntries.length === 0) {
     return null;
   }
@@ -20,7 +20,7 @@ export function WorkflowRunInputs({ inputs }: WorkflowRunInputsProps) {
             {/* <p className="text-sm font-medium">{inputData.label}</p> */}
             <div className="text-sm text-muted-foreground break-words w-full">
               {inputData.type === "text" &&
-                (inputData.value).text}
+                inputData.value.text}
               {inputData.type === "file" &&
                 (() => {
                   const fileValue =

@@ -7,56 +7,6 @@ import { CustomWorkflowRun } from "./runs.types";
 import { runsUtils } from "./runs.utils";
 
 import { RuntimeContext } from "@mastra/core/di";
-import { s3 } from "bun";
-
-const presignFiles = async (files: any[]) => {
-  if (!Array.isArray(files)) return files;
-  
-  const uniqueFiles = Array.from(new Set(files.map(file => JSON.stringify(file)))).map(file => JSON.parse(file));
-  
-  return Promise.all(
-    uniqueFiles.map(async (file) => {
-      if (file.type === "file" && file.file) {
-        return {
-          ...file,
-          file: runsUtils.presignFile(file.file),
-        };
-      }
-      return file;
-    })
-  );
-};
-
-const presignStepOutput = async (output: any) => {
-  if (!output) return output;
-  const presignedOutput = { ...output };
-  
-  for (const key in presignedOutput) {
-    const value = presignedOutput[key];
-    if (Array.isArray(value)) {
-      const uniqueValues = Array.from(new Set(value.map(item => JSON.stringify(item)))).map(item => JSON.parse(item));
-      presignedOutput[key] = await presignFiles(uniqueValues);
-    }
-  }
-  
-  return presignedOutput;
-};
-
-const presignInputs = async (inputs: Record<string, any>) => {
-  const presignedInputs = { ...inputs };
-  
-  for (const key in presignedInputs) {
-    const input = presignedInputs[key];
-    if (input.type === "file" && input.value?.fileKey) {
-      presignedInputs[key] = {
-        ...input,
-        value: runsUtils.presignFile(input.value),
-      };
-    }
-  }
-  
-  return presignedInputs;
-};
 
 export const workflowRunsOps = {
   createRun: async (workflowId: string, input: any) => {
@@ -99,23 +49,23 @@ export const workflowRunsOps = {
     const run = await workflow.runs();
     const foundRun = run.runs.find((run) => run.runId === runId);
 
-    if (!foundRun) {
+    // Cast to any to bypass type checking issues (@todo: use their type once they fix the issue)
+    const runWithAny = foundRun as any;
+
+    if (!runWithAny) {
       throw new Error(`Run ${runId} not found`);
     }
 
-    // Cast to any to bypass type checking issues
-    const runWithAny = foundRun as any;
-
-    // Présigner les inputs
+    // Presign inputs
     if (runWithAny.snapshot?.context?.input) {
-      runWithAny.snapshot.context.input = await presignInputs(runWithAny.snapshot.context.input);
+      runWithAny.snapshot.context.input = await runsUtils.presignInputs(runWithAny.snapshot.context.input);
     }
 
-    // Présigner les outputs de chaque étape
+    // Presign outputs of each step
     if (runWithAny.snapshot?.context) {
       for (const stepId in runWithAny.snapshot.context) {
         if (stepId !== 'input' && runWithAny.snapshot.context[stepId]?.output) {
-          runWithAny.snapshot.context[stepId].output = await presignStepOutput(runWithAny.snapshot.context[stepId].output);
+          runWithAny.snapshot.context[stepId].output = await runsUtils.presignStepOutput(runWithAny.snapshot.context[stepId].output);
         }
       }
     }
@@ -132,7 +82,7 @@ export const workflowRunsOps = {
           ...record.payload,
           currentStep: record.payload.currentStep ? {
             ...record.payload.currentStep,
-            output: await presignStepOutput(record.payload.currentStep.output),
+            output: await runsUtils.presignStepOutput(record.payload.currentStep.output),
           } : undefined,
           workflowState: {
             ...record.payload.workflowState,
@@ -142,7 +92,7 @@ export const workflowRunsOps = {
                   key,
                   {
                     ...step,
-                    output: await presignStepOutput(step.output),
+                    output: await runsUtils.presignStepOutput(step.output),
                   },
                 ])
               )
