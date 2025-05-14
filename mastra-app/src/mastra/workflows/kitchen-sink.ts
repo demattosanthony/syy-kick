@@ -542,7 +542,7 @@ const mapForLoop = (branchOutput: any) => {
 
 // Create the main kitchen sink workflow
 export const kitchenSinkWorkflow = createWorkflow({
-  id: "kitchen-sink-workflow",
+  id: "Kitchen Sink Workflow",
   inputSchema,
   outputSchema: finalStepOutputSchema,
 })
