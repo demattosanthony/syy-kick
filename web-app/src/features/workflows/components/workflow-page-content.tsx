@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import api from "@/lib/api";
 import {
   useCreateRunMutation,
-  useTriggerRunMutation,
+  // useTriggerRunMutation,
 } from "../features/runs/api";
 import { useGetRunsQuery } from "../features/runs/api/get-runs";
 import { GetVNextWorkflowResponse } from "@mastra/client-js";
@@ -45,8 +45,6 @@ export default function WorkflowPageContent({
   const hasAutoHiddenReasoning = useRef(false);
   const { mutateAsync: createRunAsync, isPending: isCreatingRun } =
     useCreateRunMutation();
-  const { mutateAsync: triggerRunAsync, isPending: isTriggeringRun } =
-    useTriggerRunMutation();
   const [submittingRun, setSubmittingRun] = useState<boolean>(false);
   const { data: runs } = useGetRunsQuery(workflowId);
 
@@ -287,7 +285,7 @@ export default function WorkflowPageContent({
                   disabled={!areAllRequiredFieldsFilled()}
                   onClick={onSubmit}
                 >
-                  {isCreatingRun || isTriggeringRun || submittingRun ? (
+                  {isCreatingRun || submittingRun ? (
                     <>
                       <Loader className="animate-spin h-6 w-6 mr-3" />
                       Processing...

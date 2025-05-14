@@ -1,9 +1,9 @@
-import api from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+// import api from "@/lib/api";
+// import { useQuery } from "@tanstack/react-query";
 
-export default function useGetAgentsQuery() {
-    return useQuery({
-        queryKey: ["agents"],
-        queryFn: () => api.workflows.getAgents(),
-    });
-}
+// export default function useGetAgentsQuery() {
+//     return useQuery({
+//         queryKey: ["agents"],
+//         queryFn: () => api.workflows.getAgents(),
+//     });
+// }

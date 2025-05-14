@@ -24,8 +24,7 @@ import { WorkflowStepOutputs } from "@/features/workflows/features/runs/componen
 import { cn } from "@/lib/utils";
 import { useState, Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow, format } from "date-fns";
-import { CustomWorkflowRun } from "@/features/workflows/workflows.types";
+// import { format } from "date-fns";
 
 export function WorkflowRunPageDetails() {
   const { workflowId, runId } = useParams<{
@@ -48,16 +47,6 @@ export function WorkflowRunPageDetails() {
   });
 
   const [openItemId, setOpenItemId] = useState<string | undefined>(undefined);
-
-  const formatRunDate = (date: Date | undefined) => {
-    if (!date) return "-";
-    try {
-      return format(new Date(date), "dd/MM/yyyy HH:mm:ss");
-    } catch (e) {
-      console.error("Error formatting date:", e);
-      return "Invalid Date";
-    }
-  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {

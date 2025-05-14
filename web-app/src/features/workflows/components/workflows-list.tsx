@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
 import {
   GitBranch,
   Search,
@@ -26,8 +26,8 @@ const getWorkflowIcon = (title: string): LucideIcon => {
 };
 
 export default function WorkflowsList() {
-  const [searchParams] = useSearchParams();
-  const search = searchParams.get("search") || "";
+  // const [searchParams] = useSearchParams();
+  // const search = searchParams.get("search") || "";
 
   const { data: workflows, isLoading } = useWorkflowsQuery();
 

@@ -25,7 +25,7 @@ import {
   SortOption,
 } from "@/features/projects/types";
 import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
-import { GetVNextWorkflowResponse, GetWorkflowRunsResponse } from "@mastra/client-js";
+import { GetVNextWorkflowResponse } from "@mastra/client-js";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -57,7 +57,7 @@ import {
   KnowledgeBaseAccessLogFilters,
   KnowledgeBaseAccessLogsResponse,
 } from "@/features/knowledge-bases/types";
-import { Agent, Tool } from "@/features/workflows/features/agents/types";
+// import { Agent, Tool } from "@/features/workflows/features/agents/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -960,13 +960,13 @@ class WorkflowsApi extends ApiRequest {
     );
   }
 
-  async getAgents(): Promise<Agent[]> {
-    return await this.request("/workflows/agents");
-  }
+  // async getAgents(): Promise<Agent[]> {
+  //   return await this.request("/workflows/agents");
+  // }
 
-  async getTools(): Promise<Tool[]> {
-    return await this.request("/tools");
-  }
+  // async getTools(): Promise<Tool[]> {
+  //   return await this.request("/tools");
+  // }
 }
 
 class SitesApi extends ApiRequest {
