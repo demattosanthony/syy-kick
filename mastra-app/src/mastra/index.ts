@@ -10,6 +10,7 @@ import {
   settyRfpEval,
   equipmentServingListWorkflow,
   rfpResearcherWorkflow,
+  kitchenSinkWorkflow,
 } from "./workflows/index.ts";
 import { csvWriter, webResearcher } from "./agents/index.ts";
 
@@ -28,6 +29,7 @@ export const mastra = new Mastra({
     "setty-rfp-eval": settyRfpEval,
     "equipment-serving-list": equipmentServingListWorkflow,
     "rfp-researcher": rfpResearcherWorkflow,
+    "kitchen-sink": kitchenSinkWorkflow,
   },
   logger: logger,
   storage,
