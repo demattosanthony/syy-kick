@@ -50,45 +50,15 @@ export const runsUtils = {
         }
     },
 
-    presignFile: async (file: any) => {
-        if (!file) return file;
+    presignFile: (file: { fileKey: string; mimeType: string; fileName: string }) => {
+        const presignedUrl = s3.presign(file.fileKey, {
+            expiresIn: 3600,
+            method: 'GET',
+        });
         return {
             ...file,
-            file: s3.presign(file.fileKey, { method: 'GET', expiresIn: 60 * 60 * 24 * 30 })
+            url: presignedUrl,
         };
-    },
-
-    presignFiles: async (files: any[]) => {
-        if (!Array.isArray(files)) return files;
-
-        const uniqueFiles = Array.from(new Set(files.map(file => JSON.stringify(file)))).map(file => JSON.parse(file));
-
-        return Promise.all(
-            uniqueFiles.map(async (file) => {
-                if (file.type === "file" && file.file) {
-                    return {
-                        ...file,
-                        file: runsUtils.presignFile(file.file),
-                    };
-                }
-                return file;
-            })
-        );
-    },
-
-    presignStepOutput: async (output: any) => {
-        if (!output) return output;
-        const presignedOutput = { ...output };
-
-        for (const key in presignedOutput) {
-            const value = presignedOutput[key];
-            if (Array.isArray(value)) {
-                const uniqueValues = Array.from(new Set(value.map(item => JSON.stringify(item)))).map(item => JSON.parse(item));
-                presignedOutput[key] = await runsUtils.presignFiles(uniqueValues);
-            }
-        }
-
-        return presignedOutput;
     },
 
     presignInputs: async (inputs: Record<string, any>) => {
@@ -105,5 +75,39 @@ export const runsUtils = {
         }
 
         return presignedInputs;
-    }
+    },
+
+    presignFiles: async (files: any[]) => {
+        if (!Array.isArray(files)) return files;
+        
+        const uniqueFiles = Array.from(new Set(files.map(file => JSON.stringify(file)))).map(file => JSON.parse(file));
+        
+        return Promise.all(
+          uniqueFiles.map(async (file) => {
+            if (file.type === "file" && file.file) {
+              return {
+                ...file,
+                file: runsUtils.presignFile(file.file),
+              };
+            }
+            return file;
+          })
+        );
+    },
+
+    presignStepOutput: async (output: any) => {
+        if (!output) return output;
+        const presignedOutput = { ...output };
+        
+        for (const key in presignedOutput) {
+          const value = presignedOutput[key];
+          if (Array.isArray(value)) {
+            const uniqueValues = Array.from(new Set(value.map(item => JSON.stringify(item)))).map(item => JSON.parse(item));
+            presignedOutput[key] = await runsUtils.presignFiles(uniqueValues);
+          }
+        }
+        
+        return presignedOutput;
+      },
+
 }

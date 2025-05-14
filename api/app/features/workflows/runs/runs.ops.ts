@@ -52,10 +52,6 @@ export const workflowRunsOps = {
     // Cast to any to bypass type checking issues (@todo: use their type once they fix the issue)
     const runWithAny = foundRun as any;
 
-    if (!runWithAny) {
-      throw new Error(`Run ${runId} not found`);
-    }
-
     // Presign inputs
     if (runWithAny.snapshot?.context?.input) {
       runWithAny.snapshot.context.input = await runsUtils.presignInputs(runWithAny.snapshot.context.input);
