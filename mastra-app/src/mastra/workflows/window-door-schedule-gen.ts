@@ -163,7 +163,17 @@ const stepFive = createStep({
   inputSchema: z.object({
     markdownFiles: z.array(WorkflowRunStepOutputSchema),
   }),
-  outputSchema: finalStepOutputSchema,
+  outputSchema: z.object({
+    csvFile: z.object({
+      type: z.literal("file"),
+      file: z.object({
+        fileKey: z.string(),
+        mimeType: z.string(),
+        fileName: z.string(),
+        url: z.string().optional(),
+      }),
+    }),
+  }),
   execute: async ({ inputData, runtimeContext }) => {
     logger.info("Running step five");
     const { markdownFiles } = inputData;
@@ -248,7 +258,7 @@ Quality Control:
     };
 
     return {
-      windowAndDoorScheduleCsvFile: csvFile,
+      csvFile,
     };
   },
 });
@@ -296,7 +306,7 @@ const createCsvFromFloorPlanImagesStep = createStep({
     }),
   }),
   execute: async ({ inputData, runtimeContext }) => {
-    logger.info("Running step five");
+    logger.info("Running step createCsvFromFloorPlanImagesStep");
     const { floorPlanImages } = inputData;
 
     if (floorPlanImages.length === 0) {
@@ -327,6 +337,8 @@ const createCsvFromFloorPlanImagesStep = createStep({
             {
               type: "text",
               text: `Your task is to read the architectural floor plan images to create a CSV file that contains a window and door schedule. In order to do this you need to identify the windows and doors in the images, where they are located and their dimensions.
+
+This is for california title 24 energy code compliance. So we need to identify the windows and doors in the images, where they are located and their dimensions. You only need to focus on conditioned spaces.
 
 Once you have identified the window and door schedule tables, you need to create a CSV file that contains the data from the tables.
 
@@ -393,7 +405,17 @@ const tablesFoundWorkflow = createWorkflow({
   inputSchema: z.object({
     imagesWithWindowOrDoorSchedules: z.array(WorkflowRunStepOutputSchema),
   }),
-  outputSchema: finalStepOutputSchema,
+  outputSchema: z.object({
+    csvFile: z.object({
+      type: z.literal("file"),
+      file: z.object({
+        fileKey: z.string(),
+        mimeType: z.string(),
+        fileName: z.string(),
+        url: z.string().optional(),
+      }),
+    }),
+  }),
   steps: [stepThree, stepFour, stepFive],
 })
   .then(stepThree)
@@ -410,13 +432,65 @@ const noTablesFoundWorkflow = createWorkflow({
     extractedPdfImages: z.array(WorkflowRunStepOutputSchema),
   }),
   outputSchema: z.object({
-    floorPlanImages: z.array(WorkflowRunStepOutputSchema),
+    csvFile: z.object({
+      type: z.literal("file"),
+      file: z.object({
+        fileKey: z.string(),
+        mimeType: z.string(),
+        fileName: z.string(),
+        url: z.string().optional(),
+      }),
+    }),
   }),
   steps: [extractFloorPlanImagesStep, createCsvFromFloorPlanImagesStep],
 })
   .then(extractFloorPlanImagesStep)
   .then(createCsvFromFloorPlanImagesStep)
   .commit();
+
+const finalMergeStep = createStep({
+  id: "finalMergeStep",
+  inputSchema: z.object({
+    "Tables Found Workflow": z.object({
+      csvFile: finalStepOutputSchema.shape.windowAndDoorScheduleCsvFile,
+    }),
+    "No Tables Found Workflow": z.object({
+      csvFile: finalStepOutputSchema.shape.windowAndDoorScheduleCsvFile,
+    }),
+  }),
+  outputSchema: finalStepOutputSchema,
+  execute: async ({ inputData }) => {
+    logger.info("Final merge step");
+
+    // The static type of inputData (inferred from the schema above) suggests both keys are always present.
+    // However, at runtime, only the key corresponding to the executed branch will contain data.
+    // We cast inputData to a type that reflects this runtime reality for safer access.
+    const runtimeInputData = inputData as {
+      "Tables Found Workflow"?: {
+        csvFile: typeof finalStepOutputSchema.shape.windowAndDoorScheduleCsvFile._type;
+      };
+      "No Tables Found Workflow"?: {
+        csvFile: typeof finalStepOutputSchema.shape.windowAndDoorScheduleCsvFile._type;
+      };
+    };
+
+    const csvFile =
+      runtimeInputData["Tables Found Workflow"]?.csvFile ||
+      runtimeInputData["No Tables Found Workflow"]?.csvFile;
+
+    if (!csvFile) {
+      throw new Error(
+        "CSV file not found in the output of the executed branches. " +
+          "This may indicate an issue with the branch logic or the output schemas of the branched workflows. " +
+          "Input received: " +
+          JSON.stringify(inputData) // Log actual input for debugging
+      );
+    }
+    return {
+      windowAndDoorScheduleCsvFile: csvFile,
+    };
+  },
+});
 
 // Main workflow
 const windowDoorScheduleGen = createWorkflow({
@@ -432,6 +506,7 @@ const windowDoorScheduleGen = createWorkflow({
     stepThree,
     stepFour,
     stepFive,
+    finalMergeStep,
   ],
 })
   .then(stepOne)
@@ -458,6 +533,7 @@ const windowDoorScheduleGen = createWorkflow({
       tablesFoundWorkflow,
     ],
   ])
+  .then(finalMergeStep)
   .commit();
 
 export { windowDoorScheduleGen };
