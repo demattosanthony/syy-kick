@@ -11,9 +11,9 @@ import { mastra } from "../src/mastra/index.ts";
 
 const homeDir = process.env.HOME;
 
-const filePath = `${homeDir}/workflows-dataset/window-door-gen/30Bayview-Arch.pdf`;
+const filePath = `${homeDir}/workflows-dataset/window-door-gen/FrostShopPlanEC5-7-25 (1).pdf`;
 
-const fileKey = "uploads/30Bayview-Arch.pdf";
+const fileKey = "uploads/FrostShopPlanEC5-7-25 (1).pdf";
 const data = await fs.readFile(filePath);
 
 await s3.send(
@@ -39,7 +39,7 @@ const res = await run.start({
       value: {
         fileKey,
         mimeType: "application/pdf",
-        fileName: "30Bayview-Arch.pdf",
+        fileName: "FrostShopPlanEC5-7-25 (1).pdf",
       },
     },
   },
