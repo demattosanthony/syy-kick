@@ -1,3 +1,6 @@
+// Script to test workflow runs
+// Run with: node scripts/run-flow.ts (need to have node 23 installed to run ts files directly)
+
 import "dotenv/config";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import fs from "node:fs/promises";
@@ -8,10 +11,9 @@ import { mastra } from "../src/mastra/index.ts";
 
 const homeDir = process.env.HOME;
 
-const filePath = `${homeDir}/workflows-dataset/window-door-gen/coleman-valley/250401_ColemanValleyRoadRes_PROGRESSPLANSFORSUBCOORD.pdf`;
+const filePath = `${homeDir}/workflows-dataset/window-door-gen/FrostShopPlanEC5-7-25 (1).pdf`;
 
-const fileKey =
-  "uploads/250401_ColemanValleyRoadRes_PROGRESSPLANSFORSUBCOORD.pdf";
+const fileKey = "uploads/FrostShopPlanEC5-7-25 (1).pdf";
 const data = await fs.readFile(filePath);
 
 await s3.send(
@@ -37,7 +39,7 @@ const res = await run.start({
       value: {
         fileKey,
         mimeType: "application/pdf",
-        fileName: "250401_ColemanValleyRoadRes_PROGRESSPLANSFORSUBCOORD.pdf",
+        fileName: "FrostShopPlanEC5-7-25 (1).pdf",
       },
     },
   },

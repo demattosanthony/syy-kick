@@ -4,7 +4,7 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
 import type { WorkflowRunStepOutput } from "./types.ts";
-import s3 from "./s3.ts";
+import s3, { getPresignedUrl } from "./s3.ts";
 
 interface ImageClassificationOptions {
   prompt: string;
@@ -70,21 +70,27 @@ export async function classifyImages(
   );
 
   // Filter and map results
-  const outputs = loadedImages
-    .filter((_, index) => {
-      const result = results[index].object as Record<string, boolean>;
-      // Check if the result has a boolean property that indicates a match
-      // This assumes the schema has a boolean property like hasBomTable or hasWindowOrDoorSchedule
-      return Object.values(result)[0] === true;
-    })
-    .map((image) => ({
-      type: "file" as const,
-      file: {
-        fileKey: image.fileKey!,
-        mimeType: "image/png",
-        fileName: image.fileKey!,
-      },
-    }));
+  const outputs = await Promise.all(
+    loadedImages
+      .filter((_, index) => {
+        const result = results[index].object as Record<string, boolean>;
+        // Check if the result has a boolean property that indicates a match
+        // This assumes the schema has a boolean property like hasBomTable or hasWindowOrDoorSchedule
+        return Object.values(result)[0] === true;
+      })
+      .map(async (image) => {
+        const url = await getPresignedUrl(image.fileKey!);
+        return {
+          type: "file" as const,
+          file: {
+            fileKey: image.fileKey!,
+            mimeType: "image/png",
+            fileName: image.fileKey!,
+            url,
+          },
+        };
+      })
+  );
 
   return outputs;
 }

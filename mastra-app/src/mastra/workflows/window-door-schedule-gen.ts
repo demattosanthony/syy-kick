@@ -70,8 +70,8 @@ const stepOne = createStep({
   },
 });
 
-const stepTwo = createStep({
-  id: "stepTwo",
+const extractPagesWithWindowOrDoorSchedulesStep = createStep({
+  id: "extractPagesWithWindowOrDoorSchedulesStep",
   inputSchema: z.object({
     convertedImages: z.array(WorkflowRunStepOutputSchema),
   }),
@@ -253,20 +253,211 @@ Quality Control:
   },
 });
 
-// Build the workflow
+const extractFloorPlanImagesStep = createStep({
+  id: "extractFloorPlanImagesStep",
+  inputSchema: z.object({
+    extractedPdfImages: z.array(WorkflowRunStepOutputSchema),
+  }),
+  outputSchema: z.object({
+    floorPlanImages: z.array(WorkflowRunStepOutputSchema),
+  }),
+  execute: async ({ inputData }) => {
+    logger.info("No window or door schedules found in the provided PDF");
+
+    // Find all the images all the architectural floor plans drawings
+    const floorPlanImages = await classifyImages(inputData.extractedPdfImages, {
+      prompt: `Your task is to analyze an image from a architectural drawings pdf document and determine if this sheet is an architectural floor plan.
+The floor plan sheet is a drawing that shows the layout of the building, including the location of walls, windows, doors, and other features.`,
+      schema: z.object({
+        hasFloorPlan: z.boolean(),
+      }),
+    });
+
+    return {
+      floorPlanImages,
+    };
+  },
+});
+
+const createCsvFromFloorPlanImagesStep = createStep({
+  id: "createCsvFromFloorPlanImagesStep",
+  inputSchema: z.object({
+    floorPlanImages: z.array(WorkflowRunStepOutputSchema),
+  }),
+  outputSchema: z.object({
+    csvFile: z.object({
+      type: z.literal("file"),
+      file: z.object({
+        fileKey: z.string(),
+        mimeType: z.string(),
+        fileName: z.string(),
+        url: z.string().optional(),
+      }),
+    }),
+  }),
+  execute: async ({ inputData, runtimeContext }) => {
+    logger.info("Running step five");
+    const { floorPlanImages } = inputData;
+
+    if (floorPlanImages.length === 0) {
+      throw new Error("No floor plan images found");
+    }
+
+    // Get all the images from s3
+    const floorPlanImagesData = await Promise.all(
+      floorPlanImages.map(async (image) => {
+        const { fileKey } = image.file as WorkflowFile;
+        const file = await getFileFromS3(fileKey);
+        const imageData = await file.Body?.transformToByteArray();
+
+        if (!imageData) {
+          throw new Error("No data found");
+        }
+
+        return Buffer.from(imageData).toString("base64");
+      })
+    );
+
+    // Have LLM create a CSV from the floor plan images
+    const { object } = await csvWriter.generate(
+      [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Your task is to read the architectural floor plan images to create a CSV file that contains a window and door schedule. In order to do this you need to identify the windows and doors in the images, where they are located and their dimensions.
+
+Once you have identified the window and door schedule tables, you need to create a CSV file that contains the data from the tables.
+
+## CSV File formatting to follow:
+Window Schedule
+Window Tag, Width, Height, Area (sq ft)
+
+Door Schedule
+Door Tag, Width, Height, Area (sq ft)
+
+You can use the space names and location to give the window and door tags if they are not already named.
+
+Quality Control:
+- Verify all measurements are properly formatted (X'-Y""")
+- Confirm area calculations are accurate and rounded
+- Ensure unique identifiers are consistent and logical
+- Validate that no required data fields are missing
+- Check that all fields are properly quoted and escaped`,
+            },
+            ...floorPlanImagesData.map((imageData) => ({
+              type: "image" as const,
+              image: imageData,
+              mimeType: "image/png",
+            })),
+          ],
+        },
+      ],
+      {
+        output: z.object({
+          floorPlanCsvContent: z.string(),
+        }),
+      }
+    );
+
+    const floorPlanCsvContent = object.floorPlanCsvContent;
+
+    const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/window-door-schedule.csv`;
+    const csvFileData = Buffer.from(floorPlanCsvContent, "utf-8");
+
+    // Upload the CSV to S3 and get the presigned url
+    await uploadFileToS3(fileKey, csvFileData, "text/csv");
+    const presignedUrlString = await getPresignedUrl(fileKey);
+
+    const csvFile = {
+      type: "file" as const,
+      file: {
+        fileKey,
+        mimeType: "text/csv",
+        fileName: "floor-plan.csv",
+        url: presignedUrlString,
+      },
+    };
+
+    return {
+      csvFile,
+    };
+  },
+});
+
+// Tables found workflow
+const tablesFoundWorkflow = createWorkflow({
+  id: "Tables Found Workflow",
+  description: "This workflow is used to process the tables found in the PDF",
+  inputSchema: z.object({
+    imagesWithWindowOrDoorSchedules: z.array(WorkflowRunStepOutputSchema),
+  }),
+  outputSchema: finalStepOutputSchema,
+  steps: [stepThree, stepFour, stepFive],
+})
+  .then(stepThree)
+  .then(stepFour)
+  .then(stepFive)
+  .commit();
+
+// No tables found workflow
+const noTablesFoundWorkflow = createWorkflow({
+  id: "No Tables Found Workflow",
+  description:
+    "This workflow is used to process the floor plan images found in the PDF",
+  inputSchema: z.object({
+    extractedPdfImages: z.array(WorkflowRunStepOutputSchema),
+  }),
+  outputSchema: z.object({
+    floorPlanImages: z.array(WorkflowRunStepOutputSchema),
+  }),
+  steps: [extractFloorPlanImagesStep, createCsvFromFloorPlanImagesStep],
+})
+  .then(extractFloorPlanImagesStep)
+  .then(createCsvFromFloorPlanImagesStep)
+  .commit();
+
+// Main workflow
 const windowDoorScheduleGen = createWorkflow({
   id: "Window and Door Schedule Generator",
   description:
     "This workflow generates a window and door schedule based on architectural drawings.",
   inputSchema: inputSchema,
   outputSchema: finalStepOutputSchema,
-  steps: [stepOne, stepTwo, stepThree, stepFour, stepFive],
+  steps: [
+    stepOne,
+    extractPagesWithWindowOrDoorSchedulesStep,
+    extractFloorPlanImagesStep,
+    stepThree,
+    stepFour,
+    stepFive,
+  ],
 })
   .then(stepOne)
-  .then(stepTwo)
-  .then(stepThree)
-  .then(stepFour)
-  .then(stepFive)
+  .then(extractPagesWithWindowOrDoorSchedulesStep)
+  .map({
+    imagesWithWindowOrDoorSchedules: {
+      step: extractPagesWithWindowOrDoorSchedulesStep,
+      path: "imagesWithWindowOrDoorSchedules",
+    },
+    extractedPdfImages: {
+      step: stepOne,
+      path: "convertedImages",
+    },
+  })
+  .branch([
+    [
+      async ({ inputData }) =>
+        inputData.imagesWithWindowOrDoorSchedules.length === 0,
+      noTablesFoundWorkflow,
+    ],
+    [
+      async ({ inputData }) =>
+        inputData.imagesWithWindowOrDoorSchedules.length > 0,
+      tablesFoundWorkflow,
+    ],
+  ])
   .commit();
 
 export { windowDoorScheduleGen };
