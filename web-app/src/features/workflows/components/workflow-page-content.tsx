@@ -10,11 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import api from "@/lib/api";
 import {
   useCreateRunMutation,
-  // useTriggerRunMutation,
 } from "../features/runs/api";
 import { useGetRunsQuery } from "../features/runs/api/get-runs";
 import { GetVNextWorkflowResponse } from "@mastra/client-js";
-import { WorkflowInputSchemaParsed } from "../workflows.types";
+import { CustomWorkflowRun, WorkflowInputSchemaParsed } from "../workflows.types";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 
@@ -103,14 +102,6 @@ export default function WorkflowPageContent({
   const resetWorkflow = () => {
     if (workflow?.steps) {
       const resetValues: Record<string, Record<string, any>> = {};
-      // workflow.steps.forEach((step) => {
-      //   if (step.formSchema) {
-      //     resetValues[step.id] = {};
-      //     Object.entries(step.formSchema.fields).forEach(([fieldId]) => {
-      //       resetValues[step.id][fieldId] = "";
-      //     });
-      //   }
-      // });
       setFormValues(resetValues);
     }
     setErrorDetails(null);
@@ -322,7 +313,7 @@ export default function WorkflowPageContent({
 
         <div className="grid gap-4">
           {runs &&
-            runs?.runs?.slice(0, 3).map((run) => {
+            runs?.runs?.slice(0, 3).map((run: CustomWorkflowRun) => {
 
               if (!run.snapshot.context[Object.keys(run.snapshot.context)[Object.keys(run.snapshot.context).length - 1]]) {
                 return null;

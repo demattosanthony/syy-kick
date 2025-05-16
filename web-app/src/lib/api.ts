@@ -11,7 +11,6 @@ import {
 import { Site } from "@/features/sites/types/sites";
 import {
   CustomWorkflowRun,
-  CustomWorkflowRuns,
 } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
@@ -948,7 +947,7 @@ class WorkflowsApi extends ApiRequest {
   async getRuns(workflowId: string): Promise<CustomWorkflowRuns> {
     return await this.request(`/workflows/${workflowId}/runs`);
   }
-
+  
   async getRun(workflowId: string, runId: string): Promise<CustomWorkflowRun> {
     return await this.request(`/workflows/${workflowId}/runs/${runId}`);
   }
