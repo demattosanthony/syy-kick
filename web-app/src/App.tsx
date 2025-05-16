@@ -48,6 +48,7 @@ import { queryClient } from "./providers/tanstack-query-client-provider";
 import api from "./lib/api";
 import { KnowledgeBaseLayout } from "./components/layouts/knowledge-base-layout";
 import { User } from "./types/user";
+import { RouteErrorElement } from "./components/route-error";
 
 // Define the new loader function for the root route
 const rootUserDataLoader = async (): Promise<User | null> => {
@@ -100,12 +101,10 @@ const rootUserDataLoader = async (): Promise<User | null> => {
 
 // Root element component to decide layout based on loader data
 const RootElement = () => {
-  // Use useLoaderData which gets data resolved by the loader function
   const userData = useLoaderData() as Awaited<
     ReturnType<typeof rootUserDataLoader>
   >;
 
-  // Unauthenticated users will see the landing page
   return userData ? <MainAppLayout /> : <LandingPage />;
 };
 
@@ -138,10 +137,12 @@ const router = createBrowserRouter([
         />
       </Providers>
     ),
+    errorElement: <RouteErrorElement />,
     children: [
       {
         path: "/",
         element: <RootElement />,
+        errorElement: <RouteErrorElement />,
         loader: rootUserDataLoader,
         children: [
           { index: true, element: <HomePage /> },

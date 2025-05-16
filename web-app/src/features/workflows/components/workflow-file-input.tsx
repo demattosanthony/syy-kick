@@ -85,7 +85,7 @@ function FileUploadInput({
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
 
-    console.log(droppedFile, '<---- dropped file');
+    console.log(droppedFile, "<---- dropped file");
 
     if (droppedFile) {
       // Check file size if maxFileSize is specified
@@ -106,7 +106,7 @@ function FileUploadInput({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
 
-    console.log(selectedFile, '<---- selected file');
+    console.log(selectedFile, "<---- selected file");
 
     if (selectedFile) {
       // Check file size if maxFileSize is specified
@@ -147,10 +147,12 @@ function FileUploadInput({
     }
 
     // 1. Check Mime Type
-    if (
-      input.acceptedFileTypes
-    ) {
-      const acceptedFileTypes = Array.isArray(input.acceptedFileTypes) ? input.acceptedFileTypes : input.acceptedFileTypes ? [input.acceptedFileTypes] : [];
+    if (input.acceptedFileTypes) {
+      const acceptedFileTypes = Array.isArray(input.acceptedFileTypes)
+        ? input.acceptedFileTypes
+        : input.acceptedFileTypes
+        ? [input.acceptedFileTypes]
+        : [];
 
       if (!acceptedFileTypes.some((type) => type.trim() === item.mimeType)) {
         toast.error(
@@ -231,7 +233,11 @@ function FileUploadInput({
               openPicker({
                 mode: "files",
                 selectionMode: "single",
-                mimeTypes: Array.isArray(input.acceptedFileTypes) ? input.acceptedFileTypes : input.acceptedFileTypes ? [input.acceptedFileTypes] : [],
+                mimeTypes: Array.isArray(input.acceptedFileTypes)
+                  ? input.acceptedFileTypes
+                  : input.acceptedFileTypes
+                  ? [input.acceptedFileTypes]
+                  : [],
               });
             }}
             disabled={isMicrosoftPickerLoading}
@@ -266,7 +272,11 @@ function FileUploadInput({
           type="file"
           id={`file-input-${input.id}`}
           className="hidden"
-          accept={Array.isArray(input.acceptedFileTypes) ? input.acceptedFileTypes.join(",") : input.acceptedFileTypes}
+          accept={
+            Array.isArray(input.acceptedFileTypes)
+              ? input.acceptedFileTypes.join(",")
+              : input.acceptedFileTypes
+          }
           onChange={handleFileSelect}
         />
         <div className="text-center space-y-4">
@@ -298,10 +308,13 @@ function FileUploadInput({
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {file
-                    ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${file.type.includes("pdf")
-                      ? "PDF"
-                      : file.type.split("/")[1].toUpperCase()
-                    }`
+                    ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${
+                        file.type.includes("pdf")
+                          ? "PDF"
+                          : file.type && file.type.includes("/")
+                          ? file.type.split("/")[1].toUpperCase()
+                          : "FILE"
+                      }`
                     : "or click to browse"}
                 </p>
                 {file && (
@@ -335,15 +348,17 @@ function FileUploadInput({
 
       {input.required && (
         <p
-          className={`text-xs mt-2 ${file ? "text-muted-foreground" : "text-red-500"
-            }`}
+          className={`text-xs mt-2 ${
+            file ? "text-muted-foreground" : "text-red-500"
+          }`}
         >
           {/* Adjust message based on file type */}
           {file
-            ? `✓ Required file ${"source" in file && file.source === "project"
-              ? "selected"
-              : "uploaded"
-            }`
+            ? `✓ Required file ${
+                "source" in file && file.source === "project"
+                  ? "selected"
+                  : "uploaded"
+              }`
             : "* Required"}
         </p>
       )}

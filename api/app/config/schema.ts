@@ -502,6 +502,14 @@ export const accessTokens = pgTable("access_tokens", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const logs = pgTable("logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  level: text("level", { enum: ["info", "error", "warn"] }).notNull(),
+  message: text("message").notNull(),
+  meta: jsonb("meta"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   threads: many(threads),

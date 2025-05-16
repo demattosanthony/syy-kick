@@ -130,6 +130,17 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "o3-mini is OpenAI's most recent small reasoning model, providing high intelligence at the same cost and latency targets of o1-mini.",
     },
+    "gpt-4o": {
+      model: openai.responses("gpt-4o"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "openai",
+      supportsSystemMessages: true,
+      maxImageSize: 20 * 1024 * 1024, // 20MB
+      supportedMimeTypes,
+      description:
+        "GPT 4o is OpenAI's flagship model for complex tasks. It is well suited for problem solving across domains.",
+    },
     "gpt-4.1": {
       model: openai.responses("gpt-4.1"),
       supportsToolUse: true,

@@ -10,6 +10,7 @@ import {
   documentProcessingJobs,
   documents,
 } from "../../config/schema";
+import logsRoutes from "./log_viewer/logs.routes";
 
 const router = Router();
 
@@ -113,5 +114,7 @@ router.get("", async (req, res) => {
     }
   }
 });
+
+router.use("/logs", logsRoutes);
 
 export default router;
