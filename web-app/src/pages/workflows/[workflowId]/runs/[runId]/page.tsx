@@ -3,7 +3,7 @@ import { useWorkflowQuery } from "@/features/workflows/api";
 import { Slash } from "lucide-react";
 import { useRunSSE } from "@/features/workflows/features/runs/hooks";
 import { useState, useEffect, useMemo } from "react";
-import { CustomWorkflowRun, StepStatus, TreeNode } from "@/features/workflows/workflows.types";
+import { CustomWorkflowRun, StepContext, StepStatus, TreeNode } from "@/features/workflows/workflows.types";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkflowRunGraph } from "@/features/workflows/features/runs/components/graph/workflow-run-graph";
 import { WorkflowRunTimeline } from "@/features/workflows/features/runs/components/timeline/workflow-run-timeline";
@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WorkflowRunStatus } from "@/features/workflows/features/runs/components/workflow-run-status";
 import { WorkflowRunInput } from "@/features/workflows/features/runs/components/workflow-run-input";
 
-export function WorkflowRunPageDetails() {g
+export function WorkflowRunPageDetails() {
   const { workflowId, runId } = useParams<{ workflowId: string; runId: string }>();
 
   const [runState, setRunState] = useState<CustomWorkflowRun | null>(null);
