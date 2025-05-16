@@ -67,7 +67,7 @@ export const anthropicModels = (
       supportsStreaming: true,
       provider: "anthropic",
       supportsSystemMessages: true,
-      supportedMimeTypes: [],
+      supportedMimeTypes,
       maxImageSize: 5 * 1024 * 1024, // 5MB
       description:
         "Claude 3.5 Haiku is the next generation of our fastest model. For a similar speed to Claude 3 Haiku, Claude 3.5 Haiku improves across every skill set and surpasses Claude 3 Opus, the largest model in our previous generation, on many intelligence benchmarks.",
@@ -78,7 +78,13 @@ export const anthropicModels = (
       supportsStreaming: true,
       provider: "anthropic",
       supportsSystemMessages: true,
-      supportedMimeTypes: [],
+      supportedMimeTypes: [
+        ...markitdownMimeTypes,
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ],
       maxImageSize: 5 * 1024 * 1024, // 5MB
       description:
         "Claude 3.5 Haiku is the next generation of our fastest model. For a similar speed to Claude 3 Haiku, Claude 3.5 Haiku improves across every skill set and surpasses Claude 3 Opus, the largest model in our previous generation, on many intelligence benchmarks.",
