@@ -11,6 +11,7 @@ import {
 import { Site } from "@/features/sites/types/sites";
 import {
   CustomWorkflowRun,
+  CustomWorkflowRuns,
 } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
