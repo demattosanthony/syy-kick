@@ -104,24 +104,30 @@ const stepThree = createStep({
   id: "stepThree",
   inputSchema: z.object({
     imagesWithWindowOrDoorSchedules: z.array(WorkflowRunStepOutputSchema),
+    workflowId: z.string(),
+    runId: z.string(),
   }),
   outputSchema: z.object({
     croppedImages: z.array(WorkflowRunStepOutputSchema),
+    workflowId: z.string(),
+    runId: z.string(),
   }),
-  execute: async ({ inputData, runtimeContext }) => {
-    const { imagesWithWindowOrDoorSchedules } = inputData;
+  execute: async ({ inputData }) => {
+    const { imagesWithWindowOrDoorSchedules, workflowId, runId } = inputData;
 
     const outputs = await detectObjectsInS3Images(
       imagesWithWindowOrDoorSchedules,
       "Window or Door Schedule Table",
-      runtimeContext.get("workflowId"),
-      runtimeContext.get("runId")
+      workflowId,
+      runId
     );
 
     logger.info(`Flattened ${outputs.length} cropped images`);
 
     return {
       croppedImages: outputs,
+      workflowId,
+      runId,
     };
   },
 });
@@ -130,13 +136,17 @@ const stepFour = createStep({
   id: "stepFour",
   inputSchema: z.object({
     croppedImages: z.array(WorkflowRunStepOutputSchema),
+    workflowId: z.string(),
+    runId: z.string(),
   }),
   outputSchema: z.object({
     markdownFiles: z.array(WorkflowRunStepOutputSchema),
+    workflowId: z.string(),
+    runId: z.string(),
   }),
-  execute: async ({ inputData, runtimeContext }) => {
+  execute: async ({ inputData }) => {
     logger.info("Running step four");
-    const { croppedImages } = inputData;
+    const { croppedImages, workflowId, runId } = inputData;
 
     const files = await performOcrOnS3Images(
       croppedImages,
@@ -146,14 +156,16 @@ const stepFour = createStep({
         additionalInstructions:
           'For measurements containing inches ("), add an additional " before the inches: "8\'-0"""',
       },
-      runtimeContext.get("workflowId"),
-      runtimeContext.get("runId")
+      workflowId,
+      runId
     );
 
     logger.info(`Returning ${files.length} markdown files`);
 
     return {
       markdownFiles: files,
+      workflowId,
+      runId,
     };
   },
 });
@@ -162,6 +174,8 @@ const stepFive = createStep({
   id: "stepFive",
   inputSchema: z.object({
     markdownFiles: z.array(WorkflowRunStepOutputSchema),
+    workflowId: z.string(),
+    runId: z.string(),
   }),
   outputSchema: z.object({
     csvFile: z.object({
@@ -174,9 +188,9 @@ const stepFive = createStep({
       }),
     }),
   }),
-  execute: async ({ inputData, runtimeContext }) => {
+  execute: async ({ inputData }) => {
     logger.info("Running step five");
-    const { markdownFiles } = inputData;
+    const { markdownFiles, workflowId, runId } = inputData;
     logger.info(`Markdown files: ${markdownFiles.length}`);
 
     // Load all the markdown files
@@ -240,7 +254,7 @@ Quality Control:
       `Window and Door Schedule CSV: ${windowAndDoorScheduleCsvContent}`
     );
 
-    const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/window-door-schedule.csv`;
+    const fileKey = `workflows/${workflowId}/${runId}/window-door-schedule.csv`;
     const csvFileData = Buffer.from(windowAndDoorScheduleCsvContent, "utf-8");
 
     // Upload the window and door schedule CSV to S3 and get the presigned url
@@ -267,9 +281,13 @@ const extractFloorPlanImagesStep = createStep({
   id: "extractFloorPlanImagesStep",
   inputSchema: z.object({
     extractedPdfImages: z.array(WorkflowRunStepOutputSchema),
+    workflowId: z.string(),
+    runId: z.string(),
   }),
   outputSchema: z.object({
     floorPlanImages: z.array(WorkflowRunStepOutputSchema),
+    workflowId: z.string(),
+    runId: z.string(),
   }),
   execute: async ({ inputData }) => {
     logger.info("No window or door schedules found in the provided PDF");
@@ -285,6 +303,8 @@ The floor plan sheet is a drawing that shows the layout of the building, includi
 
     return {
       floorPlanImages,
+      workflowId: inputData.workflowId,
+      runId: inputData.runId,
     };
   },
 });
@@ -293,6 +313,8 @@ const createCsvFromFloorPlanImagesStep = createStep({
   id: "createCsvFromFloorPlanImagesStep",
   inputSchema: z.object({
     floorPlanImages: z.array(WorkflowRunStepOutputSchema),
+    workflowId: z.string(),
+    runId: z.string(),
   }),
   outputSchema: z.object({
     csvFile: z.object({
@@ -305,7 +327,7 @@ const createCsvFromFloorPlanImagesStep = createStep({
       }),
     }),
   }),
-  execute: async ({ inputData, runtimeContext }) => {
+  execute: async ({ inputData }) => {
     logger.info("Running step createCsvFromFloorPlanImagesStep");
     const { floorPlanImages } = inputData;
 
@@ -375,7 +397,7 @@ Quality Control:
 
     const floorPlanCsvContent = object.floorPlanCsvContent;
 
-    const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/window-door-schedule.csv`;
+    const fileKey = `workflows/${inputData.workflowId}/${inputData.runId}/floor-plan.csv`;
     const csvFileData = Buffer.from(floorPlanCsvContent, "utf-8");
 
     // Upload the CSV to S3 and get the presigned url
@@ -404,6 +426,8 @@ const tablesFoundWorkflow = createWorkflow({
   description: "This workflow is used to process the tables found in the PDF",
   inputSchema: z.object({
     imagesWithWindowOrDoorSchedules: z.array(WorkflowRunStepOutputSchema),
+    workflowId: z.string(),
+    runId: z.string(),
   }),
   outputSchema: z.object({
     csvFile: z.object({
@@ -430,6 +454,8 @@ const noTablesFoundWorkflow = createWorkflow({
     "This workflow is used to process the floor plan images found in the PDF",
   inputSchema: z.object({
     extractedPdfImages: z.array(WorkflowRunStepOutputSchema),
+    workflowId: z.string(),
+    runId: z.string(),
   }),
   outputSchema: z.object({
     csvFile: z.object({
@@ -519,6 +545,14 @@ const windowDoorScheduleGen = createWorkflow({
     extractedPdfImages: {
       step: stepOne,
       path: "convertedImages",
+    },
+    workflowId: {
+      runtimeContextPath: "workflowId",
+      schema: z.string(),
+    },
+    runId: {
+      runtimeContextPath: "runId",
+      schema: z.string(),
     },
   })
   .branch([

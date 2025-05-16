@@ -28,7 +28,7 @@ const workflow = mastra.vnext_getWorkflow("window-door-schedule-gen");
 const run = workflow.createRun();
 
 const context = new RuntimeContext();
-context.set("workflowId", workflow.id);
+context.set("workflowId", "window-door-schedule-gen");
 context.set("runId", run.runId);
 
 const res = await run.start({
