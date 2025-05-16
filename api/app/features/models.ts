@@ -67,7 +67,7 @@ export const anthropicModels = (
       supportsStreaming: true,
       provider: "anthropic",
       supportsSystemMessages: true,
-      supportedMimeTypes: [],
+      supportedMimeTypes,
       maxImageSize: 5 * 1024 * 1024, // 5MB
       description:
         "Claude 3.5 Haiku is the next generation of our fastest model. For a similar speed to Claude 3 Haiku, Claude 3.5 Haiku improves across every skill set and surpasses Claude 3 Opus, the largest model in our previous generation, on many intelligence benchmarks.",
@@ -78,7 +78,13 @@ export const anthropicModels = (
       supportsStreaming: true,
       provider: "anthropic",
       supportsSystemMessages: true,
-      supportedMimeTypes: [],
+      supportedMimeTypes: [
+        ...markitdownMimeTypes,
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ],
       maxImageSize: 5 * 1024 * 1024, // 5MB
       description:
         "Claude 3.5 Haiku is the next generation of our fastest model. For a similar speed to Claude 3 Haiku, Claude 3.5 Haiku improves across every skill set and surpasses Claude 3 Opus, the largest model in our previous generation, on many intelligence benchmarks.",
@@ -129,6 +135,17 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       maxImageSize: 20 * 1024 * 1024, // 20MB
       description:
         "o3-mini is OpenAI's most recent small reasoning model, providing high intelligence at the same cost and latency targets of o1-mini.",
+    },
+    "gpt-4o": {
+      model: openai.responses("gpt-4o"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "openai",
+      supportsSystemMessages: true,
+      maxImageSize: 20 * 1024 * 1024, // 20MB
+      supportedMimeTypes,
+      description:
+        "GPT 4o is OpenAI's flagship model for complex tasks. It is well suited for problem solving across domains.",
     },
     "gpt-4.1": {
       model: openai.responses("gpt-4.1"),

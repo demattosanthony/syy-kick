@@ -1,4 +1,4 @@
-import { createLogger, format, transports } from "winston";
+import { createLogger, format } from "winston";
 import Transport from "winston-transport";
 import db from "./db";
 import { logs } from "./schema";
@@ -25,7 +25,6 @@ const logger = createLogger({
   level: "info",
   format: format.json(),
   transports: [
-    new transports.Console(),
     new PostgresTransport({
       level: "info",
       format: format.json(),
