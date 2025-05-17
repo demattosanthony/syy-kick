@@ -48,6 +48,7 @@ export function useRunSSE({
 
               return {
                 ...oldData,
+                updatedAt: new Date(parsedData.eventTimestamp),
                 snapshot: {
                   ...oldData.snapshot,
                   context: mergedContext

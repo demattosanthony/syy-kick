@@ -2,14 +2,13 @@ import { Link, useParams } from "react-router";
 import { useWorkflowQuery } from "@/features/workflows/api";
 import { Slash } from "lucide-react";
 import { useRunSSE } from "@/features/workflows/features/runs/hooks";
-import { useState, useEffect, useMemo } from "react";
-import { CustomWorkflowRun, StepContext, StepStatus, TreeNode } from "@/features/workflows/workflows.types";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { CustomWorkflowRun, StepStatus, TreeNode } from "@/features/workflows/workflows.types";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkflowRunGraph } from "@/features/workflows/features/runs/components/graph/workflow-run-graph";
 import { WorkflowRunTimeline } from "@/features/workflows/features/runs/components/timeline/workflow-run-timeline";
 import { WorkflowRunDetails } from "@/features/workflows/features/runs/components/details/workflow-run-details";
-import { Card, CardContent } from "@/components/ui/card";
-import { buildOptimisticRun, buildTree } from "@/features/workflows/utils";
+import { buildOptimisticRun, buildTree, flatten } from "@/features/workflows/utils";
 import { useGetRunQuery } from "@/features/workflows/features/runs/api";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +21,7 @@ export function WorkflowRunPageDetails() {
   const [runState, setRunState] = useState<CustomWorkflowRun | null>(null);
   const [treeNodes, setTreeNodes] = useState<TreeNode[]>([]);
   const [now, setNow] = useState(Date.now());
+  const startMsRef = useRef<number>(0);
 
   const {
     data: runQueryData,
@@ -63,17 +63,21 @@ export function WorkflowRunPageDetails() {
   useEffect(() => {
     if (!runState?.definition) return;
 
+
+    if (!startMsRef.current) {
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const startDate = new Date(runState.createdAt).toLocaleString('en-US', { timeZone: userTimeZone });
+      const startDateObj = new Date(startDate);
+      startMsRef.current = startDateObj.getTime();
+    }
+
     setTreeNodes(
       buildTree(
         runState.definition.stepGraph,
         runState.snapshot.context,
       ),
     );
-  }, [runState]);
 
-
-  useEffect(() => {
-    if (!runState) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [runState]);
@@ -81,12 +85,12 @@ export function WorkflowRunPageDetails() {
   // Process the workflow run data
   const steps = useMemo(() => {
     return Object.entries(runState?.snapshot.context ?? {})
-    .filter(([key]) => key !== "input")
-    .map(([id, data]) => ({
-      id,
-      status: data.status,
-      output: data.output,
-      error: data.error,
+      .filter(([key]) => key !== "input")
+      .map(([id, data]) => ({
+        id,
+        status: data.status,
+        output: data.output,
+        error: data.error,
       }))
   }, [runState])
 
@@ -94,27 +98,50 @@ export function WorkflowRunPageDetails() {
   const completedSteps = useMemo(() => steps.filter((step) => step.status === StepStatus.Success).length, [steps])
   const failedSteps = useMemo(() => steps.filter((step) => step.status === StepStatus.Failed).length, [steps])
 
-  const isCompleted = useMemo(() => totalSteps > 0 && completedSteps === totalSteps, [totalSteps, completedSteps])
+  const isCompleted = useMemo(
+    () => totalSteps > 0 && completedSteps === totalSteps,
+    [totalSteps, completedSteps],
+  );
   const hasFailed = useMemo(() => failedSteps > 0, [failedSteps])
   const status = useMemo(() => hasFailed ? "failed" : isCompleted ? "success" : "in-progress", [hasFailed, isCompleted])
 
   const duration = useMemo(() => {
-    if (!runState) return null;
-    const start = new Date(runState.createdAt).getTime();
-    const end = runState.updatedAt
+    if (!runState) return "0s";
+
+    const startMs = startMsRef.current!;
+    const endMs = (isCompleted || hasFailed)
       ? new Date(runState.updatedAt).getTime()
       : now;
-    const diffMs = Math.max(end - start, 0);
+
+    const diffMs = Math.max(endMs - startMs, 0);
     const diffSec = Math.floor(diffMs / 1000);
     const mins = Math.floor(diffSec / 60);
     const secs = diffSec % 60;
+
     return `${mins}m ${secs}s`;
-  }, [runState, now]);
+  }, [now, isCompleted, hasFailed, runState?.updatedAt]);
+
 
   const startTime = useMemo(() => {
     if (!runState) return null
     return new Date(runState.createdAt).toLocaleTimeString()
   }, [runState])
+
+  const lastOutput = useMemo(() => {
+    if (!runState) return undefined;
+
+    const flattenedSteps = workflowQueryData?.stepGraph
+      ? flatten(workflowQueryData.stepGraph)
+      : [];
+
+    const lastStepId = flattenedSteps.length
+      ? flattenedSteps[flattenedSteps.length - 1].id
+      : undefined;
+
+    return lastStepId
+      ? runState.snapshot.context[lastStepId]?.output
+      : undefined;
+  }, [runState, workflowQueryData])
 
   if (isRunLoading && !runState) return <WorkflowRunDetailsSkeleton />
 
@@ -145,6 +172,7 @@ export function WorkflowRunPageDetails() {
         isCompleted={isCompleted}
         duration={duration ?? "0s"}
         startTime={startTime ?? "0s"}
+        lastOutput={lastOutput}
       />
 
       <WorkflowRunInput runState={runState} />
@@ -154,7 +182,6 @@ export function WorkflowRunPageDetails() {
           <TabsTrigger value="graph">Graph</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="json">JSON</TabsTrigger>
         </TabsList>
 
         {/* Workflow Run Graph */}
@@ -170,17 +197,6 @@ export function WorkflowRunPageDetails() {
         {/* Workflow Run Details */}
         <TabsContent value="details" className="mt-4">
           <WorkflowRunDetails treeNodes={treeNodes} />
-        </TabsContent>
-
-        {/* Workflow Run JSON */}
-        <TabsContent value="json" className="mt-4">
-          <Card>
-            <CardContent className="pt-6">
-              <pre className="bg-muted p-4 rounded-md overflow-auto max-h-[500px] text-sm">
-                {JSON.stringify(runState, null, 2)}
-              </pre>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Check, X, Loader2, Clock, SkipForward } from "lucide-react"
+import { StepOutputValue } from "@/features/workflows/workflows.types"
+import { renderStepOutput } from "@/features/workflows/utils"
 
 type WorkflowRunStatusProps = {
     completedSteps: number
@@ -10,8 +12,9 @@ type WorkflowRunStatusProps = {
     isCompleted: boolean
     duration: string
     startTime: string
+    lastOutput: StepOutputValue | undefined
 }
-export function WorkflowRunStatus({ completedSteps, totalSteps, status, hasFailed, isCompleted, duration, startTime }: WorkflowRunStatusProps) {
+export function WorkflowRunStatus({ completedSteps, totalSteps, status, hasFailed, isCompleted, duration, startTime, lastOutput }: WorkflowRunStatusProps) {
 
     return (
         <Card>
@@ -42,6 +45,19 @@ export function WorkflowRunStatus({ completedSteps, totalSteps, status, hasFaile
                     />
                     <StatusCard title="Duration" value={duration ?? "0s"} status="info" description={`Started at ${startTime}`} />
                 </div>
+                {
+                    lastOutput && (
+                        <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-white rounded-xl p-6 mt-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div className="flex items-center gap-2 mb-3">
+                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                <h2 className="text-lg font-semibold text-green-700">Workflow Output</h2>
+                            </div>
+                            <div className="bg-white rounded-lg p-4 border border-green-100">
+                                {renderStepOutput(lastOutput)}
+                            </div>
+                        </Card>
+                    )
+                }
             </CardContent>
         </Card>
     )

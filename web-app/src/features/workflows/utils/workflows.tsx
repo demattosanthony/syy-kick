@@ -1,34 +1,51 @@
-import { FileText, FileCode, FileImage, FileAudio, FileVideo, File } from "lucide-react"
+import { FileCode, FileAudio, FileVideo, File } from "lucide-react"
 import { type WorkflowRunStepOutput, type WorkflowFile, type StepOutputValue, type StepContext, type TreeNode, StepStatus, CustomWorkflowRun } from "@/features/workflows/workflows.types"
 import { SerializedStep, SerializedStepFlowEntry } from "@mastra/core/workflows/vNext"
 import { GetVNextWorkflowResponse } from "@mastra/client-js"
+import excel from "@/assets/logos/excel.svg"
+import word from "@/assets/logos/ms-word.svg"
+import pptx from "@/assets/logos/pptx.svg"
+import pdf from "@/assets/logos/pdf.png"
 
-export function getFileIcon(mimeType: string) {
-  if (mimeType.startsWith("image/")) {
-    return <FileImage className="h-4 w-4" />
-  } else if (mimeType.startsWith("audio/")) {
-    return <FileAudio className="h-4 w-4" />
-  } else if (mimeType.startsWith("video/")) {
-    return <FileVideo className="h-4 w-4" />
-  } else if (
-    mimeType === "application/pdf" ||
-    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    mimeType === "application/msword"
-  ) {
-    return <FileText className="h-4 w-4" />
-  } else if (
-    mimeType === "application/json" ||
-    mimeType === "text/html" ||
-    mimeType === "text/css" ||
-    mimeType === "application/javascript"
-  ) {
-    return <FileCode className="h-4 w-4" />
-  } else {
-    return <File className="h-4 w-4" />
+export function getFileIcon(mimeType: string, url: string) {
+  switch (true) {
+    case mimeType.startsWith("image/"):
+      return <img src={url} alt="File Icon" className="h-16 w-16" />
+
+    case mimeType.startsWith("audio/"):
+      return <FileAudio className="h-16 w-16" />
+
+    case mimeType.startsWith("video/"):
+      return <FileVideo className="h-16 w-16" />
+
+    case ["application/pdf"].includes(mimeType):
+      return <img src={pdf} alt="PDF" className="h-16 w-16 object-cover" />
+
+    case ["application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/msword", "text/plain", "text/markdown"].includes(mimeType):
+      return <img src={word} alt="File Icon" className="h-16 w-16" />
+
+    case ["application/json",
+      "text/html",
+      "text/css",
+      "application/javascript"].includes(mimeType):
+      return <FileCode className="h-16 w-16" />
+
+    case ["application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv"].includes(mimeType):
+      return <img src={excel} alt="File Icon" className="h-16 w-16" />
+
+    case ["application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/vnd.ms-powerpoint"].includes(mimeType):
+      return <img src={pptx} alt="File Icon" className="h-16 w-16" />
+
+    default:
+      return <File className="h-16 w-16" />
   }
 }
 
 export function renderStepOutput(output: StepOutputValue | unknown) {
+
   // Handle array of outputs
   if (Array.isArray(output)) {
     return renderOutputArray(output, "Output")
@@ -134,8 +151,10 @@ export function renderSingleOutput(output: WorkflowRunStepOutput | unknown) {
 export function renderFile(file: WorkflowFile) {
   return (
     <div className="flex items-center gap-2 text-sm">
-      {getFileIcon(file.mimeType)}
-      <span className="truncate">{file.fileName}</span>
+      <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:cursor-pointer">
+        {getFileIcon(file.mimeType, file.url || '')}
+        <span className="truncate">{file.fileName}</span>
+      </a>
       {file.fileSize && <span className="text-xs text-muted-foreground">({formatFileSize(file.fileSize)})</span>}
       {file.url && (
         <a

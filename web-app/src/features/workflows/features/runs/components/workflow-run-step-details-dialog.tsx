@@ -130,7 +130,7 @@ export function StepDetailsDialog({ node, onClose }: { node: TreeNode; onClose: 
                     {node.error && (
                         <div className="space-y-2">
                             <h4 className="text-sm font-medium text-red-700">Error</h4>
-                            <div className="bg-red-50 border border-red-200 p-3 rounded-md text-sm text-red-700 overflow-x-auto whitespace-pre-wrap break-words">{node.error}</div>
+                            <div className="bg-red-50 border border-red-200 p-3 rounded-md text-sm text-red-700 overflow-x-auto whitespace-pre-wrap break-words">{JSON.stringify(node?.error, null, 2)}</div>
                         </div>
                     )}
                 </div>

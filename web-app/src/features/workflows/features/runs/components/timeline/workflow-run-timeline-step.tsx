@@ -75,7 +75,7 @@ export function TimelineStep({ node, isLast, onShowDetails }: { node: TreeNode; 
                 )}
 
                 {node.status === StepStatus.Failed && node.error && (
-                    <div className="mt-2 bg-red-50 border border-red-200 p-3 rounded-md text-sm text-red-700">{node.error}</div>
+                    <div className="mt-2 bg-red-50 border border-red-200 p-3 rounded-md text-sm text-red-700">{JSON.stringify(node?.error, null, 2)}</div>
                 )}
             </div>
         </div>
