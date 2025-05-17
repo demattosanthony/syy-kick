@@ -109,9 +109,9 @@ function ProjectItem({ project }: { project: Project }) {
       className="block p-6 rounded-lg bg-card hover:bg-accent border transition-colors h-full group"
     >
       <div className="flex flex-col gap-4 h-full">
-        <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center border flex-shrink-0 relative">
-          <FolderClosed className="w-6 h-6 absolute text-blue-400 fill-blue-400 transition-opacity duration-200 group-hover:opacity-0" />
-          <FolderOpen className="w-6 h-6 text-blue-400 opacity-0 absolute transition-opacity duration-200 group-hover:opacity-100" />
+        <div className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 relative">
+          <FolderClosed className="w-8 h-8 absolute text-blue-400 fill-blue-400 transition-opacity duration-200 group-hover:opacity-0" />
+          <FolderOpen className="w-8 h-8 text-blue-400 opacity-0 absolute transition-opacity duration-200 group-hover:opacity-100" />
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col justify-between">

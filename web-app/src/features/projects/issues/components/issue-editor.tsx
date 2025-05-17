@@ -395,7 +395,7 @@ export function IssueEditor({
       {/* Apply border and focus styles to this inner div */}
       <div
         className={cn(
-          "rounded-md border border-input bg-card",
+          "rounded-md border border-input ",
           "ring-offset-background focus-within:outline-none focus-within:ring-1 focus-within:ring-ring focus-within:ring-offset-1",
           "overflow-hidden", // Ensure border radius applies correctly to children
           isDragging && "border-border border-2" // Highlight on drag over - Updated style
