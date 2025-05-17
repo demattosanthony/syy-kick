@@ -9,10 +9,12 @@ import { ForEachNode } from "@/features/workflows/features/runs/components/graph
 export function StepEntry({
     entry,
     treeNodes,
+    stepNumber,
     setSelectedNode,
 }: {
     entry: SerializedStepFlowEntry
     treeNodes: TreeNode[]
+    stepNumber: number
     setSelectedNode: (node: TreeNode) => void
 }) {
     const getNodeForStep = (stepId: string): TreeNode | undefined => {
@@ -24,6 +26,7 @@ export function StepEntry({
             const node = getNodeForStep(entry.step.id)
             return (
                 <StepNode
+                    stepNumber={stepNumber}                    
                     stepId={entry.step.id}
                     description={entry.step.description || ""}
                     node={node}
@@ -32,12 +35,12 @@ export function StepEntry({
             )
         }
         case "parallel":
-            return <ParallelNode entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+            return <ParallelNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
         case "conditional":
-            return <ConditionalNode entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+            return <ConditionalNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
         case "loop":
-            return <LoopNode entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+            return <LoopNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
         case "foreach":
-            return <ForEachNode entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+            return <ForEachNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
     }
 }

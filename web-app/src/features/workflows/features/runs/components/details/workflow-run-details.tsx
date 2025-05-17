@@ -39,7 +39,7 @@ export function WorkflowRunDetails({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {allNodes.map((node) => (
+            {allNodes.map((node, index) => (
               <StepDetailRow key={node.path} node={node} onShowDetails={() => setSelectedNode(node)} />
             ))}
           </TableBody>

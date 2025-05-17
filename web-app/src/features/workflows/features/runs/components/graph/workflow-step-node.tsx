@@ -3,9 +3,11 @@ import { StepStatusBadge } from "@/features/workflows/features/runs/components"
 import { Button } from "@/components/ui/button"
 import { WorkflowRunStepStatusIcon } from "@/features/workflows/features/runs/components"
 import { Badge } from "@/components/ui/badge"
+import { formatStepName } from "@/features/workflows/utils"
 
 export function StepNode({
     stepId,
+    stepNumber,
     description,
     node,
     isLoop,
@@ -13,6 +15,7 @@ export function StepNode({
     onClick,
 }: {
     stepId: string
+    stepNumber: number
     description: string
     node?: TreeNode
     isLoop?: boolean
@@ -39,7 +42,7 @@ export function StepNode({
         >
             <div className="flex justify-between items-start">
                 <div>
-                    <h3 className="text-sm font-medium">{stepId}</h3>
+                    <h3 className="text-sm font-medium">{`Step ${stepNumber}: ${formatStepName(stepId)}`}</h3>
                     <p className="text-xs text-muted-foreground mt-1">{description}</p>
 
                     {(isLoop || isForeach) && (

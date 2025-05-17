@@ -56,6 +56,7 @@ function StepGraph({
       {stepGraph.map((entry, index) => (
         <div key={index} className="w-full">
           <StepEntry
+            stepNumber={index + 1}
             entry={entry}
             treeNodes={treeNodes}
             setSelectedNode={setSelectedNode}

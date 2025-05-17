@@ -27,7 +27,7 @@ const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
 });
 
 const finalStepOutputSchema = z.object({
-  totalizedBomCsvFile: z.array(z.object({
+  totalizedBomCsvFile: z.object({
     type: z.literal("file"),
     file: z.object({
       fileKey: z.string(),
@@ -35,7 +35,7 @@ const finalStepOutputSchema = z.object({
       fileName: z.string(),
       url: z.string().optional(),
     }),
-  })),
+  }),
 });
 
 const stepOne = createStep({
@@ -245,7 +245,7 @@ Remember to use your expertise to provide the most accurate and comprehensive co
     };
 
     return {
-      totalizedBomCsvFile: [csvFile],
+      totalizedBomCsvFile: csvFile,
     };
   },
 });

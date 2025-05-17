@@ -13,10 +13,12 @@ type ForEachEntry = SerializedStepFlowEntry & {
 }
 
 export function ForEachNode({
+    stepNumber,
     entry,
     treeNodes,
     setSelectedNode,
 }: {
+    stepNumber: number
     entry: ForEachEntry
     treeNodes: TreeNode[]
     setSelectedNode: (node: TreeNode) => void
@@ -32,6 +34,7 @@ export function ForEachNode({
             </div>
             <div className="border border-dashed border-muted rounded-md p-4">
                 <StepNode
+                    stepNumber={stepNumber}
                     stepId={entry.step.id}
                     description={entry.step.description || ""}
                     node={node}

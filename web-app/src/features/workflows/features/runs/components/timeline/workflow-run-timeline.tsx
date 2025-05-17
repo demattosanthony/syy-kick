@@ -24,6 +24,7 @@ export function WorkflowRunTimeline({
         <div className="space-y-8">
           {sortedNodes.map((node, index) => (
             <TimelineStep
+              stepNumber={index + 1}
               key={node.path}
               node={node}
               isLast={index === sortedNodes.length - 1}

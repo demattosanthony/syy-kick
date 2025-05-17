@@ -328,3 +328,7 @@ export function buildOptimisticRun(def: GetVNextWorkflowResponse, runId: string)
     },
   };
 }
+
+export function formatStepName(stepId: string): string {
+  return stepId.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase())
+}

@@ -10,10 +10,12 @@ type ConditionalEntry = SerializedStepFlowEntry & {
 }
 
 export function ConditionalNode({
+    stepNumber,
     entry,
     treeNodes,
     setSelectedNode,
 }: {
+    stepNumber: number
     entry: ConditionalEntry
     treeNodes: TreeNode[]
     setSelectedNode: (node: TreeNode) => void
@@ -30,7 +32,7 @@ export function ConditionalNode({
                 {entry.steps.map((step: SerializedStepFlowEntry, idx: number) => (
                     <div key={idx} className="border border-dashed border-muted rounded-md p-4">
                         <div className="text-xs text-center mb-2 text-muted-foreground">Condition {idx + 1}</div>
-                        <StepEntry entry={step} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+                        <StepEntry stepNumber={stepNumber} entry={step} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
                     </div>
                 ))}
             </div>

@@ -10,10 +10,12 @@ type ParallelEntry = SerializedStepFlowEntry & {
 }
 
 export function ParallelNode({
+    stepNumber,
     entry,
     treeNodes,
     setSelectedNode,
 }: {
+    stepNumber: number
     entry: ParallelEntry
     treeNodes: TreeNode[]
     setSelectedNode: (node: TreeNode) => void
@@ -29,7 +31,7 @@ export function ParallelNode({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {entry.steps.map((step: SerializedStepFlowEntry, idx: number) => (
                     <div key={idx} className="border border-dashed border-muted rounded-md p-4">
-                        <StepEntry entry={step} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+                        <StepEntry stepNumber={stepNumber} entry={step} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
                     </div>
                 ))}
             </div>

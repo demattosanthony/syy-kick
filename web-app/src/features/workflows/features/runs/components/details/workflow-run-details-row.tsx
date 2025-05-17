@@ -2,7 +2,7 @@ import { TreeNode } from "@/features/workflows/workflows.types";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { renderStepOutput } from "@/features/workflows/utils";
+import { formatStepName, renderStepOutput } from "@/features/workflows/utils";
 import { StepTypeBadge, StepStatusBadge } from "@/features/workflows/features/runs/components";
 
 export function StepDetailRow({ node, onShowDetails }: { node: TreeNode; onShowDetails: () => void }) {
@@ -11,7 +11,7 @@ export function StepDetailRow({ node, onShowDetails }: { node: TreeNode; onShowD
     return (
         <>
             <TableRow>
-                <TableCell className="font-medium">{node.stepId}</TableCell>
+                <TableCell className="font-medium">{formatStepName(node.stepId)}</TableCell>
                 <TableCell>{node.path}</TableCell>
                 <TableCell>
                     <StepTypeBadge type={node.type} loopType={node.loopType} />

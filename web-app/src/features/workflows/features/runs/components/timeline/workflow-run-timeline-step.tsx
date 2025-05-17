@@ -3,12 +3,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { StepStatus, type TreeNode } from "@/features/workflows/workflows.types"
-import { renderStepOutput } from "@/features/workflows/utils"
+import { formatStepName, renderStepOutput } from "@/features/workflows/utils"
 import { WorkflowRunStepStatusIcon } from "@/features/workflows/features/runs/components"
 import { StepStatusBadge } from "@/features/workflows/features/runs/components"
 import { RefreshCw } from "lucide-react"
 
-export function TimelineStep({ node, isLast, onShowDetails }: { node: TreeNode; isLast: boolean; onShowDetails: () => void }) {
+export function TimelineStep({ node, isLast, onShowDetails, stepNumber }: { node: TreeNode; isLast: boolean; onShowDetails: () => void, stepNumber: number }) {
     const [isOpen, setIsOpen] = useState(false)
 
     const getStepDescription = (node: TreeNode) => {
@@ -34,7 +34,7 @@ export function TimelineStep({ node, isLast, onShowDetails }: { node: TreeNode; 
                 <div className="flex items-start justify-between">
                     <div>
                         <div className="flex items-center gap-2">
-                            <h3 className="text-base font-semibold">{node.stepId}</h3>
+                            <h3 className="text-base font-semibold">{`Step ${stepNumber}: ${formatStepName(node.stepId)}`}</h3>
                             <StepStatusBadge status={node.status} />
                             {node.type === "foreach" && (
                                 <Badge variant="outline" className="ml-2">

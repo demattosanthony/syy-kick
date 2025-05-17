@@ -11,10 +11,12 @@ type LoopEntry = SerializedStepFlowEntry & {
 }
 
 export function LoopNode({
+    stepNumber,
     entry,
     treeNodes,
     setSelectedNode,
 }: {
+    stepNumber: number
     entry: LoopEntry
     treeNodes: TreeNode[]
     setSelectedNode: (node: TreeNode) => void
@@ -30,6 +32,7 @@ export function LoopNode({
             </div>
             <div className="border border-dashed border-muted rounded-md p-4">
                 <StepNode
+                    stepNumber={stepNumber}
                     stepId={entry.step.id}
                     description={entry.step.description || ""}
                     node={node}
