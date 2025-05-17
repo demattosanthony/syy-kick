@@ -102,7 +102,7 @@
   --foreground: 213 31% 91%;
   --card: 229 49% 15%; /* Match background */
   --card-foreground: 25 8% 98%; /* Match foreground */
-  --popover: 230 35% 33%; /* Match background */
+  --popover: 230 67% 11%; /* Match background */
   --popover-foreground: 25 8% 98%; /* Match foreground */
 
   /* Primary orange adapted for dark mode (lighter/brighter) */
@@ -126,7 +126,7 @@
   --destructive-foreground: 0 0% 98%;
 
   /* Borders and inputs matching the theme */
-  --border: 230 35% 33%; /* Darker than background */
+  --border: 230 34% 41%; /* Darker than background */
   --input: 230 35% 33%; /* Match border */
   --ring: 25 90% 70%; /* Brighter orange for focus rings */
 
