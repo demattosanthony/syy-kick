@@ -287,7 +287,7 @@ export default function ProjectFileExplorer({
     return (
       <div
         ref={explorerRef}
-        className="relative flex flex-col items-center justify-center py-12 px-4 text-center w-full max-w-full bg-background"
+        className="relative flex flex-col items-center justify-center py-12 px-4 text-center w-full max-w-full"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
