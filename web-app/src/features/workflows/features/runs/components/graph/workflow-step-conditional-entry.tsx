@@ -36,8 +36,14 @@ export function ConditionalNode({
             const stepNode = treeNodes.find(n => n.stepId === step.step.id)
             return stepNode?.status === StepStatus.Success
         })
+
+        const hasFailedCondition = entry.steps.some(step => {
+            if (step.type !== "step") return false
+            const stepNode = treeNodes.find(n => n.stepId === step.step.id)
+            return stepNode?.status === StepStatus.Failed
+        })
         
-        return hasSuccessfulCondition ? StepStatus.Skipped : StepStatus.Pending
+        return hasSuccessfulCondition ? StepStatus.Skipped : hasFailedCondition ? StepStatus.Failed : StepStatus.Pending
     }
 
     return (
@@ -52,18 +58,19 @@ export function ConditionalNode({
                 {entry.steps.map((step: SerializedStepFlowEntry, idx: number) => {
                     if (step.type !== "step") return null
                     const conditionStatus = getConditionStatus(step.step.id)
-                    
                     return (
                         <div key={idx} className="border border-dashed border-muted rounded-md p-4">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="text-xs text-muted-foreground">Condition {idx + 1}</div>
                                 <Badge variant="outline" className={`
                                     ${conditionStatus === StepStatus.Success ? 'bg-green-50 text-green-700 border-green-200' : 
-                                      conditionStatus === StepStatus.Skipped ? 'bg-gray-50 text-gray-700 border-gray-200' : 
+                                      conditionStatus === StepStatus.Skipped ? 'bg-gray-50 text-gray-700 border-gray-200' :
+                                      conditionStatus === StepStatus.Failed ? 'bg-red-50 text-red-700 border-red-200' :
                                       'bg-yellow-50 text-yellow-700 border-yellow-200'}
                                 `}>
                                     {conditionStatus === StepStatus.Success ? 'Executed' : 
                                      conditionStatus === StepStatus.Skipped ? 'Skipped' : 
+                                     conditionStatus === StepStatus.Failed ? 'Failed' :
                                      'Pending'}
                                 </Badge>
                             </div>
