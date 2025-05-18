@@ -948,7 +948,7 @@ class WorkflowsApi extends ApiRequest {
   async getRuns(workflowId: string): Promise<CustomWorkflowRuns> {
     return await this.request(`/workflows/${workflowId}/runs`);
   }
-
+  
   async getRun(workflowId: string, runId: string): Promise<CustomWorkflowRun> {
     return await this.request(`/workflows/${workflowId}/runs/${runId}`);
   }

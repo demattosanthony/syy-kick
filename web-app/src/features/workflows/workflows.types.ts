@@ -1,4 +1,5 @@
-import { WorkflowRun, WorkflowRuns, WorkflowRunState } from "@mastra/core";
+import { GetVNextWorkflowResponse } from "@mastra/client-js";
+import { WorkflowRuns } from "@mastra/core";
 
 // Base types for form fields
 type BaseFieldType = {
@@ -107,26 +108,95 @@ export interface WorkflowProjectFile {
   file_key: string;
 }
 
-/** ---- Runs ---- */
-
-/** @todo: use their type when available */
-export interface VNextWorkflowRunState extends Omit<WorkflowRunState, 'context'> {
-  context: {
-    input: Record<string, any>;
-  } & {
-    [stepId: string]: {
-      status: 'success' | 'failed' | 'suspended' | 'waiting' | 'skipped';
-      output?: any;
-      error?: any;
-    };
-  }
+export enum StepStatus {
+  Pending = "pending",
+  Blocked = "blocked",
+  Waiting = "waiting",
+  Running = "running",
+  Success = "success",
+  Failed = "failed",
+  Suspended = "suspended",
+  Skipped = "skipped",
 }
 
-export interface CustomWorkflowRun extends Omit<WorkflowRun, 'snapshot'> {
-  snapshot: VNextWorkflowRunState;
+export interface TreeNodeBase {
+  /** Unique path in the run, includes iteration suffixes. */
+  path: string
+  /** Original step identifier from the definition. */
+  stepId: string
+  type: "step" | "parallel" | "conditional" | "loop" | "foreach"
+  description?: string
+
+  status: StepStatus
+  startedAt: number | null
+  finishedAt: number | null
+  output?: StepOutputValue
+  error?: string
+}
+
+export interface TreeNode extends TreeNodeBase {
+  children?: TreeNode[]
+  /* Loop-specific */
+  iteration?: number
+  loopType?: "dowhile" | "dountil"
+  /* Foreach-specific */
+  foreachIndex?: number
+  foreachConcurrency?: number
+}
+
+export interface RuntimeIndex {
+  byPath: Map<string, TreeNode>
+  byStepId: Map<string, TreeNode[]>
+}
+
+export type StepContext = {
+  status: StepStatus
+  output?: StepOutputValue
+  error?: string
+}
+
+export interface VNextWorkflowRunState {
+  value: Record<string, string>
+  context: {
+    input: Record<string, any>
+  } & Record<string, StepContext>
+  runId: string
+  timestamp: number
+}
+export interface CustomWorkflowRun {
+  workflowName: string
+  runId: string
+  snapshot: VNextWorkflowRunState
+  createdAt: Date
+  updatedAt: Date
+  resourceId?: string
+  definition?: GetVNextWorkflowResponse
 }
 
 /** @todo: use their type when available */
 export interface CustomWorkflowRuns extends Omit<WorkflowRuns, 'runs'> {
   runs: CustomWorkflowRun[];
 }
+
+export type StepOutputValue =
+  | WorkflowRunStepOutput
+  | WorkflowRunStepOutput[]
+  | Record<string, WorkflowRunStepOutput | WorkflowRunStepOutput[]>;
+
+
+// New output schema types
+export interface WorkflowFile {
+  fileKey: string
+  mimeType: string
+  fileName: string
+  fileSize?: number
+  url?: string
+}
+
+export interface WorkflowRunStepOutput {
+  type: "text" | "file" | "number"
+  text?: string
+  file?: WorkflowFile
+  number?: number
+}
+

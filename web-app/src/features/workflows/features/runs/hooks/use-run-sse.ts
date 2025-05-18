@@ -40,8 +40,7 @@ export function useRunSSE({
                 ...Object.entries(newRunContext).reduce((acc, [stepId, stepData]) => {
                   acc[stepId] = {
                     ...oldData.snapshot.context[stepId],
-                    ...stepData,
-                    output: stepData.output || oldData.snapshot.context[stepId]?.output
+                    ...stepData
                   };
                   return acc;
                 }, {} as Record<string, any>)
@@ -49,6 +48,7 @@ export function useRunSSE({
 
               return {
                 ...oldData,
+                updatedAt: new Date(parsedData.eventTimestamp),
                 snapshot: {
                   ...oldData.snapshot,
                   context: mergedContext
