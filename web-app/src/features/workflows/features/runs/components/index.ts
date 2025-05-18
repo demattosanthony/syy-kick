@@ -1,5 +1,4 @@
 export * from "./graph/workflow-run-graph"
-export * from "./timeline/workflow-run-timeline"
 export * from "./workflow-run-step-details-dialog"
 export * from "./workflow-run-step-status-badge"
 export * from "./workflow-run-step-status-icon"

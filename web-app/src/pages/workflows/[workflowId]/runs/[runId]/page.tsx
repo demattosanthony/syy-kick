@@ -6,13 +6,13 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { CustomWorkflowRun, StepStatus, TreeNode } from "@/features/workflows/workflows.types";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkflowRunGraph } from "@/features/workflows/features/runs/components/graph/workflow-run-graph";
-import { WorkflowRunTimeline } from "@/features/workflows/features/runs/components/timeline/workflow-run-timeline";
 import { buildOptimisticRun, buildTree, countStepsInGraph, flatten } from "@/features/workflows/utils";
 import { useGetRunQuery } from "@/features/workflows/features/runs/api";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkflowRunStatus } from "@/features/workflows/features/runs/components/workflow-run-status";
 import { WorkflowRunInput } from "@/features/workflows/features/runs/components/workflow-run-input";
+import { Badge } from "@/components/ui/badge";
 
 
 export function WorkflowRunPageDetails() {
@@ -64,14 +64,6 @@ export function WorkflowRunPageDetails() {
   useEffect(() => {
     if (!runState?.definition) return;
 
-
-    if (!startMsRef.current) {
-      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const startDate = new Date(runState.createdAt).toLocaleString('en-US', { timeZone: userTimeZone });
-      const startDateObj = new Date(startDate);
-      startMsRef.current = startDateObj.getTime();
-    }
-
     setTreeNodes(
       buildTree(
         runState.definition.stepGraph,
@@ -113,7 +105,8 @@ export function WorkflowRunPageDetails() {
   const duration = useMemo(() => {
     if (!runState) return "0s";
 
-    const startMs = startMsRef.current!;
+    const startMs = startMsRef.current;
+
     const endMs = (isCompleted || hasFailed)
       ? new Date(runState.updatedAt).getTime()
       : now;
@@ -125,6 +118,7 @@ export function WorkflowRunPageDetails() {
 
     return `${mins}m ${secs}s`;
   }, [now, isCompleted, hasFailed, runState?.updatedAt]);
+
 
   const startTime = useMemo(() => {
     if (!runState) return null
@@ -147,6 +141,18 @@ export function WorkflowRunPageDetails() {
       : undefined;
   }, [runState, workflowQueryData])
 
+  const lastStep = useMemo(() => {
+    if (!runState) return undefined;
+    const step = Object.entries(runState.snapshot.context)
+      .find(([_, data]) => data.status === StepStatus.Running || data.status === StepStatus.Failed);
+    return step ? {
+      id: step[0],
+      name: step[0],
+      status: step[1].status,
+      error: step[1].error
+    } : undefined;
+  }, [runState])
+
   if (isRunLoading && !runState) return <WorkflowRunDetailsSkeleton />
 
   if (!runState) return null
@@ -161,10 +167,27 @@ export function WorkflowRunPageDetails() {
       />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{runState.workflowName}</h1>
-          <p className="text-muted-foreground">
-            Run ID: {runState.runId.substring(0, 8)}... • {new Date(runState.createdAt).toLocaleString()}
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">{runState.workflowName}</h1>
+            <Badge variant="secondary">
+              #{runState.runId.slice(0, 8)}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-6 text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <p>
+                Status:
+              </p>
+              <div className={`w-3 h-3 rounded-full ${status === "success" ? "bg-green-500" : status === "failed" ? "bg-red-500" : "bg-yellow-500"}`} />
+              <p>
+                {status}
+              </p>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <p>Duration:</p>
+              <p>{duration}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -177,27 +200,12 @@ export function WorkflowRunPageDetails() {
         duration={duration ?? "0s"}
         startTime={startTime ?? "0s"}
         lastOutput={lastOutput}
+        lastStep={lastStep}
       />
 
       <WorkflowRunInput runState={runState} />
 
-      <Tabs defaultValue="timeline">
-        <TabsList>
-          <TabsTrigger value="graph">Graph</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-        </TabsList>
-
-        {/* Workflow Run Graph */}
-        <TabsContent value="graph" className="mt-4">
-          <WorkflowRunGraph workflowRun={runState} treeNodes={treeNodes} />
-        </TabsContent>
-
-        {/* Workflow Run Timeline */}
-        <TabsContent value="timeline" className="mt-4">
-          <WorkflowRunTimeline treeNodes={treeNodes} />
-        </TabsContent>
-
-      </Tabs>
+      <WorkflowRunGraph workflowRun={runState} treeNodes={treeNodes} />
     </div>
   )
 }

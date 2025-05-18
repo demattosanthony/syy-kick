@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { type CustomWorkflowRun, type TreeNode } from "@/features/workflows/workflows.types"
 import { SerializedStepFlowEntry } from "@mastra/core/workflows/vNext"
 import { StepEntry } from "@/features/workflows/features/runs/components/graph"
@@ -24,6 +24,12 @@ export function WorkflowRunGraph({
 
   return (
     <Card>
+      <CardHeader>
+        <CardTitle>Workflow Run</CardTitle>
+        <CardDescription>
+          The graph of the workflow run.
+        </CardDescription>
+      </CardHeader>
       <CardContent className="pt-6 overflow-auto">
         <div className="min-w-[800px]">
           <StepGraph
