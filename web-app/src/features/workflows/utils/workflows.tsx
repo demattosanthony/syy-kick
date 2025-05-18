@@ -181,13 +181,13 @@ export function renderFile(file: WorkflowFile) {
         href={file.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex flex-col items-center hover:cursor-pointer"
+        className="flex flex-col items-center hover:cursor-pointer w-full"
       >
         <div className="mb-2">
           {getFileIcon(file.mimeType, file.url || '')}
         </div>
-        <div className="text-center">
-          <div className="line-clamp-2 text-sm">{file.fileName}</div>
+        <div className="text-center w-full">
+          <div className="line-clamp-2 text-sm break-words max-w-full">{file.fileName}</div>
           {file.fileSize && (
             <div className="text-xs text-muted-foreground">
               ({formatFileSize(file.fileSize)})

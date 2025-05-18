@@ -57,6 +57,7 @@ export function WorkflowRunPageDetails() {
         ?? workflowQueryData!,
     };
 
+    console.log(runQueryData.createdAt, '<--- runQueryData.createdAt')
     setRunState(merged);
     startMsRef.current = new Date(runQueryData.createdAt).getTime();
   }, [runQueryData, workflowQueryData]);
