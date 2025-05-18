@@ -251,7 +251,7 @@ const LocationSearch = ({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="justify-between w-full text-left"
+            className="justify-between w-full text-left bg-transparent"
           >
             <div className="flex items-center w-full overflow-hidden">
               <MapPin className="mr-2 h-4 w-4 shrink-0" />

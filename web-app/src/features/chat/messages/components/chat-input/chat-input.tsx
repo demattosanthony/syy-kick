@@ -134,9 +134,9 @@ function ChatInputForm(
       <Card
         ref={cardRef}
         className={cn(
-          "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-2xl bg-background border shadow-md transition-all",
-          focused && !isMobile && "",
-          isDragging && "border-border border-2 bg-background"
+          "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-3xl border shadow-md ",
+          focused && !isMobile && "border-border border-[1.5px]",
+          isDragging && "border-border border-[1.5px]"
         )}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
