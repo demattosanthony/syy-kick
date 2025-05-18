@@ -55,97 +55,123 @@ export function renderStepOutput(output: StepOutputValue | unknown) {
   return renderSingleOutput(output)
 }
 
-export function renderSingleOutput(output: WorkflowRunStepOutput | unknown) {
-  // Check if output matches our schema
+export function renderSingleOutput(output: StepOutputValue | unknown) {
+  // Case text|file|number
   if (output && typeof output === "object" && "type" in output) {
-    const typedOutput = output as WorkflowRunStepOutput
-
-    switch (typedOutput.type) {
+    const typed = output as WorkflowRunStepOutput;
+    switch (typed.type) {
       case "text":
         return (
           <div className="text-sm">
             <span className="font-medium">Text:</span>{" "}
-            {typedOutput.text && typedOutput.text.length > 100
-              ? typedOutput.text.substring(0, 100) + "..."
-              : typedOutput.text}
+            {typed.text?.length! > 100
+              ? typed.text!.slice(0, 100) + "..."
+              : typed.text}
           </div>
-        )
-
+        );
       case "file":
-        if (typedOutput.file) {
-          return renderFile(typedOutput.file)
-        }
-        return <div className="text-sm text-muted-foreground">Invalid file data</div>
-
+        return typed.file ? (
+          renderFile(typed.file)
+        ) : (
+          <div className="text-sm text-muted-foreground">Invalid file data</div>
+        );
       case "number":
         return (
           <div className="text-sm">
-            <span className="font-medium">Number:</span> {typedOutput.number}
+            <span className="font-medium">Number:</span> {typed.number}
           </div>
-        )
-
+        );
       default:
-        return <div className="text-sm text-muted-foreground">Unknown output type</div>
+        return <div className="text-sm text-muted-foreground">Unknown</div>;
     }
   }
 
-  // Handle object with potential arrays of our schema types
+  // Cas object non-array
   if (output && typeof output === "object" && !Array.isArray(output)) {
-    // Look for arrays that might contain our schema types
-    const arrayEntries = Object.entries(output as Record<string, unknown>).filter(
-      ([_, value]) => Array.isArray(value) && value.length > 0,
-    )
+    const obj = output as Record<string, unknown>;
+    const entries = Object.entries(obj);
 
+    // If ALL values are WorkflowRunStepOutput, render them individually
+    if (
+      entries.length > 0 &&
+      entries.every(
+        ([, v]) => v && typeof v === "object" && "type" in (v as any)
+      )
+    ) {
+      return (
+        <div className="space-y-4">
+          {entries.map(([key, v]) => (
+            <div key={key}>
+              <div className="text-sm font-medium mb-1">
+                {formatKeyToLabel(key)}
+              </div>
+              {renderSingleOutput(v)}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Otherwise, look at arrays as before
+    const arrayEntries = entries.filter(
+      ([, val]) => Array.isArray(val) && (val as any[]).length > 0
+    );
     if (arrayEntries.length > 0) {
       return (
         <div className="space-y-4">
-          {arrayEntries.map(([key, value]) => (
-            <div key={key}>{renderOutputArray(value as any[], formatKeyToLabel(key))}</div>
+          {arrayEntries.map(([key, val]) => (
+            <div key={key}>
+              <div className="text-sm font-medium mb-1">
+                {formatKeyToLabel(key)}
+              </div>
+              {renderOutputArray(val as any[], formatKeyToLabel(key))}
+            </div>
           ))}
         </div>
-      )
+      );
     }
 
-    // For other object types, show as JSON
+    // Fallback JSON if no WorkflowRunStepOutput
     return (
       <pre className="text-xs overflow-auto max-h-[200px] bg-muted/50 p-2 rounded-md">
         {JSON.stringify(output, null, 2)}
       </pre>
-    )
+    );
   }
 
-  // Handle primitive types
+  // Primitives if no WorkflowRunStepOutput
   if (typeof output === "string") {
     return (
       <div className="text-sm">
-        <span className="font-medium">Text:</span> {output.length > 100 ? output.substring(0, 100) + "..." : output}
+        <span className="font-medium">Text:</span>{" "}
+        {output.length > 100 ? output.slice(0, 100) + "..." : output}
       </div>
-    )
+    );
   }
-
   if (typeof output === "number") {
     return (
       <div className="text-sm">
         <span className="font-medium">Number:</span> {output}
       </div>
-    )
+    );
   }
-
   if (typeof output === "boolean") {
     return (
       <div className="text-sm">
-        <span className="font-medium">Boolean:</span> {output ? "True" : "False"}
+        <span className="font-medium">Boolean:</span>{" "}
+        {output ? "True" : "False"}
       </div>
-    )
+    );
   }
 
-  // Fallback for other types
+  // Last fallback if no WorkflowRunStepOutput
   return (
     <pre className="text-xs overflow-auto max-h-[200px] bg-muted/50 p-2 rounded-md">
       {JSON.stringify(output, null, 2)}
     </pre>
-  )
+  );
 }
+
 
 // Helper function to render a file
 export function renderFile(file: WorkflowFile) {
@@ -180,9 +206,6 @@ function renderOutputArray(array: any[], label: string) {
   if (containsSchemaTypes) {
     return (
       <div className="space-y-2">
-        <p className="text-sm font-medium">
-          {label} ({array.length} items):
-        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {array.slice(0, 6).map((item, index) => (
             <div key={index} className="bg-muted/50 p-2 rounded-md">
