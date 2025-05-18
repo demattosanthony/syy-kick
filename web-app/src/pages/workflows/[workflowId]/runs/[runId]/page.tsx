@@ -317,39 +317,7 @@ const WorkflowRunDetailsSkeleton = () => {
       </div>
 
       <Skeleton className="h-32 w-full" />
-
-      <Tabs defaultValue="timeline">
-        <TabsList>
-          <TabsTrigger value="graph">Graph</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="json">JSON</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="graph" className="mt-4">
-          <Skeleton className="h-[500px] w-full" />
-        </TabsContent>
-
-        <TabsContent value="timeline" className="mt-4">
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="details" className="mt-4">
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-20 w-full" />
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="json" className="mt-4">
-          <Skeleton className="h-[500px] w-full" />
-        </TabsContent>
-      </Tabs>
+      <Skeleton className="h-[500px] w-full" />
     </div>
   )
 }

@@ -176,22 +176,25 @@ export function renderSingleOutput(output: StepOutputValue | unknown) {
 // Helper function to render a file
 export function renderFile(file: WorkflowFile) {
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:cursor-pointer">
-        {getFileIcon(file.mimeType, file.url || '')}
-        <span className="truncate">{file.fileName}</span>
+    <div className="flex flex-col items-center gap-4 text-sm w-32 bg-muted/50 p-2 rounded-md">
+      <a
+        href={file.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex flex-col items-center hover:cursor-pointer"
+      >
+        <div className="mb-2">
+          {getFileIcon(file.mimeType, file.url || '')}
+        </div>
+        <div className="text-center">
+          <div className="line-clamp-2 text-sm">{file.fileName}</div>
+          {file.fileSize && (
+            <div className="text-xs text-muted-foreground">
+              ({formatFileSize(file.fileSize)})
+            </div>
+          )}
+        </div>
       </a>
-      {file.fileSize && <span className="text-xs text-muted-foreground">({formatFileSize(file.fileSize)})</span>}
-      {file.url && (
-        <a
-          href={file.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-blue-600 hover:underline ml-auto"
-        >
-          View
-        </a>
-      )}
     </div>
   )
 }
@@ -206,17 +209,10 @@ function renderOutputArray(array: any[], label: string) {
   if (containsSchemaTypes) {
     return (
       <div className="space-y-2">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {array.slice(0, 6).map((item, index) => (
-            <div key={index} className="bg-muted/50 p-2 rounded-md">
-              {renderSingleOutput(item)}
-            </div>
+        <div className="flex flex-wrap gap-2">
+          {array.map((item, index) => (
+            renderSingleOutput(item)
           ))}
-          {array.length > 6 && (
-            <div className="col-span-full text-xs text-muted-foreground text-center">
-              ...and {array.length - 6} more items
-            </div>
-          )}
         </div>
       </div>
     )
