@@ -1,10 +1,11 @@
-import { useRouteError } from "react-router";
+import { useNavigate, useRouteError } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { AlertCircle, ChevronLeft, RefreshCcw } from "lucide-react";
 import { Button } from "./ui/button";
 
 export const RouteErrorElement = () => {
   const error = useRouteError() as Error;
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-background/90 p-4">
@@ -38,7 +39,7 @@ export const RouteErrorElement = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => window.history.back()}
+                onClick={() => navigate("/")}
                 className="sm:flex-1"
               >
                 <ChevronLeft className="w-4 h-4" />
