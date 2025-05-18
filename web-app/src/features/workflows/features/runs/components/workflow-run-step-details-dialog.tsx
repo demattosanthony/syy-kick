@@ -5,9 +5,9 @@ import { renderStepOutput } from "@/features/workflows/utils"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
-export function StepDetailsDialog({ node, onClose }: { node: TreeNode; onClose: () => void }) {
+export function StepDetailsDialog({ node }: { node: TreeNode; }) {
     return (
-        <Dialog open={!!node} onOpenChange={() => onClose()}>
+        <Dialog open={!!node}>
             <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
                 <DialogHeader>
                     <DialogTitle>{node.stepId}</DialogTitle>

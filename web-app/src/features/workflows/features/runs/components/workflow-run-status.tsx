@@ -50,7 +50,7 @@ export function WorkflowRunStatus({ completedSteps, totalSteps, status, hasFaile
                         <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-white rounded-xl p-6 mt-6 shadow-sm hover:shadow-md transition-shadow duration-200">
                             <div className="flex items-center gap-2 mb-3">
                                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                <h2 className="text-lg font-semibold text-green-700">Workflow Output</h2>
+                                <h2 className="text-lg font-semibold text-green-700">Result</h2>
                             </div>
                             <div className="bg-white rounded-lg p-4 border border-green-100">
                                 {renderStepOutput(lastOutput)}

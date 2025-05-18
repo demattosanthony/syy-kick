@@ -355,3 +355,19 @@ export function buildOptimisticRun(def: GetVNextWorkflowResponse, runId: string)
 export function formatStepName(stepId: string): string {
   return stepId.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase())
 }
+
+export const countStepsInGraph = (stepGraph: any[]): number => {
+  return stepGraph.reduce((count, step) => {
+    switch (step.type) {
+      case 'parallel':
+        return count + step.steps.length;
+      case 'step':
+      case 'conditional':
+      case 'loop':
+      case 'foreach':
+        return count + 1;
+      default:
+        return count;
+    }
+  }, 0);
+};

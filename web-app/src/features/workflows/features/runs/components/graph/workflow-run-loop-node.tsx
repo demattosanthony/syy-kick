@@ -14,12 +14,10 @@ export function LoopNode({
     stepNumber,
     entry,
     treeNodes,
-    setSelectedNode,
 }: {
     stepNumber: number
     entry: LoopEntry
     treeNodes: TreeNode[]
-    setSelectedNode: (node: TreeNode) => void
 }) {
     const node = treeNodes.find((node) => node.stepId === entry.step.id)
     return (
@@ -37,7 +35,6 @@ export function LoopNode({
                     description={entry.step.description || ""}
                     node={node}
                     isLoop={true}
-                    onClick={() => node && setSelectedNode(node)}
                 />
             </div>
         </div>

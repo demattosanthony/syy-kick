@@ -7,13 +7,13 @@ import { CustomWorkflowRun, StepStatus, TreeNode } from "@/features/workflows/wo
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkflowRunGraph } from "@/features/workflows/features/runs/components/graph/workflow-run-graph";
 import { WorkflowRunTimeline } from "@/features/workflows/features/runs/components/timeline/workflow-run-timeline";
-import { WorkflowRunDetails } from "@/features/workflows/features/runs/components/details/workflow-run-details";
-import { buildOptimisticRun, buildTree, flatten } from "@/features/workflows/utils";
+import { buildOptimisticRun, buildTree, countStepsInGraph, flatten } from "@/features/workflows/utils";
 import { useGetRunQuery } from "@/features/workflows/features/runs/api";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkflowRunStatus } from "@/features/workflows/features/runs/components/workflow-run-status";
 import { WorkflowRunInput } from "@/features/workflows/features/runs/components/workflow-run-input";
+
 
 export function WorkflowRunPageDetails() {
   const { workflowId, runId } = useParams<{ workflowId: string; runId: string }>();
@@ -79,7 +79,7 @@ export function WorkflowRunPageDetails() {
       ),
     );
 
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const timer = setInterval(() => (!hasFailed && !isCompleted) && setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [runState]);
 
@@ -95,7 +95,11 @@ export function WorkflowRunPageDetails() {
       }))
   }, [runState])
 
-  const totalSteps = useMemo(() => workflowQueryData?.stepGraph.length ?? 0, [workflowQueryData])
+  const totalSteps = useMemo(() => {
+    if (!workflowQueryData?.stepGraph) return 0;
+    return countStepsInGraph(workflowQueryData.stepGraph);
+  }, [workflowQueryData]);
+
   const completedSteps = useMemo(() => steps.filter((step) => step.status === StepStatus.Success).length, [steps])
   const failedSteps = useMemo(() => steps.filter((step) => step.status === StepStatus.Failed).length, [steps])
 
@@ -181,7 +185,6 @@ export function WorkflowRunPageDetails() {
         <TabsList>
           <TabsTrigger value="graph">Graph</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="details">Details</TabsTrigger>
         </TabsList>
 
         {/* Workflow Run Graph */}
@@ -194,10 +197,6 @@ export function WorkflowRunPageDetails() {
           <WorkflowRunTimeline treeNodes={treeNodes} />
         </TabsContent>
 
-        {/* Workflow Run Details */}
-        <TabsContent value="details" className="mt-4">
-          <WorkflowRunDetails treeNodes={treeNodes} />
-        </TabsContent>
       </Tabs>
     </div>
   )

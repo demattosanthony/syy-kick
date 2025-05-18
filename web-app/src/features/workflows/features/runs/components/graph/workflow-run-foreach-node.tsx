@@ -16,12 +16,10 @@ export function ForEachNode({
     stepNumber,
     entry,
     treeNodes,
-    setSelectedNode,
 }: {
     stepNumber: number
     entry: ForEachEntry
     treeNodes: TreeNode[]
-    setSelectedNode: (node: TreeNode) => void
 }) {
     const node = treeNodes.find((node) => node.stepId === entry.step.id)
     return (
@@ -39,7 +37,6 @@ export function ForEachNode({
                     description={entry.step.description || ""}
                     node={node}
                     isForeach={true}
-                    onClick={() => node && setSelectedNode(node)}
                 />
             </div>
         </div>

@@ -1,4 +1,3 @@
-export * from "./details/workflow-run-details"
 export * from "./graph/workflow-run-graph"
 export * from "./timeline/workflow-run-timeline"
 export * from "./workflow-run-step-details-dialog"

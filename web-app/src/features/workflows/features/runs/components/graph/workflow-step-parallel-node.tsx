@@ -13,13 +13,12 @@ export function ParallelNode({
     stepNumber,
     entry,
     treeNodes,
-    setSelectedNode,
 }: {
     stepNumber: number
     entry: ParallelEntry
     treeNodes: TreeNode[]
-    setSelectedNode: (node: TreeNode) => void
 }) {
+
     return (
         <div className="w-full">
             <div className="flex justify-center mb-4">
@@ -28,10 +27,10 @@ export function ParallelNode({
                     Parallel Execution
                 </Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${entry.steps.length} gap-2`}>
                 {entry.steps.map((step: SerializedStepFlowEntry, idx: number) => (
                     <div key={idx} className="border border-dashed border-muted rounded-md p-4">
-                        <StepEntry stepNumber={stepNumber} entry={step} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+                        <StepEntry stepNumber={stepNumber} entry={step} treeNodes={treeNodes} />
                     </div>
                 ))}
             </div>

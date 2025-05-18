@@ -13,21 +13,21 @@ export function WorkflowRunInput({ runState }: { runState: CustomWorkflowRun }) 
                 return (
                     <div className="text-sm">
                         <span className="font-medium">Text:</span>{" "}
-                        {value.value.length > 100
-                            ? value.value.substring(0, 100) + "..."
-                            : value.value}
+                        {value.value.text.length > 100
+                            ? value.value.text.substring(0, 100) + "..."
+                            : value.value.text}
                     </div>
                 );
             case "number":
                 return (
                     <div className="text-sm">
-                        <span className="font-medium">Number:</span> {value.value}
+                        <span className="font-medium">Number:</span> {value.value.number}
                     </div>
                 );
             case "boolean":
                 return (
                     <div className="text-sm">
-                        <span className="font-medium">Boolean:</span> {value.value ? "Vrai" : "Faux"}
+                        <span className="font-medium">Boolean:</span> {value.value.boolean ? "Vrai" : "Faux"}
                     </div>
                 );
             default:

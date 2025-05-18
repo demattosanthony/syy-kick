@@ -33,7 +33,7 @@ export function WorkflowRunTimeline({
           ))}
         </div>
 
-        {selectedNode && <StepDetailsDialog node={selectedNode} onClose={() => setSelectedNode(null)} />}
+        {selectedNode && <StepDetailsDialog node={selectedNode} />}
       </CardContent>
     </Card>
   )

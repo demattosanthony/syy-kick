@@ -10,12 +10,10 @@ export function StepEntry({
     entry,
     treeNodes,
     stepNumber,
-    setSelectedNode,
 }: {
     entry: SerializedStepFlowEntry
     treeNodes: TreeNode[]
     stepNumber: number
-    setSelectedNode: (node: TreeNode) => void
 }) {
     const getNodeForStep = (stepId: string): TreeNode | undefined => {
         return treeNodes.find((node) => node.stepId === stepId)
@@ -26,21 +24,20 @@ export function StepEntry({
             const node = getNodeForStep(entry.step.id)
             return (
                 <StepNode
-                    stepNumber={stepNumber}                    
+                    stepNumber={stepNumber}
                     stepId={entry.step.id}
                     description={entry.step.description || ""}
                     node={node}
-                    onClick={() => node && setSelectedNode(node)}
                 />
             )
         }
         case "parallel":
-            return <ParallelNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+            return <ParallelNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} />
         case "conditional":
-            return <ConditionalNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+            return <ConditionalNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} />
         case "loop":
-            return <LoopNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+            return <LoopNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} />
         case "foreach":
-            return <ForEachNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} setSelectedNode={setSelectedNode} />
+            return <ForEachNode stepNumber={stepNumber} entry={entry} treeNodes={treeNodes} />
     }
 }
