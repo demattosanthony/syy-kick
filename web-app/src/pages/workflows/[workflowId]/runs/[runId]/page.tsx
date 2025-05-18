@@ -21,7 +21,7 @@ export function WorkflowRunPageDetails() {
   const [runState, setRunState] = useState<CustomWorkflowRun | null>(null);
   const [treeNodes, setTreeNodes] = useState<TreeNode[]>([]);
   const [now, setNow] = useState(Date.now());
-  const startMsRef = useRef<number>(0);
+  const startMsRef = useRef<number>(Date.now());
 
   const {
     data: runQueryData,
@@ -58,6 +58,7 @@ export function WorkflowRunPageDetails() {
     };
 
     setRunState(merged);
+    startMsRef.current = new Date(runQueryData.createdAt).getTime();
   }, [runQueryData, workflowQueryData]);
 
   useEffect(() => {
@@ -120,7 +121,6 @@ export function WorkflowRunPageDetails() {
 
     return `${mins}m ${secs}s`;
   }, [now, isCompleted, hasFailed, runState?.updatedAt]);
-
 
   const startTime = useMemo(() => {
     if (!runState) return null
