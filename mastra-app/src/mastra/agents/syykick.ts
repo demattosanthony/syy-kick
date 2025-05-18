@@ -1,14 +1,59 @@
 import { openai } from "@ai-sdk/openai";
 import { Agent } from "@mastra/core/agent";
 import { Memory } from "@mastra/memory";
+import { PgVector, PostgresStore } from "@mastra/pg";
 
 import { webSearchTool } from "../tools";
 
+export const storage = new PostgresStore({
+  connectionString: process.env.DATABASE_URL!,
+});
+
 // Basic memory setup
 const memory = new Memory({
+  embedder: openai.embedding("text-embedding-3-small"),
   options: {
-    lastMessages: 10,
+    lastMessages: 20,
+    semanticRecall: {
+      topK: 3,
+      messageRange: 2,
+    },
+    workingMemory: {
+      enabled: true,
+      use: "tool-call",
+      template: `
+# User Profile
+ 
+## Personal Info
+ 
+- Name:
+- Location:
+- Timezone:
+ 
+## Preferences
+ 
+- Communication Style: [e.g., Formal, Casual]
+- Project Goal:
+- Key Deadlines:
+  - [Deadline 1]: [Date]
+  - [Deadline 2]: [Date]
+ 
+## Session State
+ 
+- Last Task Discussed:
+- Open Questions:
+  - [Question 1]
+  - [Question 2]
+`,
+    },
+    threads: {
+      generateTitle: true,
+    },
   },
+  storage: storage,
+  vector: new PgVector({
+    connectionString: process.env.DATABASE_URL!,
+  }),
 });
 
 export const syykick = new Agent({
