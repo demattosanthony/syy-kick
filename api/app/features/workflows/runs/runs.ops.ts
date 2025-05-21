@@ -53,12 +53,12 @@ export const workflowRunsOps = {
     const runWithAny = foundRun as any;
 
     // Presign inputs
-    if (runWithAny.snapshot?.context?.input) {
+    if (runWithAny?.snapshot?.context?.input) {
       runWithAny.snapshot.context.input = await runsUtils.presignInputs(runWithAny.snapshot.context.input);
     }
 
     // Presign outputs of each step
-    if (runWithAny.snapshot?.context) {
+    if (runWithAny?.snapshot?.context) {
       for (const stepId in runWithAny.snapshot.context) {
         if (stepId !== 'input' && runWithAny.snapshot.context[stepId]?.output) {
           runWithAny.snapshot.context[stepId].output = await runsUtils.presignStepOutput(runWithAny.snapshot.context[stepId].output);

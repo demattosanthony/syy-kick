@@ -328,7 +328,7 @@ export default function WorkflowPageContent({
 
               if (lastGraphStep && ("step" in lastGraphStep)) {
                 const id = lastGraphStep.step.id;
-                status = run.snapshot.context[id]?.status;
+                status = run.snapshot.context[id]?.status ?? "running";
               }
 
               return (
