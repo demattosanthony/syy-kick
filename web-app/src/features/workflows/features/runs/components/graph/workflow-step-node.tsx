@@ -9,6 +9,7 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function StepNode({
     stepId,
@@ -32,30 +33,44 @@ export function StepNode({
         <Accordion
             type="single"
             collapsible
-            defaultValue={isRunning ? "step" : undefined}
+            value={isRunning ? "step" : undefined}
             className={`
                 w-full rounded-md border
                 hover:shadow-md transition-shadow
+                overflow-hidden
             `}
         >
             <AccordionItem value="step" className="border-none">
                 <AccordionTrigger
-                    className="px-4 py-4 hover:no-underline"
+                    className="px-4 py-4 hover:bg-muted"
                     onClick={(e) => {
                         e.stopPropagation()
-                        // onClick()
                     }}
                 >
-                    <div className="flex justify-between items-center w-full">
-                        <h3 className="text-sm font-medium">{`Step ${stepNumber}: ${formatStepName(stepId)}`}</h3>
+                    <div className="flex items-center gap-2 w-full">
                         <StepStatusBadge status={status} />
+                        <h3 className="text-md font-medium">{`Step ${stepNumber}: ${formatStepName(stepId)}`}</h3>
                     </div>
                 </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
+                <AccordionContent className="px-4 pb-4 border-t border-border">
                     <p className="text-xs text-muted-foreground mt-1">{description}</p>
 
+                    {isRunning && !node?.output && (
+                        <div className="mt-3">
+                            <p className="text-xs font-medium mb-2">Output:</p>
+                            <div className="flex flex-wrap gap-2">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="w-32 h-38 p-2 bg-muted/50 rounded-md flex flex-col items-center justify-center gap-2">
+                                        <Skeleton className="w-28 h-28" />
+                                        <Skeleton className="w-full h-4" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {node?.output && (
-                        <div className="mt-3 pt-3 border-t border-dashed border-muted">
+                        <div className="mt-3">
                             <p className="text-xs font-medium mb-2">Output:</p>
                             {renderStepOutput(node.output)}
                         </div>

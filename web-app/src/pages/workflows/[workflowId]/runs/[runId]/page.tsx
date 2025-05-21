@@ -1,18 +1,17 @@
-import { Link, useParams } from "react-router";
-import { useWorkflowQuery } from "@/features/workflows/api";
-import { Slash } from "lucide-react";
-import { useRunSSE } from "@/features/workflows/features/runs/hooks";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { CustomWorkflowRun, StepStatus, TreeNode } from "@/features/workflows/workflows.types";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { WorkflowRunGraph } from "@/features/workflows/features/runs/components/graph/workflow-run-graph";
-import { buildOptimisticRun, buildTree, countStepsInGraph, flatten } from "@/features/workflows/utils";
-import { useGetRunQuery } from "@/features/workflows/features/runs/api";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { Skeleton } from "@/components/ui/skeleton";
-import { WorkflowRunStatus } from "@/features/workflows/features/runs/components/workflow-run-status";
-import { WorkflowRunInput } from "@/features/workflows/features/runs/components/workflow-run-input";
 import { Badge } from "@/components/ui/badge";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useWorkflowQuery } from "@/features/workflows/api";
+import { useGetRunQuery } from "@/features/workflows/features/runs/api";
+import { WorkflowRunGraph } from "@/features/workflows/features/runs/components/graph/workflow-run-graph";
+import { WorkflowRunStatus } from "@/features/workflows/features/runs/components/workflow-run-status";
+import { useRunSSE } from "@/features/workflows/features/runs/hooks";
+import { buildOptimisticRun, buildTree, flatten } from "@/features/workflows/utils";
+import { CustomWorkflowRun, StepStatus, TreeNode } from "@/features/workflows/workflows.types";
+import { ArrowLeftIcon, Slash } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router";
 
 
 export function WorkflowRunPageDetails() {
@@ -20,8 +19,6 @@ export function WorkflowRunPageDetails() {
 
   const [runState, setRunState] = useState<CustomWorkflowRun | null>(null);
   const [treeNodes, setTreeNodes] = useState<TreeNode[]>([]);
-  const [now, setNow] = useState(Date.now());
-  const startMsRef = useRef<number>(Date.now());
 
   const {
     data: runQueryData,
@@ -35,7 +32,6 @@ export function WorkflowRunPageDetails() {
     data: workflowQueryData,
     isFetching: isWorkflowLoading,
   } = useWorkflowQuery(workflowId!);
-
 
   useRunSSE({
     workflowId: workflowId as string,
@@ -57,9 +53,7 @@ export function WorkflowRunPageDetails() {
         ?? workflowQueryData!,
     };
 
-    console.log(runQueryData.createdAt, '<--- runQueryData.createdAt')
     setRunState(merged);
-    startMsRef.current = new Date(runQueryData.createdAt).getTime();
   }, [runQueryData, workflowQueryData]);
 
   useEffect(() => {
@@ -72,59 +66,7 @@ export function WorkflowRunPageDetails() {
       ),
     );
 
-    const timer = setInterval(() => (!hasFailed && !isCompleted) && setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
   }, [runState]);
-
-  // Process the workflow run data
-  const steps = useMemo(() => {
-    return Object.entries(runState?.snapshot.context ?? {})
-      .filter(([key]) => key !== "input")
-      .map(([id, data]) => ({
-        id,
-        status: data.status,
-        output: data.output,
-        error: data.error,
-      }))
-  }, [runState])
-
-  const totalSteps = useMemo(() => {
-    if (!workflowQueryData?.stepGraph) return 0;
-    return countStepsInGraph(workflowQueryData.stepGraph);
-  }, [workflowQueryData]);
-
-  const completedSteps = useMemo(() => steps.filter((step) => step.status === StepStatus.Success).length, [steps])
-  const failedSteps = useMemo(() => steps.filter((step) => step.status === StepStatus.Failed).length, [steps])
-
-  const isCompleted = useMemo(
-    () => totalSteps > 0 && completedSteps === totalSteps,
-    [totalSteps, completedSteps],
-  );
-  const hasFailed = useMemo(() => failedSteps > 0, [failedSteps])
-  const status = useMemo(() => hasFailed ? "failed" : isCompleted ? "success" : "in-progress", [hasFailed, isCompleted])
-
-  const duration = useMemo(() => {
-    if (!runState) return "0s";
-
-    const startMs = startMsRef.current;
-
-    const endMs = (isCompleted || hasFailed)
-      ? new Date(runState.updatedAt).getTime()
-      : now;
-
-    const diffMs = Math.max(endMs - startMs, 0);
-    const diffSec = Math.floor(diffMs / 1000);
-    const mins = Math.floor(diffSec / 60);
-    const secs = diffSec % 60;
-
-    return `${mins}m ${secs}s`;
-  }, [now, isCompleted, hasFailed, runState?.updatedAt]);
-
-
-  const startTime = useMemo(() => {
-    if (!runState) return null
-    return new Date(runState.createdAt).toLocaleTimeString()
-  }, [runState])
 
   const lastOutput = useMemo(() => {
     if (!runState) return undefined;
@@ -142,21 +84,73 @@ export function WorkflowRunPageDetails() {
       : undefined;
   }, [runState, workflowQueryData])
 
-  const lastStep = useMemo(() => {
+  const lastRunningStep = useMemo(() => {
     if (!runState) return undefined;
     const step = Object.entries(runState.snapshot.context)
       .find(([_, data]) => data.status === StepStatus.Running || data.status === StepStatus.Failed);
+
     return step ? {
       id: step[0],
       name: step[0],
       status: step[1].status,
       error: step[1].error
     } : undefined;
-  }, [runState])
+  }, [runState]);
 
-  if (isRunLoading && !runState) return <WorkflowRunDetailsSkeleton />
+  const lastGraphStep = useMemo(() => {
+    if (!workflowQueryData?.stepGraph) return null;
+    return workflowQueryData.stepGraph[workflowQueryData.stepGraph.length - 1];
+  }, [workflowQueryData]);
 
-  if (!runState) return null
+  const lastStepStatus = useMemo(() => {
+    if (!lastGraphStep || !("step" in lastGraphStep)) return null;
+
+    const id = lastGraphStep.step.id;
+
+    const runStateStep = runState?.snapshot?.context[id];
+
+    if (runStateStep) {
+      return runStateStep.status;
+    }
+
+    return "running";
+  }, [lastGraphStep, runState]);
+
+  const workflowRunStatus = useMemo(() => {
+    switch (lastStepStatus) {
+      case "pending":
+        return "Pending";
+      case "running":
+        return "Running";
+      case "failed":
+        return "Failed";
+      case "success":
+        return "Completed";
+      default:
+        return "Running";
+    }
+  }, [lastStepStatus]);
+
+  const runStatusColor = useMemo(() => {
+    switch (lastStepStatus) {
+      case "pending":
+        return "bg-yellow-500";
+      case "running":
+        return "bg-blue-500";
+      case "failed":
+        return "bg-red-500";
+      case "success":
+        return "bg-green-500";
+      default:
+        return "bg-blue-500";
+    }
+  }, [lastStepStatus]);
+
+  if (isRunLoading && !runState) return <WorkflowRunDetailsSkeleton />;
+
+  if (!runState) return null;
+
+  console.log(runState, '<---- run state')
 
   return (
     <div className="container mx-auto p-4 space-y-6">
@@ -166,47 +160,50 @@ export function WorkflowRunPageDetails() {
         workflowName={workflowQueryData?.name}
         runId={runId}
       />
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">{runState.workflowName}</h1>
-            <Badge variant="secondary">
-              #{runState.runId.slice(0, 8)}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-6 text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <p>
-                Status:
-              </p>
-              <div className={`w-3 h-3 rounded-full ${status === "success" ? "bg-green-500" : status === "failed" ? "bg-red-500" : "bg-yellow-500"}`} />
-              <p>
-                {status}
-              </p>
-            </div>
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <p>Duration:</p>
-              <p>{duration}</p>
+      <div className="flex flex-col flex-1 max-w-3xl mx-auto p-4 pt-6 w-full gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+          <div className="flex flex-col w-full">
+            <div className="flex flex-col border-l-4 border-primary pl-4 mb-2">
+              <div className="flex w-full justify-between items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-4xl font-bold tracking-tight">Run details</h1>
+                  <Badge variant="secondary">
+                    #{runState?.runId?.slice(0, 8) ?? ''}
+                  </Badge>
+                </div>
+                <Button variant="outline" asChild>
+                  <Link to={`/workflows/${workflowId}/runs`}>
+                    <ArrowLeftIcon className="w-4 h-4" />
+                    Back to runs
+                  </Link>
+                </Button>
+              </div>
+              <h2 className="text-2xl text-primary font-bold tracking-tight">{runState.workflowName}</h2>
+              <div className="flex items-center gap-6 text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <p>
+                    Status:
+                  </p>
+                  <div className={`w-3 h-3 rounded-full ${runStatusColor}`} />
+                  <p>
+                    {workflowRunStatus}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        <WorkflowRunStatus
+          status={lastStepStatus as StepStatus}
+          hasFailed={lastStepStatus === "failed"}
+          isCompleted={lastStepStatus === "success"}
+          lastOutput={lastOutput}
+          lastRunningStep={lastRunningStep}
+        />
+
+        <WorkflowRunGraph workflowRun={runState} treeNodes={treeNodes} runState={runState} />
       </div>
-
-      <WorkflowRunStatus
-        completedSteps={completedSteps}
-        totalSteps={totalSteps}
-        status={status}
-        hasFailed={hasFailed}
-        isCompleted={isCompleted}
-        duration={duration ?? "0s"}
-        startTime={startTime ?? "0s"}
-        lastOutput={lastOutput}
-        lastStep={lastStep}
-      />
-
-      <WorkflowRunInput runState={runState} />
-
-      <WorkflowRunGraph workflowRun={runState} treeNodes={treeNodes} />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { FileCode, FileAudio, FileVideo, File } from "lucide-react"
-import { type WorkflowRunStepOutput, type WorkflowFile, type StepOutputValue, type StepContext, type TreeNode, StepStatus, CustomWorkflowRun } from "@/features/workflows/workflows.types"
+import { type WorkflowRunStepOutput, type WorkflowFile, type StepOutputValue, type StepContext, type TreeNode, StepStatus, CustomWorkflowRun, VNextWorkflowRunState } from "@/features/workflows/workflows.types"
 import { SerializedStep, SerializedStepFlowEntry } from "@mastra/core/workflows/vNext"
 import { GetVNextWorkflowResponse } from "@mastra/client-js"
 import excel from "@/assets/logos/excel.svg"
@@ -351,19 +351,3 @@ export function buildOptimisticRun(def: GetVNextWorkflowResponse, runId: string)
 export function formatStepName(stepId: string): string {
   return stepId.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase())
 }
-
-export const countStepsInGraph = (stepGraph: any[]): number => {
-  return stepGraph.reduce((count, step) => {
-    switch (step.type) {
-      case 'parallel':
-        return count + step.steps.length;
-      case 'step':
-      case 'conditional':
-      case 'loop':
-      case 'foreach':
-        return count + 1;
-      default:
-        return count;
-    }
-  }, 0);
-};

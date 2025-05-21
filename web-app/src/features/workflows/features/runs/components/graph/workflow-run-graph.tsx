@@ -1,14 +1,16 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { type CustomWorkflowRun, type TreeNode } from "@/features/workflows/workflows.types"
 import { SerializedStepFlowEntry } from "@mastra/core/workflows/vNext"
 import { StepEntry } from "@/features/workflows/features/runs/components/graph"
+import { WorkflowRunInput } from "../workflow-run-input"
 
 export function WorkflowRunGraph({
   workflowRun,
   treeNodes,
-}: { workflowRun: CustomWorkflowRun; treeNodes: TreeNode[] }) {
+  runState,
+}: { workflowRun: CustomWorkflowRun; treeNodes: TreeNode[]; runState: CustomWorkflowRun }) {
 
   if (!workflowRun.definition) {
     return (
@@ -23,35 +25,29 @@ export function WorkflowRunGraph({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Workflow Run</CardTitle>
-        <CardDescription>
-          The graph of the workflow run.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-6 overflow-auto">
-        <div className="min-w-[800px]">
-          <StepGraph
-            stepGraph={workflowRun.definition.stepGraph}
-            treeNodes={treeNodes}
-          />
-        </div>
-
-      </CardContent>
-    </Card>
+    <StepGraph
+      stepGraph={workflowRun.definition.stepGraph}
+      treeNodes={treeNodes}
+      runState={runState}
+    />
   )
 }
 
 function StepGraph({
   stepGraph,
   treeNodes,
+  runState,
 }: {
   stepGraph: SerializedStepFlowEntry[]
   treeNodes: TreeNode[]
+  runState: CustomWorkflowRun
 }) {
   return (
-    <div className="flex flex-col items-center space-y-4">
+    <div className="flex flex-col items-center w-full">
+      <WorkflowRunInput runState={runState} />
+      <div className="flex justify-center">
+        <div className="h-8 w-px bg-gray-400"></div>
+      </div>
       {stepGraph.map((entry, index) => (
         <div key={index} className="w-full">
           <StepEntry
@@ -60,8 +56,8 @@ function StepGraph({
             treeNodes={treeNodes}
           />
           {index < stepGraph.length - 1 && (
-            <div className="flex justify-center my-2">
-              <div className="h-4 w-0.5 bg-muted"></div>
+            <div className="flex justify-center">
+              <div className="h-8 w-px bg-gray-400"></div>
             </div>
           )}
         </div>

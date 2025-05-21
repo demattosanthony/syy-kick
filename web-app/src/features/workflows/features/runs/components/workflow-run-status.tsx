@@ -1,21 +1,16 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Check, X, Loader2, Clock, SkipForward } from "lucide-react"
-import { StepOutputValue } from "@/features/workflows/workflows.types"
+import { StepOutputValue, StepStatus } from "@/features/workflows/workflows.types"
 import { formatStepName, renderStepOutput } from "@/features/workflows/utils"
-import { Progress } from "@/components/ui/progress"
 import { useMemo } from "react"
 
 type WorkflowRunStatusProps = {
-    completedSteps: number
-    totalSteps: number
-    status: string
+    status: StepStatus
     hasFailed: boolean
     isCompleted: boolean
-    duration: string
-    startTime: string
     lastOutput: StepOutputValue | undefined
-    lastStep?: {
+    lastRunningStep?: {
         id: string
         name: string
         status: string
@@ -24,17 +19,12 @@ type WorkflowRunStatusProps = {
 }
 
 export function WorkflowRunStatus({
-    completedSteps,
-    totalSteps,
     status,
     hasFailed,
     isCompleted,
-    duration,
-    startTime,
     lastOutput,
-    lastStep
+    lastRunningStep
 }: WorkflowRunStatusProps) {
-    const progress = Math.round((completedSteps / totalSteps) * 100)
 
     const statusTitle = useMemo(() => {
 
@@ -46,68 +36,45 @@ export function WorkflowRunStatus({
             return "Completed"
         }
 
-        if (lastStep) {
-            return `In Progress: ${formatStepName(lastStep.name)}`
+        if (lastRunningStep) {
+            return `In Progress: ${formatStepName(lastRunningStep.name)}`
         }
 
         return "In Progress"
 
 
-    }, [hasFailed, isCompleted, lastStep])
+    }, [hasFailed, isCompleted, lastRunningStep])
 
     return (
-        <>
+        <div className="space-y-6 w-full">
             {!isCompleted && !hasFailed ? (
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">Progress</span>
-                            <span className="text-sm font-medium">{progress}%</span>
-                        </div>
-                        <Progress value={progress} className="h-2" />
-                        <p className="text-sm text-muted-foreground">
-                            {completedSteps} of {totalSteps} steps completed
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <StatusCard
-                            title="Current Status"
-                            value={statusTitle}
-                            status={status}
-                            description={
-                                hasFailed
-                                    ? "One or more steps failed"
-                                    : isCompleted
-                                        ? "All steps completed successfully"
-                                        : "Workflow is running"
-                            }
-                            stepName={lastStep?.name}
-                        />
-                        <StatusCard
-                            title="Duration"
-                            value={duration ?? "0s"}
-                            status="info"
-                            description={`Started at ${startTime}`}
-                            stepName={lastStep?.name}
-                        />
-                    </div>
-                </div>
+                <StatusCard
+                    title="Current Status"
+                    value={statusTitle}
+                    status={status}
+                    description={
+                        hasFailed
+                            ? "One or more steps failed"
+                            : isCompleted
+                                ? "All steps completed successfully"
+                                : "Workflow is running"
+                    }
+                />
             ) : hasFailed ? (
                 <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-white rounded-xl p-6 shadow-sm">
                     <div className="flex items-center gap-2 mb-3">
                         <div className="w-2 h-2 rounded-full bg-red-500" />
                         <h2 className="text-lg font-semibold text-red-700">Run Failed</h2>
                     </div>
-                    {lastStep ? (
+                    {lastRunningStep ? (
                         <div className="space-y-3">
                             <p className="text-sm text-red-600">
-                                Step "{formatStepName(lastStep.name)}" has failed
+                                Step "{formatStepName(lastRunningStep.name)}" has failed
                             </p>
-                            {lastStep.error && (
+                            {lastRunningStep.error && (
                                 <div className="bg-white rounded-lg p-4 border border-red-100">
                                     <p className="text-sm font-medium text-red-700 mb-2">Error details:</p>
-                                    <p className="text-sm text-red-600 whitespace-pre-wrap max-h-40 overflow-y-auto">{JSON.stringify(lastStep.error, null, 2)}</p>
+                                    <p className="text-sm text-red-600 whitespace-pre-wrap max-h-40 overflow-y-auto">{JSON.stringify(lastRunningStep.error, null, 2)}</p>
                                 </div>
                             )}
                         </div>
@@ -131,11 +98,11 @@ export function WorkflowRunStatus({
                 )
             )
             }
-        </>
+        </div>
     )
 }
 
-function StatusCard({ title, value, status, description }: { title: string, value: string, status: string, description: string, stepName?: string }) {
+function StatusCard({ title, value, status, description }: { title: string, value: string, status: StepStatus, description: string }) {
     return (
         <div className="bg-muted/50 rounded-lg p-4">
             <div className="flex justify-between items-start">
@@ -148,7 +115,7 @@ function StatusCard({ title, value, status, description }: { title: string, valu
     )
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: StepStatus }) {
     switch (status) {
         case "success":
             return (
@@ -164,11 +131,11 @@ function StatusBadge({ status }: { status: string }) {
                     Failed
                 </Badge>
             )
-        case "in-progress":
+        case "running":
             return (
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                     <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    In Progress
+                    Running
                 </Badge>
             )
         case "waiting":

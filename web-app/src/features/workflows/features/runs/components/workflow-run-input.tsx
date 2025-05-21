@@ -1,6 +1,11 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { renderFile } from "@/features/workflows/utils"
 import { CustomWorkflowRun, VNextWorkflowRunState } from "@/features/workflows/workflows.types"
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion"
 
 export function WorkflowRunInput({ runState }: { runState: CustomWorkflowRun }) {
     const renderInputValue = (value: VNextWorkflowRunState["context"]["input"]) => {
@@ -40,22 +45,30 @@ export function WorkflowRunInput({ runState }: { runState: CustomWorkflowRun }) 
     };
 
     return (
-        <Card>
-            <CardHeader className="pb-3">
-                <CardTitle>Inputs</CardTitle>
-                <CardDescription>Workflow inputs</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    {runState.snapshot.context.input &&
-                        Object.entries(runState.snapshot.context.input).map(([key, value]) => (
-                            <div key={key} className="bg-muted/50 rounded-lg p-4">
-                                <h3 className="text-sm font-medium mb-2">{value?.label || key}</h3>
-                                {renderInputValue(value)}
-                            </div>
-                        ))}
-                </div>
-            </CardContent>
-        </Card>
+        <Accordion
+            type="single"
+            collapsible
+            className="w-full rounded-md border hover:shadow-md transition-shadow overflow-hidden"
+        >
+            <AccordionItem value="inputs" className="border-none">
+                <AccordionTrigger className="px-4 py-4 hover:bg-muted">
+                    <div className="flex items-center gap-2 w-full">
+                        <h3 className="text-md font-medium">Inputs</h3>
+                        <span className="text-xs text-muted-foreground">Workflow inputs</span>
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 border-t border-border">
+                    <div className="space-y-4">
+                        {runState.snapshot.context.input &&
+                            Object.entries(runState.snapshot.context.input).map(([key, value]) => (
+                                <div key={key} className="p-4">
+                                    <h3 className="text-sm font-medium mb-2">{value?.label || key}</h3>
+                                    {renderInputValue(value)}
+                                </div>
+                            ))}
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
     )
 }

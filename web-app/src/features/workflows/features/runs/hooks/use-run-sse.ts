@@ -30,16 +30,14 @@ export function useRunSSE({
         queryClient.setQueryData(
           ["runs", workflowId, workflowRunId],
           (oldData: CustomWorkflowRun) => {
-            if (!oldData) return oldData;
-
             const newRunContext = parsedData.payload.workflowState.steps;
 
             if (newRunContext) {
               const mergedContext = {
-                ...oldData.snapshot.context,
+                ...(oldData?.snapshot?.context || {}),
                 ...Object.entries(newRunContext).reduce((acc, [stepId, stepData]) => {
                   acc[stepId] = {
-                    ...oldData.snapshot.context[stepId],
+                    ...(oldData?.snapshot?.context?.[stepId] || {}),
                     ...stepData
                   };
                   return acc;
@@ -47,10 +45,10 @@ export function useRunSSE({
               };
 
               return {
-                ...oldData,
+                ...(oldData || {}),
                 updatedAt: new Date(parsedData.eventTimestamp),
                 snapshot: {
-                  ...oldData.snapshot,
+                  ...(oldData?.snapshot || {}),
                   context: mergedContext
                 }
               };

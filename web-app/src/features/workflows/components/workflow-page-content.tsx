@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader, Play, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Attachment } from "ai";
@@ -227,6 +227,11 @@ export default function WorkflowPageContent({
     }
   }
 
+  const lastGraphStep = useMemo(() => {
+    if (!workflow?.stepGraph) return null;
+    return workflow.stepGraph[workflow.stepGraph.length - 1];
+  }, [workflow]);
+
   return (
     <div className="max-w-2xl mx-auto flex flex-col items-center w-full">
       {/* Header Section */}
@@ -319,21 +324,12 @@ export default function WorkflowPageContent({
                 return null;
               }
 
-              const objKeys = Object.keys(run.snapshot.context);
+              let status = "running"; 
 
-              const length = objKeys.length;
-
-              const index = length - 1;
-
-              const key = objKeys[index];
-
-              const element = run.snapshot.context[key] as {
-                status: 'success' | 'failed' | 'suspended' | 'waiting' | 'skipped';
-                output?: any;
-                error?: any;
-              };
-
-              const status = element.status;
+              if (lastGraphStep && ("step" in lastGraphStep)) {
+                const id = lastGraphStep.step.id;
+                status = run.snapshot.context[id]?.status;
+              }
 
               return (
                 <Link to={`/workflows/${workflowId}/runs/${run.runId}`} key={run.runId}>
@@ -356,7 +352,8 @@ export default function WorkflowPageContent({
                           status === "failed" && "bg-red-100 text-red-800",
                           status === "suspended" && "bg-yellow-100 text-yellow-800",
                           status === "waiting" && "bg-blue-100 text-blue-800",
-                          status === "skipped" && "bg-gray-100 text-gray-800"
+                          status === "skipped" && "bg-gray-100 text-gray-800",
+                          status === "running" && "bg-blue-100 text-blue-800"
                         )}
                       >
                         {status}
