@@ -99,6 +99,7 @@ const ModelSelector: React.FC = () => {
                       setSelectedModel(AUTO_MODEL_CONFIG);
                       setOpen(false);
                     }}
+                    className="cursor-pointer"
                   >
                     <div className="flex items-center">
                       <WandSparkles className="w-5 h-5 mr-2 p-[2px]" />
@@ -144,6 +145,7 @@ const ModelSelector: React.FC = () => {
                         setSelectedModel(model);
                         setOpen(false);
                       }}
+                      className="cursor-pointer"
                     >
                       <div className="flex items-center">
                         {getModelImage(model.provider)}

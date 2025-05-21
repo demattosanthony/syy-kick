@@ -139,8 +139,8 @@ export function WorkSpaceSwitcher({
               <div
                 key={w.id}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-muted max-h-10",
-                  hoveredWorkspaceId === w.id && "bg-muted"
+                  "flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent  max-h-10",
+                  hoveredWorkspaceId === w.id && "bg-accent"
                 )}
                 onMouseEnter={() => {
                   setHoveredWorkspaceId(w.id);
@@ -198,8 +198,8 @@ export function WorkSpaceSwitcher({
                 <div
                   key={site.id}
                   className={cn(
-                    "px-3 text-sm cursor-pointer hover:bg-muted h-10 flex items-center",
-                    hoveredSiteId === site.id && "bg-muted"
+                    "px-3 text-sm cursor-pointer hover:bg-accent h-10 flex items-center",
+                    hoveredSiteId === site.id && "bg-accent"
                   )}
                   onMouseEnter={() => setHoveredSiteId(site.id)}
                   onClick={() => onSiteSelect(site.id)}
@@ -233,7 +233,7 @@ export function WorkSpaceSwitcher({
               {filteredProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="px-3 py-2 text-sm cursor-pointer hover:bg-muted h-10 flex items-center"
+                  className="px-3 py-2 text-sm cursor-pointer hover:bg-accent h-10 flex items-center"
                   onClick={() => onProjectSelect(project.id)}
                 >
                   {project.name}

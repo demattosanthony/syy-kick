@@ -19,7 +19,7 @@ const MessageBubble = ({
   >
     <div
       className={`
-        relative flex flex-col rounded-lg p-2 bg-[#242628]
+        relative flex flex-col rounded-lg p-2 bg-[#242628] dark:bg-input
         ${isUser ? " text-white dark:text-white max-w-[515px]" : " max-w-full"}
       `}
       style={{
