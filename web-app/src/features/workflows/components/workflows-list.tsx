@@ -9,11 +9,8 @@ import {
 } from "lucide-react";
 import { useWorkflowsQuery } from "../api";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Workflow } from "../workflows.types";
-interface WorkflowsListProps {
-  initalData?: Workflow[];
-  projectId?: string;
-}
+import { useMemo } from "react";
+import { EnhancedWorkflowResponse } from "../workflows.types";
 
 const workflowIcons: { [key: string]: LucideIcon } = {
   "Smart Page Finder": Search,
@@ -27,17 +24,17 @@ const getWorkflowIcon = (title: string): LucideIcon => {
   return workflowIcons[title] || workflowIcons.default;
 };
 
-export default function WorkflowsList(props: WorkflowsListProps) {
+export default function WorkflowsList() {
   const [searchParams] = useSearchParams();
   const search = searchParams.get("search") || "";
 
-  const { data: workflows, isLoading } = useWorkflowsQuery(props.initalData);
+  const { data: workflows, isLoading } = useWorkflowsQuery(search);
 
-  const filteredWorkflows = search
-    ? workflows?.filter((workflow) =>
-        workflow.name.toLowerCase().includes(search.toLowerCase())
-      )
-    : workflows;
+  const filteredWorkflows = workflows;
+
+  const workflowsListIsEmpty = useMemo(() => {
+    return Object.keys(filteredWorkflows || {}).length === 0;
+  }, [filteredWorkflows]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
@@ -45,24 +42,26 @@ export default function WorkflowsList(props: WorkflowsListProps) {
         !filteredWorkflows &&
         Array.from({ length: 4 }).map((_, i) => <WorkflowSkeleton key={i} />)}
 
-      {!isLoading && filteredWorkflows?.length === 0 && (
+      {!isLoading && workflowsListIsEmpty && (
         <div className="col-span-1 md:col-span-2 flex items-center justify-center h-full py-10">
           <p className="text-muted-foreground">No workflows found</p>
         </div>
       )}
 
-      {filteredWorkflows?.map((workflow, i) => (
-        <WorkflowItem key={i} workflow={workflow} projectId={props.projectId} />
+      {Object.entries(filteredWorkflows || {}).map(([id, workflow], i) => (
+        <WorkflowItem key={i} id={id} workflow={workflow} />
       ))}
     </div>
   );
 }
 
 function WorkflowItem({
+  id,
   workflow,
   projectId,
 }: {
-  workflow: Workflow;
+  id: string;
+  workflow: EnhancedWorkflowResponse;
   projectId?: string;
 }) {
   const Icon = getWorkflowIcon(workflow.name);
@@ -71,8 +70,8 @@ function WorkflowItem({
     <Link
       to={
         projectId
-          ? `/projects/${projectId}/workflows/${workflow.id}`
-          : `/workflows/${workflow.id}`
+          ? `/projects/${projectId}/workflows/${id}`
+          : `/workflows/${id}`
       }
       className="block p-6 rounded-lg bg-card hover:bg-accent border transition-colors group"
     >
@@ -85,9 +84,28 @@ function WorkflowItem({
           <p className="text-lg font-semibold text-card-foreground mb-1">
             {workflow.name}
           </p>
-          <p className="text-sm text-muted-foreground line-clamp-3">
+          <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
             {workflow.description}
           </p>
+
+          {/* Tags */}
+          {workflow.tags && workflow.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {workflow.tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                  style={{
+                    backgroundColor: tag.hexBgColor,
+                    color: tag.hexTextColor,
+                    borderColor: tag.hexBgColor,
+                  }}
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </Link>
@@ -102,7 +120,12 @@ function WorkflowSkeleton() {
         <div className="flex-1">
           <Skeleton className="h-5 w-3/4 mb-2" />
           <Skeleton className="h-4 w-full mb-1" />
-          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-5/6 mb-3" />
+          {/* Tags skeleton */}
+          <div className="flex gap-1">
+            <Skeleton className="h-6 w-16 rounded-full" />
+            <Skeleton className="h-6 w-20 rounded-full" />
+          </div>
         </div>
       </div>
     </div>

@@ -85,8 +85,6 @@ function FileUploadInput({
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
 
-    console.log(droppedFile, "<---- dropped file");
-
     if (droppedFile) {
       // Check file size if maxFileSize is specified
       if (input.maxFileSize && droppedFile.size > input.maxFileSize) {
@@ -105,8 +103,6 @@ function FileUploadInput({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
-
-    console.log(selectedFile, "<---- selected file");
 
     if (selectedFile) {
       // Check file size if maxFileSize is specified
@@ -343,23 +339,6 @@ function FileUploadInput({
       {input.maxFileSize && !sizeError && (
         <p className="text-xs mt-2 text-muted-foreground">
           Max size: {formatFileSize(input.maxFileSize)}
-        </p>
-      )}
-
-      {input.required && (
-        <p
-          className={`text-xs mt-2 ${
-            file ? "text-muted-foreground" : "text-red-500"
-          }`}
-        >
-          {/* Adjust message based on file type */}
-          {file
-            ? `✓ Required file ${
-                "source" in file && file.source === "project"
-                  ? "selected"
-                  : "uploaded"
-              }`
-            : "* Required"}
         </p>
       )}
 

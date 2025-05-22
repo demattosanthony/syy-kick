@@ -1,140 +1,29 @@
 import { Request, Response } from "express";
-import { workflowsOps } from "./workflows.ops";
-import db from "../../config/db";
-import { WorkflowUpdateRequest } from "./workflows.types";
+import { workflowsMastraOps } from "./workflows.mastra.ops";
 
 const workflowHandlers = {
   getAll: async (req: Request, res: Response) => {
     try {
-      const orgWorkflows = await workflowsOps.getWorkflows({
-        orgId:
-          req.workspace?.type === "organization"
-            ? req.workspace?.id
-            : undefined,
-        userId: req.workspace?.type === "personal" ? req.dbUser?.id : undefined,
-      });
-
-      res.json(orgWorkflows);
-    } catch (error) {
-      res.status(500).json({ error: "Internal server error" });
+      const workflows = await workflowsMastraOps.getWorkflows(
+        req.dbUser!.id,
+        req.workspace?.type === "organization" ? req.workspace.id : undefined,
+        req.query.query as string
+      );
+      res.status(200).json(workflows);
+    } catch (error: any) {
+      console.error("Error getting workflows:", error?.message);
+      res.status(500).json({ error: "Failed to get workflows" });
     }
   },
 
   getById: async (req: Request, res: Response) => {
-    const { id } = req.params;
-
-    try {
-      const workflow = await workflowsOps.getWorkflow(id as any);
-
-      if (!workflow) {
-        res.status(404).json({ error: "Workflow not found" });
-        return;
-      }
-
-      res.json(workflow);
-    } catch (error) {
-      console.log(error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
-  create: async (req: Request, res: Response) => {
-    const { name, description, workflowSteps } = req.body;
-
-    try {
-      db.transaction(async (tx) => {
-        const workflow = await workflowsOps.createWorkflow(
-          req.dbUser!.id,
-          name,
-          description,
-          tx
-        );
-        await workflowsOps.createWorkflowSteps(workflow.id, workflowSteps, tx);
-
-        if (req.workspace?.type === "organization") {
-          await workflowsOps.createWorkflowOrganizationRelation(
-            workflow.id,
-            req.workspace.id,
-            tx
-          );
-        } else {
-          await workflowsOps.createWorkflowUserRelation(
-            workflow.id,
-            req.dbUser!.id,
-            tx
-          );
-        }
-      });
-
-      res.status(201).json({ message: "Workflow created successfully" });
-    } catch (error) {
-      console.error("Error creating workflow:", error);
-      res.status(500).json({ error: "Failed to create workflow" });
-    }
-  },
-
-  update: async (req: Request, res: Response) => {
     const { id: workflowId } = req.params;
-    const { name, description, workflowSteps } =
-      req.body as WorkflowUpdateRequest;
-
-    if (!workflowId) {
-      res.status(400).json({ error: "Workflow ID is required" });
-      return;
-    }
-    if (!Array.isArray(workflowSteps)) {
-      res.status(400).json({ error: "workflowSteps must be an array" });
-      return;
-    }
-
-    try {
-      await db.transaction(async (tx) => {
-        const updateData = {
-          ...(name !== undefined && { name }),
-          ...(description !== undefined && { description }),
-        };
-
-        await workflowsOps.updateWorkflow(
-          workflowId,
-          updateData,
-          workflowSteps,
-          tx
-        );
-      });
-
-      res.json({ message: "Workflow updated successfully", id: workflowId });
-    } catch (error: any) {
-      console.error("Error updating workflow:", error);
-      if (error.message.includes("not found")) {
-        res.status(404).json({ error: "Workflow not found" });
-      } else {
-        res.status(500).json({ error: "Failed to update workflow" });
-      }
-    }
-  },
-
-  delete: async (req: Request, res: Response) => {
-    const { id: workflowId } = req.params;
-
-    if (!workflowId) {
-      res.status(400).json({ error: "Workflow ID is required" });
-      return;
-    }
-
-    try {
-      await db.transaction(async (tx) => {
-        await workflowsOps.deleteWorkflow(workflowId, tx);
-      });
-
-      // Send 204 No Content status code upon successful deletion
-      res.status(204).send();
-    } catch (error: any) {
-      console.error("Error deleting workflow:", error);
-      if (error.message.includes("not found")) {
-        res.status(404).json({ error: "Workflow not found" });
-      } else {
-        res.status(500).json({ error: "Failed to delete workflow" });
-      }
-    }
+    const workflow = await workflowsMastraOps.getWorkflow(
+      workflowId,
+      req.dbUser!.id,
+      req.workspace?.type === "organization" ? req.workspace.id : undefined
+    );
+    res.status(200).json(workflow);
   },
 };
 

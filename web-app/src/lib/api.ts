@@ -10,11 +10,9 @@ import {
 } from "@/features/permissions/types";
 import { Site } from "@/features/sites/types/sites";
 import {
-  Step,
-  Workflow,
-  WorkflowRun,
-  WorkflowRunRequest,
-  WorkflowUpdateRequest,
+  CustomWorkflowRun,
+  CustomWorkflowRuns,
+  EnhancedWorkflowResponse,
 } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
@@ -59,7 +57,8 @@ import {
   KnowledgeBaseAccessLogFilters,
   KnowledgeBaseAccessLogsResponse,
 } from "@/features/knowledge-bases/types";
-import { Agent, Tool } from "@/features/workflows/features/agents/types";
+import { Comment } from "@/features/workflows/features/runs/features/comments/types";
+// import { Agent, Tool } from "@/features/workflows/features/agents/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -925,71 +924,34 @@ class PermissionsApi extends ApiRequest {
  * Workflows API Module
  */
 class WorkflowsApi extends ApiRequest {
-  async listWorkflows(): Promise<Workflow[]> {
-    return await this.request("/workflows");
+  async listWorkflows(
+    query?: string
+  ): Promise<Record<string, EnhancedWorkflowResponse>> {
+    return await this.request(`/workflows?${query ? `query=${query}` : ""}`);
   }
 
-  async getWorkflow(id: string): Promise<Workflow> {
+  async getWorkflow(id: string): Promise<EnhancedWorkflowResponse> {
     return await this.request(`/workflows/${id}`);
   }
 
-  async createWorkflow(data: {
-    name: string;
-    description: string;
-    workflowSteps: Step[];
-  }): Promise<{ message: string }> {
-    try {
-      return await this.request("/workflows", "POST", data);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async updateWorkflow(
+  async createRun(
     workflowId: string,
-    data: WorkflowUpdateRequest
-  ): Promise<{ message: string; id: string }> {
-    try {
-      return await this.request<{ message: string; id: string }>(
-        `/workflows/${workflowId}`,
-        "PUT",
-        data
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async deleteWorkflow(workflowId: string): Promise<{ message: string }> {
-    try {
-      return await this.request<{ message: string }>(
-        `/workflows/${workflowId}`,
-        "DELETE"
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async createRun(data: WorkflowRunRequest): Promise<{
-    id: string;
+    input: any
+  ): Promise<{
+    runId: string;
   }> {
     try {
-      return await this.request(
-        `/workflows/${data.workflowId}/runs`,
-        "POST",
-        data
-      );
+      return await this.request(`/workflows/${workflowId}/runs`, "POST", input);
     } catch (error) {
       throw error;
     }
   }
 
-  async getRuns(workflowId: string): Promise<WorkflowRun[]> {
+  async getRuns(workflowId: string): Promise<CustomWorkflowRuns> {
     return await this.request(`/workflows/${workflowId}/runs`);
   }
 
-  async getRun(workflowId: string, runId: string): Promise<WorkflowRun> {
+  async getRun(workflowId: string, runId: string): Promise<CustomWorkflowRun> {
     return await this.request(`/workflows/${workflowId}/runs/${runId}`);
   }
 
@@ -1000,12 +962,53 @@ class WorkflowsApi extends ApiRequest {
     );
   }
 
-  async getAgents(): Promise<Agent[]> {
-    return await this.request("/workflows/agents");
+  async getRunComments(
+    workflowId: string,
+    workflowRunId: string
+  ): Promise<Comment[]> {
+    return await this.request(
+      `/workflows/${workflowId}/runs/${workflowRunId}/comments`
+    );
   }
 
-  async getTools(): Promise<Tool[]> {
-    return await this.request("/tools");
+  async createRunComment(
+    workflowId: string,
+    workflowRunId: string,
+    comment: string
+  ): Promise<Comment> {
+    return await this.request(
+      `/workflows/${workflowId}/runs/${workflowRunId}/comments`,
+      "POST",
+      {
+        comment,
+      }
+    );
+  }
+
+  async updateRunComment(
+    workflowId: string,
+    workflowRunId: string,
+    commentId: string,
+    comment: string
+  ): Promise<Comment> {
+    return await this.request(
+      `/workflows/${workflowId}/runs/${workflowRunId}/comments/${commentId}`,
+      "PUT",
+      {
+        comment,
+      }
+    );
+  }
+
+  async deleteRunComment(
+    workflowId: string,
+    workflowRunId: string,
+    commentId: string
+  ): Promise<void> {
+    return await this.request(
+      `/workflows/${workflowId}/runs/${workflowRunId}/comments/${commentId}`,
+      "DELETE"
+    );
   }
 }
 

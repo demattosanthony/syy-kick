@@ -46,5 +46,12 @@ bun run dev &
 REACT_APP_PID=$!
 echo "React app started with PID $REACT_APP_PID"
 
-# Wait for both processes to complete
-wait $SERVER_PID $REACT_APP_PID
+# Start the Mastra app
+cd ../mastra-app/
+npm install
+npm run dev &
+MASTRA_APP_PID=$!
+echo "Mastra app started with PID $MASTRA_APP_PID"
+
+# Wait for all processes to complete
+wait $SERVER_PID $REACT_APP_PID $MASTRA_APP_PID
