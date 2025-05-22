@@ -15,6 +15,7 @@ interface WorkflowFormFieldsProps {
   onChange: (fieldId: string, value: any, type: string) => void;
   className?: string;
   projectId?: string;
+  requiredFields: string[];
 }
 
 export function WorkflowFormFields({
@@ -23,6 +24,7 @@ export function WorkflowFormFields({
   onChange,
   className,
   projectId,
+  requiredFields,
 }: WorkflowFormFieldsProps) {
   const renderField = (fieldId: string, field: FormField) => {
     const commonProps = {
@@ -50,6 +52,9 @@ export function WorkflowFormFields({
               onFileChange={(file) => onChange(fieldId, file, "file")}
               projectId={projectId}
             />
+            {requiredFields.includes(fieldId) && (
+              <span className="text-sm text-red-500">Required</span>
+            )}
           </div>
         );
 
@@ -62,7 +67,9 @@ export function WorkflowFormFields({
               onChange={(e) => onChange(fieldId, e.target.value, "text")}
               placeholder={"Enter text"}
             />
-            <span className="text-sm text-red-500">Required</span>
+            {requiredFields.includes(fieldId) && (
+              <span className="text-sm text-red-500">Required</span>
+            )}
           </div>
         );
 
@@ -72,11 +79,20 @@ export function WorkflowFormFields({
             <Label htmlFor={fieldId}>{field.properties.label.const}</Label>
             <Input
               {...commonProps}
-              type="number"
-              onChange={(e) => onChange(fieldId, e.target.value, "number")}
+              onChange={(e) => {
+                const value = e.target.value;
+
+                if (isNaN(Number(value))) {
+                  return;
+                }
+
+                onChange(fieldId, parseFloat(value), "number");
+              }}
               placeholder={"Enter number"}
             />
-            <span className="text-sm text-red-500">Required</span>
+            {requiredFields.includes(fieldId) && (
+              <span className="text-sm text-red-500">Required</span>
+            )}
           </div>
         );
 
@@ -86,7 +102,7 @@ export function WorkflowFormFields({
   };
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("", className)}>
       {Object.entries(formSchema).map(([fieldId, field]) => {
         return renderField(fieldId, field);
       })}

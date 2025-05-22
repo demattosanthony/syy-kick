@@ -90,14 +90,7 @@ export function renderSingleOutput(output: StepOutputValue | unknown) {
     const typed = output as WorkflowRunStepOutput;
     switch (typed.type) {
       case "text":
-        return (
-          <div className="text-sm">
-            <span className="font-medium">Text:</span>{" "}
-            {typed.text?.length! > 100
-              ? typed.text!.slice(0, 100) + "..."
-              : typed.text}
-          </div>
-        );
+        return <div className="text-sm">{typed.text}</div>;
       case "file":
         return typed.file ? (
           renderFile(typed.file)
@@ -105,11 +98,7 @@ export function renderSingleOutput(output: StepOutputValue | unknown) {
           <div className="text-sm text-muted-foreground">Invalid file data</div>
         );
       case "number":
-        return (
-          <div className="text-sm">
-            <span className="font-medium">Number:</span> {typed.number}
-          </div>
-        );
+        return <div className="text-sm">{typed.number}</div>;
       default:
         return <div className="text-sm text-muted-foreground">Unknown</div>;
     }

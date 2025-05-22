@@ -52,6 +52,30 @@ export default function WorkflowPageContent({
     useState<WorkflowInputSchemaParsed>();
   const [zodConditions, setZodConditions] = useState<Record<string, any>>({});
 
+  const getZodSchemaFromPropertiesType = (property: any) => {
+    if (property.properties?.fileKey) {
+      return z.object({
+        fileKey: z.string(),
+        mimeType: z.string(),
+        fileName: z.string(),
+      });
+    }
+
+    if (property.properties?.text) {
+      return z.object({
+        text: z.string(),
+      });
+    }
+
+    if (property.properties?.number) {
+      return z.object({
+        number: z.number(),
+      });
+    }
+
+    return z.any();
+  };
+
   useEffect(() => {
     if (workflow) {
       const workflowInputSchema = JSON.parse(
@@ -66,40 +90,13 @@ export default function WorkflowPageContent({
         workflow.inputSchema
       ) as WorkflowInputSchemaParsed;
 
-      console.log(schema);
-
       Object.entries(schema.json.properties).forEach(
         ([key, property]: [string, any]) => {
-          let zodSchema = z.object({});
-
-          if (property.required) {
-            property.required.forEach((requiredField: string) => {
-              const fieldSchema = property.properties[requiredField];
-              console.log(fieldSchema);
-
-              if (fieldSchema.type === "string") {
-                if (fieldSchema.const) {
-                  zodSchema = zodSchema.extend({
-                    [requiredField]: z.literal(fieldSchema.const),
-                  });
-                } else {
-                  zodSchema = zodSchema.extend({
-                    [requiredField]: z.string(),
-                  });
-                }
-              } else if (fieldSchema.type === "object") {
-                if (requiredField === "value") {
-                  zodSchema = zodSchema.extend({
-                    value: z.object({
-                      mimeType: z.string(),
-                      fileName: z.string(),
-                      fileKey: z.string(),
-                    }),
-                  });
-                }
-              }
-            });
-          }
+          const zodSchema = z.object({
+            type: z.literal(property.properties.type.const),
+            label: z.literal(property.properties.label.const),
+            value: getZodSchemaFromPropertiesType(property.properties.value),
+          });
 
           conditions[key] = zodSchema;
         }
@@ -146,7 +143,6 @@ export default function WorkflowPageContent({
           },
         };
       } else {
-        console.log(`value: ${value}`);
         inputValues[key] = {
           type: property.properties.type.const,
           label: property.properties.label.const,
@@ -161,12 +157,7 @@ export default function WorkflowPageContent({
       return false;
 
     try {
-      console.log(inputValues);
       const finalZodSchema = z.object(zodConditions);
-      console.log(
-        "Expected schema structure:",
-        JSON.stringify(zodConditions, null, 2)
-      );
       finalZodSchema.parse(inputValues);
       return true;
     } catch (error) {
@@ -211,11 +202,21 @@ export default function WorkflowPageContent({
               fileName: file_metadata.filename,
             },
           };
+        } else if (property.properties.type.const === "number") {
+          inputValues[key] = {
+            type: property.properties.type.const,
+            label: property.properties.label.const,
+            value: {
+              number: Number(value),
+            },
+          };
         } else {
           inputValues[key] = {
             type: property.properties.type.const,
             label: property.properties.label.const,
-            value: value,
+            value: {
+              text: value,
+            },
           };
         }
       }
@@ -238,7 +239,7 @@ export default function WorkflowPageContent({
       console.error("Validation error:", error);
       setErrorDetails({
         type: "general",
-        message: "Erreur lors de la validation des données du formulaire",
+        message: "Error while validating the form data",
       });
     } finally {
       setSubmittingRun(false);
@@ -279,6 +280,7 @@ export default function WorkflowPageContent({
               {workflowInputSchema && (
                 <WorkflowFormFields
                   formSchema={workflowInputSchema.json.properties}
+                  requiredFields={workflowInputSchema.json.required}
                   values={formValues}
                   onChange={(fieldId, value) =>
                     setFormValues((prev) => ({
@@ -387,7 +389,7 @@ export default function WorkflowPageContent({
                 </Link>
               );
             })}
-          {(!runs || runs.runs.length === 0) && (
+          {(!runs?.runs || runs.runs.length === 0) && (
             <p className="text-muted-foreground text-center py-4">
               No runs yet
             </p>

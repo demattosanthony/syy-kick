@@ -36,6 +36,10 @@ type TextFieldType = BaseFieldType & {
   const: "text";
 };
 
+type NumberFieldType = BaseFieldType & {
+  const: "number";
+};
+
 type TextFieldValue = BaseFieldValue & {
   properties: {
     text: {
@@ -43,18 +47,6 @@ type TextFieldValue = BaseFieldValue & {
     };
   };
   required: ["text"];
-};
-
-export interface TextFormField extends BaseFieldStructure {
-  properties: {
-    type: TextFieldType;
-    value: TextFieldValue;
-    label: BaseFieldType;
-  };
-}
-
-type NumberFieldType = BaseFieldType & {
-  const: "number";
 };
 
 type NumberFieldValue = BaseFieldValue & {
@@ -65,6 +57,14 @@ type NumberFieldValue = BaseFieldValue & {
   };
   required: ["number"];
 };
+
+export interface TextFormField extends BaseFieldStructure {
+  properties: {
+    type: TextFieldType;
+    value: TextFieldValue;
+    label: BaseFieldType;
+  };
+}
 
 export interface NumberFormField extends BaseFieldStructure {
   properties: {
