@@ -49,6 +49,30 @@ export const anthropicModels = (
   ];
 
   return {
+    "claude-4-opus": {
+      model: anthropic("claude-4-opus-20250514"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "anthropic",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 5 * 1024 * 1024, // 5MB
+      maxFileSize: 32 * 1024 * 1024, // 32MB
+      description:
+        "Claude Opus 4 is Anthropic's most powerful model yet and the best coding model in the world, leading on SWE-bench (72.5%) and Terminal-bench (43.2%). It delivers sustained performance on long-running tasks that require focused effort and thousands of steps, with the ability to work continuously for several hours—dramatically outperforming all Sonnet models and significantly expanding what AI agents can accomplish.",
+    },
+    "claude-4-sonnet": {
+      model: anthropic("claude-4-sonnet-20250514"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "anthropic",
+      supportsSystemMessages: true,
+      supportedMimeTypes,
+      maxImageSize: 5 * 1024 * 1024, // 5MB
+      maxFileSize: 32 * 1024 * 1024, // 32MB
+      description:
+        "Claude Sonnet 4 significantly improves on Sonnet 3.7's industry-leading capabilities, excelling in coding with a state-of-the-art 72.7% on SWE-bench. The model balances performance and efficiency for internal and external use cases, with enhanced steerability for greater control over implementations. While not matching Opus 4 in most domains, it delivers an optimal mix of capability and practicality.",
+    },
     "claude-3.7-sonnet": {
       model: anthropic("claude-3-7-sonnet-20250219"),
       supportsToolUse: true,

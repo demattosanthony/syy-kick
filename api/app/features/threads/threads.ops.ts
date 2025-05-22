@@ -427,7 +427,8 @@ const threadsOps = {
             reasoningSummary: "auto",
           },
           ...(modelConfig.provider === "anthropic" &&
-          modelConfig.model.modelId.includes("claude-3-7")
+          (modelConfig.model.modelId.includes("claude-3-7") ||
+            modelConfig.model.modelId.includes("claude-4"))
             ? {
                 anthropic: {
                   thinking: { type: "enabled", budgetTokens: 12_000 },
