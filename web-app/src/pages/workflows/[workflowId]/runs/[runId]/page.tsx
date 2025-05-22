@@ -305,7 +305,7 @@ const WorkflowRunDetailsBreadcrumb = ({
 
 const WorkflowRunDetailsSkeleton = () => {
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="w-full mx-auto p-4 space-y-6">
       <Breadcrumb className="mb-8">
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -332,21 +332,23 @@ const WorkflowRunDetailsSkeleton = () => {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <Skeleton className="h-8 w-64 mb-2" />
-          <Skeleton className="h-4 w-48" />
+      <div className="flex flex-col flex-1 max-w-3xl mx-auto pt-6 w-full gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-48" />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
         <Skeleton className="h-24" />
         <Skeleton className="h-24" />
         <Skeleton className="h-24" />
       </div>
 
-      <Skeleton className="h-32 w-full" />
-      <Skeleton className="h-[500px] w-full" />
+      <Skeleton className="h-32 w-full max-w-3xl mx-auto" />
+      <Skeleton className="h-[500px] w-full max-w-3xl mx-auto" />
     </div>
   );
 };
