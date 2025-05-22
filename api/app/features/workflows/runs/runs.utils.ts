@@ -7,36 +7,35 @@ export const runsUtils = {
             const conditions: Record<string, z.ZodObject<any>> = {};
             const schema = JSON.parse(inputSchema);
 
-            Object.entries(schema.json.properties).forEach(([key, property]: [string, any]) => {
-                let zodSchema = z.object({});
-
-                if (property.required) {
-                    property.required.forEach((requiredField: string) => {
-                        const fieldSchema = property.properties[requiredField];
-
-                        if (fieldSchema.type === 'string') {
-                            if (fieldSchema.const) {
-                                zodSchema = zodSchema.extend({
-                                    [requiredField]: z.literal(fieldSchema.const)
-                                });
-                            } else {
-                                zodSchema = zodSchema.extend({
-                                    [requiredField]: z.string()
-                                });
-                            }
-                        } else if (fieldSchema.type === 'object') {
-                            if (requiredField === 'value') {
-                                zodSchema = zodSchema.extend({
-                                    value: z.object({
-                                        mimeType: z.string(),
-                                        fileName: z.string(),
-                                        fileKey: z.string()
-                                    })
-                                });
-                            }
-                        }
+            const getZodSchemaFromPropertiesType = (property: any) => {
+                // For file fields
+                if (property.properties?.fileKey) {
+                    return z.object({
+                        fileKey: z.string(),
+                        mimeType: z.string(),
+                        fileName: z.string()
                     });
                 }
+
+                // For text fields
+                if (property.properties?.text) {
+                    return z.string();
+                }
+
+                // For number fields
+                if (property.properties?.number) {
+                    return z.number();
+                }
+
+                return z.any();
+            };
+
+            Object.entries(schema.json.properties).forEach(([key, property]: [string, any]) => {
+                const zodSchema = z.object({
+                    type: z.literal(property.properties.type.const),
+                    label: z.literal(property.properties.label.const),
+                    value: getZodSchemaFromPropertiesType(property.properties.value)
+                });
 
                 conditions[key] = zodSchema;
             });

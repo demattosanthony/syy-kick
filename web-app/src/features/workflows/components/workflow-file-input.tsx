@@ -342,23 +342,6 @@ function FileUploadInput({
         </p>
       )}
 
-      {input.required && (
-        <p
-          className={`text-xs mt-2 ${
-            file ? "text-muted-foreground" : "text-red-500"
-          }`}
-        >
-          {/* Adjust message based on file type */}
-          {file
-            ? `✓ Required file ${
-                "source" in file && file.source === "project"
-                  ? "selected"
-                  : "uploaded"
-              }`
-            : "* Required"}
-        </p>
-      )}
-
       <Dialog open={showProjectExplorer} onOpenChange={setShowProjectExplorer}>
         <DialogContent className="max-w-[500px] h-auto max-h-[600px] md:max-w-[650px] overflow-hidden">
           <DialogHeader>

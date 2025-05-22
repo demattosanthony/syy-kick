@@ -4,7 +4,7 @@ import { WorkflowRuns } from "@mastra/core";
 // Base types for form fields
 type BaseFieldType = {
   type: string;
-  const: "text" | "file";
+  const: "text" | "file" | "number";
 };
 
 type BaseFieldValue = {
@@ -33,6 +33,10 @@ type TextFieldType = BaseFieldType & {
   const: "text";
 };
 
+type NumberFieldType = BaseFieldType & {
+  const: "number";
+};
+
 type TextFieldValue = BaseFieldValue & {
   properties: {
     text: {
@@ -42,6 +46,15 @@ type TextFieldValue = BaseFieldValue & {
   required: ["text"];
 };
 
+type NumberFieldValue = BaseFieldValue & {
+  properties: {
+    number: {
+      type: string;
+    };
+  };
+  required: ["number"];
+};
+
 export interface TextFormField extends BaseFieldStructure {
   properties: {
     type: TextFieldType;
@@ -49,6 +62,15 @@ export interface TextFormField extends BaseFieldStructure {
     label: BaseFieldType;
   };
 }
+
+export interface NumberFormField extends BaseFieldStructure {
+  properties: {
+    type: NumberFieldType;
+    value: NumberFieldValue;
+    label: BaseFieldType;
+  };
+}
+
 
 // Specific types for file fields
 export type FileMimeType = "application/pdf" | "image/*";
@@ -82,7 +104,7 @@ export interface FileFormField extends BaseFieldStructure {
 }
 
 // Union type for all possible fields
-export type FormField = TextFormField | FileFormField;
+export type FormField = TextFormField | FileFormField | NumberFormField;
 
 // Types for the workflow schema
 export type WorkflowInputSchemaRaw = string;

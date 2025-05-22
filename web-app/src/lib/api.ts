@@ -57,6 +57,7 @@ import {
   KnowledgeBaseAccessLogFilters,
   KnowledgeBaseAccessLogsResponse,
 } from "@/features/knowledge-bases/types";
+import { Comment } from "@/features/workflows/features/runs/features/comments/types";
 // import { Agent, Tool } from "@/features/workflows/features/agents/types";
 
 // Client-side fetch
@@ -960,13 +961,25 @@ class WorkflowsApi extends ApiRequest {
     );
   }
 
-  // async getAgents(): Promise<Agent[]> {
-  //   return await this.request("/workflows/agents");
-  // }
+  async getRunComments(workflowId: string, workflowRunId: string): Promise<Comment[]> {
+    return await this.request(`/workflows/${workflowId}/runs/${workflowRunId}/comments`);
+  }
 
-  // async getTools(): Promise<Tool[]> {
-  //   return await this.request("/tools");
-  // }
+  async createRunComment(workflowId: string, workflowRunId: string, comment: string): Promise<Comment> {
+    return await this.request(`/workflows/${workflowId}/runs/${workflowRunId}/comments`, "POST", {
+      comment
+    });
+  }
+
+  async updateRunComment(workflowId: string, workflowRunId: string, commentId: string, comment: string): Promise<Comment> {
+    return await this.request(`/workflows/${workflowId}/runs/${workflowRunId}/comments/${commentId}`, "PUT", {
+      comment
+    });
+  }
+
+  async deleteRunComment(workflowId: string, workflowRunId: string, commentId: string): Promise<void> {
+    return await this.request(`/workflows/${workflowId}/runs/${workflowRunId}/comments/${commentId}`, "DELETE");
+  }
 }
 
 class SitesApi extends ApiRequest {

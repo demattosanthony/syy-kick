@@ -18,27 +18,27 @@ export function WorkflowRunInput({ runState }: { runState: CustomWorkflowRun }) 
                 return (
                     <div className="text-sm">
                         <span className="font-medium">Text:</span>{" "}
-                        {value.value.text.length > 100
-                            ? value.value.text.substring(0, 100) + "..."
-                            : value.value.text}
+                        {value?.value?.length > 100
+                            ? value.value.substring(0, 100) + "..."
+                            : value.value}
                     </div>
                 );
             case "number":
                 return (
                     <div className="text-sm">
-                        <span className="font-medium">Number:</span> {value.value.number}
+                        <span className="font-medium">Number:</span> {value?.value}
                     </div>
                 );
             case "boolean":
                 return (
                     <div className="text-sm">
-                        <span className="font-medium">Boolean:</span> {value.value.boolean ? "Vrai" : "Faux"}
+                        <span className="font-medium">Boolean:</span> {value?.boolean ? "Vrai" : "Faux"}
                     </div>
                 );
             default:
                 return (
                     <pre className="text-xs overflow-auto max-h-[200px] bg-muted/50 p-2 rounded-md">
-                        {JSON.stringify(value.value, null, 2)}
+                        {JSON.stringify(value?.value, null, 2)}
                     </pre>
                 );
         }

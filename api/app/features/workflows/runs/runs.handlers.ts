@@ -6,8 +6,14 @@ export const workflowsRunsHandlers = {
     try {
       const { workflowId } = req.params;
       const input = req.body;
+      const user = req.dbUser;
 
-      const run = await workflowRunsOps.createRun(workflowId, input);
+      if (!user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      const run = await workflowRunsOps.createRun(workflowId, input, user.id);
 
       res.json(run);
     } catch (error) {
@@ -19,7 +25,14 @@ export const workflowsRunsHandlers = {
   getRuns: async (req: Request, res: Response) => {
     try {
       const { workflowId } = req.params;
-      const runs = await workflowRunsOps.getRuns(workflowId);
+      const user = req.dbUser;
+
+      if (!user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+
+      const runs = await workflowRunsOps.getRuns(workflowId, user.id);
       res.json(runs);
     } catch (error) {
       console.error(error);

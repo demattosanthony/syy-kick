@@ -407,6 +407,13 @@
       "when": 1747057917155,
       "tag": "0057_fuzzy_power_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1747935327599,
+      "tag": "0058_silent_magdalene",
+      "breakpoints": true
     }
   ]
 }

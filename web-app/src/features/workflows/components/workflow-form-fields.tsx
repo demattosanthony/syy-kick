@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import FileUploadInput from "./workflow-file-input";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 interface WorkflowFormFieldsProps {
   formSchema: WorkflowInputSchemaParsed["json"]["properties"];
@@ -14,6 +15,7 @@ interface WorkflowFormFieldsProps {
   onChange: (fieldId: string, value: any, type: string) => void;
   className?: string;
   projectId?: string;
+  requiredFields: string[];
 }
 
 export function WorkflowFormFields({
@@ -22,8 +24,10 @@ export function WorkflowFormFields({
   onChange,
   className,
   projectId,
+  requiredFields,
 }: WorkflowFormFieldsProps) {
 
+  console.log(formSchema, ' <--- form schema');
   const renderField = (
     fieldId: string,
     field: FormField
@@ -53,6 +57,9 @@ export function WorkflowFormFields({
               onFileChange={(file) => onChange(fieldId, file, "file")}
               projectId={projectId}
             />
+            {requiredFields.includes(fieldId) && (
+              <span className="text-sm text-red-500">Required</span>
+            )}
           </div>
         );
 
@@ -61,7 +68,28 @@ export function WorkflowFormFields({
           <div key={fieldId} className="space-y-2 p-4">
             <Label htmlFor={fieldId}>{fieldId}</Label>
             <Textarea {...commonProps} onChange={(e) => onChange(fieldId, e.target.value, "text")} placeholder={"Enter text"} />
-            <span className="text-sm text-red-500">Required</span>
+            {requiredFields.includes(fieldId) && (
+              <span className="text-sm text-red-500">Required</span>
+            )}
+          </div>
+        );
+
+      case "number":
+        return (
+          <div key={fieldId} className="space-y-2 p-4">
+            <Label htmlFor={fieldId}>{fieldId}</Label>
+            <Input {...commonProps} onChange={(e) => {
+              const value = e.target.value;
+
+              if (isNaN(Number(value))) {
+                return;
+              }
+
+              onChange(fieldId, parseFloat(value), "number")
+            }} placeholder={"Enter number"} />
+            {requiredFields.includes(fieldId) && (
+              <span className="text-sm text-red-500">Required</span>
+            )}
           </div>
         );
 

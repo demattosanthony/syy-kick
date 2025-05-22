@@ -1,17 +1,30 @@
-import { Badge } from "@/components/ui/badge";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useWorkflowQuery } from "@/features/workflows/api";
-import { useGetRunQuery } from "@/features/workflows/features/runs/api";
-import { WorkflowRunGraph } from "@/features/workflows/features/runs/components/graph/workflow-run-graph";
-import { WorkflowRunStatus } from "@/features/workflows/features/runs/components/workflow-run-status";
-import { useRunSSE } from "@/features/workflows/features/runs/hooks";
-import { buildOptimisticRun, buildTree, flatten } from "@/features/workflows/utils";
-import { CustomWorkflowRun, StepStatus, TreeNode } from "@/features/workflows/workflows.types";
-import { ArrowLeftIcon, Slash } from "lucide-react";
+/** React */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
+
+/** Hooks */
+import { useRunSSE } from "@/features/workflows/features/runs/hooks";
+import { useGetRunQuery } from "@/features/workflows/features/runs/api";
+import { useWorkflowQuery } from "@/features/workflows/api";
+
+/** Utils */
+import { buildOptimisticRun, buildTree, flatten } from "@/features/workflows/utils";
+
+/** Components */
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeftIcon, Slash } from "lucide-react";
+
+import { WorkflowRunGraph } from "@/features/workflows/features/runs/components/graph/workflow-run-graph";
+import { WorkflowRunStatus } from "@/features/workflows/features/runs/components/workflow-run-status";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+
+import { CommentForm, CommentList } from "@/features/workflows/features/runs/features/comments/components";
+
+/** Types */
+import { User } from "@/types/user";
+import { CustomWorkflowRun, StepStatus, TreeNode } from "@/features/workflows/workflows.types";
 
 
 export function WorkflowRunPageDetails() {
@@ -32,6 +45,8 @@ export function WorkflowRunPageDetails() {
     data: workflowQueryData,
     isFetching: isWorkflowLoading,
   } = useWorkflowQuery(workflowId!);
+
+  const user: User = JSON.parse(localStorage.getItem("me") ?? "{}");
 
   useRunSSE({
     workflowId: workflowId as string,
@@ -150,8 +165,6 @@ export function WorkflowRunPageDetails() {
 
   if (!runState) return null;
 
-  console.log(runState, '<---- run state')
-
   return (
     <div className="container mx-auto p-4 space-y-6">
       <WorkflowRunDetailsBreadcrumb
@@ -203,6 +216,16 @@ export function WorkflowRunPageDetails() {
         />
 
         <WorkflowRunGraph workflowRun={runState} treeNodes={treeNodes} runState={runState} />
+
+        <div className="mt-8 space-y-6">
+          <h2 className="text-2xl font-bold">Comments</h2>
+          <CommentForm workflowId={workflowId!} runId={runId!} />
+          <CommentList
+            workflowId={workflowId!}
+            runId={runId!}
+            currentUserId={user?.id}
+          />
+        </div>
       </div>
     </div>
   )

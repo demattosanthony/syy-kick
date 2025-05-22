@@ -53,6 +53,15 @@ export {
   workflows,
   workflowOrganizations,
   workflowUsers,
+  workflowRuns,
+  workflowRunComments,
+  workflowRunTags,
+  tags,
+  workflowRunCommentRelations,
+  workflowRunRelations,
+  workflowRelations,
+  workflowRunUsers,
+  workflowRunUserRelations,
 } from "../features/workflows/workflows.schema";
 
 export const organizations = pgTable("organizations", {
