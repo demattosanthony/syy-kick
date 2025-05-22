@@ -142,7 +142,7 @@ export const billOfMaterialsWorkflow: Workflow = {
   id: "bill-of-materials",
   name: "Bill of Materials Generator",
   description:
-    "This workflow generates a Bill of Materials based on control system drawings.",
+    "This workflow consolidates Bill of Materials tables into one CSV file based on control system drawings.",
   createdAt: new Date(),
   updatedAt: new Date(),
   createdBy: null,
