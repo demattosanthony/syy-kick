@@ -9,7 +9,7 @@ import { runsUtils } from "./runs.utils";
 import { RuntimeContext } from "@mastra/core/di";
 import db from "../../../config/db";
 import { workflowRuns, workflowRunUsers, workflows } from "../workflows.schema";
-import { and, eq, exists, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 export const workflowRunsOps = {
   createRun: async (workflowId: string, input: any, userId: string) => {

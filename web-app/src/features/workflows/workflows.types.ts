@@ -222,3 +222,18 @@ export interface WorkflowRunStepOutput {
   file?: WorkflowFile;
   number?: number;
 }
+
+// Tag type to match backend schema
+export interface Tag {
+  id: string;
+  name: string;
+  createdAt: Date;
+  hexBgColor: string;
+  hexTextColor: string;
+}
+
+// Enhanced workflow response that includes description and tags
+export type EnhancedWorkflowResponse = GetVNextWorkflowResponse & {
+  description?: string | null;
+  tags: Tag[];
+};

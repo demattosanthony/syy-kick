@@ -39,6 +39,7 @@ export const tags = pgTable("tags", {
   hexTextColor: varchar("text_color", { length: 7 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+export type Tag = typeof tags.$inferSelect;
 
 export const workflowRuns = pgTable("workflow_runs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -60,10 +61,10 @@ export const workflowRunUsers = pgTable("workflow_run_users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const workflowRunTags = pgTable("workflow_run_tags", {
+export const workflowTags = pgTable("workflow_tags", {
   id: uuid("id").primaryKey().defaultRandom(),
-  workflowRunId: uuid("workflow_run_id")
-    .references(() => workflowRuns.id, { onDelete: "cascade" })
+  workflowId: uuid("workflow_id")
+    .references(() => workflows.id, { onDelete: "cascade" })
     .notNull(),
   tagId: uuid("tag_id")
     .references(() => tags.id, { onDelete: "cascade" })
@@ -87,13 +88,53 @@ export const workflowRelations = relations(workflows, ({ many }) => ({
   organizations: many(workflowOrganizations),
   users: many(workflowUsers),
   runs: many(workflowRuns),
+  tags: many(workflowTags),
+}));
+
+export const workflowTagsRelations = relations(workflowTags, ({ one }) => ({
+  workflow: one(workflows, {
+    fields: [workflowTags.workflowId],
+    references: [workflows.id],
+  }),
+  tag: one(tags, {
+    fields: [workflowTags.tagId],
+    references: [tags.id],
+  }),
+}));
+
+export const tagsRelations = relations(tags, ({ many }) => ({
+  workflows: many(workflowTags),
+}));
+
+export const workflowOrganizationsRelations = relations(
+  workflowOrganizations,
+  ({ one }) => ({
+    workflow: one(workflows, {
+      fields: [workflowOrganizations.workflowId],
+      references: [workflows.id],
+    }),
+    organization: one(organizations, {
+      fields: [workflowOrganizations.organizationId],
+      references: [organizations.id],
+    }),
+  })
+);
+
+export const workflowUsersRelations = relations(workflowUsers, ({ one }) => ({
+  workflow: one(workflows, {
+    fields: [workflowUsers.workflowId],
+    references: [workflows.id],
+  }),
+  user: one(users, {
+    fields: [workflowUsers.userId],
+    references: [users.id],
+  }),
 }));
 
 export const workflowRunRelations = relations(
   workflowRuns,
   ({ many, one }) => ({
     comments: many(workflowRunComments),
-    tags: many(workflowRunTags),
     users: many(workflowRunUsers),
     workflow: one(workflows, {
       fields: [workflowRuns.workflowId],

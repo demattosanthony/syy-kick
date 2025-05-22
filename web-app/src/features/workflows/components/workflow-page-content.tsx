@@ -10,9 +10,9 @@ import { Card } from "@/components/ui/card";
 import api from "@/lib/api";
 import { useCreateRunMutation } from "../features/runs/api";
 import { useGetRunsQuery } from "../features/runs/api/get-runs";
-import { GetVNextWorkflowResponse } from "@mastra/client-js";
 import {
   CustomWorkflowRun,
+  EnhancedWorkflowResponse,
   WorkflowInputSchemaParsed,
 } from "../workflows.types";
 import { z } from "zod";
@@ -31,7 +31,7 @@ export default function WorkflowPageContent({
 }: {
   workflowId: string;
   projectId?: string;
-  workflow?: GetVNextWorkflowResponse;
+  workflow?: EnhancedWorkflowResponse;
   isLoading: boolean;
 }) {
   const navigate = useNavigate();
@@ -264,7 +264,7 @@ export default function WorkflowPageContent({
           <>
             <h1 className="text-4xl font-bold mb-4">{workflow?.name}</h1>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              {/* {workflow?.description} */}
+              {workflow?.description}
             </p>
           </>
         )}
