@@ -5,6 +5,7 @@ export function useGetRunQuery(workflowId: string, runId: string) {
     return useQuery({
         queryKey: ["runs", workflowId, runId],
         queryFn: () => api.workflows.getRun(workflowId, runId),
+        enabled: !!workflowId && !!runId,
+        retry: false,
     });
 }
-

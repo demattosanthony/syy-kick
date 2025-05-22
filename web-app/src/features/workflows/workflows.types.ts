@@ -1,92 +1,127 @@
-import { ZodIssue } from "zod";
+import { GetVNextWorkflowResponse } from "@mastra/client-js";
+import { WorkflowRuns } from "@mastra/core";
 
-export interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  instructions: string;
-  model: string;
-  activeTools: string[];
-}
-// TODO: refacto this type
-export interface Workflow {
-  id: string;
-  name: string;
-  description: string;
-  steps: {
-    id: string;
-    agentId: string | null;
-    name: string;
-    description: string;
-    instructions: string;
-    model: string;
-    activeTools: string[];
-    formSchema: WorkflowStepFormSchema | null;
-    parentStepId: string | null;
-    createdAt: string;
-    updatedAt: string;
-  }[];
-  createdAt: string;
-  updatedAt: string;
-}
+// Base types for form fields
+type BaseFieldType = {
+  type: string;
+  const: "text" | "file" | "number";
+};
 
-export interface WorkflowStepFormSchema {
-  fields: {
-    [key: string]: {
-      type: "text" | "file" | "number" | "select" | "date";
-      label: string;
-      required: boolean;
-      description?: string;
-      // For previous steps outputs
-      referenceType?: "previousStep" | "userInput";
-      // For files
-      acceptedFileTypes?: string | string[];
-      maxFileSize?: number;
-      // For select
-      options?: Array<{
-        label: string;
-        value: string;
-      }>;
+type BaseFieldValue = {
+  type: "object";
+  properties: Record<
+    string,
+    {
+      type: string;
+      const?: string;
+    }
+  >;
+  required: string[];
+  additionalProperties: boolean;
+};
+
+// Base structure for all fields
+type BaseFieldStructure = {
+  type: "object";
+  properties: {
+    type: BaseFieldType;
+    value: BaseFieldValue;
+  };
+  required: ["type", "value"];
+  additionalProperties: false;
+};
+
+// Specific types for text fields
+type TextFieldType = BaseFieldType & {
+  const: "text";
+};
+
+type NumberFieldType = BaseFieldType & {
+  const: "number";
+};
+
+type TextFieldValue = BaseFieldValue & {
+  properties: {
+    text: {
+      type: string;
     };
+  };
+  required: ["text"];
+};
+
+type NumberFieldValue = BaseFieldValue & {
+  properties: {
+    number: {
+      type: string;
+    };
+  };
+  required: ["number"];
+};
+
+export interface TextFormField extends BaseFieldStructure {
+  properties: {
+    type: TextFieldType;
+    value: TextFieldValue;
+    label: BaseFieldType;
   };
 }
 
-export interface Step {
-  id: string;
-  agentId: string | null;
-  name: string;
-  description: string;
-  instructions: string;
-  model: string;
-  activeTools: string[];
-  formSchema: WorkflowStepFormSchema | null;
+export interface NumberFormField extends BaseFieldStructure {
+  properties: {
+    type: NumberFieldType;
+    value: NumberFieldValue;
+    label: BaseFieldType;
+  };
 }
 
-export interface ModelSelectorProps {
-  step: Step;
-  models: Array<{
-    name: string;
-    provider: string;
-    description?: string;
-    supportedMimeTypes?: string[];
-  }>;
-  onModelChange: (modelName: string) => void;
-  hasError: boolean;
-  errorMessage?: string;
+// Specific types for file fields
+export type FileMimeType = "application/pdf" | "image/*";
+
+type FileFieldType = BaseFieldType & {
+  const: "file";
+};
+
+type FileFieldValue = BaseFieldValue & {
+  properties: {
+    fileKey: {
+      type: string;
+    };
+    mimeType: {
+      type: string;
+      const: FileMimeType;
+    };
+    fileName: {
+      type: string;
+    };
+  };
+  required: ["fileKey", "mimeType", "fileName"];
+};
+
+export interface FileFormField extends BaseFieldStructure {
+  properties: {
+    type: FileFieldType;
+    value: FileFieldValue;
+    label: BaseFieldType;
+  };
 }
 
-export interface FormFieldProps {
-  fieldKey: string;
-  field: WorkflowStepFormSchema["fields"][string];
-  stepId: string;
-  stepIndex: number;
-  onFieldChange: (
-    key: string,
-    updatedField: WorkflowStepFormSchema["fields"][string]
-  ) => void;
-  onDeleteField?: (key: string) => void;
-  fieldError?: ZodIssue;
-}
+// Union type for all possible fields
+export type FormField = TextFormField | FileFormField | NumberFormField;
+
+// Types for the workflow schema
+export type WorkflowInputSchemaRaw = string;
+
+export type WorkflowInputSchemaParsed = {
+  json: {
+    type: "object";
+    properties: Record<string, FormField>;
+    required: string[];
+    additionalProperties: boolean;
+    $schema: string;
+  };
+};
+
+export type WorkflowInputSchema = Record<string, WorkflowInputSchemaParsed>;
 
 export interface WorkflowProjectFile {
   source: "project";
@@ -97,135 +132,108 @@ export interface WorkflowProjectFile {
   file_key: string;
 }
 
-export type WorkflowTextExecutionInputValue = {
-  text: string;
+export enum StepStatus {
+  Pending = "pending",
+  Blocked = "blocked",
+  Waiting = "waiting",
+  Running = "running",
+  Success = "success",
+  Failed = "failed",
+  Suspended = "suspended",
+  Skipped = "skipped",
+}
+
+export interface TreeNodeBase {
+  /** Unique path in the run, includes iteration suffixes. */
+  path: string;
+  /** Original step identifier from the definition. */
+  stepId: string;
+  type: "step" | "parallel" | "conditional" | "loop" | "foreach";
+  description?: string;
+
+  status: StepStatus;
+  startedAt: number | null;
+  finishedAt: number | null;
+  output?: StepOutputValue;
+  error?: string;
+}
+
+export interface TreeNode extends TreeNodeBase {
+  children?: TreeNode[];
+  /* Loop-specific */
+  iteration?: number;
+  loopType?: "dowhile" | "dountil";
+  /* Foreach-specific */
+  foreachIndex?: number;
+  foreachConcurrency?: number;
+}
+
+export interface RuntimeIndex {
+  byPath: Map<string, TreeNode>;
+  byStepId: Map<string, TreeNode[]>;
+}
+
+export type StepContext = {
+  status: StepStatus;
+  output?: StepOutputValue;
+  error?: string;
 };
 
-export type WorkflowFileExecutionInputValue = {
+export interface VNextWorkflowRunState {
+  value: Record<string, string>;
+  context: {
+    input: Record<string, any>;
+  } & Record<string, StepContext>;
+  runId: string;
+  timestamp: number;
+}
+export interface CustomWorkflowRun {
+  workflowName: string;
+  runId: string;
+  snapshot: VNextWorkflowRunState;
+  createdAt: Date;
+  updatedAt: Date;
+  resourceId?: string;
+  definition?: GetVNextWorkflowResponse;
+}
+
+/** @todo: use their type when available */
+export interface CustomWorkflowRuns extends Omit<WorkflowRuns, "runs"> {
+  runs: CustomWorkflowRun[];
+}
+
+export type StepOutputValue =
+  | WorkflowRunStepOutput
+  | WorkflowRunStepOutput[]
+  | Record<string, WorkflowRunStepOutput | WorkflowRunStepOutput[]>;
+
+// New output schema types
+export interface WorkflowFile {
   fileKey: string;
   mimeType: string;
-  filename: string;
+  fileName: string;
+  fileSize?: number;
   url?: string;
-};
+}
 
-export type WorkflowNumberExecutionInputValue = {
-  number: number;
-};
-
-export type WorkflowExecutionInputValue = {
+export interface WorkflowRunStepOutput {
   type: "text" | "file" | "number";
-  label: string;
-  value:
-  | WorkflowTextExecutionInputValue
-  | WorkflowFileExecutionInputValue
-  | WorkflowNumberExecutionInputValue;
-};
+  text?: string;
+  file?: WorkflowFile;
+  number?: number;
+}
 
-export type WorkflowExecutionInputValues = {
-  [inputId: string]: WorkflowExecutionInputValue;
-};
-
-export type WorkflowRunRequest = {
-  workflowId: string;
-  inputValues: WorkflowExecutionInputValues;
-};
-
-export type WorkflowRunStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "failed"
-  | "cancelled"
-  | "waiting";
-
-export type WorkflowRunStepStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "failed";
-
-export type WorkflowRunStepMessageToolCall = {
+// Tag type to match backend schema
+export interface Tag {
   id: string;
-  args: Record<string, any>;
-  createdAt: string;
-  result: Record<string, any>;
-  status: "pending" | "completed" | "failed";
-  toolCallId: string;
-  toolName: string;
-  updatedAt: string;
-};
-
-export type WorkflowRunStepMessage = {
-  createdAt: string;
-  updatedAt: string;
-  role: "system" | "user" | "assistant" | "tool";
-  text: string;
-  reasoning: string;
-  toolCalls: WorkflowRunStepMessageToolCall[];
-};
-
-export type WorkflowFile = {
-  id: string;
-  mimeType: string;
   name: string;
-  url: string;
-  createdAt: string;
-  updatedAt: string;
-};
+  createdAt: Date;
+  hexBgColor: string;
+  hexTextColor: string;
+}
 
-export type WorkflowRunStepOutput = {
-  id: string;
-  file: WorkflowFile;
-};
-
-export type WorkflowRunStepInputs = {
-  id: string;
-  key: string;
-  label: string;
-  type: "text" | "file" | "number";
-  value:
-  | WorkflowTextExecutionInputValue
-  | WorkflowFileExecutionInputValue
-  | WorkflowNumberExecutionInputValue;
-  parentStepId?: string;
-};
-
-export type WorkflowRunStep = {
-  id: string;
-  workflowRunId: string;
-  workflowStepId: string;
-  status: WorkflowRunStepStatus;
-  name: string;
-  description: string;
-  instructions: string;
-  model: string;
-  activeTools: string[];
-  formSchema: WorkflowStepFormSchema | null;
-  parentStepId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  messages: WorkflowRunStepMessage[];
-  inputsForStep: WorkflowRunStepInputs[];
-  outputs: WorkflowRunStepOutput[];
-};
-
-export type WorkflowRun = {
-  id: string;
-  workflowId: string;
-  userId: string;
-  status: WorkflowRunStatus;
-  executionInputValues: WorkflowExecutionInputValues;
-  steps: WorkflowRunStep[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-// Type for updating a workflow step (omits fields handled by the backend)
-export type WorkflowStepUpdateInput = Omit<Step, "id">;
-
-// Type for the workflow update API request body
-export type WorkflowUpdateRequest = {
-  name?: string;
-  description?: string;
-  workflowSteps: WorkflowStepUpdateInput[];
+// Enhanced workflow response that includes description and tags
+export type EnhancedWorkflowResponse = GetVNextWorkflowResponse & {
+  description?: string | null;
+  tags: Tag[];
 };

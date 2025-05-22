@@ -187,3 +187,5 @@ digital_ocean_key
 pg-backups/
 
 # workflows-dataset/
+# Local Netlify folder
+.netlify

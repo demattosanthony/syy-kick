@@ -1,32 +1,46 @@
-import { useParams } from "react-router";
+/** React */
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router";
+
+/** Hooks */
+import { useRunSSE } from "@/features/workflows/features/runs/hooks";
+import { useGetRunQuery } from "@/features/workflows/features/runs/api";
 import { useWorkflowQuery } from "@/features/workflows/api";
+
+/** Utils */
+import {
+  buildOptimisticRun,
+  buildTree,
+  flatten,
+} from "@/features/workflows/utils";
+
+/** Components */
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeftIcon, Slash } from "lucide-react";
+
+import { WorkflowRunGraph } from "@/features/workflows/features/runs/components/graph/workflow-run-graph";
+import { WorkflowRunStatus } from "@/features/workflows/features/runs/components/workflow-run-status";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Link } from "react-router";
-import { Slash, ArrowLeft, Loader2, Circle, Check, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { useRunSSE } from "@/features/workflows/features/runs/hooks";
-import { useGetRunQuery } from "@/features/workflows/features/runs/api/get-run";
-import { WorkflowRunInputs } from "@/features/workflows/features/runs/components/workflow-run-inputs";
-import { WorkflowStepOutputs } from "@/features/workflows/features/runs/components/workflow-step-outputs";
-import { cn } from "@/lib/utils";
-import { StepMessagesDisplay } from "@/features/workflows/features/runs/components/workflow-run-step-messages";
-import { useState, useEffect, useRef, Fragment } from "react";
-import { WorkflowRunStep } from "@/features/workflows/workflows.types";
-import { Badge } from "@/components/ui/badge";
-import { formatDistanceToNow } from "date-fns";
+  CommentForm,
+  CommentList,
+} from "@/features/workflows/features/runs/features/comments/components";
+
+/** Types */
+import { User } from "@/types/user";
+import {
+  CustomWorkflowRun,
+  StepStatus,
+  TreeNode,
+} from "@/features/workflows/workflows.types";
 
 export function WorkflowRunPageDetails() {
   const { workflowId, runId } = useParams<{
@@ -34,471 +48,307 @@ export function WorkflowRunPageDetails() {
     runId: string;
   }>();
 
-  const { data: workflow, isLoading: isWorkflowLoading } = useWorkflowQuery(
-    workflowId as string
+  const [runState, setRunState] = useState<CustomWorkflowRun | null>(null);
+  const [treeNodes, setTreeNodes] = useState<TreeNode[]>([]);
+
+  const { data: runQueryData, isFetching: isRunLoading } = useGetRunQuery(
+    workflowId!,
+    runId!
   );
 
-  const { data: run, isLoading: isRunLoading } = useGetRunQuery(
-    workflowId as string,
-    runId as string
-  );
+  const { data: workflowQueryData, isFetching: isWorkflowLoading } =
+    useWorkflowQuery(workflowId!);
+
+  const user: User = JSON.parse(localStorage.getItem("me") ?? "{}");
 
   useRunSSE({
     workflowId: workflowId as string,
     workflowRunId: runId as string,
   });
 
-  const [openItemId, setOpenItemId] = useState<string | undefined>(undefined);
-  const [descriptionExpandedStates, setDescriptionExpandedStates] = useState<
-    Record<string, boolean>
-  >({}); // State for all description expansions
-  const previousStepsRef = useRef<WorkflowRunStep[] | undefined>(undefined);
-  const inputsExist =
-    run?.executionInputValues &&
-    Object.keys(run.executionInputValues).length > 0;
+  useEffect(() => {
+    if (runState || !workflowQueryData || !runId) return;
+
+    setRunState(buildOptimisticRun(workflowQueryData, runId));
+  }, [workflowQueryData, runId, runState]);
 
   useEffect(() => {
-    if (run?.steps || inputsExist) {
-      const isInitialLoad = previousStepsRef.current === undefined;
+    if (!runQueryData) return;
 
-      // Handle initial load accordion state
-      if (isInitialLoad && openItemId === undefined) {
-        let itemToOpen: string | undefined = undefined;
+    const merged: CustomWorkflowRun = {
+      ...runQueryData,
+      definition: runQueryData.definition ?? workflowQueryData!,
+    };
 
-        if (run?.steps && run.steps.length > 0) {
-          const allStepsTerminal = run.steps.every(
-            (step) => step.status === "completed" || step.status === "failed"
-          );
+    setRunState(merged);
+  }, [runQueryData, workflowQueryData]);
 
-          if (allStepsTerminal) {
-            // Priority 1: All steps done? Open the last actual step.
-            itemToOpen = run.steps[run.steps.length - 1].id;
-          } else {
-            // Priority 2: Not all steps done? Find the first non-terminal step.
-            const firstNonTerminalStep = run.steps.find(
-              (step) => step.status !== "completed" && step.status !== "failed"
-            );
-            if (firstNonTerminalStep) {
-              itemToOpen = firstNonTerminalStep.id;
-            }
-          }
+  useEffect(() => {
+    if (!runState?.definition) return;
+
+    setTreeNodes(
+      buildTree(runState.definition.stepGraph, runState.snapshot.context)
+    );
+  }, [runState]);
+
+  const lastOutput = useMemo(() => {
+    if (!runState) return undefined;
+
+    const flattenedSteps = workflowQueryData?.stepGraph
+      ? flatten(workflowQueryData.stepGraph)
+      : [];
+
+    const lastStepId = flattenedSteps.length
+      ? flattenedSteps[flattenedSteps.length - 1].id
+      : undefined;
+
+    return lastStepId
+      ? runState.snapshot.context[lastStepId]?.output
+      : undefined;
+  }, [runState, workflowQueryData]);
+
+  const lastRunningStep = useMemo(() => {
+    if (!runState) return undefined;
+    const step = Object.entries(runState.snapshot.context).find(
+      ([_, data]) =>
+        data.status === StepStatus.Running || data.status === StepStatus.Failed
+    );
+
+    return step
+      ? {
+          id: step[0],
+          name: step[0],
+          status: step[1].status,
+          error: step[1].error,
         }
+      : undefined;
+  }, [runState]);
 
-        // Priority 3: If no step was selected above (e.g., steps empty/pending) AND inputs exist, open inputs.
-        if (itemToOpen === undefined && inputsExist) {
-          itemToOpen = "inputs";
-        }
+  const lastGraphStep = useMemo(() => {
+    if (!workflowQueryData?.stepGraph) return null;
+    return workflowQueryData.stepGraph[workflowQueryData.stepGraph.length - 1];
+  }, [workflowQueryData]);
 
-        // Set the state if we determined an item to open
-        if (itemToOpen !== undefined) {
-          setOpenItemId(itemToOpen);
-        }
-      }
-      // Handle auto-closing/opening based on step status changes AFTER initial load
-      else if (
-        openItemId &&
-        openItemId !== "inputs" &&
-        previousStepsRef.current &&
-        run?.steps &&
-        previousStepsRef.current !== run.steps
-      ) {
-        const currentOpenStepIndex = run.steps.findIndex(
-          (step) => step.id === openItemId
-        );
+  const lastStepStatus = useMemo(() => {
+    if (!lastGraphStep || !("step" in lastGraphStep)) return null;
 
-        if (currentOpenStepIndex !== -1) {
-          const currentOpenStep = run.steps[currentOpenStepIndex];
-          const prevOpenStep = previousStepsRef.current.find(
-            (step) => step.id === openItemId
-          );
+    const id = lastGraphStep.step.id;
 
-          // Auto-close & open next logic: Only activate if the step just completed AND it's NOT the last step
-          if (
-            prevOpenStep &&
-            currentOpenStep.status === "completed" &&
-            prevOpenStep.status !== "completed" &&
-            currentOpenStepIndex < run.steps.length - 1 // Only trigger if there IS a next step
-          ) {
-            const nextStep = run.steps[currentOpenStepIndex + 1];
-            if (nextStep) {
-              setOpenItemId(nextStep.id); // Open the next step
-            } else {
-              setOpenItemId(undefined); // Fallback: close if next step somehow doesn't exist (shouldn't happen with the index check)
-            }
-          }
-        }
-      }
+    const runStateStep = runState?.snapshot?.context[id];
 
-      previousStepsRef.current = run?.steps;
-    } else {
-      // Reset if run data disappears
-      previousStepsRef.current = undefined;
-      if (openItemId !== undefined) {
-        setOpenItemId(undefined);
-      }
+    if (runStateStep) {
+      return runStateStep.status;
     }
-  }, [run?.steps, run?.executionInputValues, inputsExist, openItemId]);
 
-  const calculateDuration = (start: string, end: string, status: string) => {
-    if (!start || !end || (status !== "completed" && status !== "failed"))
-      return null;
-    try {
-      const durationMs = new Date(end).getTime() - new Date(start).getTime();
-      if (isNaN(durationMs) || durationMs < 0) return null;
-      const durationSec = durationMs / 1000;
-      if (durationSec < 1) {
-        return `${durationMs}ms`;
-      } else if (durationSec < 60) {
-        return `${durationSec.toFixed(1)}s`;
-      } else {
-        return `${Math.floor(durationSec / 60)}m ${Math.round(
-          durationSec % 60
-        )}s`;
-      }
-    } catch (e) {
-      console.error("Error calculating duration:", e);
-      return null;
-    }
-  };
+    return "running";
+  }, [lastGraphStep, runState]);
 
-  // Simpler status indicator for the header
-  const getHeaderStatusDisplay = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="capitalize">{status}</span>
-          </div>
-        );
-      case "failed":
-        return (
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-            <span className="capitalize">{status}</span>
-          </div>
-        );
-      case "running":
-        return (
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span className="capitalize">{status}</span>
-          </div>
-        );
+  const workflowRunStatus = useMemo(() => {
+    switch (lastStepStatus) {
       case "pending":
-      default:
-        return (
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-            <span className="capitalize">{status}</span>
-          </div>
-        );
-    }
-  };
-
-  const formatRunDate = (dateString: string | undefined) => {
-    if (!dateString) return "-";
-    try {
-      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
-    } catch (e) {
-      console.error("Error formatting date:", e);
-      return "Invalid Date";
-    }
-  };
-
-  // Original status icon function for accordion steps
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-            <Check className="w-4 h-4 text-white" />
-          </div>
-        );
-      case "failed":
-        return (
-          <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
-            <X className="w-4 h-4 text-white" />
-          </div>
-        );
+        return "Pending";
       case "running":
-        return (
-          <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
-        );
-      case "pending":
-      default:
-        return <Circle className="w-5 h-5 text-muted-foreground" />;
-    }
-  };
-
-  const getConnectorClassName = (status: string | undefined) => {
-    switch (status) {
-      case "running":
-        // Pulsing grey line for running state
-        return "bg-gray-400 animate-pulse";
-      // case "completed":
-      //   return "bg-green-500"; // Removed color
-      // case "failed":
-      //   return "bg-red-500"; // Removed color
-      case "completed":
+        return "Running";
       case "failed":
-      case "pending":
+        return "Failed";
+      case "success":
+        return "Completed";
       default:
-        // Solid grey line for other states
-        return "bg-gray-400";
+        return "Running";
     }
-  };
+  }, [lastStepStatus]);
+
+  const runStatusColor = useMemo(() => {
+    switch (lastStepStatus) {
+      case "pending":
+        return "bg-yellow-500";
+      case "running":
+        return "bg-blue-500";
+      case "failed":
+        return "bg-red-500";
+      case "success":
+        return "bg-green-500";
+      default:
+        return "bg-blue-500";
+    }
+  }, [lastStepStatus]);
+
+  if (isRunLoading && !runState) return <WorkflowRunDetailsSkeleton />;
+
+  if (!runState) return null;
 
   return (
-    <div className="w-full flex flex-col flex-1">
-      <div className="flex-1 w-full">
-        <div className="mx-auto px-4 py-4 w-full">
-          <Breadcrumb className="mb-8">
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <Link
-                  to="/workflows"
-                  className="hover:text-blue-500 hover:underline"
-                >
-                  Workflows
-                </Link>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator>
-                <Slash className="w-4 h-4" />
-              </BreadcrumbSeparator>
-              <BreadcrumbItem>
-                <Link
-                  to={`/workflows/${workflowId}`}
-                  className="hover:text-blue-500 hover:underline"
-                >
-                  {isWorkflowLoading ? (
-                    <Skeleton className="h-4 w-24" />
-                  ) : (
-                    workflow?.name
-                  )}
-                </Link>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator>
-                <Slash className="w-4 h-4" />
-              </BreadcrumbSeparator>
-              <BreadcrumbItem>
-                <Link
-                  to={`/workflows/${workflowId}/runs`}
-                  className="hover:text-blue-500 hover:underline"
-                >
-                  Runs
-                </Link>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator>
-                <Slash className="w-4 h-4" />
-              </BreadcrumbSeparator>
-              <BreadcrumbItem>
-                <span className="font-bold">Run #{runId?.slice(0, 8)}</span>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-
-          <div className="flex items-center justify-between mb-4 max-w-3xl mx-auto w-full">
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              Run Details
-              {runId && <Badge variant="secondary">#{runId.slice(0, 8)}</Badge>}
-            </h1>
-            <Button variant="outline" onClick={() => window.history.back()}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Runs
-            </Button>
-          </div>
-
-          {!isRunLoading && run && (
-            <div className="mb-8 max-w-3xl mx-auto w-full text-sm text-muted-foreground flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Status:</span>
-                {/* Use the new header status display */}
-                {getHeaderStatusDisplay(run.status)}
+    <div className="w-full mx-auto p-4 space-y-6">
+      <WorkflowRunDetailsBreadcrumb
+        workflowId={workflowId}
+        isWorkflowLoading={isWorkflowLoading}
+        workflowName={workflowQueryData?.name}
+        runId={runId}
+      />
+      <div className="flex flex-col flex-1 max-w-3xl mx-auto p-4 pt-6 w-full gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+          <div className="flex flex-col w-full">
+            <div className="flex flex-col border-l-4 border-primary pl-4 mb-2">
+              <div className="flex w-full justify-between items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-4xl font-bold tracking-tight">
+                    Run details
+                  </h1>
+                  <Badge variant="secondary">
+                    #{runState?.runId?.slice(0, 8) ?? ""}
+                  </Badge>
+                </div>
+                <Button variant="outline" asChild>
+                  <Link to={`/workflows/${workflowId}/runs`}>
+                    <ArrowLeftIcon className="w-4 h-4" />
+                    Back to runs
+                  </Link>
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Started:</span>
-                <span>{formatRunDate(run.createdAt)}</span>
+              <h2 className="text-2xl text-primary font-bold tracking-tight">
+                {runState.workflowName}
+              </h2>
+              <div className="flex items-center gap-6 text-muted-foreground">
+                <div className="flex items-center gap-1 text-sm">
+                  <p>Status:</p>
+                  <div className={`w-3 h-3 rounded-full ${runStatusColor}`} />
+                  <p>{workflowRunStatus}</p>
+                </div>
               </div>
             </div>
-          )}
-
-          {isRunLoading && (
-            <div className="mb-8 max-w-3xl mx-auto w-full flex items-center gap-6">
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-5 w-32" />
-            </div>
-          )}
-
-          <div className="max-w-3xl mx-auto w-full">
-            {isRunLoading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-              </div>
-            ) : run && (inputsExist || (run.steps && run.steps.length > 0)) ? (
-              <Accordion
-                type="single"
-                collapsible
-                className="w-full"
-                value={openItemId || ""}
-                onValueChange={(value) => setOpenItemId(value || undefined)}
-              >
-                {inputsExist && (
-                  <Fragment key="inputs-fragment">
-                    <AccordionItem
-                      value="inputs"
-                      key="inputs"
-                      className={cn(
-                        "border rounded-md bg-card shadow-sm overflow-hidden"
-                      )}
-                    >
-                      <AccordionTrigger className="hover:bg-muted/50 px-4 py-3 text-base font-medium transition-colors cursor-pointer data-[state=open]:border-b">
-                        <div className="flex items-center gap-3 flex-1">
-                          <span className="font-medium flex-1 text-left truncate text-lg">
-                            Inputs
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="p-4 pt-2 bg-card text-card-foreground">
-                        <WorkflowRunInputs inputs={run.executionInputValues!} />
-                      </AccordionContent>
-                    </AccordionItem>
-                    {run.steps && run.steps.length > 0 && (
-                      <div className="flex justify-center h-8">
-                        <div
-                          className={cn(
-                            "w-px h-full",
-                            getConnectorClassName(run.steps[0]?.status)
-                          )}
-                        ></div>
-                      </div>
-                    )}
-                  </Fragment>
-                )}
-
-                {run.steps?.map((step, index) => {
-                  const duration = calculateDuration(
-                    step.createdAt,
-                    step.updatedAt,
-                    step.status
-                  );
-                  const stepTitle = `Step ${index + 1} - ${step.name}`;
-                  const isLastStep = index === run.steps.length - 1;
-                  const nextStepStatus = run.steps[index + 1]?.status;
-                  const isDescriptionExpanded =
-                    !!descriptionExpandedStates[step.id]; // Get state for this step
-
-                  return (
-                    <Fragment key={step.id}>
-                      <AccordionItem
-                        value={step.id}
-                        className={cn(
-                          "border rounded-md bg-card shadow-sm overflow-hidden"
-                        )}
-                      >
-                        <AccordionTrigger className="hover:bg-muted/50 px-4 py-3 text-base font-medium transition-colors cursor-pointer data-[state=open]:border-b">
-                          <div className="flex items-center gap-3 flex-1">
-                            {/* Special handling for first step: show running if step is pending but run is running */}
-                            {index === 0 &&
-                            step.status === "pending" &&
-                            run?.status === "running"
-                              ? getStatusIcon("running")
-                              : getStatusIcon(step.status)}
-
-                            <span className="font-medium flex-1 text-left truncate text-lg">
-                              {stepTitle}
-                            </span>
-                            {duration && (
-                              <span className="text-sm text-muted-foreground mr-2">
-                                {duration}
-                              </span>
-                            )}
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="p-4 pt-2 bg-card text-card-foreground">
-                          {step.status === "failed" && (
-                            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-md text-destructive/80 text-sm italic">
-                              Step failed.
-                            </div>
-                          )}
-                          <div className="mb-4">
-                            <h3 className="text-sm font-semibold mb-2">
-                              Instructions
-                            </h3>
-                            {step.instructions ? (
-                              <div>
-                                <div
-                                  className={cn(
-                                    "text-sm whitespace-pre-wrap p-2 rounded-md transition-all duration-300 ease-in-out relative overflow-hidden",
-                                    isDescriptionExpanded ? "" : "max-h-[75px]"
-                                  )}
-                                >
-                                  {step.instructions}
-                                  {!isDescriptionExpanded && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-                                  )}
-                                </div>
-                                <Button
-                                  variant="link"
-                                  className="mt-1 px-0 text-xs h-auto border-0"
-                                  onClick={() =>
-                                    setDescriptionExpandedStates((prev) => ({
-                                      ...prev,
-                                      [step.id]: !prev[step.id],
-                                    }))
-                                  }
-                                >
-                                  {isDescriptionExpanded
-                                    ? "See Less"
-                                    : "See More"}
-                                </Button>
-                              </div>
-                            ) : (
-                              <p className="text-sm text-muted-foreground italic">
-                                No instructions provided for this step.
-                              </p>
-                            )}
-                          </div>
-                          <div className="mb-4">
-                            <h3 className="text-sm font-semibold mb-2">
-                              Messages
-                            </h3>
-                            <StepMessagesDisplay messages={step.messages} />
-                          </div>
-                          <h3 className="text-sm font-semibold mb-2 ">Files</h3>
-                          <WorkflowStepOutputs
-                            outputs={step.outputs}
-                            isLastStep={isLastStep}
-                          />
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      {!isLastStep && (
-                        <div className="flex justify-center h-8">
-                          <div
-                            className={cn(
-                              "w-px h-full",
-                              getConnectorClassName(nextStepStatus)
-                            )}
-                          ></div>
-                        </div>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </Accordion>
-            ) : (
-              <Card className="w-full p-6 text-center text-muted-foreground">
-                {isRunLoading
-                  ? "Loading run details..."
-                  : "No inputs or steps for this run yet."}
-              </Card>
-            )}
           </div>
+        </div>
+
+        <WorkflowRunStatus
+          status={lastStepStatus as StepStatus}
+          hasFailed={lastStepStatus === "failed"}
+          isCompleted={lastStepStatus === "success"}
+          lastOutput={lastOutput}
+          lastRunningStep={lastRunningStep}
+        />
+
+        <WorkflowRunGraph
+          workflowRun={runState}
+          treeNodes={treeNodes}
+          runState={runState}
+        />
+
+        <div className="mt-8 space-y-6">
+          <h2 className="text-2xl font-bold">Comments</h2>
+          <CommentForm workflowId={workflowId!} runId={runId!} />
+          <CommentList
+            workflowId={workflowId!}
+            runId={runId!}
+            currentUserId={user?.id}
+          />
         </div>
       </div>
     </div>
   );
 }
+
+const WorkflowRunDetailsBreadcrumb = ({
+  workflowId,
+  isWorkflowLoading,
+  workflowName,
+  runId,
+}: {
+  workflowId?: string;
+  isWorkflowLoading: boolean;
+  workflowName?: string;
+  runId?: string;
+}) => {
+  return (
+    <Breadcrumb className="mb-8">
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <Link to="/workflows" className="hover:text-blue-500 hover:underline">
+            Workflows
+          </Link>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator>
+          <Slash className="w-4 h-4" />
+        </BreadcrumbSeparator>
+        <BreadcrumbItem>
+          <Link
+            to={`/workflows/${workflowId}`}
+            className="hover:text-blue-500 hover:underline"
+          >
+            {isWorkflowLoading ? (
+              <Skeleton className="h-4 w-24" />
+            ) : (
+              workflowName
+            )}
+          </Link>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator>
+          <Slash className="w-4 h-4" />
+        </BreadcrumbSeparator>
+        <BreadcrumbItem>
+          <Link
+            to={`/workflows/${workflowId}/runs`}
+            className="hover:text-blue-500 hover:underline"
+          >
+            {isWorkflowLoading ? <Skeleton className="h-4 w-24" /> : "Runs"}
+          </Link>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator>
+          <Slash className="w-4 h-4" />
+        </BreadcrumbSeparator>
+        <BreadcrumbItem>
+          <span className="font-bold">Run #{runId?.slice(0, 8)}</span>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+};
+
+const WorkflowRunDetailsSkeleton = () => {
+  return (
+    <div className="w-full mx-auto p-4 space-y-6">
+      <Breadcrumb className="mb-8">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <Skeleton className="h-4 w-20" />
+          </BreadcrumbItem>
+          <BreadcrumbSeparator>
+            <Slash className="w-4 h-4" />
+          </BreadcrumbSeparator>
+          <BreadcrumbItem>
+            <Skeleton className="h-4 w-24" />
+          </BreadcrumbItem>
+          <BreadcrumbSeparator>
+            <Slash className="w-4 h-4" />
+          </BreadcrumbSeparator>
+          <BreadcrumbItem>
+            <Skeleton className="h-4 w-16" />
+          </BreadcrumbItem>
+          <BreadcrumbSeparator>
+            <Slash className="w-4 h-4" />
+          </BreadcrumbSeparator>
+          <BreadcrumbItem>
+            <Skeleton className="h-4 w-24" />
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <div className="flex flex-col flex-1 max-w-3xl mx-auto pt-6 w-full gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+
+      <Skeleton className="h-32 w-full max-w-3xl mx-auto" />
+      <Skeleton className="h-[500px] w-full max-w-3xl mx-auto" />
+    </div>
+  );
+};
