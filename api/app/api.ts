@@ -151,26 +151,38 @@ export default Router()
   .use("/permissions", auth, permissionsRoutes)
   .use("/analytics", analyticsRoutes)
   .post("/utils/pdf-to-images", async (req, res) => {
-    const { fileKey } = req.body;
-    const file = s3.file(fileKey);
-    const pdfData = await file.arrayBuffer();
+    try {
+      const { fileKey } = req.body;
+      const file = s3.file(fileKey);
+      const pdfData = await file.arrayBuffer();
 
-    const images = await pdfToImages(new Uint8Array(pdfData));
+      const images = await pdfToImages(new Uint8Array(pdfData));
 
-    // Upload each image to s3
-    const imagePromises = images.map(async (image) => {
-      const imageBuffer = Buffer.from(image.base64, "base64");
-      const imageKey = `convert-images/${image.name}`;
-      await s3.write(imageKey, imageBuffer, {
-        type: "image/png",
+      // Upload each image to s3
+      const imagePromises = images.map(async (image) => {
+        const imageBuffer = Buffer.from(image.base64, "base64");
+        const imageKey = `convert-images/${image.name}`;
+        await s3.write(imageKey, imageBuffer, {
+          type: "image/png",
+        });
+
+        return imageKey;
       });
 
-      return imageKey;
-    });
+      const imageKeys = await Promise.all(imagePromises);
 
-    const imageKeys = await Promise.all(imagePromises);
+      console.log("converteed and uploaded images");
 
-    res.json({
-      imageKeys,
-    });
+      res.json({
+        imageKeys,
+      });
+    } catch (error) {
+      console.error("Error converting PDF to images:", error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error:
+            error instanceof Error ? error.message : "Internal server error",
+        });
+      }
+    }
   });

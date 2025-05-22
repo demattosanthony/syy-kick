@@ -16,7 +16,14 @@ export async function convertPdfFromS3ToImages(
   }[]
 > {
   try {
-    // Make API request to convert PDF to images
+    // Make API request to convert PDF to images with a longer timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+
+    console.log("making api request to convert pdf to images");
+    console.log("fileKey", fileKey);
+    console.log("API_BASE_URL", API_BASE_URL);
+
     const response = await fetch(`${API_BASE_URL}/utils/pdf-to-images`, {
       method: "POST",
       headers: {
@@ -25,7 +32,10 @@ export async function convertPdfFromS3ToImages(
       body: JSON.stringify({
         fileKey: fileKey,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(
@@ -34,6 +44,7 @@ export async function convertPdfFromS3ToImages(
     }
 
     const { imageKeys } = await response.json();
+    console.log("imageKeys", imageKeys);
 
     // Return the API's image keys directly
     return imageKeys.map((imageKey: string) => {
