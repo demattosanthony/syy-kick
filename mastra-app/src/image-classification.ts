@@ -63,7 +63,9 @@ export async function classifyImages(
             ],
           },
         ],
-        model: openai("gpt-4.1"),
+        model: openai("o4-mini", {
+          structuredOutputs: true,
+        }),
         schema: options.schema,
       })
     )

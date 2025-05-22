@@ -11,6 +11,7 @@ import {
   equipmentServingListWorkflow,
   rfpResearcherWorkflow,
   kitchenSinkWorkflow,
+  pointCheckoutSheetsWorkflow,
 } from "./workflows/index.ts";
 import { csvWriter, webResearcher } from "./agents/index.ts";
 
@@ -24,6 +25,7 @@ export const mastra = new Mastra({
     "web-researcher": webResearcher,
   },
   vnext_workflows: {
+    "point-checkout-sheets": pointCheckoutSheetsWorkflow,
     "totalized-bom-builder": totalizedBomBuilder,
     "window-door-schedule-gen": windowDoorScheduleGen,
     "setty-rfp-eval": settyRfpEval,
