@@ -64,8 +64,18 @@ Steps:
 1. Analyze all the markdown tables of the window and door schedule tables.
 2. Create a single CSV file that contains the data from all the tables.
 
-Example of a single properly formatted line:
+Example of correct CSV formatting:
+"WINDOW SCHEDULE"
+"Item","Height","Width","Area (sq ft)"
 "A","8'-0""","2'-4""","18.67"
+"B","4'-8""","2'-8""","12.44"
+
+"DOOR SCHEDULE"
+"Item","Height","Width","Area (sq ft)"
+"01A","8'-0""","3'-0""","24.00"
+"01B","8'-0""","3'-0""","24.00"
+
+Make sure to follow this format exactly. This means the headers should be "WINDOW SCHEDULE" and "DOOR SCHEDULE" and the columns should be "Item", "Height", "Width", "Area (sq ft)".
 
 Quality Control:
 - Verify all measurements are properly formatted (X'-Y""")

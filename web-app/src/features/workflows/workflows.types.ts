@@ -4,15 +4,18 @@ import { WorkflowRuns } from "@mastra/core";
 // Base types for form fields
 type BaseFieldType = {
   type: string;
-  const: "text" | "file";
+  const: "text" | "file" | "number";
 };
 
 type BaseFieldValue = {
   type: "object";
-  properties: Record<string, {
-    type: string;
-    const?: string;
-  }>;
+  properties: Record<
+    string,
+    {
+      type: string;
+      const?: string;
+    }
+  >;
   required: string[];
   additionalProperties: boolean;
 };
@@ -50,6 +53,27 @@ export interface TextFormField extends BaseFieldStructure {
   };
 }
 
+type NumberFieldType = BaseFieldType & {
+  const: "number";
+};
+
+type NumberFieldValue = BaseFieldValue & {
+  properties: {
+    number: {
+      type: string;
+    };
+  };
+  required: ["number"];
+};
+
+export interface NumberFormField extends BaseFieldStructure {
+  properties: {
+    type: NumberFieldType;
+    value: NumberFieldValue;
+    label: BaseFieldType;
+  };
+}
+
 // Specific types for file fields
 export type FileMimeType = "application/pdf" | "image/*";
 
@@ -82,7 +106,7 @@ export interface FileFormField extends BaseFieldStructure {
 }
 
 // Union type for all possible fields
-export type FormField = TextFormField | FileFormField;
+export type FormField = TextFormField | FileFormField | NumberFormField;
 
 // Types for the workflow schema
 export type WorkflowInputSchemaRaw = string;
@@ -121,60 +145,60 @@ export enum StepStatus {
 
 export interface TreeNodeBase {
   /** Unique path in the run, includes iteration suffixes. */
-  path: string
+  path: string;
   /** Original step identifier from the definition. */
-  stepId: string
-  type: "step" | "parallel" | "conditional" | "loop" | "foreach"
-  description?: string
+  stepId: string;
+  type: "step" | "parallel" | "conditional" | "loop" | "foreach";
+  description?: string;
 
-  status: StepStatus
-  startedAt: number | null
-  finishedAt: number | null
-  output?: StepOutputValue
-  error?: string
+  status: StepStatus;
+  startedAt: number | null;
+  finishedAt: number | null;
+  output?: StepOutputValue;
+  error?: string;
 }
 
 export interface TreeNode extends TreeNodeBase {
-  children?: TreeNode[]
+  children?: TreeNode[];
   /* Loop-specific */
-  iteration?: number
-  loopType?: "dowhile" | "dountil"
+  iteration?: number;
+  loopType?: "dowhile" | "dountil";
   /* Foreach-specific */
-  foreachIndex?: number
-  foreachConcurrency?: number
+  foreachIndex?: number;
+  foreachConcurrency?: number;
 }
 
 export interface RuntimeIndex {
-  byPath: Map<string, TreeNode>
-  byStepId: Map<string, TreeNode[]>
+  byPath: Map<string, TreeNode>;
+  byStepId: Map<string, TreeNode[]>;
 }
 
 export type StepContext = {
-  status: StepStatus
-  output?: StepOutputValue
-  error?: string
-}
+  status: StepStatus;
+  output?: StepOutputValue;
+  error?: string;
+};
 
 export interface VNextWorkflowRunState {
-  value: Record<string, string>
+  value: Record<string, string>;
   context: {
-    input: Record<string, any>
-  } & Record<string, StepContext>
-  runId: string
-  timestamp: number
+    input: Record<string, any>;
+  } & Record<string, StepContext>;
+  runId: string;
+  timestamp: number;
 }
 export interface CustomWorkflowRun {
-  workflowName: string
-  runId: string
-  snapshot: VNextWorkflowRunState
-  createdAt: Date
-  updatedAt: Date
-  resourceId?: string
-  definition?: GetVNextWorkflowResponse
+  workflowName: string;
+  runId: string;
+  snapshot: VNextWorkflowRunState;
+  createdAt: Date;
+  updatedAt: Date;
+  resourceId?: string;
+  definition?: GetVNextWorkflowResponse;
 }
 
 /** @todo: use their type when available */
-export interface CustomWorkflowRuns extends Omit<WorkflowRuns, 'runs'> {
+export interface CustomWorkflowRuns extends Omit<WorkflowRuns, "runs"> {
   runs: CustomWorkflowRun[];
 }
 
@@ -183,20 +207,18 @@ export type StepOutputValue =
   | WorkflowRunStepOutput[]
   | Record<string, WorkflowRunStepOutput | WorkflowRunStepOutput[]>;
 
-
 // New output schema types
 export interface WorkflowFile {
-  fileKey: string
-  mimeType: string
-  fileName: string
-  fileSize?: number
-  url?: string
+  fileKey: string;
+  mimeType: string;
+  fileName: string;
+  fileSize?: number;
+  url?: string;
 }
 
 export interface WorkflowRunStepOutput {
-  type: "text" | "file" | "number"
-  text?: string
-  file?: WorkflowFile
-  number?: number
+  type: "text" | "file" | "number";
+  text?: string;
+  file?: WorkflowFile;
+  number?: number;
 }
-

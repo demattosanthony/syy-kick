@@ -12,7 +12,7 @@ const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   }),
   inputString: z.object({
     type: z.literal("text"),
-    label: z.string(),
+    label: z.literal("Input String"),
     value: z.object({
       text: z.string(),
     }),
@@ -554,15 +554,12 @@ export const kitchenSinkWorkflow = createWorkflow({
 
   // 3. Create a simpler branch step with just one condition
   .branch([
-    [
-      async () => false,
-      highValueStep,
-    ],
+    [async () => false, highValueStep],
     [
       // Always take this path
       async () => true,
       lowValueStep,
-    ]
+    ],
   ])
 
   // 4. Nested workflow with loop - use map to connect branch output to loop input

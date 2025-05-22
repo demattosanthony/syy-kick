@@ -24,7 +24,7 @@ export const performOcrStep = createStep({
       croppedImages,
       {
         tableType: "window or door schedule",
-        columns: ["Item", "Height", "Width", "Area (sq ft)"],
+        // columns: ["Item", "Height", "Width", "Area (sq ft)"],
         additionalInstructions:
           'For measurements containing inches ("), add an additional " before the inches: "8\'-0"""',
       },

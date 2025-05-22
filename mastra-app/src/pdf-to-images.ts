@@ -6,7 +6,10 @@ import fs from "node:fs/promises";
 
 import { getFileFromS3, uploadFileToS3 } from "./s3.ts";
 
-export async function convertPdfToImages(pdfData: Buffer): Promise<
+export async function convertPdfToImages(
+  pdfData: Buffer,
+  options?: { maxDimension?: number }
+): Promise<
   {
     name: string;
     path: string;
@@ -23,7 +26,7 @@ export async function convertPdfToImages(pdfData: Buffer): Promise<
   try {
     await fs.writeFile(tempPdfPath, Buffer.from(pdfData));
 
-    const gsCommand = `gs -dNOPAUSE -dBATCH -sDEVICE=png16m -r150 -sOutputFile="${outputPattern}" "${tempPdfPath}"`;
+    const gsCommand = `gs -dNOPAUSE -dBATCH -sDEVICE=png16m -r120 -sOutputFile="${outputPattern}" "${tempPdfPath}"`;
 
     await execAsync(gsCommand);
 
@@ -33,6 +36,19 @@ export async function convertPdfToImages(pdfData: Buffer): Promise<
     for (const imageFile of imageFiles) {
       if (imageFile.startsWith("output-") && imageFile.endsWith(".png")) {
         const imagePath = path.join(tempDir, imageFile);
+
+        // Resize the image if maxDimension is provided
+        if (options?.maxDimension && options.maxDimension > 0) {
+          const resizeCommand = `convert "${imagePath}" -resize "${options.maxDimension}x${options.maxDimension}>" "${imagePath}"`;
+          try {
+            await execAsync(resizeCommand);
+          } catch (resizeError) {
+            console.error(`Failed to resize image ${imageFile}:`, resizeError);
+            // Optionally, decide if you want to throw or continue without resizing
+            // For now, we log and continue, the original image will be used.
+          }
+        }
+
         const pageMatch = imageFile.match(/output-(\d+)\.png/);
         const pageNum = pageMatch ? parseInt(pageMatch[1], 10) : 0;
 
@@ -63,7 +79,8 @@ export async function convertPdfToImages(pdfData: Buffer): Promise<
 export async function convertPdfFromS3ToImages(
   fileKey: string,
   workflowId: string,
-  workflowRunId: string
+  workflowRunId: string,
+  options: { maxDimension: number } = { maxDimension: 8000 }
 ): Promise<
   {
     type: "file";
@@ -83,7 +100,7 @@ export async function convertPdfFromS3ToImages(
   }
 
   // Convert PDF to images
-  const images = await convertPdfToImages(Buffer.from(pdfData));
+  const images = await convertPdfToImages(Buffer.from(pdfData), options);
 
   // Upload images to S3
   const uploadPromises = images.map((image) => {

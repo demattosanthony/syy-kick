@@ -13,6 +13,7 @@ import { detectObjectsInS3Images } from "../../obj-detection.ts";
 import { performOcrOnS3Images } from "../../llm-ocr.ts";
 import { getFileFromS3, getPresignedUrl, uploadFileToS3 } from "../../s3.ts";
 import { csvWriter } from "../agents/index.ts";
+import { randomUUID } from "node:crypto";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   mechanicalDrawings: z.object({
@@ -51,8 +52,10 @@ const stepOne = createStep({
 
     const uploadedImages = await convertPdfFromS3ToImages(
       fileKey,
-      runtimeContext.get("workflowId"),
-      runtimeContext.get("runId")
+      randomUUID(),
+      randomUUID()
+      //   runtimeContext.get("workflowId"),
+      //   runtimeContext.get("runId")
     );
     logger.info(`Returning ${uploadedImages.length} images`);
 
@@ -108,8 +111,10 @@ const stepThree = createStep({
     const outputs = await detectObjectsInS3Images(
       imagesWithMechanicalSchedules,
       "Mechanical Equipment Schedule Table",
-      runtimeContext.get("workflowId"),
-      runtimeContext.get("runId")
+      randomUUID(),
+      randomUUID()
+      //   runtimeContext.get("workflowId"),
+      //   runtimeContext.get("runId")
     );
 
     logger.info(`Flattened ${outputs.length} cropped images`);
@@ -138,8 +143,10 @@ const stepFour = createStep({
       {
         tableType: "mechanical equipment schedule",
       },
-      runtimeContext.get("workflowId"),
-      runtimeContext.get("runId")
+      randomUUID(),
+      randomUUID()
+      //   runtimeContext.get("workflowId"),
+      //   runtimeContext.get("runId")
     );
 
     logger.info(`Returning ${files.length} markdown files`);
@@ -221,7 +228,7 @@ Example of correct CSV formatting:
       `Equipment Serving List CSV: ${equipmentServingListCsvContent}`
     );
 
-    const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/equipment-serving-list.csv`;
+    const fileKey = `workflows/${randomUUID()}/${randomUUID()}/equipment-serving-list.csv`;
     const csvFileData = Buffer.from(equipmentServingListCsvContent, "utf-8");
 
     // Upload the equipment serving list CSV to S3 and get the presigned url

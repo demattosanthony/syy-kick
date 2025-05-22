@@ -1,17 +1,23 @@
-"use client"
+"use client";
 
-import { Card, CardContent } from "@/components/ui/card"
-import { type CustomWorkflowRun, type TreeNode } from "@/features/workflows/workflows.types"
-import { SerializedStepFlowEntry } from "@mastra/core/workflows/vNext"
-import { StepEntry } from "@/features/workflows/features/runs/components/graph"
-import { WorkflowRunInput } from "../workflow-run-input"
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  type CustomWorkflowRun,
+  type TreeNode,
+} from "@/features/workflows/workflows.types";
+import { SerializedStepFlowEntry } from "@mastra/core/workflows/vNext";
+import { StepEntry } from "@/features/workflows/features/runs/components/graph";
+import { WorkflowRunInput } from "../workflow-run-input";
 
 export function WorkflowRunGraph({
   workflowRun,
   treeNodes,
   runState,
-}: { workflowRun: CustomWorkflowRun; treeNodes: TreeNode[]; runState: CustomWorkflowRun }) {
-
+}: {
+  workflowRun: CustomWorkflowRun;
+  treeNodes: TreeNode[];
+  runState: CustomWorkflowRun;
+}) {
   if (!workflowRun.definition) {
     return (
       <Card>
@@ -21,7 +27,7 @@ export function WorkflowRunGraph({
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -30,7 +36,7 @@ export function WorkflowRunGraph({
       treeNodes={treeNodes}
       runState={runState}
     />
-  )
+  );
 }
 
 function StepGraph({
@@ -38,9 +44,9 @@ function StepGraph({
   treeNodes,
   runState,
 }: {
-  stepGraph: SerializedStepFlowEntry[]
-  treeNodes: TreeNode[]
-  runState: CustomWorkflowRun
+  stepGraph: SerializedStepFlowEntry[];
+  treeNodes: TreeNode[];
+  runState: CustomWorkflowRun;
 }) {
   return (
     <div className="flex flex-col items-center w-full">
@@ -63,5 +69,5 @@ function StepGraph({
         </div>
       ))}
     </div>
-  )
+  );
 }

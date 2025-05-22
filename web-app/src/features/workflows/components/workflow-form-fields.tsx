@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import FileUploadInput from "./workflow-file-input";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 interface WorkflowFormFieldsProps {
   formSchema: WorkflowInputSchemaParsed["json"]["properties"];
@@ -23,11 +24,7 @@ export function WorkflowFormFields({
   className,
   projectId,
 }: WorkflowFormFieldsProps) {
-
-  const renderField = (
-    fieldId: string,
-    field: FormField
-  ) => {
+  const renderField = (fieldId: string, field: FormField) => {
     const commonProps = {
       id: fieldId,
       value: values[fieldId] || "",
@@ -59,8 +56,26 @@ export function WorkflowFormFields({
       case "text":
         return (
           <div key={fieldId} className="space-y-2 p-4">
-            <Label htmlFor={fieldId}>{fieldId}</Label>
-            <Textarea {...commonProps} onChange={(e) => onChange(fieldId, e.target.value, "text")} placeholder={"Enter text"} />
+            <Label htmlFor={fieldId}>{field.properties.label.const}</Label>
+            <Textarea
+              {...commonProps}
+              onChange={(e) => onChange(fieldId, e.target.value, "text")}
+              placeholder={"Enter text"}
+            />
+            <span className="text-sm text-red-500">Required</span>
+          </div>
+        );
+
+      case "number":
+        return (
+          <div key={fieldId} className="space-y-2 p-4">
+            <Label htmlFor={fieldId}>{field.properties.label.const}</Label>
+            <Input
+              {...commonProps}
+              type="number"
+              onChange={(e) => onChange(fieldId, e.target.value, "number")}
+              placeholder={"Enter number"}
+            />
             <span className="text-sm text-red-500">Required</span>
           </div>
         );
@@ -73,7 +88,7 @@ export function WorkflowFormFields({
   return (
     <div className={cn("space-y-6", className)}>
       {Object.entries(formSchema).map(([fieldId, field]) => {
-        return renderField(fieldId, field)
+        return renderField(fieldId, field);
       })}
     </div>
   );

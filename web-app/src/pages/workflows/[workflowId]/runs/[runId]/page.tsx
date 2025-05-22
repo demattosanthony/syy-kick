@@ -1,5 +1,10 @@
 import { Badge } from "@/components/ui/badge";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkflowQuery } from "@/features/workflows/api";
@@ -7,31 +12,36 @@ import { useGetRunQuery } from "@/features/workflows/features/runs/api";
 import { WorkflowRunGraph } from "@/features/workflows/features/runs/components/graph/workflow-run-graph";
 import { WorkflowRunStatus } from "@/features/workflows/features/runs/components/workflow-run-status";
 import { useRunSSE } from "@/features/workflows/features/runs/hooks";
-import { buildOptimisticRun, buildTree, flatten } from "@/features/workflows/utils";
-import { CustomWorkflowRun, StepStatus, TreeNode } from "@/features/workflows/workflows.types";
+import {
+  buildOptimisticRun,
+  buildTree,
+  flatten,
+} from "@/features/workflows/utils";
+import {
+  CustomWorkflowRun,
+  StepStatus,
+  TreeNode,
+} from "@/features/workflows/workflows.types";
 import { ArrowLeftIcon, Slash } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 
-
 export function WorkflowRunPageDetails() {
-  const { workflowId, runId } = useParams<{ workflowId: string; runId: string }>();
+  const { workflowId, runId } = useParams<{
+    workflowId: string;
+    runId: string;
+  }>();
 
   const [runState, setRunState] = useState<CustomWorkflowRun | null>(null);
   const [treeNodes, setTreeNodes] = useState<TreeNode[]>([]);
 
-  const {
-    data: runQueryData,
-    isFetching: isRunLoading,
-  } = useGetRunQuery(
+  const { data: runQueryData, isFetching: isRunLoading } = useGetRunQuery(
     workflowId!,
     runId!
   );
 
-  const {
-    data: workflowQueryData,
-    isFetching: isWorkflowLoading,
-  } = useWorkflowQuery(workflowId!);
+  const { data: workflowQueryData, isFetching: isWorkflowLoading } =
+    useWorkflowQuery(workflowId!);
 
   useRunSSE({
     workflowId: workflowId as string,
@@ -49,8 +59,7 @@ export function WorkflowRunPageDetails() {
 
     const merged: CustomWorkflowRun = {
       ...runQueryData,
-      definition: runQueryData.definition
-        ?? workflowQueryData!,
+      definition: runQueryData.definition ?? workflowQueryData!,
     };
 
     setRunState(merged);
@@ -60,12 +69,8 @@ export function WorkflowRunPageDetails() {
     if (!runState?.definition) return;
 
     setTreeNodes(
-      buildTree(
-        runState.definition.stepGraph,
-        runState.snapshot.context,
-      ),
+      buildTree(runState.definition.stepGraph, runState.snapshot.context)
     );
-
   }, [runState]);
 
   const lastOutput = useMemo(() => {
@@ -82,19 +87,23 @@ export function WorkflowRunPageDetails() {
     return lastStepId
       ? runState.snapshot.context[lastStepId]?.output
       : undefined;
-  }, [runState, workflowQueryData])
+  }, [runState, workflowQueryData]);
 
   const lastRunningStep = useMemo(() => {
     if (!runState) return undefined;
-    const step = Object.entries(runState.snapshot.context)
-      .find(([_, data]) => data.status === StepStatus.Running || data.status === StepStatus.Failed);
+    const step = Object.entries(runState.snapshot.context).find(
+      ([_, data]) =>
+        data.status === StepStatus.Running || data.status === StepStatus.Failed
+    );
 
-    return step ? {
-      id: step[0],
-      name: step[0],
-      status: step[1].status,
-      error: step[1].error
-    } : undefined;
+    return step
+      ? {
+          id: step[0],
+          name: step[0],
+          status: step[1].status,
+          error: step[1].error,
+        }
+      : undefined;
   }, [runState]);
 
   const lastGraphStep = useMemo(() => {
@@ -150,10 +159,10 @@ export function WorkflowRunPageDetails() {
 
   if (!runState) return null;
 
-  console.log(runState, '<---- run state')
+  console.log(runState, "<---- run state");
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="w-full mx-auto p-4 space-y-6">
       <WorkflowRunDetailsBreadcrumb
         workflowId={workflowId}
         isWorkflowLoading={isWorkflowLoading}
@@ -166,9 +175,11 @@ export function WorkflowRunPageDetails() {
             <div className="flex flex-col border-l-4 border-primary pl-4 mb-2">
               <div className="flex w-full justify-between items-center gap-2">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-4xl font-bold tracking-tight">Run details</h1>
+                  <h1 className="text-4xl font-bold tracking-tight">
+                    Run details
+                  </h1>
                   <Badge variant="secondary">
-                    #{runState?.runId?.slice(0, 8) ?? ''}
+                    #{runState?.runId?.slice(0, 8) ?? ""}
                   </Badge>
                 </div>
                 <Button variant="outline" asChild>
@@ -178,16 +189,14 @@ export function WorkflowRunPageDetails() {
                   </Link>
                 </Button>
               </div>
-              <h2 className="text-2xl text-primary font-bold tracking-tight">{runState.workflowName}</h2>
+              <h2 className="text-2xl text-primary font-bold tracking-tight">
+                {runState.workflowName}
+              </h2>
               <div className="flex items-center gap-6 text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <p>
-                    Status:
-                  </p>
+                  <p>Status:</p>
                   <div className={`w-3 h-3 rounded-full ${runStatusColor}`} />
-                  <p>
-                    {workflowRunStatus}
-                  </p>
+                  <p>{workflowRunStatus}</p>
                 </div>
               </div>
             </div>
@@ -202,12 +211,15 @@ export function WorkflowRunPageDetails() {
           lastRunningStep={lastRunningStep}
         />
 
-        <WorkflowRunGraph workflowRun={runState} treeNodes={treeNodes} runState={runState} />
+        <WorkflowRunGraph
+          workflowRun={runState}
+          treeNodes={treeNodes}
+          runState={runState}
+        />
       </div>
     </div>
-  )
+  );
 }
-
 
 const WorkflowRunDetailsBreadcrumb = ({
   workflowId,
@@ -215,19 +227,16 @@ const WorkflowRunDetailsBreadcrumb = ({
   workflowName,
   runId,
 }: {
-  workflowId?: string,
-  isWorkflowLoading: boolean,
-  workflowName?: string,
-  runId?: string
+  workflowId?: string;
+  isWorkflowLoading: boolean;
+  workflowName?: string;
+  runId?: string;
 }) => {
   return (
     <Breadcrumb className="mb-8">
       <BreadcrumbList>
         <BreadcrumbItem>
-          <Link
-            to="/workflows"
-            className="hover:text-blue-500 hover:underline"
-          >
+          <Link to="/workflows" className="hover:text-blue-500 hover:underline">
             Workflows
           </Link>
         </BreadcrumbItem>
@@ -254,11 +263,7 @@ const WorkflowRunDetailsBreadcrumb = ({
             to={`/workflows/${workflowId}/runs`}
             className="hover:text-blue-500 hover:underline"
           >
-            {isWorkflowLoading ? (
-              <Skeleton className="h-4 w-24" />
-            ) : (
-              'Runs'
-            )}
+            {isWorkflowLoading ? <Skeleton className="h-4 w-24" /> : "Runs"}
           </Link>
         </BreadcrumbItem>
         <BreadcrumbSeparator>
@@ -269,8 +274,8 @@ const WorkflowRunDetailsBreadcrumb = ({
         </BreadcrumbItem>
       </BreadcrumbList>
     </Breadcrumb>
-  )
-}
+  );
+};
 
 const WorkflowRunDetailsSkeleton = () => {
   return (
@@ -317,5 +322,5 @@ const WorkflowRunDetailsSkeleton = () => {
       <Skeleton className="h-32 w-full" />
       <Skeleton className="h-[500px] w-full" />
     </div>
-  )
-}
+  );
+};
