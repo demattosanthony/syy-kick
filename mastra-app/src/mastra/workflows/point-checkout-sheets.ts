@@ -11,7 +11,6 @@ import logger from "../../logger";
 import { classifyImages } from "../../image-classification";
 import { getFileFromS3, uploadFileToS3, getPresignedUrl } from "../../s3";
 import { generateObject } from "ai";
-import { openai } from "@ai-sdk/openai";
 import { google } from "@ai-sdk/google";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({

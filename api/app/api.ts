@@ -3,7 +3,7 @@ import { organizationInvites } from "./config/schema";
 import db from "./config/db";
 import { eq } from "drizzle-orm";
 import s3 from "./config/s3";
-import { handle } from "./utils";
+import { handle, pdfToImages } from "./utils";
 import { auth, checkSub } from "./middleware";
 import threadsOps from "./features/threads/threads.ops";
 
@@ -149,4 +149,28 @@ export default Router()
     }
   })
   .use("/permissions", auth, permissionsRoutes)
-  .use("/analytics", analyticsRoutes);
+  .use("/analytics", analyticsRoutes)
+  .post("/utils/pdf-to-images", async (req, res) => {
+    const { fileKey } = req.body;
+    const file = s3.file(fileKey);
+    const pdfData = await file.arrayBuffer();
+
+    const images = await pdfToImages(new Uint8Array(pdfData));
+
+    // Upload each image to s3
+    const imagePromises = images.map(async (image) => {
+      const imageBuffer = Buffer.from(image.base64, "base64");
+      const imageKey = `convert-images/${image.name}`;
+      await s3.write(imageKey, imageBuffer, {
+        type: "image/png",
+      });
+
+      return imageKey;
+    });
+
+    const imageKeys = await Promise.all(imagePromises);
+
+    res.json({
+      imageKeys,
+    });
+  });
