@@ -10,7 +10,11 @@ import {
 import client from "./workflows.mastra.client";
 
 export const workflowsMastraOps = {
-  getWorkflows: async (userId: string, organizationId?: string) => {
+  getWorkflows: async (
+    userId: string,
+    organizationId?: string,
+    query?: string
+  ) => {
     const conditions = [
       exists(
         db
@@ -75,7 +79,7 @@ export const workflowsMastraOps = {
         ])
       );
 
-      const response: Record<
+      let response: Record<
         string,
         GetVNextWorkflowResponse & {
           description?: string | null;
@@ -93,6 +97,15 @@ export const workflowsMastraOps = {
           };
         }
       });
+
+      // Filter where workflow name is similar to query
+      if (query) {
+        response = Object.fromEntries(
+          Object.entries(response).filter(([key, value]) =>
+            value.name.toLowerCase().includes(query.toLowerCase())
+          )
+        );
+      }
 
       return response;
     } catch (error: any) {

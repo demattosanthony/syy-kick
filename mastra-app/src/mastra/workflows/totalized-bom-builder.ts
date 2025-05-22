@@ -41,6 +41,7 @@ const finalStepOutputSchema = z.object({
 
 const stepOne = createStep({
   id: "stepOne",
+  description: "Convert the controls drawings PDF to images",
   inputSchema: inputSchema,
   outputSchema: z.object({
     convertedImages: z.array(WorkflowRunStepOutputSchema),
@@ -66,6 +67,7 @@ const stepOne = createStep({
 
 const stepTwo = createStep({
   id: "stepTwo",
+  description: "Classify the images to find the bill of materials tables",
   inputSchema: z.object({
     convertedImages: z.array(WorkflowRunStepOutputSchema),
   }),
@@ -93,6 +95,7 @@ These tables typically list details about components used in the control system,
 
 const stepThree = createStep({
   id: "stepThree",
+  description: "Crop the images to the bill of materials tables",
   inputSchema: z.object({
     imagesWithBomTables: z.array(WorkflowRunStepOutputSchema),
   }),
@@ -121,6 +124,8 @@ const stepThree = createStep({
 
 const stepFour = createStep({
   id: "stepFour",
+  description:
+    "Perform OCR on the cropped images to extract the bill of materials tables",
   inputSchema: z.object({
     croppedImages: z.array(WorkflowRunStepOutputSchema),
   }),
@@ -155,6 +160,7 @@ const stepFour = createStep({
 
 const stepFive = createStep({
   id: "stepFive",
+  description: "Generate the totalized BOM CSV file",
   inputSchema: z.object({
     markdownFiles: z.array(WorkflowRunStepOutputSchema),
   }),

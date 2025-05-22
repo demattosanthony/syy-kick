@@ -924,8 +924,10 @@ class PermissionsApi extends ApiRequest {
  * Workflows API Module
  */
 class WorkflowsApi extends ApiRequest {
-  async listWorkflows(): Promise<Record<string, EnhancedWorkflowResponse>> {
-    return await this.request("/workflows");
+  async listWorkflows(
+    query?: string
+  ): Promise<Record<string, EnhancedWorkflowResponse>> {
+    return await this.request(`/workflows?${query ? `query=${query}` : ""}`);
   }
 
   async getWorkflow(id: string): Promise<EnhancedWorkflowResponse> {

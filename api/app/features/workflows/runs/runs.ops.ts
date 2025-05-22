@@ -29,7 +29,6 @@ export const workflowRunsOps = {
       const inputSchema = workflowDetails.inputSchema;
 
       const validatedInput = runsUtils.validateInput(input, inputSchema);
-      console.log(validatedInput);
 
       const run = await workflow.createRun();
 
