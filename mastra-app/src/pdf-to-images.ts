@@ -1,10 +1,86 @@
-// Configure API base URL from environment or default to localhost
-const API_BASE_URL = process.env.SYYKICK_API || "http://localhost:4000";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+import path from "node:path";
+import os from "node:os";
+import fs from "node:fs/promises";
+
+import { getFileFromS3, uploadFileToS3 } from "./s3.ts";
+
+export async function convertPdfToImages(
+  pdfData: Buffer,
+  options?: { maxDimension?: number }
+): Promise<
+  {
+    name: string;
+    path: string;
+    size: number;
+    page: number;
+    base64: string;
+  }[]
+> {
+  const execAsync = promisify(exec);
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pdf-images-"));
+  const tempPdfPath = path.join(tempDir, "input.pdf");
+  const outputPattern = path.join(tempDir, "output-%d.png");
+
+  try {
+    await fs.writeFile(tempPdfPath, Buffer.from(pdfData));
+
+    const gsCommand = `gs -dNOPAUSE -dBATCH -sDEVICE=png16m -r150 -sOutputFile="${outputPattern}" "${tempPdfPath}"`;
+
+    await execAsync(gsCommand);
+
+    const imageFiles = await fs.readdir(tempDir);
+    const images = [];
+
+    for (const imageFile of imageFiles) {
+      if (imageFile.startsWith("output-") && imageFile.endsWith(".png")) {
+        const imagePath = path.join(tempDir, imageFile);
+
+        // Resize the image if maxDimension is provided
+        if (options?.maxDimension && options.maxDimension > 0) {
+          const resizeCommand = `convert "${imagePath}" -resize "${options.maxDimension}x${options.maxDimension}>" "${imagePath}"`;
+          try {
+            await execAsync(resizeCommand);
+          } catch (resizeError) {
+            console.error(`Failed to resize image ${imageFile}:`, resizeError);
+            // Optionally, decide if you want to throw or continue without resizing
+            // For now, we log and continue, the original image will be used.
+          }
+        }
+
+        const pageMatch = imageFile.match(/output-(\d+)\.png/);
+        const pageNum = pageMatch ? parseInt(pageMatch[1], 10) : 0;
+
+        const imageBuffer = await fs.readFile(imagePath);
+        const stats = await fs.stat(imagePath);
+
+        images.push({
+          name: imageFile,
+          path: imagePath,
+          size: stats.size,
+          page: pageNum,
+          base64: imageBuffer.toString("base64"),
+        });
+      }
+    }
+
+    await fs.rm(tempDir, { recursive: true, force: true });
+
+    return images;
+  } catch (error) {
+    console.error(error);
+    // Delete the temp directory
+    await fs.rm(tempDir, { recursive: true, force: true });
+    throw error;
+  }
+}
 
 export async function convertPdfFromS3ToImages(
   fileKey: string,
   workflowId: string,
-  workflowRunId: string
+  workflowRunId: string,
+  options: { maxDimension: number } = { maxDimension: 4000 }
 ): Promise<
   {
     type: "file";
@@ -15,88 +91,33 @@ export async function convertPdfFromS3ToImages(
     };
   }[]
 > {
-  try {
-    // Make API request to convert PDF to images with a longer timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log("Request timeout reached, aborting...");
-      controller.abort();
-    }, 600000); // 10 minute timeout (increased from 5 minutes)
+  // Download PDF from S3
+  const file = await getFileFromS3(fileKey);
+  const pdfData = await file.Body?.transformToByteArray();
 
-    console.log("making api request to convert pdf to images");
-    console.log("fileKey", fileKey);
-    console.log("API_BASE_URL", API_BASE_URL);
-
-    const startTime = Date.now();
-
-    const response = await fetch(`${API_BASE_URL}/utils/pdf-to-images`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        fileKey: fileKey,
-      }),
-      signal: controller.signal,
-    });
-
-    const fetchTime = Date.now() - startTime;
-    console.log(`Fetch completed in ${fetchTime}ms`);
-
-    clearTimeout(timeoutId);
-
-    console.log("Response status:", response.status);
-    console.log(
-      "Response headers:",
-      Object.fromEntries(response.headers.entries())
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API error response:", errorText);
-      throw new Error(
-        `API request failed: ${response.status} ${response.statusText} - ${errorText}`
-      );
-    }
-
-    console.log("Starting to parse response JSON...");
-    const responseData = await response.json();
-    console.log("Response data parsed successfully");
-
-    const { imageKeys } = responseData;
-    console.log("imageKeys received:", imageKeys);
-
-    if (!imageKeys || !Array.isArray(imageKeys)) {
-      throw new Error("Invalid response: imageKeys is not an array");
-    }
-
-    // Return the API's image keys directly
-    const result = imageKeys.map((imageKey: string) => {
-      const fileName = imageKey.split("/").pop() || "image.png";
-      return {
-        type: "file" as const,
-        file: {
-          fileKey: imageKey,
-          mimeType: "image/png",
-          fileName: fileName,
-        },
-      };
-    });
-
-    console.log(`Successfully converted PDF to ${result.length} images`);
-    return result;
-  } catch (error) {
-    console.error("Error converting PDF from S3 to images via API:", error);
-
-    // Log more details about the error
-    if (error instanceof Error) {
-      console.error("Error name:", error.name);
-      console.error("Error message:", error.message);
-      if (error.name === "AbortError") {
-        console.error("Request was aborted due to timeout");
-      }
-    }
-
-    throw error;
+  if (!pdfData) {
+    throw new Error("No data found");
   }
+
+  // Convert PDF to images
+  const images = await convertPdfToImages(Buffer.from(pdfData), options);
+
+  // Upload images to S3
+  const uploadPromises = images.map((image) => {
+    const uploadFileKey = `workflows/${workflowId}/${workflowRunId}/${image.name}`;
+    return uploadFileToS3(
+      uploadFileKey,
+      Buffer.from(image.base64, "base64"),
+      "image/png"
+    ).then(() => ({
+      type: "file" as const,
+      file: {
+        fileKey: uploadFileKey,
+        mimeType: "image/png",
+        fileName: image.name,
+      },
+    }));
+  });
+
+  return Promise.all(uploadPromises);
 }

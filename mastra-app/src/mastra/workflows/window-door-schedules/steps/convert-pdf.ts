@@ -8,7 +8,6 @@ import {
 import logger from "../../../../logger.ts";
 import { convertPdfFromS3ToImages } from "../../../../pdf-to-images.ts";
 import { windowAndDoorScheduleInputSchema } from "../schemas.ts";
-import { randomUUID } from "node:crypto";
 
 export const convertPdfStep = createStep({
   id: "convertPdfStep",
@@ -23,10 +22,8 @@ export const convertPdfStep = createStep({
 
     const uploadedImages = await convertPdfFromS3ToImages(
       fileKey,
-      randomUUID(),
-      randomUUID()
-      //   runtimeContext.get("workflowId"),
-      //   runtimeContext.get("runId")
+      runtimeContext.get("workflowId"),
+      runtimeContext.get("runId")
     );
     logger.info(`Returning ${uploadedImages.length} images`);
 
