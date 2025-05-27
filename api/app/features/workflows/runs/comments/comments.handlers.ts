@@ -90,16 +90,16 @@ export const workflowRunCommentsHandlers = {
   getComments: async (req: Request, res: Response) => {
     try {
       const { workflowRunId } = req.params;
-      const organizationId = req.workspace?.type === "organization" ? req.workspace.id : undefined;
+      const user = req.dbUser;
 
-      if (!organizationId) {
+      if (!user) {
         res.json([]);
         return;
       }
 
       const comments = await workflowRunCommentsOps.getComments(
         workflowRunId,
-        organizationId
+        user.id
       );
 
       res.json(comments);
