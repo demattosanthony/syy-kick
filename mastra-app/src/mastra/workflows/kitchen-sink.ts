@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createWorkflow, createStep } from "@mastra/core/workflows/vNext";
+import { createWorkflow, createStep } from "@mastra/core/workflows";
 import type { WorkflowExecutionInputValues } from "../../types";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
@@ -441,6 +441,8 @@ const mapForLoop = (branchOutput: any) => {
 // Create the main kitchen sink workflow
 export const kitchenSinkWorkflow = createWorkflow({
   id: "Kitchen Sink Workflow",
+  description:
+    "A workflow that demonstrates all features of the Mastra workflow engine. This workflow is used to test the workflow engine and its features.",
   inputSchema,
   outputSchema: finalStepOutputSchema,
 })

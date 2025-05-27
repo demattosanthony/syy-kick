@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { Mastra } from "@mastra/core";
 import { PostgresStore } from "@mastra/pg";
-import { NetlifyDeployer } from "@mastra/deployer-netlify";
 
 import logger from "../logger.ts";
 import {
@@ -24,7 +23,7 @@ export const mastra = new Mastra({
     "csv-writer": csvWriter,
     "web-researcher": webResearcher,
   },
-  vnext_workflows: {
+  workflows: {
     "point-checkout-sheets": pointCheckoutSheetsWorkflow,
     "totalized-bom-builder": totalizedBomBuilder,
     "window-door-schedule-gen": windowDoorScheduleGen,
@@ -63,12 +62,6 @@ export const mastra = new Mastra({
     port: 4111,
     host: "0.0.0.0",
   },
-
-  //   deployer: new NetlifyDeployer({
-  //     scope: process.env.NETLIFY_SCOPE!,
-  //     projectName: process.env.NETLIFY_PROJECT_NAME!,
-  //     token: process.env.NETLIFY_TOKEN!,
-  //   }),
 });
 
 // Function to decode and verify basic auth credentials

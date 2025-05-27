@@ -1,4 +1,4 @@
-import { GetVNextWorkflowResponse } from "@mastra/client-js";
+import { GetWorkflowResponse } from "@mastra/client-js";
 import { WorkflowRuns } from "@mastra/core";
 
 // Base types for form fields
@@ -194,7 +194,7 @@ export interface CustomWorkflowRun {
   createdAt: Date;
   updatedAt: Date;
   resourceId?: string;
-  definition?: GetVNextWorkflowResponse;
+  definition?: GetWorkflowResponse;
 }
 
 /** @todo: use their type when available */
@@ -233,7 +233,6 @@ export interface Tag {
 }
 
 // Enhanced workflow response that includes description and tags
-export type EnhancedWorkflowResponse = GetVNextWorkflowResponse & {
-  description?: string | null;
+export type EnhancedWorkflowResponse = GetWorkflowResponse & {
   tags: Tag[];
 };

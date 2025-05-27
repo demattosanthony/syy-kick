@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createStep, createWorkflow } from "@mastra/core/workflows/vNext";
+import { createStep, createWorkflow } from "@mastra/core/workflows";
 
 import {
   WorkflowRunStepOutputSchema,

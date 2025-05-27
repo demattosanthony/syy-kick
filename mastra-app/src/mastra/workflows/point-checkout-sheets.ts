@@ -5,7 +5,7 @@ import {
   type WorkflowFile,
 } from "../../types";
 import { convertPdfFromS3ToImages } from "../../pdf-to-images";
-import { createStep, createWorkflow } from "@mastra/core/workflows/vNext";
+import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { randomUUID } from "node:crypto";
 import logger from "../../logger";
 import { classifyImages } from "../../image-classification";

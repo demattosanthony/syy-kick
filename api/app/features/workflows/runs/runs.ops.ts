@@ -1,6 +1,6 @@
 /** Ops */
 import client from "../workflows.mastra.client";
-import { VNextWorkflowWatchResult } from "@mastra/client-js";
+import { WorkflowWatchResult } from "@mastra/client-js";
 import { CustomWorkflowRun } from "./runs.types";
 
 /** Utils */
@@ -14,7 +14,7 @@ import { eq, inArray } from "drizzle-orm";
 export const workflowRunsOps = {
   createRun: async (workflowId: string, input: any, userId: string) => {
     try {
-      const workflow = client.getVNextWorkflow(workflowId);
+      const workflow = client.getWorkflow(workflowId);
 
       const databaseWorkflow = await db.query.workflows.findFirst({
         where: eq(workflows.mastraId, workflowId),
@@ -64,7 +64,7 @@ export const workflowRunsOps = {
   },
 
   getRuns: async (workflowId: string, userId: string) => {
-    const workflow = client.getVNextWorkflow(workflowId);
+    const workflow = client.getWorkflow(workflowId);
     const runs = await workflow.runs();
 
     const runIds = runs.runs.map((run) => run.runId);
@@ -95,7 +95,7 @@ export const workflowRunsOps = {
     workflowId: string,
     runId: string
   ): Promise<CustomWorkflowRun> => {
-    const workflow = client.getVNextWorkflow(workflowId);
+    const workflow = client.getWorkflow(workflowId);
     const run = await workflow.runs();
     const foundRun = run.runs.find((run) => run.runId === runId);
 
@@ -127,41 +127,45 @@ export const workflowRunsOps = {
   watchRun: async (
     workflowId: string,
     runId: string,
-    onEvent: (event: VNextWorkflowWatchResult) => void
+    onEvent: (event: WorkflowWatchResult) => void
   ) => {
-    const workflow = client.getVNextWorkflow(workflowId);
-    await workflow.watch({ runId }, async (record) => {
-      const formattedRecord = {
-        ...record,
-        payload: {
-          ...record.payload,
-          currentStep: record.payload.currentStep
-            ? {
-                ...record.payload.currentStep,
-                output: await runsUtils.presignStepOutput(
-                  record.payload.currentStep.output
-                ),
-              }
-            : undefined,
-          workflowState: {
-            ...record.payload.workflowState,
-            steps: Object.fromEntries(
-              await Promise.all(
-                Object.entries(record.payload.workflowState.steps).map(
-                  async ([key, step]: [string, any]) => [
-                    key,
-                    {
-                      ...step,
-                      output: await runsUtils.presignStepOutput(step.output),
-                    },
-                  ]
+    const workflow = client.getWorkflow(workflowId);
+    await workflow.watch({ runId }, async (record: any) => {
+      const parsedRecord = JSON.parse(record);
+
+      if (parsedRecord.payload && parsedRecord.payload.currentStep) {
+        const formattedRecord = {
+          ...parsedRecord,
+          payload: {
+            ...parsedRecord.payload,
+            currentStep: parsedRecord.payload.currentStep
+              ? {
+                  ...parsedRecord.payload.currentStep,
+                  output: await runsUtils.presignStepOutput(
+                    parsedRecord.payload.currentStep.output
+                  ),
+                }
+              : undefined,
+            workflowState: {
+              ...parsedRecord.payload.workflowState,
+              steps: Object.fromEntries(
+                await Promise.all(
+                  Object.entries(parsedRecord.payload.workflowState.steps).map(
+                    async ([key, step]: [string, any]) => [
+                      key,
+                      {
+                        ...step,
+                        output: await runsUtils.presignStepOutput(step.output),
+                      },
+                    ]
+                  )
                 )
-              )
-            ),
+              ),
+            },
           },
-        },
-      };
-      onEvent(formattedRecord);
+        };
+        onEvent(formattedRecord);
+      }
     });
   },
 };
