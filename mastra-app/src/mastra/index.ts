@@ -60,12 +60,15 @@ export const mastra = new Mastra({
         path: "/*",
       },
     ],
+    port: 4111,
+    host: "0.0.0.0",
   },
-  deployer: new NetlifyDeployer({
-    scope: process.env.NETLIFY_SCOPE!,
-    projectName: process.env.NETLIFY_PROJECT_NAME!,
-    token: process.env.NETLIFY_TOKEN!,
-  }),
+
+  //   deployer: new NetlifyDeployer({
+  //     scope: process.env.NETLIFY_SCOPE!,
+  //     projectName: process.env.NETLIFY_PROJECT_NAME!,
+  //     token: process.env.NETLIFY_TOKEN!,
+  //   }),
 });
 
 // Function to decode and verify basic auth credentials
