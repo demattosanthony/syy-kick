@@ -8,7 +8,7 @@ export type CodeExecutionContext = {
 
 export const codeExecutionTool = createTool({
   id: "Code Execution",
-  description: `This tool allows you to execute code within a secure sandbox environment. The sandbox provides an isolated execution context where code can be run safely without affecting the host system. All code execution is contained and monitored, with access to stdout, stderr, and execution results.`,
+  description: `This tool allows you to execute python code within a secure sandbox environment. The sandbox provides an isolated execution context where code can be run safely without affecting the host system. All code execution is contained and monitored, with access to stdout, stderr, and execution results. Think of this like code running in a jupyter notebook cell and returning the results.`,
   inputSchema: z.object({
     code: z.string(),
   }),
