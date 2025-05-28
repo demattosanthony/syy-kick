@@ -118,6 +118,13 @@ export const runsUtils = {
         ).map((item) => JSON.parse(item));
         presignedOutput[key] = await runsUtils.presignFiles(uniqueValues);
       }
+
+      if (value.type === "file" && value.file) {
+        presignedOutput[key] = {
+          type: "file",
+          file: runsUtils.presignFile(value.file)
+        }
+      }
     }
 
     return presignedOutput;

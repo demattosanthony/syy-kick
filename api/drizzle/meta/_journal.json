@@ -428,6 +428,13 @@
       "when": 1747947335846,
       "tag": "0060_motionless_eternity",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1748356551311,
+      "tag": "0061_yielding_maddog",
+      "breakpoints": true
     }
   ]
 }

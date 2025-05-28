@@ -1,4 +1,4 @@
-import { createWorkflow } from "@mastra/core/workflows/vNext";
+import { createWorkflow } from "@mastra/core/workflows";
 import { z } from "zod";
 import { WorkflowRunStepOutputSchema } from "../../../../types.ts";
 import { extractTablesStep } from "../steps/extract-tables.ts";

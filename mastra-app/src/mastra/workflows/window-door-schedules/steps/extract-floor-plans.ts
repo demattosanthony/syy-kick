@@ -1,4 +1,4 @@
-import { createStep } from "@mastra/core/workflows/vNext";
+import { createStep } from "@mastra/core/workflows";
 import { z } from "zod";
 import { WorkflowRunStepOutputSchema } from "../../../../types.ts";
 import { classifyImages } from "../../../../image-classification.ts";

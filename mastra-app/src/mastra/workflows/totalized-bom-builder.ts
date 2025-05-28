@@ -1,19 +1,31 @@
-import { createWorkflow, createStep } from "@mastra/core/workflows/vNext";
+// Core dependencies
+import { createWorkflow, createStep } from "@mastra/core/workflows";
+import { RuntimeContext } from "@mastra/core/runtime-context";
 import { z } from "zod";
+import fs from "fs";
 
+// AI/ML dependencies
+import { generateObject } from "ai";
+import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
+import type { AnthropicProviderOptions } from "@ai-sdk/anthropic";
+
+// Code execution
+import { Sandbox } from "@e2b/code-interpreter";
+import type { CodeExecutionContext } from "../tools/code-execution.ts";
+
+// Local utilities
 import { convertPdfFromS3ToImages } from "../../pdf-to-images.ts";
 import { detectObjectsInS3Images } from "../../obj-detection.ts";
 import { getFileFromS3, getPresignedUrl, uploadFileToS3 } from "../../s3.ts";
+import { classifyImages } from "../../image-classification.ts";
+import { performOcrOnS3Images } from "../../llm-ocr.ts";
 import logger from "../../logger.ts";
 import {
   WorkflowRunStepOutputSchema,
   type WorkflowExecutionInputValues,
   type WorkflowFile,
 } from "../../types.ts";
-import { classifyImages } from "../../image-classification.ts";
-import { performOcrOnS3Images } from "../../llm-ocr.ts";
-import { csvWriter } from "../agents/index.ts";
-import { randomUUID } from "node:crypto";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   controlsDrawings: z.object({
@@ -28,7 +40,7 @@ const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
 });
 
 const finalStepOutputSchema = z.object({
-  totalizedBomCsvFile: z.object({
+  totalizedBomExcelFile: z.object({
     type: z.literal("file"),
     file: z.object({
       fileKey: z.string(),
@@ -40,7 +52,7 @@ const finalStepOutputSchema = z.object({
 });
 
 const stepOne = createStep({
-  id: "stepOne",
+  id: "convertPdfToImages",
   description: "Convert the controls drawings PDF to images",
   inputSchema: inputSchema,
   outputSchema: z.object({
@@ -52,10 +64,8 @@ const stepOne = createStep({
 
     const uploadedImages = await convertPdfFromS3ToImages(
       fileKey,
-      randomUUID(),
-      randomUUID()
-      //   runtimeContext.get("workflowId"),
-      //   runtimeContext.get("runId")
+      runtimeContext.get("workflowId"),
+      runtimeContext.get("runId")
     );
     logger.info(`Returning ${uploadedImages.length} images`);
 
@@ -65,8 +75,69 @@ const stepOne = createStep({
   },
 });
 
+const getProjectNameStep = createStep({
+  id: "getProjectName",
+  description:
+    "Get the project name from the first image of the controls drawings PDF",
+  inputSchema: z.object({
+    convertedImages: z.array(WorkflowRunStepOutputSchema),
+  }),
+  outputSchema: z.object({
+    projectName: z.string(),
+  }),
+  execute: async ({ inputData }) => {
+    const { convertedImages } = inputData;
+
+    if (convertedImages.length === 0) {
+      throw new Error("No images found");
+    }
+
+    const firstImage = convertedImages[0];
+    if (!firstImage.file || !firstImage.file.fileKey) {
+      throw new Error("No file found");
+    }
+
+    const { fileKey } = firstImage.file;
+    const file = await getFileFromS3(fileKey);
+    const imageData = await file.Body?.transformToByteArray();
+
+    if (!imageData) {
+      throw new Error("No image data found");
+    }
+
+    const imageBase64 = Buffer.from(imageData).toString("base64");
+
+    const { object } = await generateObject({
+      model: openai("o4-mini"),
+      schema: z.object({
+        projectName: z.string(),
+      }),
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Your task is to analyze this image and extract the project name from the title of the image. The project name is at the top center of the image.`,
+            },
+            {
+              type: "image",
+              image: imageBase64,
+              mimeType: "image/png",
+            },
+          ],
+        },
+      ],
+    });
+
+    return {
+      projectName: object.projectName,
+    };
+  },
+});
+
 const stepTwo = createStep({
-  id: "stepTwo",
+  id: "classifyImages",
   description: "Classify the images to find the bill of materials tables",
   inputSchema: z.object({
     convertedImages: z.array(WorkflowRunStepOutputSchema),
@@ -94,24 +165,27 @@ These tables typically list details about components used in the control system,
 });
 
 const stepThree = createStep({
-  id: "stepThree",
+  id: "cropImages",
   description: "Crop the images to the bill of materials tables",
   inputSchema: z.object({
-    imagesWithBomTables: z.array(WorkflowRunStepOutputSchema),
+    getProjectName: z.object({
+      projectName: z.string(),
+    }),
+    classifyImages: z.object({
+      imagesWithBomTables: z.array(WorkflowRunStepOutputSchema),
+    }),
   }),
   outputSchema: z.object({
     croppedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData, runtimeContext }) => {
-    const { imagesWithBomTables } = inputData;
+    const { imagesWithBomTables } = inputData.classifyImages;
 
     const outputs = await detectObjectsInS3Images(
       imagesWithBomTables,
       "Bill of Materials Table",
-      randomUUID(),
-      randomUUID()
-      //   runtimeContext.get("workflowId"),
-      //   runtimeContext.get("runId")
+      runtimeContext.get("workflowId"),
+      runtimeContext.get("runId")
     );
 
     logger.info(`Flattened ${outputs.length} cropped images`);
@@ -123,7 +197,7 @@ const stepThree = createStep({
 });
 
 const stepFour = createStep({
-  id: "stepFour",
+  id: "ocrImages",
   description:
     "Perform OCR on the cropped images to extract the bill of materials tables",
   inputSchema: z.object({
@@ -140,14 +214,12 @@ const stepFour = createStep({
       croppedImages,
       {
         tableType: "bill of materials",
-        columns: ["Tag", "Qty.", "Part No.", "Make"],
+        columns: ["Tag", "Qty.", "Part No.", "Description", "Make"],
         additionalInstructions:
           "Ensure all quantities are properly formatted and any special characters are preserved.",
       },
-      randomUUID(),
-      randomUUID()
-      //   runtimeContext.get("workflowId"),
-      //   runtimeContext.get("runId")
+      runtimeContext.get("workflowId"),
+      runtimeContext.get("runId")
     );
 
     logger.info(`Returning ${files.length} markdown files`);
@@ -159,12 +231,22 @@ const stepFour = createStep({
 });
 
 const stepFive = createStep({
-  id: "stepFive",
-  description: "Generate the totalized BOM CSV file",
+  id: "createTotalizedBomMarkdownFile",
+  description: "Create a totalized BOM markdown file",
   inputSchema: z.object({
     markdownFiles: z.array(WorkflowRunStepOutputSchema),
   }),
-  outputSchema: finalStepOutputSchema,
+  outputSchema: z.object({
+    totalizedBomMarkdownFile: z.object({
+      type: z.literal("file"),
+      file: z.object({
+        fileKey: z.string(),
+        mimeType: z.string(),
+        fileName: z.string(),
+        url: z.string().optional(),
+      }),
+    }),
+  }),
   execute: async ({ inputData, runtimeContext }) => {
     logger.info("Running step five");
     const { markdownFiles } = inputData;
@@ -188,14 +270,18 @@ const stepFive = createStep({
     logger.info(`Markdown files content: ${markdownFilesContent.length}`);
     logger.info(markdownFilesContent[0]);
 
-    const { object } = await csvWriter.generate(
-      [
+    const { object } = await generateObject({
+      model: google("gemini-2.5-pro-preview-05-06"),
+      schema: z.object({
+        totalizedBomMarkdownContent: z.string(),
+      }),
+      messages: [
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: `Your goal is to create a totalzed BOM CSV file that consolidates all bill of materials tables from a controls pdf into a single table.
+              text: `Your goal is to create a totalized Bill of Materials Markdown file that consolidates all bill of materials tables from a controls pdf into a single markdown table.
 
 Steps:
 1. Read all the separate BOM tables provided
@@ -204,16 +290,18 @@ Steps:
 4. Aggregate the quantities for any duplicate parts across all tables.
 5. Create a final table with two columns: Part Number and Total Quantity.
 
-CSV Formatting:
+Markdown Formatting:
 
-| Part Number | Total Quantity |
-|-------------|----------------|
-| [MAKE 1] |                |
-| [Part No. 1] | [Quantity]     |
-| [Part No. 2] | [Quantity]     |
-| [MAKE 2] |                |
-| [Part No. 3] | [Quantity]     |
-| ...         | ...            |
+## TOTALIZED BILL OF MATERIALS
+
+| Part Number | Total Quantity | Description |
+|-------------|----------------|-------------|
+| [MAKE 1] |                |                |
+| [Part No. 1] | [Quantity]     | [Description]     |
+| [Part No. 2] | [Quantity]     | [Description]     |
+| [MAKE 2] |                |                |
+| [Part No. 3] | [Quantity]     | [Description]     |
+| ...         | ...            | ...            |
 
 Ensure that your final consolidated BOM:
 - Includes all unique part numbers from all BOM tables
@@ -221,8 +309,7 @@ Ensure that your final consolidated BOM:
 - Shows the total quantity for each part number
 - Is presented in a clear, easily readable format
 
-
-Remember to use your expertise to provide the most accurate and comprehensive consolidated BOM possible based on the given information..`,
+Remember to use your expertise to provide the most accurate and comprehensive consolidated BOM possible based on the given information.`,
             },
             {
               type: "text",
@@ -231,35 +318,187 @@ Remember to use your expertise to provide the most accurate and comprehensive co
           ],
         },
       ],
-      {
-        output: z.object({
-          totalizedBomCsvContent: z.string(),
-        }),
-      }
-    );
-    const totalizedBomCsvContent = object.totalizedBomCsvContent;
+      //   providerOptions: {
+      //     google: {
+      //       thinkingConfig: {
+      //         thinkingBudget: 12000,
+      //       },
+      //     } satisfies GoogleGenerativeAIProviderOptions,
+      //   },
+    });
+    const totalizedBomMarkdownContent = object.totalizedBomMarkdownContent;
 
-    logger.info(`Totalized BOM: ${totalizedBomCsvContent}`);
+    logger.info(`Totalized BOM: ${totalizedBomMarkdownContent}`);
 
-    const fileKey = `workflows/${randomUUID()}/${randomUUID()}/totalized-bom.csv`;
-    const csvFileData = Buffer.from(totalizedBomCsvContent, "utf-8");
-    await uploadFileToS3(fileKey, csvFileData, "text/csv");
+    const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/totalized-bom.md`;
+    const markdownFileData = Buffer.from(totalizedBomMarkdownContent, "utf-8");
+    await uploadFileToS3(fileKey, markdownFileData, "text/markdown");
 
     const presignedUrlString = await getPresignedUrl(fileKey);
 
-    const csvFile = {
+    const markdownFile = {
       type: "file" as const,
       file: {
         fileKey,
-        mimeType: "text/csv",
-        fileName: "totalized-bom.csv",
+        mimeType: "text/markdown",
+        fileName: "totalized-bom.md",
         url: presignedUrlString,
       },
     };
 
     return {
-      totalizedBomCsvFile: csvFile,
+      totalizedBomMarkdownFile: markdownFile,
     };
+  },
+});
+
+const stepSix = createStep({
+  id: "fillOutExcelTemplate",
+  description:
+    "Fill out the totalized BOM template excel file with the data from the markdown file",
+  inputSchema: z.object({
+    totalizedBomMarkdownFile: z.object({
+      type: z.literal("file"),
+      file: z.object({
+        fileKey: z.string(),
+        mimeType: z.string(),
+        fileName: z.string(),
+        url: z.string().optional(),
+      }),
+    }),
+  }),
+  outputSchema: finalStepOutputSchema,
+  execute: async ({ inputData, runtimeContext, mastra, getStepResult }) => {
+    const { totalizedBomMarkdownFile } = inputData;
+    const { fileKey } = totalizedBomMarkdownFile.file as WorkflowFile;
+    const workflowId = runtimeContext.get("workflowId");
+    const runId = runtimeContext.get("runId");
+
+    const projectName = getStepResult(getProjectNameStep).projectName;
+
+    let sandbox: Sandbox | null = null;
+    try {
+      const file = await getFileFromS3(fileKey);
+      const markdownData = await file.Body?.transformToString();
+
+      if (!markdownData) {
+        throw new Error("No data found");
+      }
+
+      // Create a sandbox for code execution
+      sandbox = await Sandbox.create();
+
+      // Get the path to the customer template dynamically
+      const localDir = process.cwd();
+      const projectRoot = localDir.split("/.mastra")[0];
+      logger.info(`Local dir: ${localDir}`);
+      const templatePath = `${projectRoot}/customer-templates/Project_BomTracker_05232025.xlsx`;
+      logger.info(`Template path: ${templatePath}`);
+
+      // Read the template file as Buffer and use .buffer property to get ArrayBuffer
+      const templateFileBuffer = await fs.promises.readFile(templatePath);
+
+      // Add customer template to sandbox - create proper ArrayBuffer from Buffer
+      const arrayBuffer = new ArrayBuffer(templateFileBuffer.length);
+      const uint8Array = new Uint8Array(arrayBuffer);
+      uint8Array.set(templateFileBuffer);
+
+      await sandbox.files.write("/project_bom_tracker.xlsx", arrayBuffer);
+
+      const codeExecutionContext = new RuntimeContext<CodeExecutionContext>();
+      codeExecutionContext.set("sandbox", sandbox);
+
+      await mastra.getAgent("coding-agent").generate(
+        [
+          {
+            role: "user",
+            content: `Your job is to fill out an excel file with the proper data. The excel file is a template for tracking the bill of materials for a project. You are given the template and the data to populate it.
+      
+I have placed the Excel file template in the sandbox at the path /project_bom_tracker.xlsx. 
+
+**TASK**: Use Python code to read the Excel file template and populate it with the specific Bill of Materials data provided below, while preserving ALL original formatting of the template.
+
+**REQUIREMENTS**:
+1. **Use Python** with libraries like openpyxl or pandas to manipulate the Excel file
+2. **PRESERVE ALL ORIGINAL FORMATTING**: Keep all existing colors, fonts, borders, cell styles, and layout intact
+3. **Populate with the provided BOM data** (see data table below)
+4. **Manufacturer Formatting**: When adding manufacturer names (the rows that have a part number but no quantity value), format them as:
+   - **Bold text**
+   - **Yellow background highlight**
+5. **Save the file** at the same path: /project_bom_tracker.xlsx
+6. **Project Name**: Fill cell A1 with the project name: "${projectName}"
+
+**DATA TO POPULATE** - Use this exact TOTALIZED BILL OF MATERIALS data:
+
+${markdownData}
+
+**DATA STRUCTURE LOGIC**:
+- Rows with empty quantities are **manufacturer names** (should be bold + yellow highlight)
+- Rows with quantities are **part numbers** under that manufacturer
+- Follow this hierarchical structure where manufacturer names are category headers followed by their part numbers
+
+**IMPLEMENTATION STEPS**:
+1. Use Python to open the Excel file with openpyxl to preserve formatting
+2. Set cell A1 to the project name: "${projectName}"
+3. Parse the data above to identify manufacturer rows (empty quantity) vs part rows (with quantity)
+4. Populate the Excel template with this exact data in the appropriate location
+5. Apply bold formatting and yellow background to ALL manufacturer name rows
+6. Ensure part number rows maintain clean formatting with quantities
+7. Save the file preserving all original template structure and formatting
+
+**CRITICAL**: Use the exact data provided above - do not modify or add to it. Preserve all original template formatting, formulas, and visual styling.`,
+          },
+        ],
+        {
+          maxSteps: 20,
+          runtimeContext: codeExecutionContext,
+          providerOptions: {
+            anthropic: {
+              thinking: { type: "enabled", budgetTokens: 4000 },
+            } satisfies AnthropicProviderOptions,
+          },
+        }
+      );
+
+      const fileContent = await sandbox.files.read(
+        "/project_bom_tracker.xlsx",
+        {
+          format: "bytes",
+        }
+      );
+
+      const excelFileKey = `workflows/${workflowId}/${runId}/totalized-bom.xlsx`;
+
+      await uploadFileToS3(
+        excelFileKey,
+        Buffer.from(fileContent),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      const presignedUrlString = await getPresignedUrl(excelFileKey);
+
+      const excelFile = {
+        type: "file" as const,
+        file: {
+          fileKey: excelFileKey,
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          fileName: "totalized-bom.xlsx",
+          url: presignedUrlString,
+        },
+      };
+
+      return {
+        totalizedBomExcelFile: excelFile,
+      };
+    } catch (error) {
+      logger.error("Error in stepSix:", error);
+      throw error;
+    } finally {
+      if (sandbox) {
+        sandbox.kill();
+      }
+    }
   },
 });
 
@@ -270,13 +509,22 @@ const totalizedBomBuilder = createWorkflow({
     "This workflow consolidates bill of materials tables that are embedded in controls system drawings",
   inputSchema: inputSchema,
   outputSchema: finalStepOutputSchema,
-  steps: [stepOne, stepTwo, stepThree, stepFour, stepFive],
+  steps: [
+    stepOne,
+    getProjectNameStep,
+    stepTwo,
+    stepThree,
+    stepFour,
+    stepFive,
+    stepSix,
+  ],
 })
   .then(stepOne)
-  .then(stepTwo)
+  .parallel([getProjectNameStep, stepTwo])
   .then(stepThree)
   .then(stepFour)
   .then(stepFive)
+  .then(stepSix)
   .commit();
 
 export { totalizedBomBuilder };

@@ -4,10 +4,9 @@ import {
   type WorkflowExecutionInputValues,
   type WorkflowTextExecutionInputValue,
 } from "../../types.ts";
-import { createStep, createWorkflow } from "@mastra/core/workflows/vNext";
+import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { webResearcher } from "../agents/web-researcher.ts";
 import { getPresignedUrl, uploadFileToS3 } from "../../s3.ts";
-import { randomUUID } from "node:crypto";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   rfpType: z.object({
@@ -61,7 +60,7 @@ Your final report should be in markdown format. Your report should include the r
     const researchReport = object.researchReport;
 
     // Upload the research report to S3
-    const fileKey = `workflows/${randomUUID()}/${randomUUID()}/research-report.md`;
+    const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/research-report.md`;
     const researchReportFileData = Buffer.from(researchReport, "utf-8");
     await uploadFileToS3(fileKey, researchReportFileData, "text/markdown");
 

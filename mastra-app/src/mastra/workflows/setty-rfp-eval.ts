@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createStep, createWorkflow } from "@mastra/core/workflows/vNext";
+import { createStep, createWorkflow } from "@mastra/core/workflows";
 
 import type {
   WorkflowExecutionInputValues,
@@ -7,7 +7,6 @@ import type {
 } from "../../types.ts";
 import { settyRfpEvaluator } from "../agents/index.ts";
 import { getFileFromS3, uploadFileToS3, getPresignedUrl } from "../../s3.ts";
-import { randomUUID } from "node:crypto";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   rfpPdf: z.object({
@@ -75,7 +74,7 @@ const stepOne = createStep({
     const csvContent = object.csvContent;
 
     // Upload the CSV content to S3
-    const csvFileKey = `workflows/${randomUUID()}/${randomUUID()}/setty-rfp-eval.csv`;
+    const csvFileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/setty-rfp-eval.csv`;
     const csvFileData = Buffer.from(csvContent, "utf-8");
     await uploadFileToS3(csvFileKey, csvFileData, "text/csv");
 

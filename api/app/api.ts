@@ -3,7 +3,7 @@ import { organizationInvites } from "./config/schema";
 import db from "./config/db";
 import { eq } from "drizzle-orm";
 import s3 from "./config/s3";
-import { handle, pdfToImages } from "./utils";
+import { handle } from "./utils";
 import { auth, checkSub } from "./middleware";
 import threadsOps from "./features/threads/threads.ops";
 
@@ -149,76 +149,4 @@ export default Router()
     }
   })
   .use("/permissions", auth, permissionsRoutes)
-  .use("/analytics", analyticsRoutes)
-  .post("/utils/pdf-to-images", async (req, res) => {
-    try {
-      console.log("PDF conversion request received");
-      const { fileKey } = req.body;
-
-      // Set proper headers to prevent proxy timeouts
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("Keep-Alive", "timeout=600");
-      res.setHeader("Cache-Control", "no-cache");
-
-      // Set a longer timeout for this specific endpoint
-      req.setTimeout(600000); // 10 minutes
-
-      const file = s3.file(fileKey);
-      console.log("Fetching PDF from S3...");
-      const pdfData = await file.arrayBuffer();
-      console.log(`PDF fetched, size: ${pdfData.byteLength} bytes`);
-
-      console.log("Starting PDF to images conversion...");
-      const images = await pdfToImages(new Uint8Array(pdfData));
-      console.log(`Conversion complete, generated ${images.length} images`);
-
-      // Upload each image to s3
-      console.log("Starting S3 uploads...");
-      const imagePromises = images.map(async (image, index) => {
-        try {
-          const imageBuffer = Buffer.from(image.base64, "base64");
-          const imageKey = `convert-images/${image.name}`;
-          console.log(
-            `Uploading image ${index + 1}/${images.length}: ${imageKey}`
-          );
-          await s3.write(imageKey, imageBuffer, {
-            type: "image/png",
-          });
-
-          return imageKey;
-        } catch (uploadError) {
-          console.error(`Failed to upload image ${index + 1}:`, uploadError);
-          throw uploadError;
-        }
-      });
-
-      const imageKeys = await Promise.all(imagePromises);
-      console.log("All images uploaded to S3");
-
-      console.log("Sending response with imageKeys:", imageKeys);
-
-      // Ensure response hasn't been sent already
-      if (res.headersSent) {
-        console.warn("Headers already sent, cannot send response");
-        return;
-      }
-
-      // Send response immediately without additional processing
-      const response = { imageKeys };
-      res.status(200).json(response);
-      console.log("Response sent successfully");
-      return;
-    } catch (error) {
-      console.error("Error converting PDF to images:", error);
-      if (!res.headersSent) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Internal server error";
-        console.log("Sending error response:", errorMessage);
-        res.status(500).json({
-          error: errorMessage,
-        });
-      } else {
-        console.warn("Headers already sent, cannot send error response");
-      }
-    }
-  });
+  .use("/analytics", analyticsRoutes);

@@ -5,8 +5,7 @@ import {
   type WorkflowFile,
 } from "../../types";
 import { convertPdfFromS3ToImages } from "../../pdf-to-images";
-import { createStep, createWorkflow } from "@mastra/core/workflows/vNext";
-import { randomUUID } from "node:crypto";
+import { createStep, createWorkflow } from "@mastra/core/workflows";
 import logger from "../../logger";
 import { classifyImages } from "../../image-classification";
 import { getFileFromS3, uploadFileToS3, getPresignedUrl } from "../../s3";
@@ -36,14 +35,14 @@ const stepOne = createStep({
   outputSchema: z.object({
     convertedImages: z.array(WorkflowRunStepOutputSchema),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData, runtimeContext }) => {
     const controlsDrawings = inputData.controlsDrawings;
     const { fileKey } = controlsDrawings.value as WorkflowFile;
 
     const uploadedImages = await convertPdfFromS3ToImages(
       fileKey,
-      randomUUID(),
-      randomUUID()
+      runtimeContext.get("workflowId"),
+      runtimeContext.get("runId")
     );
     logger.info(`Returning ${uploadedImages.length} images`);
 
@@ -104,7 +103,7 @@ const stepThree = createStep({
   outputSchema: z.object({
     pointCheckoutCsvFiles: z.array(WorkflowRunStepOutputSchema),
   }),
-  execute: async ({ inputData }) => {
+  execute: async ({ inputData, runtimeContext }) => {
     const { imagesWithControlWiringDiagrams } = inputData;
 
     const controllerDataPromises = imagesWithControlWiringDiagrams.map(
@@ -172,7 +171,7 @@ Be thorough and extract ALL points shown in the diagram, not just a few examples
         });
 
         return {
-          imageId: image.file?.fileKey || randomUUID(),
+          imageId: image.file?.fileKey,
           controllerModelNumber: result.object.controllerModelNumber,
           points: result.object.points,
         };
@@ -201,7 +200,7 @@ Be thorough and extract ALL points shown in the diagram, not just a few examples
       const csvContent = csvHeader + csvRows;
 
       // Upload CSV to S3
-      const fileKey = `workflows/${randomUUID()}/${randomUUID()}/point-checkout-${controller.controllerModelNumber}-${controller.imageId.substring(0, 8)}.csv`;
+      const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/point-checkout-${controller.controllerModelNumber}-${controller.imageId.substring(0, 8)}.csv`;
       const csvFileData = Buffer.from(csvContent, "utf-8");
       await uploadFileToS3(fileKey, csvFileData, "text/csv");
 

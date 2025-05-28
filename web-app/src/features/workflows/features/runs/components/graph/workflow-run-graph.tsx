@@ -5,7 +5,7 @@ import {
   type CustomWorkflowRun,
   type TreeNode,
 } from "@/features/workflows/workflows.types";
-import { SerializedStepFlowEntry } from "@mastra/core/workflows/vNext";
+import { SerializedStepFlowEntry } from "@mastra/core/workflows";
 import { StepEntry } from "@/features/workflows/features/runs/components/graph";
 import { WorkflowRunInput } from "../workflow-run-input";
 

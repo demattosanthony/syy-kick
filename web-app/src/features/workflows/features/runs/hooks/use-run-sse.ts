@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { VNextWorkflowWatchResult } from "@mastra/client-js";
+import { WorkflowWatchResult } from "@mastra/client-js";
 import { CustomWorkflowRun } from "@/features/workflows/workflows.types";
 
 export function useRunSSE({
@@ -24,7 +24,7 @@ export function useRunSSE({
 
     const handleEvent = (event: MessageEvent) => {
       try {
-        const parsedData = JSON.parse(event.data) as VNextWorkflowWatchResult;
+        const parsedData = JSON.parse(event.data) as WorkflowWatchResult;
 
         // Update the React Query cache immutably
         queryClient.setQueryData(
