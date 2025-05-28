@@ -12,7 +12,7 @@ import {
   kitchenSinkWorkflow,
   pointCheckoutSheetsWorkflow,
 } from "./workflows/index.ts";
-import { csvWriter, webResearcher } from "./agents/index.ts";
+import { csvWriter, webResearcher, codingAgent } from "./agents/index.ts";
 
 const storage = new PostgresStore({
   connectionString: process.env.DATABASE_URL!,
@@ -22,6 +22,7 @@ export const mastra = new Mastra({
   agents: {
     "csv-writer": csvWriter,
     "web-researcher": webResearcher,
+    "coding-agent": codingAgent,
   },
   workflows: {
     "point-checkout-sheets": pointCheckoutSheetsWorkflow,

@@ -30,8 +30,7 @@ import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
 import { markitdown, markitdownMimeTypes } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
-import workflowHandlers from "../workflows/workflows.handlers";
-import { CONFIG } from "../../config/constants";
+import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 
 const threadsOps = {
   async createThread(
@@ -431,10 +430,16 @@ const threadsOps = {
             modelConfig.model.modelId.includes("claude-4"))
             ? {
                 anthropic: {
-                  thinking: { type: "enabled", budgetTokens: 12_000 },
+                  thinking: { type: "enabled", budgetTokens: 24_000 },
                 },
               }
             : {}),
+          google: {
+            thinkingConfig: {
+              includeThoughts: true,
+              thinkingBudget: 24_000,
+            },
+          } satisfies GoogleGenerativeAIProviderOptions,
         },
         onChunk: async ({ chunk }) => {
           if (chunk.type === "text-delta") {
