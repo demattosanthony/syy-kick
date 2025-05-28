@@ -130,27 +130,25 @@ export const workflowRunsOps = {
     onEvent: (event: WorkflowWatchResult) => void
   ) => {
     const workflow = client.getWorkflow(workflowId);
-    await workflow.watch({ runId }, async (record: any) => {
-      const parsedRecord = JSON.parse(record);
-
-      if (parsedRecord.payload && parsedRecord.payload.currentStep) {
+    await workflow.watch({ runId }, async (record) => {
+      if (record.payload && record.payload.currentStep) {
         const formattedRecord = {
-          ...parsedRecord,
+          ...record,
           payload: {
-            ...parsedRecord.payload,
-            currentStep: parsedRecord.payload.currentStep
+            ...record.payload,
+            currentStep: record.payload.currentStep
               ? {
-                  ...parsedRecord.payload.currentStep,
+                  ...record.payload.currentStep,
                   output: await runsUtils.presignStepOutput(
-                    parsedRecord.payload.currentStep.output
+                    record.payload.currentStep.output
                   ),
                 }
               : undefined,
             workflowState: {
-              ...parsedRecord.payload.workflowState,
+              ...record.payload.workflowState,
               steps: Object.fromEntries(
                 await Promise.all(
-                  Object.entries(parsedRecord.payload.workflowState.steps).map(
+                  Object.entries(record.payload.workflowState.steps).map(
                     async ([key, step]: [string, any]) => [
                       key,
                       {
