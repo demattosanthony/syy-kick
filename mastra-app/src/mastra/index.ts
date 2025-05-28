@@ -42,30 +42,36 @@ export const mastra = new Mastra({
   logger: logger,
   storage,
   server: {
-    middleware: [
-      {
-        // Authorization: Basic <base64 encoded username:password>
-        handler: async (c, next) => {
-          const authHeader = c.req.header("Authorization");
+    // middleware: [
+    //   {
+    //     // Authorization: Basic <base64 encoded username:password>
+    //     handler: async (c, next) => {
+    //       const authHeader = c.req.header("Authorization");
 
-          if (
-            !authHeader ||
-            !authHeader.startsWith("Basic ") ||
-            !verifyBasicAuth(authHeader)
-          ) {
-            return new Response("Unauthorized", {
-              status: 401,
-              headers: {
-                "WWW-Authenticate": 'Basic realm="Restricted Area"',
-              },
-            });
-          }
+    //       if (
+    //         !authHeader ||
+    //         !authHeader.startsWith("Basic ") ||
+    //         !verifyBasicAuth(authHeader)
+    //       ) {
+    //         return new Response("Unauthorized", {
+    //           status: 401,
+    //           headers: {
+    //             "WWW-Authenticate": 'Basic realm="Restricted Area"',
+    //           },
+    //         });
+    //       }
 
-          await next();
-        },
-        path: "/*",
-      },
-    ],
+    //       await next();
+    //     },
+    //     path: "/*",
+    //   },
+    // ],
+    cors: {
+      origin: "http://localhost:4001",
+      allowHeaders: ["Authorization"],
+      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      credentials: true,
+    },
     port: 4111,
     host: "0.0.0.0",
   },

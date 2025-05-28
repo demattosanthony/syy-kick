@@ -18,34 +18,6 @@ const memory = new Memory({
       topK: 3,
       messageRange: 2,
     },
-    workingMemory: {
-      enabled: true,
-      use: "tool-call",
-      template: `
-# User Profile
- 
-## Personal Info
- 
-- Name:
-- Location:
-- Timezone:
- 
-## Preferences
- 
-- Communication Style: [e.g., Formal, Casual]
-- Project Goal:
-- Key Deadlines:
-  - [Deadline 1]: [Date]
-  - [Deadline 2]: [Date]
- 
-## Session State
- 
-- Last Task Discussed:
-- Open Questions:
-  - [Question 1]
-  - [Question 2]
-`,
-    },
     threads: {
       generateTitle: true,
     },

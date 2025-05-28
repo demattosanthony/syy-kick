@@ -31,6 +31,7 @@ import { getOrgIdOrUnedfined } from "../../utils";
 import { markitdown, markitdownMimeTypes } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
+import mastraClient from "../../config/mastra-client";
 
 const threadsOps = {
   async createThread(
@@ -43,17 +44,24 @@ const threadsOps = {
     if (!userId) throw new Error("User ID is required");
     const id = crypto.randomUUID();
     const now = new Date();
-    await db.insert(threads).values({
-      id,
-      userId,
-      organizationId: organizationId || null,
-      projectId: projectId || null,
-      knowledgeBaseId: knowledgeBaseId || null,
-      workflowId: workflowId || null,
-      createdAt: now,
-      updatedAt: now,
+
+    const thread = await mastraClient.createMemoryThread({
+      resourceId: userId,
+      agentId: "syykick",
     });
-    return { id };
+
+    // await db.insert(threads).values({
+    //   id,
+    //   userId,
+    //   organizationId: organizationId || null,
+    //   projectId: projectId || null,
+    //   knowledgeBaseId: knowledgeBaseId || null,
+    //   workflowId: workflowId || null,
+    //   createdAt: now,
+    //   updatedAt: now,
+    // });
+
+    return { id: thread.id };
   },
 
   /** Creates a new message in DB with optional embedding and attachments. */
@@ -323,6 +331,19 @@ const threadsOps = {
       const { threadId } = req.params;
       const { model, maxTokens, instructions, message, workflowId } =
         req.body as z.infer<typeof inferenceSchema>;
+
+      const agent = mastraClient.getAgent("syykick");
+
+      const stream = await agent.stream({
+        messages: [
+          {
+            role: "user",
+            content: message.content || "",
+          },
+        ],
+        threadId,
+        resourceId: req.dbUser!.id,
+      });
 
       // 1) Store the user message
       if (message) {

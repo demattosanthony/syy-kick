@@ -1,5 +1,5 @@
 /** Ops */
-import client from "../workflows.mastra.client";
+import client from "../../../config/mastra-client";
 import { WorkflowWatchResult } from "@mastra/client-js";
 import { CustomWorkflowRun } from "./runs.types";
 

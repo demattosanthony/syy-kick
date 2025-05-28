@@ -86,18 +86,22 @@ export default function ThreadPage({
     stop,
     error,
   } = useChat({
-    api: `${import.meta.env.VITE_API_URL}/threads/${threadId}/inference`,
-    credentials: "include",
+    api: `http://localhost:4111/api/agents/syykick/stream`,
+    // credentials: "include",
     initialInput: isNew ? initalInput : "",
     initialMessages: initalMessages,
     experimental_prepareRequestBody({ messages, id }) {
+      const lastMessage =
+        messages.length > 0 ? messages[messages.length - 1] : null;
+
       return {
-        message: messages[messages.length - 1],
+        messages: [lastMessage],
         id,
-        model: model.name,
-        temperature: temperature,
-        instructions,
-        workflowId: isWorkflow ? workflowId : undefined,
+        resourceId: "123",
+        threadId: "123",
+        // model: model.name,
+        // temperature: temperature,
+        // instructions,
       };
     },
   });

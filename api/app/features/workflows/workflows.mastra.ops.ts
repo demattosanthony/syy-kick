@@ -7,7 +7,7 @@ import {
   workflowUsers,
   Tag,
 } from "./workflows.schema";
-import client from "./workflows.mastra.client";
+import client from "../../config/mastra-client";
 
 export const workflowsMastraOps = {
   getWorkflows: async (

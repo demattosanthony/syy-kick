@@ -3,7 +3,7 @@ import db from "../../../../config/db";
 import { users } from "../../../../config/schema";
 
 /** Mastra */
-import client from "../../workflows.mastra.client";
+import client from "../../../../config/mastra-client";
 
 /** Schema */
 import { workflowRunComments, workflowRuns } from "../../workflows.schema";
@@ -23,8 +23,8 @@ export const workflowRunCommentsOps = {
     const databaseWorkflowRun = await db.query.workflowRuns.findFirst({
       where: eq(workflowRuns.mastraRunId, workflowRunId),
       with: {
-        workflow: true
-      }
+        workflow: true,
+      },
     });
 
     if (!databaseWorkflowRun) {
@@ -48,9 +48,13 @@ export const workflowRunCommentsOps = {
       .returning();
 
     if (admins.length > 0) {
-      const workflow = client.getWorkflow(databaseWorkflowRun.workflow.mastraId);
+      const workflow = client.getWorkflow(
+        databaseWorkflowRun.workflow.mastraId
+      );
       const run = await workflow.runs();
-      const foundRun = run.runs.find((run) => run.runId === databaseWorkflowRun.mastraRunId);
+      const foundRun = run.runs.find(
+        (run) => run.runId === databaseWorkflowRun.mastraRunId
+      );
 
       if (!foundRun) {
         throw new Error("Workflow run not found");
@@ -68,12 +72,11 @@ export const workflowRunCommentsOps = {
           <p>Workflow run: <a href="${process.env.FRONTEND_URL}/workflows/${databaseWorkflowRun.workflow.mastraId}/runs/${foundRun.runId}">${databaseWorkflowRun.id}</a></p>
           <p>Comment: ${comment}</p>
           `,
-        })
+        });
       } catch (error) {
         console.error("Erreur lors de l'envoi de l'email:", error);
         throw error;
       }
-
     }
 
     return newComment;
@@ -123,7 +126,7 @@ export const workflowRunCommentsOps = {
     });
 
     const conditions = [
-      eq(workflowRunComments.workflowRunId, databaseWorkflowRun.id)
+      eq(workflowRunComments.workflowRunId, databaseWorkflowRun.id),
     ];
 
     // If not an admin, add user condition
