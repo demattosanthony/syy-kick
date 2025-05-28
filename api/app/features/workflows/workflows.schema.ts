@@ -5,7 +5,6 @@ import { relations } from "drizzle-orm";
 export const workflows = pgTable("workflows", {
   id: uuid("id").primaryKey().defaultRandom(),
   mastraId: varchar("mastra_id", { length: 255 }).notNull(),
-  description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -1,4 +1,4 @@
-import { GetVNextWorkflowResponse } from "@mastra/client-js";
+import { GetWorkflowResponse } from "@mastra/client-js";
 import db from "../../config/db";
 import { eq, exists, or, and } from "drizzle-orm";
 import {
@@ -50,7 +50,6 @@ export const workflowsMastraOps = {
         where: or(...conditions),
         columns: {
           mastraId: true,
-          description: true,
         },
         with: {
           tags: {
@@ -65,15 +64,14 @@ export const workflowsMastraOps = {
         (userWorkflow) => userWorkflow.mastraId
       );
 
-      const workflows: Record<string, GetVNextWorkflowResponse> =
-        await client.getVNextWorkflows();
+      const workflows: Record<string, GetWorkflowResponse> =
+        await client.getWorkflows();
 
       // Create a map of mastraId to database workflow data for easy lookup
       const dbWorkflowMap = new Map(
         userWorkflows.map((workflow) => [
           workflow.mastraId,
           {
-            description: workflow.description,
             tags: workflow.tags.map((wt) => wt.tag),
           },
         ])
@@ -81,8 +79,7 @@ export const workflowsMastraOps = {
 
       let response: Record<
         string,
-        GetVNextWorkflowResponse & {
-          description?: string | null;
+        GetWorkflowResponse & {
           tags: Tag[];
         }
       > = {};
@@ -92,7 +89,6 @@ export const workflowsMastraOps = {
           const dbData = dbWorkflowMap.get(key);
           response[key] = {
             ...value,
-            description: dbData?.description,
             tags: dbData?.tags || [],
           };
         }
@@ -123,7 +119,6 @@ export const workflowsMastraOps = {
       where: eq(workflows.mastraId, workflowId),
       columns: {
         mastraId: true,
-        description: true,
       },
       with: {
         tags: {
@@ -166,14 +161,13 @@ export const workflowsMastraOps = {
       throw new Error("User does not have access to workflow");
     }
 
-    const workflow: GetVNextWorkflowResponse = await client
-      .getVNextWorkflow(workflowId)
+    const workflow: GetWorkflowResponse = await client
+      .getWorkflow(workflowId)
       .details();
 
     // Merge with database data
     return {
       ...workflow,
-      description: workflowExists.description,
       tags: workflowExists.tags.map((wt) => wt.tag),
     };
   },

@@ -1,4 +1,4 @@
-import { createWorkflow, createStep } from "@mastra/core/workflows/vNext";
+import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
 
 import { convertPdfFromS3ToImages } from "../../pdf-to-images.ts";
@@ -13,7 +13,6 @@ import {
 import { classifyImages } from "../../image-classification.ts";
 import { performOcrOnS3Images } from "../../llm-ocr.ts";
 import { csvWriter } from "../agents/index.ts";
-import { randomUUID } from "node:crypto";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   controlsDrawings: z.object({
@@ -52,10 +51,8 @@ const stepOne = createStep({
 
     const uploadedImages = await convertPdfFromS3ToImages(
       fileKey,
-      randomUUID(),
-      randomUUID()
-      //   runtimeContext.get("workflowId"),
-      //   runtimeContext.get("runId")
+      runtimeContext.get("workflowId"),
+      runtimeContext.get("runId")
     );
     logger.info(`Returning ${uploadedImages.length} images`);
 
@@ -108,10 +105,8 @@ const stepThree = createStep({
     const outputs = await detectObjectsInS3Images(
       imagesWithBomTables,
       "Bill of Materials Table",
-      randomUUID(),
-      randomUUID()
-      //   runtimeContext.get("workflowId"),
-      //   runtimeContext.get("runId")
+      runtimeContext.get("workflowId"),
+      runtimeContext.get("runId")
     );
 
     logger.info(`Flattened ${outputs.length} cropped images`);
@@ -144,10 +139,8 @@ const stepFour = createStep({
         additionalInstructions:
           "Ensure all quantities are properly formatted and any special characters are preserved.",
       },
-      randomUUID(),
-      randomUUID()
-      //   runtimeContext.get("workflowId"),
-      //   runtimeContext.get("runId")
+      runtimeContext.get("workflowId"),
+      runtimeContext.get("runId")
     );
 
     logger.info(`Returning ${files.length} markdown files`);
@@ -241,7 +234,7 @@ Remember to use your expertise to provide the most accurate and comprehensive co
 
     logger.info(`Totalized BOM: ${totalizedBomCsvContent}`);
 
-    const fileKey = `workflows/${randomUUID()}/${randomUUID()}/totalized-bom.csv`;
+    const fileKey = `workflows/${runtimeContext.get("workflowId")}/${runtimeContext.get("runId")}/totalized-bom.csv`;
     const csvFileData = Buffer.from(totalizedBomCsvContent, "utf-8");
     await uploadFileToS3(fileKey, csvFileData, "text/csv");
 

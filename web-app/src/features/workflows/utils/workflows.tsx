@@ -11,12 +11,12 @@ import {
 import {
   SerializedStep,
   SerializedStepFlowEntry,
-} from "@mastra/core/workflows/vNext";
-import { GetVNextWorkflowResponse } from "@mastra/client-js";
+} from "@mastra/core/workflows";
 import excel from "@/assets/logos/excel.svg";
 import word from "@/assets/logos/ms-word.svg";
 import pptx from "@/assets/logos/pptx.svg";
 import pdf from "@/assets/logos/pdf.svg";
+import { GetWorkflowResponse } from "@mastra/client-js";
 
 export function getFileIcon(mimeType: string, url: string) {
   switch (true) {
@@ -339,7 +339,7 @@ export function flatten(graph: SerializedStepFlowEntry[]): SerializedStep[] {
 }
 
 export function buildOptimisticRun(
-  def: GetVNextWorkflowResponse,
+  def: GetWorkflowResponse,
   runId: string
 ): CustomWorkflowRun {
   const steps = flatten(def.stepGraph);
