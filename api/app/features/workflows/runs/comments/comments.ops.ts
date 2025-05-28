@@ -48,7 +48,7 @@ export const workflowRunCommentsOps = {
       .returning();
 
     if (admins.length > 0) {
-      const workflow = client.getVNextWorkflow(databaseWorkflowRun.workflow.mastraId);
+      const workflow = client.getWorkflow(databaseWorkflowRun.workflow.mastraId);
       const run = await workflow.runs();
       const foundRun = run.runs.find((run) => run.runId === databaseWorkflowRun.mastraRunId);
 
