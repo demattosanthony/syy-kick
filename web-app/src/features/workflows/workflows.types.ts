@@ -1,5 +1,5 @@
 import { GetWorkflowResponse } from "@mastra/client-js";
-import { WorkflowRuns } from "@mastra/core";
+import { WorkflowRun, WorkflowRuns } from "@mastra/core";
 
 // Base types for form fields
 type BaseFieldType = {
@@ -199,7 +199,7 @@ export interface CustomWorkflowRun {
 
 /** @todo: use their type when available */
 export interface CustomWorkflowRuns extends Omit<WorkflowRuns, "runs"> {
-  runs: CustomWorkflowRun[];
+  runs: WorkflowRun[];
 }
 
 export type StepOutputValue =

@@ -11,12 +11,12 @@ import api from "@/lib/api";
 import { useCreateRunMutation } from "../features/runs/api";
 import { useGetRunsQuery } from "../features/runs/api/get-runs";
 import {
-  CustomWorkflowRun,
   EnhancedWorkflowResponse,
   WorkflowInputSchemaParsed,
 } from "../workflows.types";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
+import { WorkflowRunState } from "@mastra/core";
 
 export type WorkflowAttachment = Attachment & {
   file_key: string;
@@ -334,11 +334,12 @@ export default function WorkflowPageContent({
 
         <div className="grid gap-4">
           {runs &&
-            runs?.runs?.slice(0, 3).map((run: CustomWorkflowRun) => {
+            runs?.runs?.slice(0, 3).map((run) => {
+              const snapshot = run.snapshot as WorkflowRunState;
               if (
-                !run.snapshot.context[
-                  Object.keys(run.snapshot.context)[
-                    Object.keys(run.snapshot.context).length - 1
+                !snapshot.context[
+                  Object.keys(snapshot.context)[
+                    Object.keys(snapshot.context).length - 1
                   ]
                 ]
               ) {
@@ -349,7 +350,7 @@ export default function WorkflowPageContent({
 
               if (lastGraphStep && "step" in lastGraphStep) {
                 const id = lastGraphStep.step.id;
-                status = run.snapshot.context[id]?.status ?? "running";
+                status = snapshot.context[id]?.status ?? "running";
               }
 
               return (
