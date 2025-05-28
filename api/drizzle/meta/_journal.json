@@ -407,6 +407,34 @@
       "when": 1747057917155,
       "tag": "0057_fuzzy_power_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1747935327599,
+      "tag": "0058_silent_magdalene",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1747947196922,
+      "tag": "0059_smart_hex",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1747947335846,
+      "tag": "0060_motionless_eternity",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1748356551311,
+      "tag": "0061_yielding_maddog",
+      "breakpoints": true
     }
   ]
 }

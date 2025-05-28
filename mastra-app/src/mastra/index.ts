@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { Mastra } from "@mastra/core";
 import { PostgresStore } from "@mastra/pg";
-import { NetlifyDeployer } from "@mastra/deployer-netlify";
 
 import logger from "../logger.ts";
 import {
@@ -11,8 +10,14 @@ import {
   equipmentServingListWorkflow,
   rfpResearcherWorkflow,
   kitchenSinkWorkflow,
+  pointCheckoutSheetsWorkflow,
 } from "./workflows/index.ts";
-import { csvWriter, webResearcher, syykick } from "./agents/index.ts";
+import {
+  csvWriter,
+  webResearcher,
+  syykick,
+  codingAgent,
+} from "./agents/index.ts";
 
 export const storage = new PostgresStore({
   connectionString: process.env.DATABASE_URL!,
@@ -23,8 +28,10 @@ export const mastra = new Mastra({
     "csv-writer": csvWriter,
     "web-researcher": webResearcher,
     syykick: syykick,
+    "coding-agent": codingAgent,
   },
-  vnext_workflows: {
+  workflows: {
+    "point-checkout-sheets": pointCheckoutSheetsWorkflow,
     "totalized-bom-builder": totalizedBomBuilder,
     "window-door-schedule-gen": windowDoorScheduleGen,
     "setty-rfp-eval": settyRfpEval,
@@ -59,12 +66,9 @@ export const mastra = new Mastra({
         path: "/*",
       },
     ],
+    port: 4111,
+    host: "0.0.0.0",
   },
-  deployer: new NetlifyDeployer({
-    scope: process.env.NETLIFY_SCOPE!,
-    projectName: process.env.NETLIFY_PROJECT_NAME!,
-    token: process.env.NETLIFY_TOKEN!,
-  }),
 });
 
 // Function to decode and verify basic auth credentials

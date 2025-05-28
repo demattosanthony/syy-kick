@@ -6,7 +6,8 @@ const workflowHandlers = {
     try {
       const workflows = await workflowsMastraOps.getWorkflows(
         req.dbUser!.id,
-        req.workspace?.type === "organization" ? req.workspace.id : undefined
+        req.workspace?.type === "organization" ? req.workspace.id : undefined,
+        req.query.query as string
       );
       res.status(200).json(workflows);
     } catch (error: any) {
@@ -18,7 +19,8 @@ const workflowHandlers = {
   getById: async (req: Request, res: Response) => {
     const { id: workflowId } = req.params;
     const workflow = await workflowsMastraOps.getWorkflow(
-      workflowId, req.dbUser!.id,
+      workflowId,
+      req.dbUser!.id,
       req.workspace?.type === "organization" ? req.workspace.id : undefined
     );
     res.status(200).json(workflow);

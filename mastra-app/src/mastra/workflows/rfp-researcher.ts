@@ -4,7 +4,7 @@ import {
   type WorkflowExecutionInputValues,
   type WorkflowTextExecutionInputValue,
 } from "../../types.ts";
-import { createStep, createWorkflow } from "@mastra/core/workflows/vNext";
+import { createStep, createWorkflow } from "@mastra/core/workflows";
 import { webResearcher } from "../agents/web-researcher.ts";
 import { getPresignedUrl, uploadFileToS3 } from "../../s3.ts";
 

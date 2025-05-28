@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 
 const mastraId = process.argv[2];
 const orgId = process.argv[3];
+const description = process.argv[4];
 
 if (!mastraId || !orgId) {
   console.error("Usage: bun run create-mastra-workflow.ts <mastraId> <orgId>");
@@ -20,7 +21,7 @@ async function main() {
     // Insert new workflow
     const [inserted] = await db
       .insert(workflows)
-      .values({ mastraId })
+      .values({ mastraId, description })
       .returning();
     if (!inserted) {
       console.error("Failed to create workflow");

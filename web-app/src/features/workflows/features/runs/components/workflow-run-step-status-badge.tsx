@@ -6,59 +6,55 @@ export function StepStatusBadge({ status }: { status: StepStatus }) {
     switch (status) {
         case StepStatus.Success:
             return (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    <Check className="h-3 w-3 mr-1" />
-                    Success
+                <Badge variant="outline" className="h-6 w-6 p-0 rounded-full bg-green-500 text-white border-green-600 flex items-center justify-center">
+                    <Check className="h-5 w-5 font-bold" />
                 </Badge>
             )
         case StepStatus.Failed:
             return (
-                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                    <X className="h-3 w-3 mr-1" />
-                    Failed
+                <Badge variant="outline" className="h-6 w-6 p-0 rounded-full bg-red-600 text-white border-red-600 flex items-center justify-center">
+                    <X className="h-5 w-5" />
                 </Badge>
             )
         case StepStatus.Running:
             return (
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Running
-                </Badge>
+                <Loader2 className="h-6 w-6 animate-spin" />
             )
         case StepStatus.Waiting:
             return (
-                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                    <Clock className="h-3 w-3 mr-1" />
-                    Waiting
+                <Badge variant="outline" className="h-6 w-6 p-0 rounded-full bg-yellow-500 text-white border-yellow-500 flex items-center justify-center">
+                    <Clock className="h-5 w-5" />
                 </Badge>
             )
         case StepStatus.Skipped:
             return (
-                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                    <SkipForward className="h-3 w-3 mr-1" />
-                    Skipped
+                <Badge variant="outline" className="h-6 w-6 p-0 rounded-full bg-gray-400 text-white border-gray-400 flex items-center justify-center">
+                    <SkipForward className="h-5 w-5" />
                 </Badge>
             )
         case StepStatus.Suspended:
             return (
-                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                    <Clock className="h-3 w-3 mr-1" />
-                    Suspended
+                <Badge variant="outline" className="h-6 w-6 p-0 rounded-full bg-purple-500 text-white border-purple-500 flex items-center justify-center">
+                    <Clock className="h-5 w-5" />
                 </Badge>
             )
         case StepStatus.Pending:
             return (
-                <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                    Pending
+                <Badge variant="outline" className="h-6 w-6 p-0 rounded-full bg-gray-400 text-white border-gray-400 flex items-center justify-center">
+                    <Clock className="h-5 w-5" />
                 </Badge>
             )
         case StepStatus.Blocked:
             return (
-                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                    Blocked
+                <Badge variant="outline" className="h-6 w-6 p-0 rounded-full bg-orange-500 text-white border-orange-500 flex items-center justify-center">
+                    <X className="h-5 w-5" />
                 </Badge>
             )
         default:
-            return <Badge variant="outline">{status}</Badge>
+            return (
+                <Badge variant="outline" className="h-6 w-6 p-0 rounded-full bg-gray-400 text-white border-gray-400 flex items-center justify-center">
+                    <Clock className="h-5 w-5" />
+                </Badge>
+            )
     }
 }

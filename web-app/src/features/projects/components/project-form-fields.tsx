@@ -149,7 +149,7 @@ const ProjectFormFields = ({
                 id="estimatedStartDate"
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal",
+                  "w-full justify-start text-left font-normal bg-transparent",
                   !formData.estimatedStartDate && "text-muted-foreground"
                 )}
               >
@@ -194,7 +194,7 @@ const ProjectFormFields = ({
                 id="estimatedEndDate"
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal",
+                  "w-full justify-start text-left font-normal bg-transparent",
                   !formData.estimatedEndDate && "text-muted-foreground"
                 )}
               >

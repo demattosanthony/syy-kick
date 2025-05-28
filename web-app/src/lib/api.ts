@@ -12,6 +12,7 @@ import { Site } from "@/features/sites/types/sites";
 import {
   CustomWorkflowRun,
   CustomWorkflowRuns,
+  EnhancedWorkflowResponse,
 } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
@@ -25,7 +26,6 @@ import {
   SortOption,
 } from "@/features/projects/types";
 import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
-import { GetVNextWorkflowResponse } from "@mastra/client-js";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -57,6 +57,7 @@ import {
   KnowledgeBaseAccessLogFilters,
   KnowledgeBaseAccessLogsResponse,
 } from "@/features/knowledge-bases/types";
+import { Comment } from "@/features/workflows/features/runs/features/comments/types";
 // import { Agent, Tool } from "@/features/workflows/features/agents/types";
 
 // Client-side fetch
@@ -923,23 +924,24 @@ class PermissionsApi extends ApiRequest {
  * Workflows API Module
  */
 class WorkflowsApi extends ApiRequest {
-  async listWorkflows(): Promise<Record<string, GetVNextWorkflowResponse>> {
-    return await this.request("/workflows");
+  async listWorkflows(
+    query?: string
+  ): Promise<Record<string, EnhancedWorkflowResponse>> {
+    return await this.request(`/workflows?${query ? `query=${query}` : ""}`);
   }
 
-  async getWorkflow(id: string): Promise<GetVNextWorkflowResponse> {
+  async getWorkflow(id: string): Promise<EnhancedWorkflowResponse> {
     return await this.request(`/workflows/${id}`);
   }
 
-  async createRun(workflowId: string, input: any): Promise<{
+  async createRun(
+    workflowId: string,
+    input: any
+  ): Promise<{
     runId: string;
   }> {
     try {
-      return await this.request(
-        `/workflows/${workflowId}/runs`,
-        "POST",
-        input
-      );
+      return await this.request(`/workflows/${workflowId}/runs`, "POST", input);
     } catch (error) {
       throw error;
     }
@@ -948,7 +950,7 @@ class WorkflowsApi extends ApiRequest {
   async getRuns(workflowId: string): Promise<CustomWorkflowRuns> {
     return await this.request(`/workflows/${workflowId}/runs`);
   }
-  
+
   async getRun(workflowId: string, runId: string): Promise<CustomWorkflowRun> {
     return await this.request(`/workflows/${workflowId}/runs/${runId}`);
   }
@@ -960,13 +962,54 @@ class WorkflowsApi extends ApiRequest {
     );
   }
 
-  // async getAgents(): Promise<Agent[]> {
-  //   return await this.request("/workflows/agents");
-  // }
+  async getRunComments(
+    workflowId: string,
+    workflowRunId: string
+  ): Promise<Comment[]> {
+    return await this.request(
+      `/workflows/${workflowId}/runs/${workflowRunId}/comments`
+    );
+  }
 
-  // async getTools(): Promise<Tool[]> {
-  //   return await this.request("/tools");
-  // }
+  async createRunComment(
+    workflowId: string,
+    workflowRunId: string,
+    comment: string
+  ): Promise<Comment> {
+    return await this.request(
+      `/workflows/${workflowId}/runs/${workflowRunId}/comments`,
+      "POST",
+      {
+        comment,
+      }
+    );
+  }
+
+  async updateRunComment(
+    workflowId: string,
+    workflowRunId: string,
+    commentId: string,
+    comment: string
+  ): Promise<Comment> {
+    return await this.request(
+      `/workflows/${workflowId}/runs/${workflowRunId}/comments/${commentId}`,
+      "PUT",
+      {
+        comment,
+      }
+    );
+  }
+
+  async deleteRunComment(
+    workflowId: string,
+    workflowRunId: string,
+    commentId: string
+  ): Promise<void> {
+    return await this.request(
+      `/workflows/${workflowId}/runs/${workflowRunId}/comments/${commentId}`,
+      "DELETE"
+    );
+  }
 }
 
 class SitesApi extends ApiRequest {

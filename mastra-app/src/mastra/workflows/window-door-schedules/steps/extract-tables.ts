@@ -1,4 +1,4 @@
-import { createStep } from "@mastra/core/workflows/vNext";
+import { createStep } from "@mastra/core/workflows";
 import { WorkflowRunStepOutputSchema } from "../../../../types.ts";
 import { z } from "zod";
 import logger from "../../../../logger.ts";

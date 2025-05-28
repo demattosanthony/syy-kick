@@ -45,6 +45,7 @@ import api from "./lib/api";
 import { KnowledgeBaseLayout } from "./components/layouts/knowledge-base-layout";
 import { User } from "./types/user";
 import { RouteErrorElement } from "./components/route-error";
+import { ProjectWorkflowsPage } from "./pages/projects/[:projectId]/workflows/page";
 
 // Define the new loader function for the root route
 const rootUserDataLoader = async (): Promise<User | null> => {
@@ -165,6 +166,7 @@ const router = createBrowserRouter([
               { path: "issues", element: <ProjectIssuesPage /> },
               { path: "issues/new", element: <NewIssuePage /> },
               { path: "issues/:issueNumber", element: <IssueDetailPage /> },
+              { path: "workflows", element: <ProjectWorkflowsPage /> },
             ],
           },
           {

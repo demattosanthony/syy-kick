@@ -1,18 +1,23 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { type CustomWorkflowRun, type TreeNode } from "@/features/workflows/workflows.types"
-import { SerializedStepFlowEntry } from "@mastra/core/workflows/vNext"
-import { StepDetailsDialog } from "@/features/workflows/features/runs/components"
-import { StepEntry } from "@/features/workflows/features/runs/components/graph"
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  type CustomWorkflowRun,
+  type TreeNode,
+} from "@/features/workflows/workflows.types";
+import { SerializedStepFlowEntry } from "@mastra/core/workflows";
+import { StepEntry } from "@/features/workflows/features/runs/components/graph";
+import { WorkflowRunInput } from "../workflow-run-input";
 
 export function WorkflowRunGraph({
   workflowRun,
   treeNodes,
-}: { workflowRun: CustomWorkflowRun; treeNodes: TreeNode[] }) {
-  const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
-
+  runState,
+}: {
+  workflowRun: CustomWorkflowRun;
+  treeNodes: TreeNode[];
+  runState: CustomWorkflowRun;
+}) {
   if (!workflowRun.definition) {
     return (
       <Card>
@@ -22,52 +27,47 @@ export function WorkflowRunGraph({
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
-    <Card>
-      <CardContent className="pt-6 overflow-auto">
-        <div className="min-w-[800px]">
-          <StepGraph
-            stepGraph={workflowRun.definition.stepGraph}
-            treeNodes={treeNodes}
-            setSelectedNode={setSelectedNode}
-          />
-        </div>
-
-        {selectedNode && <StepDetailsDialog node={selectedNode} onClose={() => setSelectedNode(null)} />}
-      </CardContent>
-    </Card>
-  )
+    <StepGraph
+      stepGraph={workflowRun.definition.stepGraph}
+      treeNodes={treeNodes}
+      runState={runState}
+    />
+  );
 }
 
 function StepGraph({
   stepGraph,
   treeNodes,
-  setSelectedNode,
+  runState,
 }: {
-  stepGraph: SerializedStepFlowEntry[]
-  treeNodes: TreeNode[]
-  setSelectedNode: (node: TreeNode) => void
+  stepGraph: SerializedStepFlowEntry[];
+  treeNodes: TreeNode[];
+  runState: CustomWorkflowRun;
 }) {
   return (
-    <div className="flex flex-col items-center space-y-8">
+    <div className="flex flex-col items-center w-full">
+      <WorkflowRunInput runState={runState} />
+      <div className="flex justify-center">
+        <div className="h-8 w-px bg-gray-400"></div>
+      </div>
       {stepGraph.map((entry, index) => (
         <div key={index} className="w-full">
           <StepEntry
             stepNumber={index + 1}
             entry={entry}
             treeNodes={treeNodes}
-            setSelectedNode={setSelectedNode}
           />
           {index < stepGraph.length - 1 && (
-            <div className="flex justify-center my-2">
-              <div className="h-8 w-0.5 bg-muted"></div>
+            <div className="flex justify-center">
+              <div className="h-8 w-px bg-gray-400"></div>
             </div>
           )}
         </div>
       ))}
     </div>
-  )
+  );
 }

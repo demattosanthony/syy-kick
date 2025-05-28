@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import {
   GitBranch,
   Search,
@@ -9,9 +9,8 @@ import {
 } from "lucide-react";
 import { useWorkflowsQuery } from "../api";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GetVNextWorkflowResponse } from "@mastra/client-js";
 import { useMemo } from "react";
-
+import { EnhancedWorkflowResponse } from "../workflows.types";
 
 const workflowIcons: { [key: string]: LucideIcon } = {
   "Smart Page Finder": Search,
@@ -26,10 +25,10 @@ const getWorkflowIcon = (title: string): LucideIcon => {
 };
 
 export default function WorkflowsList() {
-  // const [searchParams] = useSearchParams();
-  // const search = searchParams.get("search") || "";
+  const [searchParams] = useSearchParams();
+  const search = searchParams.get("search") || "";
 
-  const { data: workflows, isLoading } = useWorkflowsQuery();
+  const { data: workflows, isLoading } = useWorkflowsQuery(search);
 
   const filteredWorkflows = workflows;
 
@@ -62,7 +61,7 @@ function WorkflowItem({
   projectId,
 }: {
   id: string;
-  workflow: GetVNextWorkflowResponse;
+  workflow: EnhancedWorkflowResponse;
   projectId?: string;
 }) {
   const Icon = getWorkflowIcon(workflow.name);
@@ -85,6 +84,28 @@ function WorkflowItem({
           <p className="text-lg font-semibold text-card-foreground mb-1">
             {workflow.name}
           </p>
+          <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
+            {workflow.description}
+          </p>
+
+          {/* Tags */}
+          {workflow.tags && workflow.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {workflow.tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border"
+                  style={{
+                    backgroundColor: tag.hexBgColor,
+                    color: tag.hexTextColor,
+                    borderColor: tag.hexBgColor,
+                  }}
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </Link>
@@ -99,7 +120,12 @@ function WorkflowSkeleton() {
         <div className="flex-1">
           <Skeleton className="h-5 w-3/4 mb-2" />
           <Skeleton className="h-4 w-full mb-1" />
-          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-5/6 mb-3" />
+          {/* Tags skeleton */}
+          <div className="flex gap-1">
+            <Skeleton className="h-6 w-16 rounded-full" />
+            <Skeleton className="h-6 w-20 rounded-full" />
+          </div>
         </div>
       </div>
     </div>

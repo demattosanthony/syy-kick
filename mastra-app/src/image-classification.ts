@@ -63,12 +63,13 @@ export async function classifyImages(
             ],
           },
         ],
-        model: openai("gpt-4.1"),
+        model: openai("o4-mini", {
+          structuredOutputs: true,
+        }),
         schema: options.schema,
       })
     )
   );
-
   // Filter and map results
   const outputs = await Promise.all(
     loadedImages
@@ -80,12 +81,20 @@ export async function classifyImages(
       })
       .map(async (image) => {
         const url = await getPresignedUrl(image.fileKey!);
+        const originalFileName =
+          image.fileKey!.split("/").pop() || image.fileKey!;
+        const classificationName = Object.keys(results[0].object)[0].replace(
+          /^has/,
+          ""
+        );
+        const uniqueFileName = `${classificationName}_${Date.now()}_${originalFileName}`;
+
         return {
           type: "file" as const,
           file: {
             fileKey: image.fileKey!,
             mimeType: "image/png",
-            fileName: image.fileKey!,
+            fileName: uniqueFileName,
             url,
           },
         };

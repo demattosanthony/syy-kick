@@ -117,3 +117,123 @@ export const slugify = (text: string) => {
     .replace(/[^\w\-]+/g, "") // Remove all non-word chars
     .replace(/\-\-+/g, "-"); // Replace multiple - with single -
 };
+
+export async function pdfToImages(
+  pdfData: Uint8Array,
+  options: { maxDimension?: number } = { maxDimension: 4000 }
+): Promise<
+  {
+    name: string;
+    path: string;
+    size: number;
+    page: number;
+    base64: string;
+  }[]
+> {
+  const uniqueId = crypto.randomUUID();
+  const tempPdfPath = `/tmp/pdf_${uniqueId}.pdf`;
+  const outputPattern = `/tmp/output_${uniqueId}-%d.png`;
+
+  try {
+    // Write PDF data to temp file
+    await Bun.write(tempPdfPath, pdfData);
+
+    console.log("PDF written to temp file:", tempPdfPath);
+
+    // Use Ghostscript to convert all PDF pages to PNG images
+    const gsProc = Bun.spawn([
+      "gs",
+      "-dNOPAUSE",
+      "-dBATCH",
+      "-sDEVICE=png16m",
+      "-r150",
+      `-sOutputFile=${outputPattern}`,
+      tempPdfPath,
+    ]);
+
+    const gsSuccess = await gsProc.exited;
+    if (gsSuccess !== 0) {
+      throw new Error(`Ghostscript process failed with exit code ${gsSuccess}`);
+    }
+
+    // Find all generated image files
+    const tempDir = "/tmp";
+    const files = await Array.fromAsync(
+      new Bun.Glob(`output_${uniqueId}-*.png`).scan({
+        cwd: tempDir,
+      })
+    );
+
+    const images = [];
+
+    for (const fileName of files) {
+      const imagePath = `${tempDir}/${fileName}`;
+
+      // Resize the image if maxDimension is provided
+      if (options?.maxDimension && options.maxDimension > 0) {
+        const resizedPath = `${tempDir}/resized_${fileName}`;
+
+        const resizeProc = Bun.spawn([
+          "convert",
+          imagePath,
+          "-resize",
+          `${options.maxDimension}x${options.maxDimension}>`,
+          resizedPath,
+        ]);
+
+        const resizeSuccess = await resizeProc.exited;
+        if (resizeSuccess === 0) {
+          // Replace original with resized version
+          await Bun.spawn(["mv", resizedPath, imagePath]).exited;
+        } else {
+          console.error(`Failed to resize image ${fileName}, using original`);
+        }
+      }
+
+      // Extract page number from filename
+      const pageMatch = fileName.match(/output_[^-]+-(\d+)\.png/);
+      const pageNum = pageMatch ? parseInt(pageMatch[1], 10) : 0;
+
+      // Read image file
+      const imageFile = Bun.file(imagePath);
+      const imageBuffer = await imageFile.arrayBuffer();
+      const stats = await imageFile.stat();
+
+      images.push({
+        name: fileName,
+        path: imagePath,
+        size: stats.size,
+        page: pageNum,
+        base64: Buffer.from(imageBuffer).toString("base64"),
+      });
+    }
+
+    return images;
+  } catch (error: any) {
+    console.error("Error:", error);
+    throw new Error(`Failed to convert PDF to images: ${error.message}`);
+  } finally {
+    // Clean up temporary files
+    try {
+      const tempDir = "/tmp";
+      const allTempFiles = await Array.fromAsync(
+        new Bun.Glob(
+          `{pdf_${uniqueId}.pdf,output_${uniqueId}-*.png,resized_output_${uniqueId}-*.png}`
+        ).scan({
+          cwd: tempDir,
+        })
+      );
+
+      await Promise.all(
+        allTempFiles.map(
+          (file) => Bun.spawn(["rm", "-f", `${tempDir}/${file}`]).exited
+        )
+      );
+
+      // Also clean up the original temp PDF
+      await Bun.spawn(["rm", "-f", tempPdfPath]).exited;
+    } catch (error) {
+      console.error("Error cleaning up temporary files:", error);
+    }
+  }
+}

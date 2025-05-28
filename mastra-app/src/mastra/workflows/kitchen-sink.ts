@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createWorkflow, createStep } from "@mastra/core/workflows/vNext";
+import { createWorkflow, createStep } from "@mastra/core/workflows";
 import type { WorkflowExecutionInputValues } from "../../types";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
@@ -12,7 +12,7 @@ const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   }),
   inputString: z.object({
     type: z.literal("text"),
-    label: z.string(),
+    label: z.literal("Input String"),
     value: z.object({
       text: z.string(),
     }),
@@ -22,9 +22,7 @@ const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
 const finalStepOutputSchema = z.object({
   summary: z.object({
     type: z.literal("text"),
-    value: z.object({
-      text: z.string(),
-    }),
+    text: z.string(),
   }),
 });
 
@@ -36,9 +34,7 @@ const processNumberStep = createStep({
   outputSchema: z.object({
     processedNumber: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
   }),
   execute: async ({ inputData }) => {
@@ -51,9 +47,7 @@ const processNumberStep = createStep({
     return {
       processedNumber: {
         type: "number" as const,
-        value: {
-          number: inputNumber * 2,
-        },
+        number: inputNumber * 2,
       },
     };
   },
@@ -67,9 +61,7 @@ const processStringStep = createStep({
   outputSchema: z.object({
     processedString: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   execute: async ({ inputData }) => {
@@ -82,9 +74,7 @@ const processStringStep = createStep({
     return {
       processedString: {
         type: "text" as const,
-        value: {
-          text: inputString.toUpperCase(),
-        },
+        text: inputString.toUpperCase(),
       },
     };
   },
@@ -98,54 +88,40 @@ const combineParallelOutputsStep = createStep({
     "process-number": z.object({
       processedNumber: z.object({
         type: z.literal("number"),
-        value: z.object({
-          number: z.number(),
-        }),
+        number: z.number(),
       }),
     }),
     "process-string": z.object({
       processedString: z.object({
         type: z.literal("text"),
-        value: z.object({
-          text: z.string(),
-        }),
+        text: z.string(),
       }),
     }),
   }),
   outputSchema: z.object({
     combinedResult: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
     numberValue: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
   }),
   execute: async ({ inputData }) => {
     await new Promise((resolve) => setTimeout(resolve, 1200)); // 1.2 seconds timeout
 
-    const processedNumber =
-      inputData["process-number"].processedNumber.value.number;
-    const processedString =
-      inputData["process-string"].processedString.value.text;
+    const processedNumber = inputData["process-number"].processedNumber.number;
+    const processedString = inputData["process-string"].processedString.text;
 
     return {
       combinedResult: {
         type: "text" as const,
-        value: {
-          text: `Combined: ${processedString} (${processedNumber})`,
-        },
+        text: `Combined: ${processedString} (${processedNumber})`,
       },
       numberValue: {
         type: "number" as const,
-        value: {
-          number: processedNumber,
-        },
+        number: processedNumber,
       },
     };
   },
@@ -158,23 +134,17 @@ const highValueStep = createStep({
   inputSchema: z.object({
     numberValue: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
     combinedResult: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   outputSchema: z.object({
     result: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   execute: async ({ inputData }) => {
@@ -182,9 +152,7 @@ const highValueStep = createStep({
     return {
       result: {
         type: "text" as const,
-        value: {
-          text: `HIGH VALUE (${inputData.numberValue.value.number}): ${inputData.combinedResult.value.text}`,
-        },
+        text: `HIGH VALUE (${inputData.numberValue.number}): ${inputData.combinedResult.text}`,
       },
     };
   },
@@ -196,23 +164,17 @@ const lowValueStep = createStep({
   inputSchema: z.object({
     numberValue: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
     combinedResult: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   outputSchema: z.object({
     result: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   execute: async ({ inputData }) => {
@@ -220,9 +182,7 @@ const lowValueStep = createStep({
     return {
       result: {
         type: "text" as const,
-        value: {
-          text: `LOW VALUE (${inputData.numberValue.value.number}): ${inputData.combinedResult.value.text}`,
-        },
+        text: `LOW VALUE (${inputData.numberValue.number}): ${inputData.combinedResult.text}`,
       },
     };
   },
@@ -235,48 +195,36 @@ const incrementStep = createStep({
   inputSchema: z.object({
     counter: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
     iterationText: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   outputSchema: z.object({
     counter: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
     iterationText: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   execute: async ({ inputData }) => {
     await new Promise((resolve) => setTimeout(resolve, 500)); // 0.5 seconds timeout
-    const currentCount = inputData.counter.value.number;
-    const iterationText = inputData.iterationText.value.text;
+    const currentCount = inputData.counter.number;
+    const iterationText = inputData.iterationText.text;
 
     return {
       counter: {
         type: "number" as const,
-        value: {
-          number: currentCount + 1,
-        },
+        number: currentCount + 1,
       },
       iterationText: {
         type: "text" as const,
-        value: {
-          text: `${iterationText} Iteration: ${currentCount + 1},`,
-        },
+        text: `${iterationText} Iteration: ${currentCount + 1},`,
       },
     };
   },
@@ -289,23 +237,17 @@ const prepareLoopStep = createStep({
   inputSchema: z.object({
     result: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   outputSchema: z.object({
     counter: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
     iterationText: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   execute: async ({ inputData }) => {
@@ -313,15 +255,11 @@ const prepareLoopStep = createStep({
     return {
       counter: {
         type: "number" as const,
-        value: {
-          number: 0,
-        },
+        number: 0,
       },
       iterationText: {
         type: "text" as const,
-        value: {
-          text: "Loop started. ",
-        },
+        text: "Loop started. ",
       },
     };
   },
@@ -334,50 +272,38 @@ const prepareForEachStep = createStep({
   inputSchema: z.object({
     counter: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
     iterationText: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   outputSchema: z.array(
     z.object({
       item: z.object({
         type: z.literal("number"),
-        value: z.object({
-          number: z.number(),
-        }),
+        number: z.number(),
       }),
       index: z.object({
         type: z.literal("number"),
-        value: z.object({
-          number: z.number(),
-        }),
+        number: z.number(),
       }),
     })
   ),
   execute: async ({ inputData }) => {
     await new Promise((resolve) => setTimeout(resolve, 800)); // 0.8 seconds timeout
-    const count = inputData.counter.value.number;
+    const count = inputData.counter.number;
 
     // Create an array of items for foreach
     return Array.from({ length: count }, (_, i) => ({
       item: {
         type: "number" as const,
-        value: {
-          number: i * 10,
-        },
+        number: i * 10,
       },
       index: {
         type: "number" as const,
-        value: {
-          number: i,
-        },
+        number: i,
       },
     }));
   },
@@ -390,36 +316,28 @@ const processForEachItemStep = createStep({
   inputSchema: z.object({
     item: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
     index: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
   }),
   outputSchema: z.object({
     processedItem: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   execute: async ({ inputData }) => {
     await new Promise((resolve) => setTimeout(resolve, 300)); // 0.3 seconds timeout
-    const item = inputData.item.value.number;
-    const index = inputData.index.value.number;
+    const item = inputData.item.number;
+    const index = inputData.index.number;
 
     return {
       processedItem: {
         type: "text" as const,
-        value: {
-          text: `Item ${index}: ${item} processed to ${item * 2}`,
-        },
+        text: `Item ${index}: ${item} processed to ${item * 2}`,
       },
     };
   },
@@ -433,33 +351,25 @@ const collectForEachResultsStep = createStep({
     z.object({
       processedItem: z.object({
         type: z.literal("text"),
-        value: z.object({
-          text: z.string(),
-        }),
+        text: z.string(),
       }),
     })
   ),
   outputSchema: z.object({
     foreachSummary: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   execute: async ({ inputData }) => {
     await new Promise((resolve) => setTimeout(resolve, 900)); // 0.9 seconds timeout
 
-    const summary = inputData
-      .map((item) => item.processedItem.value.text)
-      .join("; ");
+    const summary = inputData.map((item) => item.processedItem.text).join("; ");
 
     return {
       foreachSummary: {
         type: "text" as const,
-        value: {
-          text: `ForEach Summary: ${summary}`,
-        },
+        text: `ForEach Summary: ${summary}`,
       },
     };
   },
@@ -472,9 +382,7 @@ const finalSummaryStep = createStep({
   inputSchema: z.object({
     foreachSummary: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   outputSchema: finalStepOutputSchema,
@@ -484,9 +392,7 @@ const finalSummaryStep = createStep({
     return {
       summary: {
         type: "text" as const,
-        value: {
-          text: `Kitchen Sink Workflow Complete! Final output: ${inputData.foreachSummary.value.text}`,
-        },
+        text: `Kitchen Sink Workflow Complete! Final output: ${inputData.foreachSummary.text}`,
       },
     };
   },
@@ -498,30 +404,24 @@ const loopWorkflow = createWorkflow({
   inputSchema: z.object({
     result: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
   outputSchema: z.object({
     counter: z.object({
       type: z.literal("number"),
-      value: z.object({
-        number: z.number(),
-      }),
+      number: z.number(),
     }),
     iterationText: z.object({
       type: z.literal("text"),
-      value: z.object({
-        text: z.string(),
-      }),
+      text: z.string(),
     }),
   }),
 })
   .then(prepareLoopStep)
   .dountil(
     incrementStep,
-    async ({ inputData }) => inputData.counter.value.number >= 5
+    async ({ inputData }) => inputData.counter.number >= 5
   )
   .commit();
 
@@ -533,9 +433,7 @@ const mapForLoop = (branchOutput: any) => {
   return {
     result: {
       type: "text" as const,
-      value: {
-        text: "Processing branch output",
-      },
+      text: "Processing branch output",
     },
   };
 };
@@ -543,6 +441,8 @@ const mapForLoop = (branchOutput: any) => {
 // Create the main kitchen sink workflow
 export const kitchenSinkWorkflow = createWorkflow({
   id: "Kitchen Sink Workflow",
+  description:
+    "A workflow that demonstrates all features of the Mastra workflow engine. This workflow is used to test the workflow engine and its features.",
   inputSchema,
   outputSchema: finalStepOutputSchema,
 })
@@ -554,6 +454,7 @@ export const kitchenSinkWorkflow = createWorkflow({
 
   // 3. Create a simpler branch step with just one condition
   .branch([
+    [async () => false, highValueStep],
     [
       // Always take this path
       async () => true,
