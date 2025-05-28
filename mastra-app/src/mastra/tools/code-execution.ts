@@ -23,18 +23,7 @@ export const codeExecutionTool = createTool({
     const { code } = context;
     const sandbox = runtimeContext.get("sandbox") as Sandbox;
 
-    console.log("--------------------------------");
-    console.log(code);
-    console.log("--------------------------------");
-
     const { text, results, logs, error } = await sandbox.runCode(code);
-
-    console.log("--------------------------------");
-    console.log(text);
-    console.log(results);
-    console.log(logs);
-    console.log(error);
-    console.log("--------------------------------");
 
     return {
       text: text ?? "",

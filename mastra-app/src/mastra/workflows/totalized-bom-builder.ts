@@ -1,24 +1,31 @@
+// Core dependencies
 import { createWorkflow, createStep } from "@mastra/core/workflows";
+import { RuntimeContext } from "@mastra/core/runtime-context";
 import { z } from "zod";
+import fs from "fs";
+
+// AI/ML dependencies
+import { generateObject } from "ai";
+import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
+import type { AnthropicProviderOptions } from "@ai-sdk/anthropic";
+
+// Code execution
+import { Sandbox } from "@e2b/code-interpreter";
+import type { CodeExecutionContext } from "../tools/code-execution.ts";
+
+// Local utilities
 import { convertPdfFromS3ToImages } from "../../pdf-to-images.ts";
 import { detectObjectsInS3Images } from "../../obj-detection.ts";
 import { getFileFromS3, getPresignedUrl, uploadFileToS3 } from "../../s3.ts";
+import { classifyImages } from "../../image-classification.ts";
+import { performOcrOnS3Images } from "../../llm-ocr.ts";
 import logger from "../../logger.ts";
 import {
   WorkflowRunStepOutputSchema,
   type WorkflowExecutionInputValues,
   type WorkflowFile,
 } from "../../types.ts";
-import { classifyImages } from "../../image-classification.ts";
-import { performOcrOnS3Images } from "../../llm-ocr.ts";
-import { generateObject } from "ai";
-import { google } from "@ai-sdk/google";
-import { Sandbox } from "@e2b/code-interpreter";
-import { RuntimeContext } from "@mastra/core/runtime-context";
-import type { CodeExecutionContext } from "../tools/code-execution.ts";
-import fs from "fs";
-import type { AnthropicProviderOptions } from "@ai-sdk/anthropic";
-import { codingAgent } from "../agents/coding-agent.ts";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   controlsDrawings: z.object({
@@ -45,7 +52,7 @@ const finalStepOutputSchema = z.object({
 });
 
 const stepOne = createStep({
-  id: "stepOne",
+  id: "convertPdfToImages",
   description: "Convert the controls drawings PDF to images",
   inputSchema: inputSchema,
   outputSchema: z.object({
@@ -68,8 +75,69 @@ const stepOne = createStep({
   },
 });
 
+const getProjectNameStep = createStep({
+  id: "getProjectName",
+  description:
+    "Get the project name from the first image of the controls drawings PDF",
+  inputSchema: z.object({
+    convertedImages: z.array(WorkflowRunStepOutputSchema),
+  }),
+  outputSchema: z.object({
+    projectName: z.string(),
+  }),
+  execute: async ({ inputData }) => {
+    const { convertedImages } = inputData;
+
+    if (convertedImages.length === 0) {
+      throw new Error("No images found");
+    }
+
+    const firstImage = convertedImages[0];
+    if (!firstImage.file || !firstImage.file.fileKey) {
+      throw new Error("No file found");
+    }
+
+    const { fileKey } = firstImage.file;
+    const file = await getFileFromS3(fileKey);
+    const imageData = await file.Body?.transformToByteArray();
+
+    if (!imageData) {
+      throw new Error("No image data found");
+    }
+
+    const imageBase64 = Buffer.from(imageData).toString("base64");
+
+    const { object } = await generateObject({
+      model: openai("o4-mini"),
+      schema: z.object({
+        projectName: z.string(),
+      }),
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Your task is to analyze this image and extract the project name from the title of the image. The project name is at the top center of the image.`,
+            },
+            {
+              type: "image",
+              image: imageBase64,
+              mimeType: "image/png",
+            },
+          ],
+        },
+      ],
+    });
+
+    return {
+      projectName: object.projectName,
+    };
+  },
+});
+
 const stepTwo = createStep({
-  id: "stepTwo",
+  id: "classifyImages",
   description: "Classify the images to find the bill of materials tables",
   inputSchema: z.object({
     convertedImages: z.array(WorkflowRunStepOutputSchema),
@@ -97,16 +165,21 @@ These tables typically list details about components used in the control system,
 });
 
 const stepThree = createStep({
-  id: "stepThree",
+  id: "cropImages",
   description: "Crop the images to the bill of materials tables",
   inputSchema: z.object({
-    imagesWithBomTables: z.array(WorkflowRunStepOutputSchema),
+    getProjectName: z.object({
+      projectName: z.string(),
+    }),
+    classifyImages: z.object({
+      imagesWithBomTables: z.array(WorkflowRunStepOutputSchema),
+    }),
   }),
   outputSchema: z.object({
     croppedImages: z.array(WorkflowRunStepOutputSchema),
   }),
   execute: async ({ inputData, runtimeContext }) => {
-    const { imagesWithBomTables } = inputData;
+    const { imagesWithBomTables } = inputData.classifyImages;
 
     const outputs = await detectObjectsInS3Images(
       imagesWithBomTables,
@@ -124,7 +197,7 @@ const stepThree = createStep({
 });
 
 const stepFour = createStep({
-  id: "stepFour",
+  id: "ocrImages",
   description:
     "Perform OCR on the cropped images to extract the bill of materials tables",
   inputSchema: z.object({
@@ -158,7 +231,7 @@ const stepFour = createStep({
 });
 
 const stepFive = createStep({
-  id: "stepFive",
+  id: "createTotalizedBomMarkdownFile",
   description: "Create a totalized BOM markdown file",
   inputSchema: z.object({
     markdownFiles: z.array(WorkflowRunStepOutputSchema),
@@ -245,6 +318,13 @@ Remember to use your expertise to provide the most accurate and comprehensive co
           ],
         },
       ],
+      //   providerOptions: {
+      //     google: {
+      //       thinkingConfig: {
+      //         thinkingBudget: 12000,
+      //       },
+      //     } satisfies GoogleGenerativeAIProviderOptions,
+      //   },
     });
     const totalizedBomMarkdownContent = object.totalizedBomMarkdownContent;
 
@@ -273,7 +353,7 @@ Remember to use your expertise to provide the most accurate and comprehensive co
 });
 
 const stepSix = createStep({
-  id: "stepSix",
+  id: "fillOutExcelTemplate",
   description:
     "Fill out the totalized BOM template excel file with the data from the markdown file",
   inputSchema: z.object({
@@ -288,17 +368,18 @@ const stepSix = createStep({
     }),
   }),
   outputSchema: finalStepOutputSchema,
-  execute: async ({ inputData, runtimeContext }) => {
+  execute: async ({ inputData, runtimeContext, mastra, getStepResult }) => {
     const { totalizedBomMarkdownFile } = inputData;
     const { fileKey } = totalizedBomMarkdownFile.file as WorkflowFile;
     const workflowId = runtimeContext.get("workflowId");
     const runId = runtimeContext.get("runId");
 
+    const projectName = getStepResult(getProjectNameStep).projectName;
+
     let sandbox: Sandbox | null = null;
     try {
       const file = await getFileFromS3(fileKey);
       const markdownData = await file.Body?.transformToString();
-      logger.info(`Markdown data: ${markdownData}`);
 
       if (!markdownData) {
         throw new Error("No data found");
@@ -327,7 +408,7 @@ const stepSix = createStep({
       const codeExecutionContext = new RuntimeContext<CodeExecutionContext>();
       codeExecutionContext.set("sandbox", sandbox);
 
-      await codingAgent.generate(
+      await mastra.getAgent("coding-agent").generate(
         [
           {
             role: "user",
@@ -345,6 +426,7 @@ I have placed the Excel file template in the sandbox at the path /project_bom_tr
    - **Bold text**
    - **Yellow background highlight**
 5. **Save the file** at the same path: /project_bom_tracker.xlsx
+6. **Project Name**: Fill cell A1 with the project name: "${projectName}"
 
 **DATA TO POPULATE** - Use this exact TOTALIZED BILL OF MATERIALS data:
 
@@ -357,17 +439,18 @@ ${markdownData}
 
 **IMPLEMENTATION STEPS**:
 1. Use Python to open the Excel file with openpyxl to preserve formatting
-2. Parse the data above to identify manufacturer rows (empty quantity) vs part rows (with quantity)
-3. Populate the Excel template with this exact data in the appropriate location
-4. Apply bold formatting and yellow background to ALL manufacturer name rows
-5. Ensure part number rows maintain clean formatting with quantities
-6. Save the file preserving all original template structure and formatting
+2. Set cell A1 to the project name: "${projectName}"
+3. Parse the data above to identify manufacturer rows (empty quantity) vs part rows (with quantity)
+4. Populate the Excel template with this exact data in the appropriate location
+5. Apply bold formatting and yellow background to ALL manufacturer name rows
+6. Ensure part number rows maintain clean formatting with quantities
+7. Save the file preserving all original template structure and formatting
 
 **CRITICAL**: Use the exact data provided above - do not modify or add to it. Preserve all original template formatting, formulas, and visual styling.`,
           },
         ],
         {
-          maxSteps: 10,
+          maxSteps: 20,
           runtimeContext: codeExecutionContext,
           providerOptions: {
             anthropic: {
@@ -426,10 +509,18 @@ const totalizedBomBuilder = createWorkflow({
     "This workflow consolidates bill of materials tables that are embedded in controls system drawings",
   inputSchema: inputSchema,
   outputSchema: finalStepOutputSchema,
-  steps: [stepOne, stepTwo, stepThree, stepFour, stepFive, stepSix],
+  steps: [
+    stepOne,
+    getProjectNameStep,
+    stepTwo,
+    stepThree,
+    stepFour,
+    stepFive,
+    stepSix,
+  ],
 })
   .then(stepOne)
-  .then(stepTwo)
+  .parallel([getProjectNameStep, stepTwo])
   .then(stepThree)
   .then(stepFour)
   .then(stepFive)

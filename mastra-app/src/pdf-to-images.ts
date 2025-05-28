@@ -67,6 +67,9 @@ export async function convertPdfToImages(
 
     await fs.rm(tempDir, { recursive: true, force: true });
 
+    // Sort images by page number to ensure correct order
+    images.sort((a, b) => a.page - b.page);
+
     return images;
   } catch (error) {
     console.error(error);
