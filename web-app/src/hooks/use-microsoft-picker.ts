@@ -1,21 +1,54 @@
-"use client";
-
 /** Hooks */
 import { useSearchParams } from "react-router";
 import { useCallback, useEffect, useState } from "react";
 
 /** Utils */
 import { toast } from "sonner";
-import { MicrosoftPicker, PickerOptions } from "../utils/microsoft-picker";
-
-/** Types */
-import { SharePointFile } from "../types";
+import { MicrosoftPicker, PickerOptions } from "@/lib/microsoft-picker";
 
 declare global {
   interface Window {
     OneDrive?: any;
   }
 }
+
+export type SortOption =
+  | "recent"
+  | "name-asc"
+  | "name-desc"
+  | "created-asc"
+  | "created-desc";
+
+export type SharePointFile = {
+  name: string;
+  webDavUrl?: string;
+  webUrl?: string;
+  size: number;
+  id: string;
+
+  parentReference?: {
+    driveId?: string;
+    sharepointIds?: {
+      listId: string;
+      webId: string;
+      siteId: string;
+      siteUrl: string;
+    };
+  };
+
+  sharepointIds?: {
+    listItemUniqueId?: string;
+    listItemId?: string;
+    listId?: string;
+    webId?: string;
+    siteId?: string;
+    siteUrl?: string;
+  };
+
+  "@sharePoint.embedUrl"?: string;
+  "@sharePoint.endpoint"?: string;
+  "@sharePoint.listUrl"?: string;
+};
 
 export function useMicrosoftPicker({
   onFilesSelected,

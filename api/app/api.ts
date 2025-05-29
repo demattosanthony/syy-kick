@@ -18,7 +18,6 @@ import permissionsRoutes from "./features/permissions/permissions.routes";
 import analyticsRoutes from "./features/analytics/analytics.routes";
 import knowledgeBasesRoutes from "./features/knowledge-bases/knowledge-bases.routes";
 import sitesRoutes from "./features/sites/sites.routes";
-import projectsRoutes from "./features/projects/projects.routes";
 import toolsRoutes from "./features/tools/tools.routes";
 
 export default Router()
@@ -80,7 +79,6 @@ export default Router()
   )
   .use("/organizations", auth, organizationRoutes)
   .use("/sites", auth, checkSub, sitesRoutes)
-  .use("/projects", auth, checkSub, projectsRoutes)
   .use("/workflows", auth, workflowRoutes)
   .use("/tools", auth, toolsRoutes)
   .use("/knowledge-bases", auth, knowledgeBasesRoutes)

@@ -51,22 +51,6 @@ await db.insert(resources).values([
     name: Permissions.Resources.ORGANIZATION_SEATS,
     description: "Seats management of the organization",
   },
-  {
-    name: Permissions.Resources.ORGANIZATION_PROJECTS,
-    description: "Projects within the organization",
-  },
-  {
-    name: Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
-    description: "Documents within projects",
-  },
-  {
-    name: Permissions.Resources.ORGANIZATION_PROJECT_INVITATIONS,
-    description: "Project invitations",
-  },
-  {
-    name: Permissions.Resources.ORGANIZATION_PROJECT_MEMBERS,
-    description: "Members of the project",
-  },
 ]);
 
 await db.insert(actions).values([

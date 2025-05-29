@@ -73,7 +73,7 @@ export function ActionButtons({
               <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                   <Button
-                    className="h-7 w-7 p-0 rounded-full"
+                    className="h-8 w-8 p-0 rounded-full"
                     variant="ghost"
                     type="button"
                     onClick={(e) => {

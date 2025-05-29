@@ -1,14 +1,6 @@
-
-export type WorkspaceProject = {
-  id: string;
-  name: string;
-  slug: string;
-};
-
 export type WorkspaceSite = {
   id: string;
   address: string;
-  projects: WorkspaceProject[];
 };
 
 export type Workspace = {

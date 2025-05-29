@@ -1,5 +1,4 @@
 import { KnowledgeBase } from "@/features/knowledge-bases/types";
-import { Project } from "./project";
 
 export enum MessageRole {
   system = "system",
@@ -73,8 +72,6 @@ export interface Thread {
   updatedAt: string;
   title?: string;
   organizationId?: string;
-  projectId?: string;
-  project?: Project;
   isPublic?: boolean;
   knowledgeBaseId?: string;
   knowledgeBase?: KnowledgeBase;
@@ -94,6 +91,5 @@ export type Artifact = {
 
 export interface UpdateThreadMutationData {
   title?: string;
-  projectId?: string;
   isPublic?: boolean;
 }

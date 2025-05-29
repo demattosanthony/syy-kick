@@ -14,12 +14,10 @@ import {
   MessageAttachment,
   messageAttachments,
   messages,
-  Project,
   threads,
   toolCalls,
   User,
 } from "../../config/schema";
-import { Workspace } from "../../middleware";
 
 // Internal utilities
 import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
@@ -32,10 +30,7 @@ import {
   ThreadWithMessages,
 } from "./threads.types";
 import { DbUser } from "../../createAuthToken";
-import { PermissionManager } from "../permissions/permissions.tools";
-import { Permissions } from "../permissions/permissions.types";
 import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases.ops";
-import { documentsOps } from "../projects/docs/documents.ops";
 import { markitdownMimeTypes } from "../../doc-processor-v2";
 import { openai } from "@ai-sdk/openai";
 
@@ -217,7 +212,6 @@ function formatDocumentSearchResults(
     dataForFrontend: docs.map((doc) => ({
       document_id: doc.documentId,
       path: doc.path,
-      projectId: doc.projectId,
       source: doc.documentName,
       snippet: doc.text,
       score: doc.similarity,
@@ -228,181 +222,6 @@ function formatDocumentSearchResults(
     })),
   };
 }
-
-/** Tool to search all project information */
-const createProjectSearchTool = (
-  modelConfig: ModelConfig,
-  workspace: Workspace,
-  user: DbUser,
-  projectId?: string
-) =>
-  tool({
-    description: `Search project documents and retrieve relevant information.
-
-Usage:
-    1. Use when you need specific information from project documents not available in the conversation history.
-    2. Provide a clear, specific query to search across all project documents.
-    3. Best for technical details, specifications, or project-specific information.
-    4. Avoid using for general questions or when information is already in the conversation.
-
-Returns:
-    - Relevant document excerpts with context
-    - Document metadata (name, path, type)
-    - Visual previews for supported document types`,
-    parameters: z.object({
-      query: z.string(),
-    }),
-    execute: async ({ query }) => {
-      // Determine project IDs based on workspace type
-      let projectIds: string[] | undefined;
-
-      try {
-        // Handle organization workspace
-        if (workspace.type === "organization") {
-          if (projectId) {
-            // Check user's access to the specific project
-            const orgRole = await PermissionManager.getUserOrganisationRole(
-              user.id,
-              workspace.id
-            );
-
-            // Admins and managers have access to all projects
-            const isAdmin = [
-              Permissions.Roles.SUPER_ADMIN,
-              Permissions.Roles.ORGANIZATION_ADMIN,
-              Permissions.Roles.ORGANIZATION_MANAGER,
-            ].includes(orgRole?.role.name as Permissions.Roles);
-
-            if (isAdmin) {
-              projectIds = [projectId];
-            } else {
-              // Check regular member's access to the project
-              if (!orgRole) {
-                throw new Error("User is not a member of the organization");
-              }
-
-              const resourceId = await PermissionManager.getResourseId(
-                Permissions.Resources.ORGANIZATION_PROJECT_DOCS
-              );
-
-              if (!resourceId) {
-                throw new Error("Resource not found");
-              }
-
-              const hasAccess =
-                await PermissionManager.userHasAccessToRessource(
-                  orgRole,
-                  workspace.id,
-                  resourceId,
-                  Permissions.Actions.READ,
-                  projectId
-                );
-
-              if (!hasAccess) {
-                throw new Error("User does not have access to the project");
-              }
-
-              projectIds = [projectId];
-            }
-          } else {
-            // No specific project ID, get all accessible projects
-            projectIds = await PermissionManager.getUserOrgProjectsIds(
-              user.id,
-              workspace.id
-            );
-          }
-        } else if (projectId) {
-          // For non-organization workspaces with a projectId
-          projectIds = [projectId];
-        }
-      } catch (error) {
-        console.error("Error determining project IDs:", error);
-        return {
-          images: [],
-          context: "",
-          docs: [],
-          dataForFrontend: [],
-        };
-      }
-
-      try {
-        // Execute the search with the determined project IDs
-        const res = await documentsOps.searchProjectDocuments({
-          query,
-          workspace,
-          projectIds,
-          limit: 80,
-        });
-        console.log("Search results:", res.length);
-
-        // Rerank results
-        const rerankedResults = await reranker.rerank(
-          query,
-          res.map((r) => r.text || ""),
-          {
-            topN: 20,
-            returnDocuments: true,
-          }
-        );
-
-        // Create a map of text to original result for lookup
-        const textToResultMap = new Map(res.map((r) => [r.text, r]));
-
-        // Map reranked results to simplified schema
-        const simplifiedDocs: DocumentSearchToolResult[] =
-          rerankedResults.results?.map((reranked) => {
-            const originalDoc = textToResultMap.get(reranked.document.text)!;
-            return {
-              documentId: originalDoc.document.id,
-              projectId: originalDoc.document.projectId || projectId || "", // Fallback to parameter or empty string
-              path: originalDoc.document.path,
-              documentName: originalDoc.document.name,
-              text: originalDoc.text,
-              similarity: reranked.relevance_score,
-              pageNumber: (originalDoc.metadata as { page_number?: number })
-                ?.page_number,
-              mimeType: originalDoc.document.mimeType,
-              fileKey: originalDoc.document.fileKey,
-            };
-          });
-        console.log("Simplified docs length:", simplifiedDocs.length);
-
-        // Generate final output
-        const uniqueDocs = getUniqueDocuments(simplifiedDocs);
-        const images =
-          modelConfig.model.modelId.includes("claude-3-7-sonnet") ||
-          modelConfig.model.modelId.includes("claude-3-5-sonnet")
-            ? await processDocumentImages(uniqueDocs)
-            : [];
-
-        return formatDocumentSearchResults(uniqueDocs, images);
-      } catch (error) {
-        console.error("Error searching project documents:", error);
-        return {
-          images: [],
-          context: "",
-          docs: [],
-          dataForFrontend: [],
-        };
-      }
-    },
-    experimental_toToolResultContent(result) {
-      if (!result) {
-        return [];
-      }
-      return [
-        ...result.images.map((image) => ({
-          type: "image" as const,
-          data: image.imageData,
-          mimeType: image.mimeType,
-        })),
-        {
-          type: "text",
-          text: result.context,
-        },
-      ];
-    },
-  });
 
 /** Tool to search knowledge base documents */
 const createKnowledgeBaseSearchTool = (
@@ -541,11 +360,6 @@ When to use:
 - Manufacturer documentation
 - General knowledge questions
 
-When NOT to use:
-- Project-specific information (use search_project_information instead)
-- Information about your specific building or equipment
-- Content in your uploaded documents
-
 Tips:
 - Use specific search terms including manufacturer names and model numbers
 - Add "pdf" when looking for technical documents`,
@@ -554,7 +368,7 @@ Tips:
     }),
     execute: async ({ query }) => {
       const { text, sources, providerMetadata } = await generateText({
-        model: MODELS["gpt-4o"].model,
+        model: MODELS["gpt-4.1"].model,
         prompt: `You are a skilled research assistant. Search the web to find accurate and relevant information about "${query}". Focus on:
 - Finding authoritative sources and official documentation
 - Extracting specific details, facts, and figures
@@ -639,39 +453,7 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
   for (const msg of thread.messages) {
     msg.attachments = await processAttachments(msg.attachments);
 
-    msg.toolCalls = msg.toolCalls?.map((call) => {
-      if (
-        (call.toolName === "search_project_information" ||
-          call.toolName === "search_projects_information" ||
-          call.toolName === "search_knowledge_base_information" ||
-          call.toolName === "search_documents") &&
-        call.result?.docs
-      ) {
-        const uniqueDocs = getUniqueDocuments(call.result.docs);
-
-        return {
-          ...call,
-          result: {
-            ...call.result, // Preserve existing result properties
-            dataForFrontend: uniqueDocs.map((doc) => ({
-              document_id: doc.documentId,
-              source: doc.documentName,
-              snippet: doc.text,
-              path: doc.path,
-              score: doc.similarity,
-              page: doc.pageNumber,
-              projectId: doc.projectId,
-              url: doc.fileKey
-                ? s3.file(doc.fileKey).presign({ expiresIn: 3600 })
-                : undefined,
-            })),
-          },
-        };
-      }
-
-      // For other tool calls
-      return call;
-    });
+    msg.toolCalls = msg.toolCalls?.map((call) => call);
   }
 
   return thread;
@@ -681,7 +463,6 @@ async function processThreadMessages(thread: ThreadWithMessages | null) {
 function buildSystemMessage(
   user: DbUser,
   instructions?: string,
-  project?: Project,
   knowledgeBase?: KnowledgeBase,
   knowledgeBases?: KnowledgeBase[]
 ): string {
@@ -706,15 +487,6 @@ function buildSystemMessage(
         <user_name>${user.name}</user_name>
         <user_email>${user.email}</user_email>
     </current_user>`;
-
-  const projectSection = project
-    ? `
-    <current_project>
-        The user is currently looking at and working on the following project:
-        <project_name>${project.name}</project_name>
-        <project_context>Use the search_project_information tool to find relevant information before responding so that you have relevant information to answer the users questions. Unless they have provided enough context in the conversation to answer their question without using the tool.</project_context>
-    </current_project>`
-    : "";
 
   const userInstructionsSection = instructions
     ? `
@@ -742,9 +514,8 @@ You, Syykick, are operating within a computational environment designed for inte
 
 1.  **Execution Platform:** You run on a server-based computer system managed by Syyclops.
 2.  **User Interface:** You interact with users exclusively through the current **chat session**.
-3.  **Project File Search:** You can search across project files for documents containing relevant information based on keywords or concepts. This should mostly be used when a user is working on a project.
-4.  **External Web Access:** You are connected to the internet and can utilize a **web search engine** (\`web_search\`) to retrieve publicly available information, standards, codes, and general knowledge.
-5.  **Session Context:** Your awareness is primarily focused on the **current chat session**. You track the conversation history within this session to understand context, maintain conversational flow, and reference previous exchanges. You may also operate within the context of a specific "current project" if selected by the user, which directs your file system tools.
+3.  **External Web Access:** You are connected to the internet and can utilize a **web search engine** (\`web_search\`) to retrieve publicly available information, standards, codes, and general knowledge.
+4.  **Session Context:** Your awareness is primarily focused on the **current chat session**. You track the conversation history within this session to understand context, maintain conversational flow, and reference previous exchanges. You may also operate within the context of a specific "current project" if selected by the user, which directs your file system tools.
 </environment>
 
 <instructions>
@@ -787,21 +558,14 @@ Do not mention knowledge base IDs to users; refer to them by name only.
 </knowledge_bases>
 
 <tools>
-1. **Project Search:**
-   - **Purpose:** To search across project files for documents containing relevant information based on keywords or concepts.
-   - **When to Use:** 
-     - When the answer is likely within project documents, but the specific file name or location is unknown.
-     - To find all mentions of a specific term or specification across project files.
-   - **Output:** Provides a list of relevant document chunks, text snippets, and images.
-
-2. **Web Search:**
+1. **Web Search:**
    - **Purpose:** To access external, publicly available information from the internet.
    - **When to Use:** 
      - For information not specific to the current project.
      - For external products or data sheets not contained within project files.
    - **Output:** Provides information found from web sources.
 
-3. **Knowledge Base Search:**
+2. **Knowledge Base Search:**
    - **Purpose:** To search across the knowledge base for documents containing relevant information based on keywords or concepts.
    - **When to Use:** 
      - When the answer is likely within the knowledge base.
@@ -1060,7 +824,6 @@ session_context>
         ${dateString}
     </current_date>
     ${currentUserSection}
-    ${projectSection}
     ${userInstructionsSection}
 </session_context>`;
 
@@ -1086,7 +849,6 @@ async function dbMessagesToInferenceMessages(
     supportsSystemMessages?: boolean;
   },
   user: User,
-  project?: Project,
   instructions?: string,
   knowledgeBase?: KnowledgeBase,
   knowledgeBases?: KnowledgeBase[]
@@ -1101,7 +863,6 @@ async function dbMessagesToInferenceMessages(
       content: buildSystemMessage(
         user,
         instructions,
-        project,
         knowledgeBase,
         knowledgeBases
       ),
@@ -1214,27 +975,11 @@ async function createToolMessage(
 
   const processedResults = await Promise.all(
     completedCalls.map(async (call) => {
-      // Special handling for Claude 3.7 Sonnet
-      if (
-        modelConfig.model.modelId.includes("claude-3.7-sonnet") &&
-        (call.toolName === "search_project_information" ||
-          call.toolName === "search_documents" ||
-          call.toolName === "search_projects_information")
-      ) {
-        return await processClaudeToolResult(call);
-      }
-
-      // Standard handling for other models
       return {
         type: "tool-result",
         toolCallId: call.toolCallId,
         toolName: call.toolName,
-        result:
-          call.toolName === "search_project_information" ||
-          call.toolName === "search_documents" ||
-          call.toolName === "search_projects_information"
-            ? convertResultsToXml((call.result as any).docs)
-            : call.result,
+        result: call.result,
       };
     })
   );
@@ -1244,39 +989,6 @@ async function createToolMessage(
     role: "tool",
     content: processedResults,
   } as MyMessage;
-}
-
-/**
- * Processes tool results specifically for Claude 3.7 Sonnet
- */
-async function processClaudeToolResult(call: {
-  toolCallId: string;
-  toolName: string;
-  result: any;
-}): Promise<any> {
-  const images = call.result.images || [];
-  const imagesData = await Promise.all(
-    images.map(async (image: { fileKey: string; mimeType: string }) => {
-      return {
-        type: "image" as const,
-        data: await generateAttachmentData(image.fileKey),
-        mimeType: image.mimeType,
-      };
-    })
-  );
-
-  return {
-    type: "tool-result",
-    toolCallId: call.toolCallId,
-    toolName: call.toolName,
-    experimental_content: [
-      ...imagesData,
-      {
-        type: "text" as const,
-        text: convertResultsToXml(call.result.docs),
-      },
-    ],
-  };
 }
 
 /**
@@ -1377,7 +1089,6 @@ export {
   generateAttachmentData,
   processAttachments,
   processThreadMessages,
-  createProjectSearchTool,
   createWebSearchTool,
   createKnowledgeBaseSearchTool,
   processDocumentImages,

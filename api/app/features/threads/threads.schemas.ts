@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 const createThreadSchema = z.object({
-  projectId: z.string().optional(),
   knowledgeBaseId: z.string().optional(),
   workflowId: z.string().optional(),
 });
@@ -9,13 +8,11 @@ const createThreadSchema = z.object({
 const getThreadsSchema = z.object({
   page: z.string().optional(),
   search: z.string().optional(),
-  projectId: z.string().optional(),
   knowledgeBaseId: z.string().optional(),
   workflowId: z.string().optional(),
 });
 
 const updateThreadSchema = z.object({
-  projectId: z.string().optional(),
   title: z.string().optional(),
   isPublic: z.boolean().optional(),
 });
@@ -25,7 +22,6 @@ const inferenceSchema = z.object({
   maxTokens: z.number().optional(),
   temperature: z.number().optional(),
   instructions: z.string().optional(),
-  proejctId: z.string().optional(), // preserving original name
   workflowId: z.string().optional(),
   // We'll also allow message data in here
   message: z.object({

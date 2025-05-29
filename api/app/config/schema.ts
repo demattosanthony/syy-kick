@@ -42,14 +42,6 @@ export const bytea = customType<{
 
 export { sites, sitesRelations } from "../features/sites/sites.schema";
 export {
-  issues,
-  issueAssignees,
-  issueComments,
-  issueAssigneesRelations,
-  issuesRelations,
-  issueCommentsRelations,
-} from "../features/projects/issues/issues.schema";
-export {
   workflows,
   workflowOrganizations,
   workflowUsers,
@@ -154,29 +146,6 @@ export const users = pgTable("users", {
 });
 export type User = typeof users.$inferSelect;
 
-export const projects = pgTable("projects", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  slug: varchar("slug", { length: 255 }),
-  projectNumber: varchar("project_number", { length: 255 }),
-  visibility: text("visibility", { enum: ["private", "public"] })
-    .default("private")
-    .notNull(),
-  estimatedStartDate: timestamp("estimated_start_date"),
-  estimatedEndDate: timestamp("estimated_end_date"),
-  siteId: uuid("site_id").references(() => sites.id, { onDelete: "cascade" }),
-  organizationId: uuid("organization_id").references(() => organizations.id, {
-    onDelete: "cascade",
-  }),
-  userId: uuid("user_id").references(() => users.id, {
-    onDelete: "cascade",
-  }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-export type Project = typeof projects.$inferSelect;
-
 export const documentEmbeddings = pgTable("document_embeddings", {
   id: uuid("id").primaryKey().defaultRandom(),
   documentId: uuid("document_id")
@@ -189,37 +158,27 @@ export const documentEmbeddings = pgTable("document_embeddings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const documents = pgTable(
-  "documents",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    name: varchar("name", { length: 255 }).notNull(),
-    fileHash: varchar("file_hash", { length: 255 }),
-    type: text("type", { enum: DOCUMENT_TYPE }).notNull(),
-    mimeType: varchar("mime_type", { length: 255 }),
-    path: varchar("path", { length: 255 }).notNull(),
-    fileKey: varchar("file_key", { length: 255 }),
-    parentId: uuid("parent_id").references((): any => documents.id, {
+export const documents = pgTable("documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  fileHash: varchar("file_hash", { length: 255 }),
+  type: text("type", { enum: DOCUMENT_TYPE }).notNull(),
+  mimeType: varchar("mime_type", { length: 255 }),
+  path: varchar("path", { length: 255 }).notNull(),
+  fileKey: varchar("file_key", { length: 255 }),
+  parentId: uuid("parent_id").references((): any => documents.id, {
+    onDelete: "cascade",
+  }),
+  knowledgeBaseId: uuid("knowledge_base_id").references(
+    () => knowledgeBases.id,
+    {
       onDelete: "cascade",
-    }),
-    projectId: uuid("project_id").references(() => projects.id, {
-      onDelete: "cascade",
-    }),
-    knowledgeBaseId: uuid("knowledge_base_id").references(
-      () => knowledgeBases.id,
-      {
-        onDelete: "cascade",
-      }
-    ),
-    size: integer("size"), // size in bytes
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [
-    // Ensure a document belongs to either a project OR a knowledge base, not both
-    sql`CONSTRAINT project_or_knowledge_base CHECK ((project_id IS NOT NULL AND knowledge_base_id IS NULL) OR (project_id IS NULL AND knowledge_base_id IS NOT NULL))`,
-  ]
-);
+    }
+  ),
+  size: integer("size"), // size in bytes
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const documentProcessingJobs = pgTable("document_processing_jobs", {
   id: serial("id").primaryKey(),
@@ -266,9 +225,6 @@ export const threads = pgTable("threads", {
   organizationId: uuid("organization_id").references(() => organizations.id, {
     onDelete: "cascade",
   }),
-  projectId: uuid("project_id").references(() => projects.id, {
-    onDelete: "cascade",
-  }),
   knowledgeBaseId: uuid("knowledge_base_id").references(
     () => knowledgeBases.id,
     { onDelete: "cascade" }
@@ -278,7 +234,6 @@ export const threads = pgTable("threads", {
 export type Thread = typeof threads.$inferSelect;
 export type ThreadWithRelations = Thread & {
   messages: Message[];
-  project?: Project;
   organization?: Organization;
   knowledgeBase?: KnowledgeBase;
   user: User;
@@ -376,7 +331,7 @@ export const roles = pgTable("roles", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Organization, Project, Document, Message, User...
+// Organization, Document, Message, User...
 export const resources = pgTable("resources", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull().unique(),
@@ -394,7 +349,7 @@ export const actions = pgTable("actions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// A permission is a combination of a role (org or project), resource, and action
+// A permission is a combination of a role (org), resource, and action
 export const permissions = pgTable(
   "permissions",
   {
@@ -422,9 +377,6 @@ export const permissions = pgTable(
 
 export const memberRoles = pgTable("member_roles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  projectId: uuid("project_id").references(() => projects.id, {
-    onDelete: "cascade",
-  }),
   organizationId: uuid("organization_id")
     .references(() => organizations.id, {
       onDelete: "cascade",
@@ -446,9 +398,6 @@ export const accessLogs = pgTable("access_logs", {
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
   organizationId: uuid("organization_id").references(() => organizations.id, {
-    onDelete: "cascade",
-  }),
-  projectId: uuid("project_id").references(() => projects.id, {
     onDelete: "cascade",
   }),
   documentId: uuid("document_id").references(() => documents.id, {
@@ -502,7 +451,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   threads: many(threads),
   messages: many(messages),
   organizationMembers: many(organizationMembers),
-  projects: many(projects),
   knowledgeBases: many(knowledgeBases),
   accessTokens: many(accessTokens),
 }));
@@ -517,10 +465,6 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
     references: [organizations.id],
   }),
   messages: many(messages),
-  project: one(projects, {
-    fields: [threads.projectId],
-    references: [projects.id],
-  }),
   knowledgeBase: one(knowledgeBases, {
     fields: [threads.knowledgeBaseId],
     references: [knowledgeBases.id],
@@ -533,10 +477,6 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
     references: [documents.id],
   }),
   children: many(documents),
-  project: one(projects, {
-    fields: [documents.projectId],
-    references: [projects.id],
-  }),
   processingJob: one(documentProcessingJobs, {
     fields: [documents.id],
     references: [documentProcessingJobs.documentId],
@@ -623,21 +563,6 @@ export const samlConfigsRelations = relations(samlConfigs, ({ one }) => ({
   }),
 }));
 
-export const projectsRelations = relations(projects, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [projects.organizationId],
-    references: [organizations.id],
-  }),
-  user: one(users, {
-    fields: [projects.userId],
-    references: [users.id],
-  }),
-  site: one(sites, {
-    fields: [projects.siteId],
-    references: [sites.id],
-  }),
-}));
-
 export const knowledgeBasesRelations = relations(
   knowledgeBases,
   ({ one, many }) => ({
@@ -679,10 +604,6 @@ export const permissionsRelations = relations(permissions, ({ one }) => ({
 }));
 
 export const memberRolesRelations = relations(memberRoles, ({ one, many }) => ({
-  project: one(projects, {
-    fields: [memberRoles.projectId],
-    references: [projects.id],
-  }),
   organization: one(organizations, {
     fields: [memberRoles.organizationId],
     references: [organizations.id],
@@ -706,10 +627,6 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
   organization: one(organizations, {
     fields: [accessLogs.organizationId],
     references: [organizations.id],
-  }),
-  project: one(projects, {
-    fields: [accessLogs.projectId],
-    references: [projects.id],
   }),
   document: one(documents, {
     fields: [accessLogs.documentId],

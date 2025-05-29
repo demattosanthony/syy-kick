@@ -9,15 +9,10 @@ export function ThreadPage() {
   }>();
   const [searchParams] = useSearchParams();
   const isNew = searchParams.get("isNew") === "true";
-  const isWorkflow = searchParams.get("isWorkflow") === "true";
-  const workflowId = searchParams.get("workflowId") || "";
   const threadId = params.threadId;
 
   // Only fetch the thread if it's not a new thread
-  const { data: thread } = useThreadQuery(
-    threadId as string,
-    isNew || isWorkflow
-  );
+  const { data: thread } = useThreadQuery(threadId as string, isNew);
 
   const initialMessages =
     isNew || !thread ? [] : mapThreadMessagesToMessages(thread);
@@ -28,8 +23,6 @@ export function ThreadPage() {
       thread={thread}
       messagesAreBeingFetched={false}
       isNew={isNew}
-      isWorkflow={isWorkflow}
-      workflowId={workflowId}
     />
   );
 }

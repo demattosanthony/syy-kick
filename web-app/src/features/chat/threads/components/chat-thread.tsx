@@ -1,5 +1,3 @@
-"use client";
-
 import api from "@/lib/api";
 
 // Types
@@ -15,7 +13,6 @@ import {
   selectedProjectDocsAtom,
   temperatureAtom,
   uploadsAtom,
-  workflowInputAtom,
 } from "@/atoms/chat";
 
 // Hooks
@@ -48,8 +45,6 @@ export default function ThreadPage({
   messagesAreBeingFetched = false,
   showCloneThreadButton = false,
   isNew = false,
-  isWorkflow = false,
-  workflowId = "",
 }: {
   initalMessages: Message[];
   thread?: Thread;
@@ -57,8 +52,6 @@ export default function ThreadPage({
   messagesAreBeingFetched?: boolean;
   showCloneThreadButton?: boolean;
   isNew?: boolean;
-  isWorkflow?: boolean;
-  workflowId?: string;
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -74,7 +67,6 @@ export default function ThreadPage({
   const [selectedProjectDocs, setSelectedProjectDocs] = useAtom(
     selectedProjectDocsAtom
   );
-  const [workflowInput, setWorkflowInput] = useAtom(workflowInputAtom);
 
   const {
     input,
@@ -97,25 +89,11 @@ export default function ThreadPage({
         model: model.name,
         temperature: temperature,
         instructions,
-        workflowId: isWorkflow ? workflowId : undefined,
       };
     },
   });
 
   async function processAttachments() {
-    // If the thread is a workflow, use the workflow input attachments
-    if (isWorkflow) {
-      const attachments = workflowInput.attachments.map((attachment) => ({
-        name: attachment.name,
-        contentType: attachment.contentType,
-        url: attachment.url,
-        file_key: attachment.file_key,
-        inputId: attachment.inputId,
-      }));
-
-      return attachments;
-    }
-
     const attachments: ExtendedAttachment[] = [];
 
     // Process uploads
@@ -184,10 +162,6 @@ export default function ThreadPage({
     // Reset attachments after submit
     setUploads([]);
     setSelectedProjectDocs([]);
-    setWorkflowInput({
-      attachments: [],
-      input: "",
-    });
   }
 
   useEffect(() => {

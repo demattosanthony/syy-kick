@@ -23,22 +23,6 @@ abstract class BasePermissionsFactory {
       permissions
     );
   }
-
-  static async addProjectsAccess(
-    userId: string,
-    projectsIds: string[],
-    organizationId: string,
-    roleId: string,
-    permissions: Record<string, string[]>
-  ) {
-    await permissionsOps.createProjectsAccess(
-      userId,
-      projectsIds,
-      organizationId,
-      roleId,
-      permissions
-    );
-  }
 }
 
 class OrganizationAdmin extends BasePermissionsFactory {
@@ -109,22 +93,6 @@ export default class PermissionsFactory {
       userId,
       organizationId,
       await PermissionManager.permissionsNamesToIds(permissions)
-    );
-  }
-
-  static async addProjectsAccess(
-    userId: string,
-    projectsIds: string[],
-    organizationId: string,
-    roleId: string,
-    permissions: Record<string, string[]>
-  ) {
-    await permissionsOps.createProjectsAccess(
-      userId,
-      projectsIds,
-      organizationId,
-      roleId,
-      permissions
     );
   }
 }

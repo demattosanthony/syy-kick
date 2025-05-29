@@ -15,10 +15,8 @@ import {
   AnimatedGreeting,
   ChatInputFormRef,
 } from "@/features/chat/messages/components";
-import ProjectPreviews from "@/features/projects/components/project-previews";
 import ChatInputForm from "@/features/chat/messages/components/chat-input/chat-input";
 import { useMeQuery } from "@/features/user/api";
-import { useProjectsQuery } from "@/features/projects/api";
 import { useNavigate } from "react-router";
 
 // Images
@@ -26,12 +24,6 @@ import logo from "@/assets/logo192.png";
 
 export function HomePage() {
   const { data: user, isFetched: userFetched } = useMeQuery();
-  const { data: recentProjects, isLoading: projectsLoading } = useProjectsQuery(
-    {
-      sort: "recent",
-      limit: 6,
-    }
-  );
 
   const navigate = useNavigate();
   const [initalInput, setInitalInput] = useAtom(initalInputAtom);
@@ -97,25 +89,16 @@ export function HomePage() {
           </div>
 
           <div className="max-w-5xl w-full flex flex-col items-center">
-            {user ? (
-              <div className="mt-6 w-full">
-                <ProjectPreviews
-                  projects={recentProjects || []}
-                  isLoading={projectsLoading}
-                />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center max-w-[800px] w-full">
-                <ConversationStarters
-                  triggerFileInput={() =>
-                    chatInputRef.current?.triggerFileInput()
-                  }
-                  triggerTextAreaFocus={() =>
-                    chatInputRef.current?.focusTextArea()
-                  }
-                />
-              </div>
-            )}
+            <div className="flex flex-col items-center max-w-[800px] w-full">
+              <ConversationStarters
+                triggerFileInput={() =>
+                  chatInputRef.current?.triggerFileInput()
+                }
+                triggerTextAreaFocus={() =>
+                  chatInputRef.current?.focusTextArea()
+                }
+              />
+            </div>
           </div>
         </div>
       </div>

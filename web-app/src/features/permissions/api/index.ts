@@ -1,5 +1,4 @@
 export * from "./get-user-role";
-export * from "./get-transferable-permissions";
 export * from "./get-roles";
 
 export { default as useGetOrgInvitationsQuery } from "./organizations/get-org-invitations";

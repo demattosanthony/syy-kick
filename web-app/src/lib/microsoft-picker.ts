@@ -1,8 +1,8 @@
 /** Api */
+import { SharePointFile } from "@/hooks/use-microsoft-picker";
 import api, { microsoftApi } from "@/lib/api";
 
 /** Types */
-import { SharePointFile } from "../types";
 
 interface Token {
   accessToken: string;

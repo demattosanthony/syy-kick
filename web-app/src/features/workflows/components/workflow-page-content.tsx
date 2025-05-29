@@ -288,7 +288,6 @@ export default function WorkflowPageContent({
                       [fieldId]: value,
                     }))
                   }
-                  projectId={projectId}
                 />
               )}
               <div className="flex justify-center">

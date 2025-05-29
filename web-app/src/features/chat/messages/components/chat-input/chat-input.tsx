@@ -33,7 +33,7 @@ function ChatInputForm(
     input,
     setInput,
     handleInputChange,
-    placeholder = "What do you want to know?",
+    placeholder = "How can I help you today?",
     isGenerating,
     stop,
     showContextSelector = false,

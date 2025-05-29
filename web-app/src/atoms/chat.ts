@@ -97,10 +97,3 @@ export const abortControllerAtom = atom<AbortController>(new AbortController());
 export const selectedProjectDocsAtom = atom<DocumentContent[]>([]);
 export const selectedArtifactAtom = atom<Artifact | null>(null);
 export const alreadyAutoSelectedArtifactAtom = atom<string | null>(null);
-export const workflowInputAtom = atom<{
-  attachments: WorkflowAttachment[];
-  input: string;
-}>({
-  attachments: [],
-  input: "",
-});

@@ -18,7 +18,7 @@ import { Permissions } from "../permissions/permissions.types";
 import { AccessTokenProvider } from "./auth.types";
 
 /** ORM */
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 
 export const ops = {
   addAccessToken: async (
@@ -100,7 +100,7 @@ export const ops = {
     })) as DbUser & { organizations?: any[] };
 
     const organizations = await db.query.memberRoles.findMany({
-      where: and(eq(memberRoles.userId, userId), isNull(memberRoles.projectId)),
+      where: eq(memberRoles.userId, userId),
       with: { organization: true, role: true },
     });
 
@@ -112,9 +112,6 @@ export const ops = {
         ),
         eq(sites.userId, userId)
       ),
-      with: {
-        projects: true,
-      },
     });
 
     user.organizations = organizations.map((o) =>
@@ -128,11 +125,6 @@ export const ops = {
           .map((s) => ({
             id: s.id,
             address: `${s.address}, ${s.city}, ${s.state} ${s.postalCode}`,
-            projects: s.projects.map((p) => ({
-              id: p.id,
-              name: p.name,
-              slug: p.slug,
-            })),
           })),
       })
     );
@@ -148,11 +140,6 @@ export const ops = {
       sites: personalSites.map((s) => ({
         id: s.id,
         address: `${s.address}, ${s.city}, ${s.state} ${s.postalCode}`,
-        projects: s.projects.map((p) => ({
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-        })),
       })),
     });
 

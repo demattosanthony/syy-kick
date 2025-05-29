@@ -19,7 +19,6 @@ import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
   createKnowledgeBaseSearchTool,
-  createProjectSearchTool,
   createWebSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
@@ -36,7 +35,6 @@ const threadsOps = {
   async createThread(
     userId: string,
     organizationId?: string,
-    projectId?: string,
     knowledgeBaseId?: string,
     workflowId?: string
   ) {
@@ -47,7 +45,6 @@ const threadsOps = {
       id,
       userId,
       organizationId: organizationId || null,
-      projectId: projectId || null,
       knowledgeBaseId: knowledgeBaseId || null,
       workflowId: workflowId || null,
       createdAt: now,
@@ -142,7 +139,6 @@ const threadsOps = {
             toolCalls: true,
           },
         },
-        project: true,
         organization: true,
         knowledgeBase: true,
       },
@@ -171,11 +167,10 @@ const threadsOps = {
   async updateThread(
     threadId: string,
     userId: string,
-    data: { isPublic?: boolean; projectId?: string; title?: string }
+    data: { isPublic?: boolean; title?: string }
   ) {
     const updateData: any = {
       ...(data.isPublic !== undefined && { isPublic: data.isPublic }),
-      ...(data.projectId !== undefined && { projectId: data.projectId }),
       ...(data.title !== undefined && { title: data.title }),
       updatedAt: new Date(),
     };
@@ -199,7 +194,6 @@ const threadsOps = {
     page: number,
     search: string,
     organizationId?: string,
-    projectId?: string,
     knowledgeBaseId?: string,
     workflowId?: string
   ) {
@@ -212,11 +206,6 @@ const threadsOps = {
     } else {
       // organizationId is null
       conditions.push(sql`${threads.organizationId} IS NULL`);
-    }
-
-    // Add project filtering if projectId is provided
-    if (projectId) {
-      conditions.push(eq(threads.projectId, projectId));
     }
 
     // Add knowledge base filtering if knowledgeBaseId is provided
@@ -321,8 +310,9 @@ const threadsOps = {
 
     try {
       const { threadId } = req.params;
-      const { model, maxTokens, instructions, message, workflowId } =
-        req.body as z.infer<typeof inferenceSchema>;
+      const { model, maxTokens, instructions, message } = req.body as z.infer<
+        typeof inferenceSchema
+      >;
 
       // 1) Store the user message
       if (message) {
@@ -338,7 +328,6 @@ const threadsOps = {
         db.query.threads.findFirst({
           where: eq(threads.id, threadId),
           with: {
-            project: true,
             organization: true,
             knowledgeBase: true,
             messages: {
@@ -370,13 +359,10 @@ const threadsOps = {
         thread.messages,
         modelConfig,
         req.dbUser!,
-        thread.project || undefined,
         instructions && instructions.length > 0 ? instructions : undefined,
         thread.knowledgeBase || undefined,
         knowledgeBases.data
       );
-
-      //   console.log("Inference messages:", inferenceMsgs);
 
       // 4) Generate a thread title if missing
       if (!thread.title) {
@@ -388,18 +374,6 @@ const threadsOps = {
       if (modelConfig.supportsToolUse) {
         tools = {
           web_search: createWebSearchTool(),
-          ...(thread.knowledgeBase === null && {
-            search_project_information: createProjectSearchTool(
-              modelConfig,
-              req.workspace!,
-              req.dbUser!,
-              thread.projectId || undefined
-            ),
-          }),
-          search_knowledge_base: createKnowledgeBaseSearchTool(
-            modelConfig,
-            thread.knowledgeBase || undefined
-          ),
         };
       }
 
@@ -410,7 +384,7 @@ const threadsOps = {
       const result = streamText({
         model: modelConfig.model,
         messages: inferenceMsgs,
-        temperature: 0.6,
+        temperature: 0.45,
         // Conditionally pass tool-related parameters only if tools are defined (i.e., supported by the model)
         ...(tools && {
           tools: tools,
@@ -505,34 +479,7 @@ const threadsOps = {
                 (r) => r.toolCallId === toolCall.toolCallId
               );
 
-              // Define the tool names that need this unique storage handling
-              const projectSearchToolNames = [
-                "search_project_information",
-                "search_documents",
-                "search_knowledge_base",
-              ];
-              const toolName = toolCall.toolName as string;
-
-              if (result && projectSearchToolNames.includes(toolName)) {
-                console.log("Project search tool result:", toolCall);
-                await db
-                  .update(toolCallsTable)
-                  .set({
-                    status: "completed",
-                    result: {
-                      docs: (result.result as any).docs,
-                      images:
-                        (result.result as any).images?.map((image: any) => ({
-                          fileKey: image.fileKey,
-                          mimeType: image.mimeType,
-                        })) || [],
-                    },
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
-              } else if (result) {
-                console.log("Document tool result:", toolCall);
-
+              if (result) {
                 await db
                   .update(toolCallsTable)
                   .set({
@@ -678,9 +625,6 @@ const threadsOps = {
       .values({
         userId,
         organizationId: sourceThread.organizationId,
-        projectId: sourceThread.organizationId
-          ? sourceThread.projectId
-          : undefined, // Only clone project if it's part of the same organization, as the user can only clone a thread if they have access to the project. So both users have access to the project.
         isPublic: false, // Always set cloned threads to private initially
         createdAt: new Date(),
         updatedAt: new Date(),

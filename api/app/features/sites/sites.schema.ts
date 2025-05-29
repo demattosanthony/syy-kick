@@ -1,5 +1,5 @@
 import { pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
-import { users, organizations, projects } from "../../config/schema";
+import { users, organizations } from "../../config/schema";
 import { relations } from "drizzle-orm";
 
 export const sites = pgTable("sites", {
@@ -23,7 +23,6 @@ export const sites = pgTable("sites", {
 });
 
 export const sitesRelations = relations(sites, ({ one, many }) => ({
-  projects: many(projects),
   organization: one(organizations),
   user: one(users),
 }));

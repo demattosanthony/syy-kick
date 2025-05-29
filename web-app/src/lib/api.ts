@@ -4,7 +4,6 @@ import {
   OrgInvitationsResponse,
   OrgMemberResponse,
   RolesResponse,
-  TransferableProjectsResponse,
   TransferableRolesPermissions,
   UpdateOrgMemberRoleRequest,
 } from "@/features/permissions/types";
@@ -16,15 +15,10 @@ import {
 } from "@/features/workflows/workflows.types";
 import { Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
-import { DocumentContent, Project } from "@/types/project";
+import { DocumentContent } from "@/types/project";
 import { Organization, User } from "@/types/user";
 import { FileUploadMixin } from "./file-upload-mixin";
 import { KnowledgeBase } from "@/features/knowledge-bases/types";
-import {
-  ProjectAccessLogFilters,
-  ProjectAccessLogsResponse,
-  SortOption,
-} from "@/features/projects/types";
 import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
@@ -47,18 +41,10 @@ const getCommonHeaders = () => ({
 });
 
 import {
-  CreateIssueData,
-  Issue,
-  IssueStatus,
-  PaginatedIssues,
-  UpdateIssueData,
-} from "@/features/projects/issues/issues.types";
-import {
   KnowledgeBaseAccessLogFilters,
   KnowledgeBaseAccessLogsResponse,
 } from "@/features/knowledge-bases/types";
 import { Comment } from "@/features/workflows/features/runs/features/comments/types";
-// import { Agent, Tool } from "@/features/workflows/features/agents/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -534,15 +520,13 @@ class UploadApi extends ApiRequest {
 class ThreadApi extends ApiRequest {
   async createThread(params: {
     organizationId?: string;
-    projectId?: string;
     knowledgeBaseId?: string;
     workflowId?: string;
   }): Promise<{ id: string }> {
     try {
-      const { organizationId, projectId, knowledgeBaseId, workflowId } = params;
+      const { organizationId, knowledgeBaseId, workflowId } = params;
       return await this.request<{ id: string }>("/threads", "POST", {
         organizationId,
-        projectId,
         knowledgeBaseId,
         workflowId,
       });
@@ -557,14 +541,12 @@ class ThreadApi extends ApiRequest {
   async getThreads(
     page: number = 1,
     search: string = "",
-    projectId?: string,
     knowledgeBaseId?: string,
     workflowId?: string
   ): Promise<Thread[]> {
     const queryParams = new URLSearchParams({
       page: page.toString(),
       search: search,
-      ...(projectId && { projectId }),
       ...(knowledgeBaseId && { knowledgeBaseId }),
       ...(workflowId && { workflowId }),
     });
@@ -611,220 +593,6 @@ class ThreadApi extends ApiRequest {
   }
 }
 
-/**
- * Projects API Module
- */
-class ProjectsApi extends ApiRequest {
-  private fileUploadMixin = new FileUploadMixin();
-
-  async createProject(data: {
-    siteId?: string;
-    organizationId?: string | null;
-    name: string;
-    description?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-    latitude?: number;
-    longitude?: number;
-    project_number?: string;
-    estimated_start_date?: string;
-    estimated_end_date?: string;
-  }): Promise<Project> {
-    return await this.request("/projects", "POST", data);
-  }
-
-  async getProject(projectId: string): Promise<Project> {
-    const queryParams = new URLSearchParams();
-
-    return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
-      }`
-    );
-  }
-
-  async listProjects(options?: {
-    search?: string;
-    page?: number;
-    limit?: number;
-    siteId?: string;
-    sort?: SortOption;
-  }): Promise<{
-    data: Project[];
-    pagination: {
-      page: number;
-      limit: number;
-      totalCount: number;
-      totalPages: number;
-      hasMore: boolean;
-    };
-  }> {
-    const queryParams = new URLSearchParams();
-
-    if (options?.siteId) {
-      queryParams.append("siteId", options.siteId);
-    }
-
-    if (options?.search) {
-      queryParams.append("search", options.search);
-    }
-
-    if (options?.page !== undefined) {
-      queryParams.append("page", options.page.toString());
-    }
-
-    if (options?.limit !== undefined) {
-      queryParams.append("limit", options.limit.toString());
-    }
-
-    if (options?.sort) {
-      queryParams.append("sort", options.sort);
-    }
-
-    try {
-      return await this.request(`/projects?${queryParams.toString()}`);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async deleteProject(projectId: string): Promise<{ success: boolean }> {
-    const queryParams = new URLSearchParams();
-
-    return await this.request(
-      `/projects/${projectId}${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
-      }`,
-      "DELETE"
-    );
-  }
-
-  async getDocuments(
-    projectId: string,
-    path?: string
-  ): Promise<DocumentContent[]> {
-    const queryParams = new URLSearchParams();
-    if (path) {
-      queryParams.append("path", path);
-    }
-
-    return await this.request(
-      `/projects/${projectId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
-      }`
-    );
-  }
-
-  async deleteContents(
-    projectId: string,
-    path: string
-  ): Promise<{
-    success: boolean;
-  }> {
-    const queryParams = new URLSearchParams();
-    queryParams.append("path", path);
-
-    return await this.request(
-      `/projects/${projectId}/documents?${queryParams.toString()}`,
-      "DELETE"
-    );
-  }
-
-  async updateProject(
-    projectId: string,
-    data: {
-      name?: string;
-      description?: string;
-      address?: string | null;
-      city?: string | null;
-      state?: string | null;
-      country?: string | null;
-      postalCode?: string | null;
-      latitude?: number;
-      longitude?: number;
-      project_number?: string;
-      estimated_start_date?: string;
-      estimated_end_date?: string;
-    }
-  ): Promise<Project> {
-    try {
-      return await this.request(`/projects/${projectId}`, "PATCH", data);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Fetches file metadata and content. The server response can include:
-   * - isLfsPointer + s3Url (for large/binary files in S3),
-   * - content (for text files),
-   * - base64Content (for small/binary files directly in Gitea).
-   */
-  async getDocument(projectId: string, path: string): Promise<DocumentContent> {
-    const queryParams = new URLSearchParams();
-    queryParams.append("path", path);
-
-    return await this.request(
-      `/projects/${projectId}/document?${queryParams.toString()}`
-    );
-  }
-
-  public async uploadFiles(
-    projectId: string,
-    files: File[],
-    basePath: string = "",
-    onProgress?: (progress: number) => void
-  ): Promise<{
-    success: boolean;
-  }> {
-    try {
-      // Use the mixin to prepare files and get entries
-      const payload = await this.fileUploadMixin.prepareFilesForUpload(
-        projectId,
-        "projects",
-        files,
-        basePath,
-        onProgress
-      );
-
-      // Make the actual API request with the prepared data
-      return this.request(`/projects/${projectId}/documents`, "POST", payload);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async getProjectMembers(projectId: string): Promise<User[]> {
-    return await this.request<User[]>(`/projects/${projectId}/members`);
-  }
-
-  async getAccessLogs(
-    projectId: string,
-    page: number,
-    limit: number,
-    filters: ProjectAccessLogFilters
-  ): Promise<ProjectAccessLogsResponse> {
-    try {
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        ...(filters.search && { search: filters.search }),
-        ...(filters.resource !== "all" && { resource: filters.resource }),
-        ...(filters.action !== "all" && { action: filters.action }),
-        ...(filters.status !== "all" && { status: filters.status }),
-      });
-      return await this.request<ProjectAccessLogsResponse>(
-        `/projects/${projectId}/access-logs?${queryParams.toString()}`
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-}
-
 class PermissionsApi extends ApiRequest {
   async getRoles(): Promise<RolesResponse> {
     return await this.request<RolesResponse>(`/permissions/roles`);
@@ -868,18 +636,6 @@ class PermissionsApi extends ApiRequest {
         {
           invitationsIds,
         }
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async getTransferableOrgProjects(
-    organizationId: string
-  ): Promise<TransferableProjectsResponse> {
-    try {
-      return await this.request<TransferableProjectsResponse>(
-        `/permissions/organizations/${organizationId}/transferable-projects`
       );
     } catch (error) {
       throw error;
@@ -1198,155 +954,6 @@ export class KnowledgeBasesApi extends ApiRequest {
 }
 
 /**
- * Issues API Module
- */
-class IssuesApi extends ApiRequest {
-  async listIssues(
-    projectId: string,
-    options?: {
-      status?: IssueStatus;
-      page?: number;
-      limit?: number;
-      searchTerm?: string;
-    }
-  ): Promise<PaginatedIssues> {
-    const queryParams = new URLSearchParams();
-    if (options?.status) {
-      queryParams.append("status", options.status);
-    }
-    if (options?.page !== undefined) {
-      queryParams.append("page", options.page.toString());
-    }
-    if (options?.limit !== undefined) {
-      queryParams.append("limit", options.limit.toString());
-    }
-    if (options?.searchTerm) {
-      queryParams.append("searchTerm", options.searchTerm);
-    }
-
-    const endpoint = `/projects/${projectId}/issues?${queryParams.toString()}`;
-    try {
-      return await this.request<PaginatedIssues>(endpoint, "GET");
-    } catch (error) {
-      console.error(`Failed to list issues for project ${projectId}:`, error);
-      throw error;
-    }
-  }
-
-  async createIssue(
-    projectId: string,
-    data: CreateIssueData
-  ): Promise<{ message: string; issueId: string }> {
-    try {
-      return await this.request<{ message: string; issueId: string }>(
-        `/projects/${projectId}/issues`,
-        "POST",
-        data
-      );
-    } catch (error) {
-      console.error(`Failed to create issue in project ${projectId}:`, error);
-      throw error;
-    }
-  }
-
-  async getIssue(projectId: string, issueNumber: number): Promise<Issue> {
-    try {
-      return await this.request<Issue>(
-        `/projects/${projectId}/issues/${issueNumber}`,
-        "GET"
-      );
-    } catch (error) {
-      console.error(`Failed to get issue ${issueNumber}:`, error);
-      throw error;
-    }
-  }
-
-  async updateIssue(
-    projectId: string,
-    issueNumber: number,
-    data: UpdateIssueData
-  ): Promise<{ message: string }> {
-    try {
-      return await this.request<{ message: string }>(
-        `/projects/${projectId}/issues/${issueNumber}`,
-        "PATCH",
-        data
-      );
-    } catch (error) {
-      console.error(`Failed to update issue ${issueNumber}:`, error);
-      throw error;
-    }
-  }
-
-  async deleteIssue(
-    projectId: string,
-    issueNumber: number
-  ): Promise<{ message: string }> {
-    try {
-      return await this.request<{ message: string }>(
-        `/projects/${projectId}/issues/${issueNumber}`,
-        "DELETE"
-      );
-    } catch (error) {
-      console.error(`Failed to delete issue ${issueNumber}:`, error);
-      throw error;
-    }
-  }
-
-  // --- Comment API Methods ---
-  async createComment(
-    projectId: string,
-    issueNumber: number,
-    data: { comment: string }
-  ): Promise<{ message: string; commentId: string }> {
-    try {
-      return await this.request<{ message: string; commentId: string }>(
-        `/projects/${projectId}/issues/${issueNumber}/comments`,
-        "POST",
-        data
-      );
-    } catch (error) {
-      console.error(`Failed to add comment to issue ${issueNumber}:`, error);
-      throw error;
-    }
-  }
-
-  async updateComment(
-    projectId: string,
-    issueNumber: number,
-    commentId: string,
-    data: { comment: string }
-  ): Promise<{ message: string }> {
-    try {
-      return await this.request<{ message: string }>(
-        `/projects/${projectId}/issues/${issueNumber}/comments/${commentId}`,
-        "PATCH",
-        data
-      );
-    } catch (error) {
-      console.error(`Failed to update comment ${commentId}:`, error);
-      throw error;
-    }
-  }
-
-  async deleteComment(
-    projectId: string,
-    issueNumber: number,
-    commentId: string
-  ): Promise<{ message: string }> {
-    try {
-      return await this.request<{ message: string }>(
-        `/projects/${projectId}/issues/${issueNumber}/comments/${commentId}`,
-        "DELETE"
-      );
-    } catch (error) {
-      console.error(`Failed to delete comment ${commentId}:`, error);
-      throw error;
-    }
-  }
-}
-
-/**
  *  Centralized ApiClient class that uses the modules
  */
 class ApiClient {
@@ -1357,12 +964,10 @@ class ApiClient {
   models: ModelApi;
   uploads: UploadApi;
   threads: ThreadApi;
-  projects: ProjectsApi;
   workflows: WorkflowsApi;
   permissions: PermissionsApi;
   sites: SitesApi;
   knowledgeBases: KnowledgeBasesApi;
-  issues: IssuesApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -1372,12 +977,10 @@ class ApiClient {
     this.models = new ModelApi(baseUrl);
     this.uploads = new UploadApi(baseUrl);
     this.threads = new ThreadApi(baseUrl);
-    this.projects = new ProjectsApi(baseUrl);
     this.workflows = new WorkflowsApi(baseUrl);
     this.permissions = new PermissionsApi(baseUrl);
     this.sites = new SitesApi(baseUrl);
     this.knowledgeBases = new KnowledgeBasesApi(baseUrl);
-    this.issues = new IssuesApi(baseUrl);
   }
 }
 

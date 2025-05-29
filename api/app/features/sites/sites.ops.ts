@@ -5,7 +5,6 @@ import { PermissionManager } from "../permissions/permissions.tools";
 import { PaginatedSites, Site } from "./sites.types";
 import { formatSites, validationSchema } from "./sites.utils";
 import { sites } from "./sites.schema";
-import { projects } from "../../config/schema";
 
 export const sitesOps = {
   getAllSites: async (params: {

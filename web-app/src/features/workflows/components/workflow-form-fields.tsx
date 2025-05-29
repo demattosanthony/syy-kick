@@ -14,7 +14,6 @@ interface WorkflowFormFieldsProps {
   values: Record<string, any>;
   onChange: (fieldId: string, value: any, type: string) => void;
   className?: string;
-  projectId?: string;
   requiredFields: string[];
 }
 
@@ -23,7 +22,6 @@ export function WorkflowFormFields({
   values,
   onChange,
   className,
-  projectId,
   requiredFields,
 }: WorkflowFormFieldsProps) {
   const renderField = (fieldId: string, field: FormField) => {
@@ -50,7 +48,6 @@ export function WorkflowFormFields({
               }}
               file={values[fieldId] as File}
               onFileChange={(file) => onChange(fieldId, file, "file")}
-              projectId={projectId}
             />
             {requiredFields.includes(fieldId) && (
               <span className="text-sm text-red-500">Required</span>
