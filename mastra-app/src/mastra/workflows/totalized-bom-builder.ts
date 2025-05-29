@@ -424,16 +424,17 @@ I have placed the Excel file template in the sandbox at the path /project_bom_tr
 3. **Populate with the provided BOM data** (see data table below)
 4. **Manufacturer Formatting**: When adding manufacturer names (the rows that have a part number but no quantity value), format them as:
    - **Bold text**
-   - **Yellow background highlight**
+   - **Yellow background highlight** (ONLY for the cell containing the manufacturer name in the first column)
 5. **Save the file** at the same path: /project_bom_tracker.xlsx
 6. **Project Name**: Fill cell A1 with the project name: "${projectName}"
+7. **Description Column Formatting**: Apply "Shrink to Fit" formatting to the description column to ensure text is properly displayed
 
 **DATA TO POPULATE** - Use this exact TOTALIZED BILL OF MATERIALS data:
 
 ${markdownData}
 
 **DATA STRUCTURE LOGIC**:
-- Rows with empty quantities are **manufacturer names** (should be bold + yellow highlight)
+- Rows with empty quantities are **manufacturer names** (should be bold + yellow highlight in first column only)
 - Rows with quantities are **part numbers** under that manufacturer
 - Follow this hierarchical structure where manufacturer names are category headers followed by their part numbers
 
@@ -442,9 +443,10 @@ ${markdownData}
 2. Set cell A1 to the project name: "${projectName}"
 3. Parse the data above to identify manufacturer rows (empty quantity) vs part rows (with quantity)
 4. Populate the Excel template with this exact data in the appropriate location
-5. Apply bold formatting and yellow background to ALL manufacturer name rows
+5. Apply bold formatting and yellow background ONLY to the first column cell containing manufacturer names
 6. Ensure part number rows maintain clean formatting with quantities
-7. Save the file preserving all original template structure and formatting
+7. Apply "Shrink to Fit" formatting to the description column
+8. Save the file preserving all original template structure and formatting
 
 **CRITICAL**: Use the exact data provided above - do not modify or add to it. Preserve all original template formatting, formulas, and visual styling.`,
           },
