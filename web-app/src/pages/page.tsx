@@ -68,8 +68,8 @@ export function HomePage() {
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="flex flex-col flex-1">
         <div className="flex flex-col items-center w-full gap-6 pb-4">
-          <div className="w-[85px] flex items-center justify-center min-h-[85px] mt-[16vh]">
-            <img src={logo} width={85} height={85} alt="Logo" />
+          <div className="w-[75px] flex items-center justify-center min-h-[75px] mt-[16vh]">
+            <img src={logo} width={75} height={75} alt="Logo" />
           </div>
 
           <div className="flex flex-col gap-6 min-h-[72px]">

@@ -38,7 +38,9 @@ class MicrosoftGraphApi {
     return data;
   }
 
-  async getOrgDrive(accessToken: string): Promise<{ webUrl: string }> {
+  async getOrgDrive(
+    accessToken: string
+  ): Promise<{ id: string; webUrl: string } | null> {
     try {
       const response = await fetch(
         "https://graph.microsoft.com/v1.0/me/drive",
@@ -52,14 +54,25 @@ class MicrosoftGraphApi {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch org drive URL");
+        console.error(
+          "Failed to fetch org drive URL, status:",
+          response.status
+        );
+        // throw new Error("Failed to fetch org drive URL");
+        return null;
       }
 
       const data = await response.json();
-      return data;
+      if (data && data.id && data.webUrl) {
+        return { id: data.id, webUrl: data.webUrl };
+      } else {
+        console.error("Org drive data is missing id or webUrl:", data);
+        return null;
+      }
     } catch (error) {
       console.error("Error fetching org drive URL:", error);
-      return { webUrl: "" };
+      // return { webUrl: "" };
+      return null;
     }
   }
 
@@ -73,8 +86,12 @@ class MicrosoftGraphApi {
       if (!folderPath) {
         url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root/children`;
       } else {
-        url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${folderPath}:/children`;
+        // Encode the folder path to handle spaces and special characters
+        const encodedPath = encodeURIComponent(folderPath);
+        url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodedPath}:/children`;
       }
+
+      console.log("getFolderContent: Fetching from URL:", url);
 
       const response = await fetch(url, {
         headers: {
@@ -85,6 +102,9 @@ class MicrosoftGraphApi {
       });
 
       if (!response.ok) {
+        console.error(
+          `getFolderContent: Failed with status ${response.status} for path: "${folderPath}"`
+        );
         throw new Error(`Failed to fetch folder content: ${response.status}`);
       }
 
@@ -117,6 +137,34 @@ class MicrosoftGraphApi {
       return data.value;
     } catch (error) {
       console.error("Error fetching drives:", error);
+      return [];
+    }
+  }
+
+  async searchFiles(driveId: string, searchText: string, accessToken: string) {
+    if (!searchText) {
+      return []; // Or handle as a regular folder browse if search text is empty
+    }
+    try {
+      const response = await fetch(
+        `https://graph.microsoft.com/v1.0/drives/${driveId}/root/search(q='${searchText}')`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "omit",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to search files: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.value;
+    } catch (error) {
+      console.error("Error searching files:", error);
       return [];
     }
   }
