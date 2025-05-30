@@ -3,8 +3,8 @@ import { cn } from "@/lib/utils";
 import { FileIcon, Loader2 } from "lucide-react";
 import { useState } from "react";
 import sharepointLogo from "@/assets/logos/sharepoint.svg";
-import useMicrosoftPicker from "@/hooks/use-microsoft-picker";
-import { SharePointFile } from "@/hooks/use-microsoft-picker";
+import useMicrosoftPicker from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
+import { SharePointFile } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
 
 interface FileUploadInputProps {
   input: {

@@ -10,7 +10,11 @@ import {
   MicrosoftRefreshTokenError,
   MicrosoftRefreshTokenResponse,
 } from "../../config/microsoft";
-import { generateStateEntry, getStateEntry, clearStateEntry } from "./auth.utils";
+import {
+  generateStateEntry,
+  getStateEntry,
+  clearStateEntry,
+} from "./auth.utils";
 import { jwtDecode } from "jwt-decode";
 
 export const handlers = {
@@ -205,6 +209,7 @@ export const handlers = {
 
   microsoftFilesInit: async (req: Request, res: Response) => {
     const redirectUrl = req.query.redirectUrl as string;
+    const authSource = req.query.auth_source as string;
     const { id, rid } = req.cookies;
     const { userId } = await checkTokens(id, rid);
 
@@ -214,7 +219,14 @@ export const handlers = {
       return;
     }
 
-    const state = generateStateEntry(redirectUrl);
+    let finalRedirectUrl = redirectUrl;
+    if (authSource) {
+      const url = new URL(redirectUrl);
+      url.searchParams.set("auth_source", authSource);
+      finalRedirectUrl = url.toString();
+    }
+
+    const state = generateStateEntry(finalRedirectUrl);
 
     const authUrl = new URL(
       "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize"
@@ -243,14 +255,16 @@ export const handlers = {
       return;
     }
 
+    const { redirectUrl } = stateEntry;
+
     if (error) {
-      res.redirect(
-        `${stateEntry.redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${error_description}`
-      );
+      const errorUrl = new URL(redirectUrl);
+      errorUrl.searchParams.set("syy-connector", "microsoft-files");
+      errorUrl.searchParams.set("oauth_success", "false");
+      errorUrl.searchParams.set("error", error_description as string);
+      res.redirect(errorUrl.toString());
       return;
     }
-
-    const { redirectUrl } = stateEntry;
 
     if (!redirectUrl) {
       res.redirect(`${process.env.FRONTEND_URL}?error=Missing redirect url`);
@@ -258,26 +272,28 @@ export const handlers = {
     }
 
     if (!userId) {
-      res.redirect(
-        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Unauthorized`
-      );
+      const errorUrl = new URL(redirectUrl);
+      errorUrl.searchParams.set("syy-connector", "microsoft-files");
+      errorUrl.searchParams.set("oauth_success", "false");
+      errorUrl.searchParams.set("error", "Unauthorized");
+      res.redirect(errorUrl.toString());
       return;
     }
 
     if (!code) {
       console.log("missing code");
-      res.redirect(
-        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Missing code`
-      );
+      const errorUrl = new URL(redirectUrl);
+      errorUrl.searchParams.set("syy-connector", "microsoft-files");
+      errorUrl.searchParams.set("oauth_success", "false");
+      errorUrl.searchParams.set("error", "Missing code");
+      res.redirect(errorUrl.toString());
       return;
     }
 
     const microsoftApi = new MicrosoftAPI({ userId });
 
     try {
-      // start transaction
       await db.transaction(async (tx) => {
-        // Generate
         const tokenData = await microsoftApi.getMicrosoftToken(
           "login.microsoftonline.com/organizations",
           {
@@ -297,7 +313,6 @@ export const handlers = {
 
         let refreshedToken: MicrosoftRefreshTokenResponse;
 
-        // Refresh token if expired
         if (microsoftApi.isAccessTokenExpired(access_token)) {
           refreshedToken = await microsoftApi.refreshTokenSilently(
             "graph.microsoft.com",
@@ -307,10 +322,8 @@ export const handlers = {
           refreshedToken = tokenData;
         }
 
-        // Get site
         const site = await microsoftApi.getSite(access_token);
 
-        // Get token for sharepoint picker
         const tokenForSharepointData = await microsoftApi.getMicrosoftToken(
           `login.microsoftonline.com/${jwt.tid}`,
           {
@@ -320,7 +333,6 @@ export const handlers = {
           }
         );
 
-        // Sauvegarder les deux tokens dans la même transaction
         await Promise.all([
           microsoftApi.saveToken(
             tokenData.access_token,
@@ -340,31 +352,32 @@ export const handlers = {
       });
 
       clearStateEntry(state as string);
-      res.redirect(
-        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=true`
-      );
+      const successUrl = new URL(redirectUrl);
+      successUrl.searchParams.set("syy-connector", "microsoft-files");
+      successUrl.searchParams.set("oauth_success", "true");
+      res.redirect(successUrl.toString());
     } catch (err: any | MicrosoftRefreshTokenError) {
-      if(err?.error_codes?.includes(650053)) {
-        const stateEntry = getStateEntry(state as string);
-        if (!stateEntry?.redirectUrl) {
-          res.redirect(`${process.env.FRONTEND_URL}?error=Missing redirect url`);
-          return;
-        }
-        const newState = generateStateEntry(stateEntry.redirectUrl);
+      if (err?.error_codes?.includes(650053)) {
+        const newState = generateStateEntry(redirectUrl);
         const authUrl = microsoftApi.getConsentUrl(newState);
         res.redirect(authUrl);
         return;
       }
 
-      // After consent request
-      if(err?.error_codes?.includes(65004)) {
-        res.redirect(
-          `${stateEntry.redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Waiting for admin approval`
-        )
+      if (err?.error_codes?.includes(65004)) {
+        const errorUrl = new URL(redirectUrl);
+        errorUrl.searchParams.set("syy-connector", "microsoft-files");
+        errorUrl.searchParams.set("oauth_success", "false");
+        errorUrl.searchParams.set("error", "Waiting for admin approval");
+        res.redirect(errorUrl.toString());
+        return;
       }
-      res.redirect(
-        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${err.message}`
-      );
+
+      const errorUrl = new URL(redirectUrl);
+      errorUrl.searchParams.set("syy-connector", "microsoft-files");
+      errorUrl.searchParams.set("oauth_success", "false");
+      errorUrl.searchParams.set("error", err.message);
+      res.redirect(errorUrl.toString());
     }
   },
 };

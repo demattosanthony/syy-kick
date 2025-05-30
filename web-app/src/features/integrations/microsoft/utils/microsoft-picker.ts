@@ -1,5 +1,5 @@
 /** Api */
-import { SharePointFile } from "@/hooks/use-microsoft-picker";
+import { SharePointFile } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
 import api, { microsoftApi } from "@/lib/api";
 
 /** Types */

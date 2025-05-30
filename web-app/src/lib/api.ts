@@ -207,12 +207,13 @@ class AuthApi extends ApiRequest {
     }
   }
 
-  async getMicrosoftFilesInit(redirectUri: string) {
+  async getMicrosoftFilesInit(redirectUri: string, authSource?: string) {
     try {
-      return await this.request<{ url: string }>(
-        `/auth/microsoft-files/init?redirectUrl=${redirectUri}`,
-        "GET"
-      );
+      let url = `/auth/microsoft-files/init?redirectUrl=${redirectUri}`;
+      if (authSource) {
+        url += `&auth_source=${authSource}`;
+      }
+      return await this.request<{ url: string }>(url, "GET");
     } catch (error) {
       throw error;
     }

@@ -13,7 +13,8 @@ import { FileUploadMimeType } from "@/types/chat";
 import sharepointLogo from "@/assets/logos/sharepoint.svg";
 import useMicrosoftPicker, {
   SharePointFile,
-} from "@/hooks/use-microsoft-picker";
+} from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
+import { SharePointFileBrowser } from "@/features/integrations/microsoft/components/sharepoint-file-browser";
 
 interface ActionButtonsProps {
   isGenerating?: boolean;
@@ -37,6 +38,7 @@ export function ActionButtons({
   onFileUploadComplete,
 }: ActionButtonsProps) {
   const [uploads, setUploads] = useAtom(uploadsAtom);
+  const [isDownloadingFile, setIsDownloadingFile] = useState(false);
 
   const [open, setOpen] = useState(false);
   const {
@@ -60,12 +62,66 @@ export function ActionButtons({
     },
   });
 
-  const isAnyLoading = isMicrosoftPickerLoading || isProcessingFiles;
+  const isAnyLoading =
+    isMicrosoftPickerLoading || isProcessingFiles || isDownloadingFile;
+
+  const handleSharePointFileSelect = async (file: any) => {
+    console.log("file", file);
+    if (!file["@microsoft.graph.downloadUrl"]) {
+      console.error("No download URL available for this file");
+      return;
+    }
+
+    setIsDownloadingFile(true);
+    try {
+      // Download the file directly using the download URL
+      const response = await fetch(file["@microsoft.graph.downloadUrl"]);
+
+      if (!response.ok) {
+        throw new Error(`Failed to download file: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const contentType =
+        response.headers.get("Content-Type") || "application/octet-stream";
+
+      // Create a File object
+      const downloadedFile = new window.File([blob], file.name, {
+        type: contentType,
+      });
+
+      // Determine file type for uploads
+      let fileType: FileUploadMimeType = "pdf";
+      if (contentType.startsWith("image/")) {
+        fileType = "image";
+      }
+
+      // Add to uploads
+      const fileUpload = {
+        file: downloadedFile,
+        preview:
+          fileType === "image" ? URL.createObjectURL(downloadedFile) : "",
+        type: fileType,
+      };
+
+      console.log("fileUpload", fileUpload);
+      setUploads([...uploads, fileUpload]);
+      onFileUploadComplete?.();
+    } catch (error) {
+      console.error("Error downloading SharePoint file:", error);
+    } finally {
+      setIsDownloadingFile(false);
+    }
+  };
 
   return (
     <div className="w-full flex justify-between items-center px-1 pb-1">
-      <div>
+      <div className="flex items-center gap-1">
         <ModelSelector />
+        <SharePointFileBrowser
+          onFileSelect={handleSharePointFileSelect}
+          isDownloading={isDownloadingFile}
+        />
       </div>
       <div className="flex items-center gap-1 h-full">
         {selectedModel.supportedMimeTypes &&

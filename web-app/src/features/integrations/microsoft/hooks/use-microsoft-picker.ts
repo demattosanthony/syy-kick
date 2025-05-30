@@ -4,7 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 
 /** Utils */
 import { toast } from "sonner";
-import { MicrosoftPicker, PickerOptions } from "@/lib/microsoft-picker";
+import {
+  MicrosoftPicker,
+  PickerOptions,
+} from "@/features/integrations/microsoft/utils/microsoft-picker";
 
 declare global {
   interface Window {
@@ -65,11 +68,21 @@ export function useMicrosoftPicker({
 
   useEffect(() => {
     if (oauthSuccess === "true") {
-      toast.success("Sharepoint connected successfully");
-      microsoftPicker.openPicker({ mode: "files" });
+      // Check if auth came from SharePoint browser
+      const authSource = searchParams.get("auth_source");
+      if (authSource === "sharepoint_browser") {
+        // Just show success message, don't open picker
+        toast.success("SharePoint connected successfully");
+        // Clean up the URL params
+        setSearchParams({});
+      } else {
+        // Auth came from "Add from SharePoint" button, open picker
+        toast.success("SharePoint connected successfully");
+        microsoftPicker.openPicker({ mode: "files" });
+      }
     } else if (oauthSuccess === "false") {
       const error = searchParams.get("error");
-      toast.error(error || "Sharepoint connection failed");
+      toast.error(error || "SharePoint connection failed");
     }
     setLoading(false);
   }, [oauthSuccess]);
