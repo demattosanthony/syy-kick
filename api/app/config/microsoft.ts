@@ -5,218 +5,389 @@ import { accessTokens } from "./schema";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 export class MicrosoftAPI {
-    private userId: string;
+  private userId: string;
 
-    constructor({ userId }: { userId: string }) {
-        this.userId = userId;
+  constructor({ userId }: { userId: string }) {
+    this.userId = userId;
+  }
+
+  async getSite(accessToken: string): Promise<MicrosoftSite> {
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/sites/root`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    return (await response.json()) as MicrosoftSite;
+  }
+
+  async saveToken(
+    accessToken: string,
+    refreshToken: string,
+    domain: string,
+    type: "picker" | "graph",
+    tx?: NodePgDatabase<typeof import("./schema")>
+  ) {
+    const dbInstance = tx || db;
+
+    const existingToken = await dbInstance.query.accessTokens.findFirst({
+      where: and(
+        eq(accessTokens.userId, this.userId),
+        eq(accessTokens.provider, "microsoft"),
+        eq(accessTokens.type, type)
+      ),
+    });
+
+    if (existingToken) {
+      await dbInstance
+        .update(accessTokens)
+        .set({
+          accessToken,
+          refreshToken,
+          domain,
+          type,
+          updatedAt: new Date(),
+        })
+        .where(eq(accessTokens.id, existingToken.id));
+    } else {
+      await dbInstance.insert(accessTokens).values({
+        userId: this.userId,
+        provider: "microsoft",
+        accessToken,
+        refreshToken,
+        domain,
+        type,
+      });
+    }
+  }
+
+  async getAccessToken(
+    type: "picker" | "graph",
+    domain?: string
+  ): Promise<{ accessToken: string; baseUrl: string | null } | undefined> {
+    const accessToken = await this.getUserToken(type);
+
+    if (!accessToken) {
+      return undefined;
     }
 
-    async getSite(accessToken: string): Promise<MicrosoftSite> {
-        const response = await fetch(`https://graph.microsoft.com/v1.0/sites/root`, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-        });
-
-        return await response.json() as MicrosoftSite;
-    }
-
-    async saveToken(
-        accessToken: string,
-        refreshToken: string,
-        domain: string,
-        type: "picker" | "graph",
-        tx?: NodePgDatabase<typeof import('./schema')>
+    if (
+      this.isAccessTokenExpired(accessToken.accessToken) &&
+      accessToken.refreshToken
     ) {
-        const dbInstance = tx || db;
+      const jwt = jwtDecode(accessToken.accessToken) as any;
 
-        const existingToken = await dbInstance.query.accessTokens.findFirst({
-            where: and(
-                eq(accessTokens.userId, this.userId),
-                eq(accessTokens.provider, "microsoft"),
-                eq(accessTokens.type, type)
-            )
-        });
+      if (!jwt.tid) {
+        throw new Error("Invalid access token");
+      }
 
-        if (existingToken) {
-            await dbInstance.update(accessTokens).set({
-                accessToken,
-                refreshToken,
-                domain,
-                type,
-                updatedAt: new Date()
-            }).where(eq(accessTokens.id, existingToken.id));
-        } else {
-            await dbInstance.insert(accessTokens).values({
-                userId: this.userId,
-                provider: "microsoft",
-                accessToken,
-                refreshToken,
-                domain,
-                type
-            });
-        }
+      const newToken = await this.refreshTokenSilently(
+        domain ?? `login.microsoftonline.com/${jwt.tid}`,
+        accessToken.refreshToken
+      );
+
+      return {
+        accessToken: newToken.access_token,
+        baseUrl: accessToken.domain ?? domain ?? null,
+      };
     }
 
-    async getAccessToken(type: "picker" | "graph", domain?: string,): Promise<{ accessToken: string, baseUrl: string | null } | undefined> {
+    return {
+      accessToken: accessToken.accessToken,
+      baseUrl: accessToken.domain ?? domain ?? null,
+    };
+  }
 
-        const accessToken = await this.getUserToken(type);
+  async getUserToken(
+    type: "picker" | "graph"
+  ): Promise<typeof accessTokens.$inferSelect | undefined> {
+    const accessToken = await db.query.accessTokens.findFirst({
+      where: and(
+        eq(accessTokens.userId, this.userId),
+        eq(accessTokens.provider, "microsoft"),
+        eq(accessTokens.type, type)
+      ),
+    });
 
-        if (!accessToken) {
-            return undefined;
-        }
+    return accessToken;
+  }
 
-        if (this.isAccessTokenExpired(accessToken.accessToken) && accessToken.refreshToken) {
-            const jwt = jwtDecode(accessToken.accessToken) as any;
+  isAccessTokenExpired(accessToken: string) {
+    const currentTime = Date.now() / 1000;
 
-            if (!jwt.tid) {
-                throw new Error("Invalid access token");
-            }
+    const decoded = jwtDecode(accessToken) as any;
 
-            const newToken = await this.refreshTokenSilently(domain ?? `login.microsoftonline.com/${jwt.tid}`, accessToken.refreshToken);
-
-            return {
-                accessToken: newToken.access_token,
-                baseUrl: accessToken.domain ?? domain ?? null
-            };
-        }
-
-        return {
-            accessToken: accessToken.accessToken,
-            baseUrl: accessToken.domain ?? domain ?? null
-        };
+    if (!decoded.exp) {
+      throw new Error("Invalid access token");
     }
 
-    async getUserToken(type: "picker" | "graph"): Promise<typeof accessTokens.$inferSelect | undefined> {
-        const accessToken = await db.query.accessTokens.findFirst({
-            where: and(
-                eq(accessTokens.userId, this.userId),
-                eq(accessTokens.provider, "microsoft"),
-                eq(accessTokens.type, type)
-            )
-        });
+    return decoded.exp < currentTime;
+  }
 
-        return accessToken;
+  async getMicrosoftToken(
+    domain: string,
+    options: {
+      refresh_token?: string;
+      code?: string;
+      grant_type: "refresh_token" | "authorization_code";
+      redirect_uri?: string;
+      scope: string;
+    }
+  ): Promise<MicrosoftRefreshTokenResponse> {
+    try {
+      const params = new URLSearchParams({
+        client_id: process.env.MICROSOFT_CLIENT_ID!,
+        client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
+        ...options,
+      });
+
+      const response = await fetch(`https://${domain}/oauth2/v2.0/token`, {
+        method: "POST",
+        body: params,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+
+      const data = (await response.json()) as MicrosoftRefreshTokenResponse;
+
+      return data;
+    } catch (error) {
+      console.error(error);
+      throw error as MicrosoftRefreshTokenError;
+    }
+  }
+
+  async refreshTokenSilently(
+    domain: string,
+    refreshToken: string
+  ): Promise<MicrosoftRefreshTokenResponse> {
+    const params = new URLSearchParams({
+      client_id: process.env.MICROSOFT_CLIENT_ID!,
+      client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      redirect_uri: process.env.MICROSOFT_FILES_CALLBACK_URL!,
+      scope: `https://${domain}/.default`,
+    });
+
+    try {
+      const response = await fetch(`https://${domain}/oauth2/v2.0/token`, {
+        method: "POST",
+        body: params,
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+
+      const data = (await response.json()) as MicrosoftRefreshTokenResponse;
+
+      return data;
+    } catch (error) {
+      throw error as MicrosoftRefreshTokenError;
+    }
+  }
+
+  getConsentUrl(state: string) {
+    const authUrl = new URL(
+      "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize"
+    );
+    authUrl.searchParams.set("client_id", process.env.MICROSOFT_CLIENT_ID!);
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set(
+      "redirect_uri",
+      process.env.MICROSOFT_FILES_CALLBACK_URL!
+    );
+    authUrl.searchParams.set("scope", "openid offline_access Sites.Read.All");
+    authUrl.searchParams.set("state", state);
+    authUrl.searchParams.set("prompt", "consent");
+
+    return authUrl.toString();
+  }
+
+  /**
+   * Search files and folders in a user's SharePoint drive using Microsoft Graph API.
+   * @param driveId The ID of the drive to search in.
+   * @param searchText The text to search for.
+   * @param accessToken The access token for Microsoft Graph API.
+   * @returns Array of drive items matching the search.
+   */
+  async searchFiles(
+    driveId: string,
+    searchText: string,
+    accessToken: string
+  ): Promise<any[]> {
+    if (!searchText.trim()) {
+      return [];
     }
 
-    isAccessTokenExpired(accessToken: string) {
-        const currentTime = Date.now() / 1000;
+    const encodedSearch = encodeURIComponent(searchText);
+    const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root/search(q='${encodedSearch}')`;
 
-        const decoded = jwtDecode(accessToken) as any;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-        if (!decoded.exp) {
-            throw new Error("Invalid access token");
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        `Microsoft Graph API error (${response.status}): ${error?.error?.message || response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    return data.value || [];
+  }
+
+  /**
+   * Get the user's default (org) drive from Microsoft Graph API.
+   * @param accessToken The access token for Microsoft Graph API.
+   * @returns The drive object or null if not found.
+   */
+  async getOrgDrive(accessToken: string): Promise<any | null> {
+    try {
+      const response = await fetch(
+        `https://graph.microsoft.com/v1.0/me/drive`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
         }
+      );
 
-        return decoded.exp < currentTime;
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        console.error("Error fetching org drive:", error);
+        return null;
+      }
+
+      const drive = await response.json();
+      if (!drive?.id || !drive?.webUrl) {
+        console.error("Drive data is missing required fields:", drive);
+        return null;
+      }
+      return drive;
+    } catch (error) {
+      console.error("Error fetching org drive:", error);
+      return null;
     }
+  }
 
-    async getMicrosoftToken(domain: string, options: {
-        refresh_token?: string;
-        code?: string;
-        grant_type: "refresh_token" | "authorization_code";
-        redirect_uri?: string;
-        scope: string;
-    }): Promise<MicrosoftRefreshTokenResponse> {
-        try {
-            const params = new URLSearchParams({
-                client_id: process.env.MICROSOFT_CLIENT_ID!,
-                client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
-                ...options
-            });
+  async getFolderContent(
+    driveId: string,
+    folderPath: string,
+    accessToken: string
+  ): Promise<GraphDriveItem[]> {
+    try {
+      const url = this.buildFolderUrl(driveId, folderPath);
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-            const response = await fetch(`https://${domain}/oauth2/v2.0/token`, {
-                method: "POST",
-                body: params,
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-            });
-
-            const data = await response.json() as MicrosoftRefreshTokenResponse;
-
-            return data;
-        } catch (error) {
-            console.error(error);
-            throw error as MicrosoftRefreshTokenError;
-        }
-    }
-
-    async refreshTokenSilently(domain: string, refreshToken: string): Promise<MicrosoftRefreshTokenResponse> {
-        const params = new URLSearchParams({
-            client_id: process.env.MICROSOFT_CLIENT_ID!,
-            client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
-            grant_type: "refresh_token",
-            refresh_token: refreshToken,
-            redirect_uri: process.env.MICROSOFT_FILES_CALLBACK_URL!,
-            scope: `https://${domain}/.default`
-        });
-
-        try {
-            const response = await fetch(`https://${domain}/oauth2/v2.0/token`, {
-                method: "POST",
-                body: params,
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-            });
-
-            const data = await response.json() as MicrosoftRefreshTokenResponse;
-
-            return data;
-
-        } catch (error) {
-            throw error as MicrosoftRefreshTokenError;
-        }
-    }
-
-    getConsentUrl(state: string) {
-        const authUrl = new URL(
-            "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize"
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(
+          `Microsoft Graph API error (${response.status}): ${error?.error?.message || response.statusText}`
         );
-        authUrl.searchParams.set("client_id", process.env.MICROSOFT_CLIENT_ID!);
-        authUrl.searchParams.set("response_type", "code");
-        authUrl.searchParams.set(
-            "redirect_uri",
-            process.env.MICROSOFT_FILES_CALLBACK_URL!
-        );
-        authUrl.searchParams.set("scope", "openid offline_access Sites.Read.All");
-        authUrl.searchParams.set("state", state);
-        authUrl.searchParams.set("prompt", "consent");
+      }
 
-        return authUrl.toString();
+      const data = await response.json();
+      return data.value || [];
+    } catch (error) {
+      console.error("Error fetching folder content:", error);
+      return [];
     }
+  }
+
+  async getFile(
+    driveId: string,
+    fileId: string,
+    accessToken: string
+  ): Promise<GraphDriveItem> {
+    const response = await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        `Microsoft Graph API error (${response.status}): ${error?.error?.message || response.statusText}`
+      );
+    }
+
+    return (await response.json()) as GraphDriveItem;
+  }
+
+  private buildFolderUrl(driveId: string, folderPath: string): string {
+    if (!folderPath) {
+      return `https://graph.microsoft.com/v1.0/drives/${driveId}/root/children`;
+    }
+
+    const encodedPath = encodeURIComponent(folderPath);
+    return `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodedPath}:/children`;
+  }
+}
+
+export interface GraphDriveItem {
+  id: string;
+  name: string;
+  folder?: { childCount: number };
+  file?: { mimeType: string; hashes?: any };
+  webUrl: string;
+  parentReference?: {
+    driveId: string;
+    path?: string;
+  };
+  lastModifiedDateTime?: string;
+  "@microsoft.graph.downloadUrl"?: string;
+  size?: number;
 }
 
 type MicrosoftSite = {
-    "@odata.context": string;
-    createdDateTime: string;
-    description: string;
-    id: string;
-    lastModifiedDateTime: string;
-    name: string;
-    webUrl: string;
-    displayName: string;
-    root: any;
-    siteCollection: {
-        hostname: string;
-    }
-}
+  "@odata.context": string;
+  createdDateTime: string;
+  description: string;
+  id: string;
+  lastModifiedDateTime: string;
+  name: string;
+  webUrl: string;
+  displayName: string;
+  root: any;
+  siteCollection: {
+    hostname: string;
+  };
+};
 
 export type MicrosoftRefreshTokenResponse = {
-    access_token: string;
-    token_type: string;
-    expires_in: number;
-    scope: string;
-    refresh_token: string;
-    id_token: string;
-}
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+  refresh_token: string;
+  id_token: string;
+};
 
 export type MicrosoftRefreshTokenError = {
-    error: string;
-    error_description: string;
-    error_codes: number[];
-    timestamp: string;
-    trace_id: string;
-    correlation_id: string;
-}
+  error: string;
+  error_description: string;
+  error_codes: number[];
+  timestamp: string;
+  trace_id: string;
+  correlation_id: string;
+};

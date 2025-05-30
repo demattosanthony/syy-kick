@@ -7,6 +7,7 @@ import { z } from "zod";
 // Internal configuration
 import db from "../../config/db";
 import {
+  accessTokens,
   messageAttachments,
   messages,
   threads,
@@ -30,6 +31,12 @@ import { getOrgIdOrUnedfined } from "../../utils";
 import { markitdown, markitdownMimeTypes } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
+import { MicrosoftAPI } from "../../config/microsoft";
+import {
+  createSharepointListTool,
+  createSharepointSearchTool,
+} from "../tools/tool-definitions";
+import { jwtDecode } from "jwt-decode";
 
 const threadsOps = {
   async createThread(
@@ -375,7 +382,32 @@ const threadsOps = {
       if (modelConfig.supportsToolUse) {
         tools = {
           web_search: createWebSearchTool(),
+          search_knowledge_base: createKnowledgeBaseSearchTool(
+            modelConfig,
+            thread.knowledgeBase || undefined
+          ),
         };
+      }
+
+      const microsoftGraph = new MicrosoftAPI({
+        userId: req.dbUser!.id,
+      });
+      const accessToken = await microsoftGraph.getAccessToken("graph");
+
+      if (accessToken && tools) {
+        const drive = await microsoftGraph.getOrgDrive(accessToken.accessToken);
+
+        tools.sharepoint_graph = createSharepointSearchTool(
+          accessToken.accessToken,
+          drive?.id,
+          microsoftGraph
+        );
+
+        tools.sharepoint_ls = createSharepointListTool(
+          accessToken.accessToken,
+          drive?.id,
+          microsoftGraph
+        );
       }
 
       let aiResponse = "";
