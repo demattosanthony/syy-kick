@@ -22,7 +22,7 @@ import { DropdownMenuGroup } from "../ui/dropdown-menu";
 import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "@/workspace-context";
 import { Button } from "../ui/button";
-import { BookOpen, MapPinIcon, Plus, Workflow } from "lucide-react";
+import { BookOpen, MapPinIcon, Plus, Workflow, Link } from "lucide-react";
 import { NewThreadButton } from "./new-thread-button";
 import { usePermissions } from "@/features/permissions/context";
 import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
@@ -106,6 +106,15 @@ export function AppSidebar({
 
               <SidebarMenuItem>
                 <ThreadsLink />
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarButton
+                  href="/integrations"
+                  label="Integrations"
+                  icon={Link}
+                  hoverIcon={Link}
+                />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

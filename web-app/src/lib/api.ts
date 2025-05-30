@@ -45,6 +45,7 @@ import {
   KnowledgeBaseAccessLogsResponse,
 } from "@/features/knowledge-bases/types";
 import { Comment } from "@/features/workflows/features/runs/features/comments/types";
+import { AccessToken } from "@/features/integrations/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -955,6 +956,20 @@ export class KnowledgeBasesApi extends ApiRequest {
   }
 }
 
+class IntegrationsApi extends ApiRequest {
+  async getTokens(): Promise<AccessToken[]> {
+    return await this.request<AccessToken[]>("/integrations", "GET");
+  }
+
+  async deleteIntegration(provider: string) {
+    return await this.request(`/integrations/${provider}`, "DELETE");
+  }
+
+  async getToken(provider: string): Promise<AccessToken> {
+    return await this.request(`/integrations/${provider}/token`, "GET");
+  }
+}
+
 /**
  *  Centralized ApiClient class that uses the modules
  */
@@ -970,6 +985,7 @@ class ApiClient {
   permissions: PermissionsApi;
   sites: SitesApi;
   knowledgeBases: KnowledgeBasesApi;
+  integrations: IntegrationsApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -983,6 +999,7 @@ class ApiClient {
     this.permissions = new PermissionsApi(baseUrl);
     this.sites = new SitesApi(baseUrl);
     this.knowledgeBases = new KnowledgeBasesApi(baseUrl);
+    this.integrations = new IntegrationsApi(baseUrl);
   }
 }
 

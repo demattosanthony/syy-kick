@@ -19,6 +19,7 @@ import analyticsRoutes from "./features/analytics/analytics.routes";
 import knowledgeBasesRoutes from "./features/knowledge-bases/knowledge-bases.routes";
 import sitesRoutes from "./features/sites/sites.routes";
 import toolsRoutes from "./features/tools/tools.routes";
+import integrationsRoutes from "./features/integrations/integrations.routes";
 
 export default Router()
   .use("/auth", authRoutes)
@@ -147,4 +148,5 @@ export default Router()
     }
   })
   .use("/permissions", auth, permissionsRoutes)
-  .use("/analytics", analyticsRoutes);
+  .use("/analytics", analyticsRoutes)
+  .use("/integrations", auth, integrationsRoutes);

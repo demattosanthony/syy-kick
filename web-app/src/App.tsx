@@ -27,6 +27,7 @@ import {
   KnowledgeBaseSettingsPage,
   ForbiddenPage,
   LandingPage,
+  IntegrationsPage,
 } from "./pages";
 import { Providers } from "./providers";
 import MainAppLayout from "./components/layouts/main-app-layout";
@@ -156,6 +157,7 @@ const router = createBrowserRouter([
               { path: "settings", element: <KnowledgeBaseSettingsPage /> },
             ],
           },
+          { path: "integrations", element: <IntegrationsPage /> },
         ],
       },
       {
