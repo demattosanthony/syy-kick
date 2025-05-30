@@ -7,12 +7,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useState } from "react";
-import useMicrosoftPicker from "@/features/projects/hooks/use-microsoft-picker";
-import { SharePointFile } from "@/features/projects/types";
 import { useAtom } from "jotai";
 import { uploadsAtom } from "@/atoms/chat";
 import { FileUploadMimeType } from "@/types/chat";
 import sharepointLogo from "@/assets/logos/sharepoint.svg";
+import useMicrosoftPicker, {
+  SharePointFile,
+} from "@/hooks/use-microsoft-picker";
 
 interface ActionButtonsProps {
   isGenerating?: boolean;

@@ -90,14 +90,16 @@ export function HomePage() {
 
           <div className="max-w-5xl w-full flex flex-col items-center">
             <div className="flex flex-col items-center max-w-[800px] w-full">
-              <ConversationStarters
-                triggerFileInput={() =>
-                  chatInputRef.current?.triggerFileInput()
-                }
-                triggerTextAreaFocus={() =>
-                  chatInputRef.current?.focusTextArea()
-                }
-              />
+              {!user && (
+                <ConversationStarters
+                  triggerFileInput={() =>
+                    chatInputRef.current?.triggerFileInput()
+                  }
+                  triggerTextAreaFocus={() =>
+                    chatInputRef.current?.focusTextArea()
+                  }
+                />
+              )}
             </div>
           </div>
         </div>

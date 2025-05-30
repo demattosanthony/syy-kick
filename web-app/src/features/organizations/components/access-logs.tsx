@@ -1,10 +1,7 @@
-"use client";
-
 /** Hooks */
 import useDebounce from "@/hooks/use-debounce";
 import { useGetOrgAccessLogsQuery } from "../api";
 import { useState, useCallback, useMemo } from "react";
-import { useGetProjectAccessLogsQuery } from "@/features/projects/api";
 import { useGetKnowledgeBaseAccessLogsQuery } from "@/features/knowledge-bases/api";
 
 /** UI Components */
@@ -55,10 +52,6 @@ import {
 import { User } from "@/types/user";
 import { Permissions } from "@/features/permissions/types/permissions";
 import {
-  ProjectAccessLog,
-  ProjectAccessLogsResponse,
-} from "@/features/projects/types/access-logs";
-import {
   KnowledgeBaseAccessLog,
   KnowledgeBaseAccessLogsResponse,
 } from "@/features/knowledge-bases/types";
@@ -83,19 +76,13 @@ import {
 } from "../utils";
 
 const isOrganizationAccessLog = (
-  log: OrganizationAccessLog | ProjectAccessLog | KnowledgeBaseAccessLog
+  log: OrganizationAccessLog | KnowledgeBaseAccessLog
 ): log is OrganizationAccessLog => {
   return "organization" in log;
 };
 
-const isProjectAccessLog = (
-  log: OrganizationAccessLog | ProjectAccessLog | KnowledgeBaseAccessLog
-): log is ProjectAccessLog => {
-  return "project" in log;
-};
-
 const isKnowledgeBaseAccessLog = (
-  log: OrganizationAccessLog | ProjectAccessLog | KnowledgeBaseAccessLog
+  log: OrganizationAccessLog | KnowledgeBaseAccessLog
 ): log is KnowledgeBaseAccessLog => {
   return "knowledgeBase" in log;
 };
@@ -107,7 +94,6 @@ export default function AccessLogs({
   status,
   user,
   type,
-  projectId,
   knowledgeBaseId,
 }: {
   organizationId: string;
@@ -116,7 +102,6 @@ export default function AccessLogs({
   status: [string, AccessLogStatus][];
   user: User;
   type: "organization" | "project" | "knowledge-base";
-  projectId?: string;
   knowledgeBaseId?: string;
 }) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -146,21 +131,6 @@ export default function AccessLogs({
   );
 
   const {
-    data: projectLogs,
-    isLoading: isProjectLogsLoading,
-    refetch: refetchProjectLogs,
-  } = useGetProjectAccessLogsQuery(
-    currentPage,
-    10,
-    {
-      ...filters,
-      search: debouncedSearch,
-    },
-    projectId,
-    type !== "project"
-  );
-
-  const {
     data: knowledgeBaseLogs,
     isLoading: isKnowledgeBaseLogsLoading,
     refetch: refetchKnowledgeBaseLogs,
@@ -178,46 +148,29 @@ export default function AccessLogs({
   const refetch = useCallback(() => {
     if (type === "organization") {
       refetchOrganizationLogs();
-    } else if (type === "project") {
-      refetchProjectLogs();
     } else if (type === "knowledge-base") {
       refetchKnowledgeBaseLogs();
     }
-  }, [
-    refetchOrganizationLogs,
-    refetchProjectLogs,
-    refetchKnowledgeBaseLogs,
-    type,
-  ]);
+  }, [refetchOrganizationLogs, refetchKnowledgeBaseLogs, type]);
 
   const data:
     | OrganizationAccessLogsResponse
-    | ProjectAccessLogsResponse
     | KnowledgeBaseAccessLogsResponse
     | undefined = useMemo(() => {
     if (type === "organization") {
       return organizationLogs;
-    } else if (type === "project") {
-      return projectLogs;
     } else if (type === "knowledge-base") {
       return knowledgeBaseLogs;
     }
-  }, [organizationLogs, projectLogs, knowledgeBaseLogs, type]);
+  }, [organizationLogs, knowledgeBaseLogs, type]);
 
   const isLoading = useMemo(() => {
     if (type === "organization") {
       return isOrganizationLogsLoading;
-    } else if (type === "project") {
-      return isProjectLogsLoading;
     } else if (type === "knowledge-base") {
       return isKnowledgeBaseLogsLoading;
     }
-  }, [
-    isOrganizationLogsLoading,
-    isProjectLogsLoading,
-    isKnowledgeBaseLogsLoading,
-    type,
-  ]);
+  }, [isOrganizationLogsLoading, isKnowledgeBaseLogsLoading, type]);
 
   const handleRefresh = useCallback(() => {
     refetch();
@@ -231,10 +184,8 @@ export default function AccessLogs({
     setTimeout(() => setIsFiltering(false), 300);
   }, []);
 
-  const filteredLogs:
-    | OrganizationAccessLog[]
-    | ProjectAccessLog[]
-    | KnowledgeBaseAccessLog[] = useMemo(() => data?.data || [], [data]);
+  const filteredLogs: OrganizationAccessLog[] | KnowledgeBaseAccessLog[] =
+    useMemo(() => data?.data || [], [data]);
   const totalLogs = useMemo(() => data?.pagination.total || 0, [data]);
   const totalPages = useMemo(() => data?.pagination.pages || 1, [data]);
 
@@ -513,14 +464,13 @@ export default function AccessLogs({
                                 <span>{log.organization.name}</span>
                               </div>
                             )}
-                          {isProjectAccessLog(log) ||
-                            (isOrganizationAccessLog(log) &&
-                              log.project?.name && (
-                                <div className="flex items-center gap-1">
-                                  <FolderOpen className="h-3 w-3 text-muted-foreground" />
-                                  <span>{log.project.name}</span>
-                                </div>
-                              ))}
+                          {isOrganizationAccessLog(log) &&
+                            log.project?.name && (
+                              <div className="flex items-center gap-1">
+                                <FolderOpen className="h-3 w-3 text-muted-foreground" />
+                                <span>{log.project.name}</span>
+                              </div>
+                            )}
                           {log.document?.name && (
                             <div className="flex items-center gap-1">
                               <FileText className="h-3 w-3 text-muted-foreground" />

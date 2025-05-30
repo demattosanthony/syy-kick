@@ -1,5 +1,4 @@
 import { useKnowledgeBase } from "@/features/knowledge-bases/api";
-import { ResourceNavBreadcrumbs } from "@/features/projects/components/project-nav-breadcrumbs";
 import { useParams } from "react-router";
 import { Outlet } from "react-router";
 
@@ -15,7 +14,7 @@ export function KnowledgeBaseLayout() {
     <div className="min-h-screen bg-background flex items-center flex-col relative">
       <div className="h-14 flex items-center justify-between w-full px-4">
         <div>
-          <ResourceNavBreadcrumbs resource={kb} contentType="knowledge-base" />
+          {/* <ResourceNavBreadcrumbs resource={kb} contentType="knowledge-base" /> */}
         </div>
       </div>
 

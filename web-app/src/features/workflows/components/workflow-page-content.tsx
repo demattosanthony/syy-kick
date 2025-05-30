@@ -25,12 +25,10 @@ export type WorkflowAttachment = Attachment & {
 
 export default function WorkflowPageContent({
   workflowId,
-  projectId,
   workflow,
   isLoading,
 }: {
   workflowId: string;
-  projectId?: string;
   workflow?: EnhancedWorkflowResponse;
   isLoading: boolean;
 }) {

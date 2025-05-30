@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FileIcon, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { WorkflowProjectFile } from "../workflows.types";
 import sharepointLogo from "@/assets/logos/sharepoint.svg";
 import useMicrosoftPicker from "@/hooks/use-microsoft-picker";
 import { SharePointFile } from "@/hooks/use-microsoft-picker";
@@ -16,8 +15,8 @@ interface FileUploadInputProps {
     required?: boolean;
     maxFileSize?: number;
   };
-  file: File | WorkflowProjectFile | null;
-  onFileChange: (file: File | WorkflowProjectFile | null) => void;
+  file: File | null;
+  onFileChange: (file: File | null) => void;
 }
 
 /** FileUploadInput: Handles file selection for a single workflow input */
@@ -133,8 +132,6 @@ function FileUploadInput({ input, file, onFileChange }: FileUploadInputProps) {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() =>
-          // Don't open file dialog if a project file is selected
-          !(file && "source" in file && file.source === "project") &&
           document.getElementById(`file-input-${input.id}`)?.click()
         }
       >

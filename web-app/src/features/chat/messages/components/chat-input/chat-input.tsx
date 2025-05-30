@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { modelAtom } from "@/atoms/chat";
 import { FileUploadSection } from "./file-upload-section";
-import { ContextSelector } from "./context-selector";
 import { TextInputArea } from "./chat-input-text-area";
 import { ActionButtons } from "./action-buttons";
 
@@ -18,8 +17,6 @@ interface ChatInputFormProps {
   placeholder?: string;
   isGenerating?: boolean;
   stop?: () => void;
-  showContextSelector?: boolean;
-  projectId?: string;
 }
 
 export interface ChatInputFormRef {
@@ -36,8 +33,6 @@ function ChatInputForm(
     placeholder = "How can I help you today?",
     isGenerating,
     stop,
-    showContextSelector = false,
-    projectId,
   }: ChatInputFormProps,
   ref: React.ForwardedRef<ChatInputFormRef>
 ) {
@@ -172,11 +167,6 @@ function ChatInputForm(
               </div>
             )}
 
-            <ContextSelector
-              showContextSelector={showContextSelector}
-              projectId={projectId}
-              selectedModel={selectedModel}
-            />
             <FileUploadSection uploads={uploads} removeUpload={removeUpload} />
             <TextInputArea
               input={input}
