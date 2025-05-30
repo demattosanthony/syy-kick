@@ -33,12 +33,13 @@ router.post(
 router.get(
   "/",
   handle(async (req) => {
-    const { page, search, knowledgeBaseId, workflowId } =
+    const { page, pageSize, search, knowledgeBaseId, workflowId } =
       getThreadsSchema.parse(req.query);
     const orgId = getOrgIdOrUnedfined(req.workspace);
     return threadsOps.listThreads(
       req.dbUser!.id,
       parseInt(page || "1", 10),
+      parseInt(pageSize || "10", 10),
       (search || "").trim(),
       orgId,
       knowledgeBaseId,

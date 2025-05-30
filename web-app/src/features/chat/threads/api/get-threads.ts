@@ -4,14 +4,14 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 
 export function useThreadsQuery({
   search,
-  projectId,
   knowledgeBaseId,
   workflowId,
+  pageSize,
 }: {
   search?: string;
-  projectId?: string;
   knowledgeBaseId?: string;
   workflowId?: string;
+  pageSize?: number;
 } = {}) {
   const { activeWorkspace } = useWorkspace();
 
@@ -20,21 +20,21 @@ export function useThreadsQuery({
       "threads",
       search,
       activeWorkspace?.id,
-      projectId,
       knowledgeBaseId,
       workflowId,
+      pageSize,
     ],
     queryFn: async ({ pageParam = 1 }) => {
       const threads = await api.threads.getThreads(
         pageParam,
+        pageSize,
         search,
-        projectId,
         knowledgeBaseId,
         workflowId
       );
       return {
         threads,
-        nextPage: threads.length === 10 ? pageParam + 1 : undefined,
+        nextPage: threads.length === pageSize ? pageParam + 1 : undefined,
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,

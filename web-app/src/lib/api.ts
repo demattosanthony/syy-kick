@@ -540,12 +540,14 @@ class ThreadApi extends ApiRequest {
 
   async getThreads(
     page: number = 1,
+    pageSize: number = 10,
     search: string = "",
     knowledgeBaseId?: string,
     workflowId?: string
   ): Promise<Thread[]> {
     const queryParams = new URLSearchParams({
       page: page.toString(),
+      pageSize: pageSize.toString(),
       search: search,
       ...(knowledgeBaseId && { knowledgeBaseId }),
       ...(workflowId && { workflowId }),

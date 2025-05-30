@@ -192,12 +192,13 @@ const threadsOps = {
   async listThreads(
     userId: string,
     page: number,
+    pageSize: number,
     search: string,
     organizationId?: string,
     knowledgeBaseId?: string,
     workflowId?: string
   ) {
-    const LIMIT = 10;
+    const LIMIT = pageSize || 10;
     const offset = (page - 1) * LIMIT;
     const conditions = [eq(threads.userId, userId)];
 
