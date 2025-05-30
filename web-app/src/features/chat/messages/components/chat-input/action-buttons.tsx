@@ -15,13 +15,18 @@ import useMicrosoftPicker, {
   SharePointFile,
 } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
 import { SharePointFileBrowser } from "@/features/integrations/microsoft/components/sharepoint-file-browser";
+import { validateFile } from "@/hooks/use-file-upload";
 
 interface ActionButtonsProps {
   isGenerating?: boolean;
   input: string;
   stop?: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  selectedModel: { supportedMimeTypes?: string[] };
+  selectedModel: {
+    supportedMimeTypes?: string[];
+    maxFileSize?: number;
+    maxImageSize?: number;
+  };
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFileUploadComplete?: () => void;
@@ -66,7 +71,6 @@ export function ActionButtons({
     isMicrosoftPickerLoading || isProcessingFiles || isDownloadingFile;
 
   const handleSharePointFileSelect = async (file: any) => {
-    console.log("file", file);
     if (!file["@microsoft.graph.downloadUrl"]) {
       console.error("No download URL available for this file");
       return;
@@ -90,6 +94,16 @@ export function ActionButtons({
         type: contentType,
       });
 
+      // Validate file using shared logic
+      if (
+        !validateFile(downloadedFile, selectedModel.supportedMimeTypes || [], {
+          maxFileSize: selectedModel.maxFileSize,
+          maxImageSize: selectedModel.maxImageSize,
+        })
+      ) {
+        return;
+      }
+
       // Determine file type for uploads
       let fileType: FileUploadMimeType = "pdf";
       if (contentType.startsWith("image/")) {
@@ -104,7 +118,6 @@ export function ActionButtons({
         type: fileType,
       };
 
-      console.log("fileUpload", fileUpload);
       setUploads([...uploads, fileUpload]);
       onFileUploadComplete?.();
     } catch (error) {

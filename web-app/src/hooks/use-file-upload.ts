@@ -4,33 +4,41 @@ import { FileUpload } from "@/types/chat";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
-export function useFileUpload(acceptedTypes: string[]) {
-  const [uploads, setUploads] = useAtom(uploadsAtom);
-  const [model] = useAtom(modelAtom);
-
-  const validateFileSize = (file: File) => {
-    if (file.type.startsWith("image/")) {
-      const isValidSize =
-        !model.maxImageSize || file.size <= model.maxImageSize;
-      if (!isValidSize) {
-        toast.error(
-          `Image file size must be under ${
-            (model.maxImageSize as number) / (1024 * 1024)
-          }MB for the selected model.`
-        );
-      }
-      return isValidSize;
-    }
-    const isValidSize = !model.maxFileSize || file.size <= model.maxFileSize;
+// Reusable validation function
+export function validateFile(
+  file: File,
+  acceptedTypes: string[],
+  model: { maxFileSize?: number; maxImageSize?: number }
+): boolean {
+  if (!acceptedTypes.includes(file.type)) {
+    toast.error(`File type not supported at this time.`);
+    return false;
+  }
+  if (file.type.startsWith("image/")) {
+    const isValidSize = !model.maxImageSize || file.size <= model.maxImageSize;
     if (!isValidSize) {
       toast.error(
-        `File size must be under ${
-          (model.maxFileSize as number) / (1024 * 1024)
+        `Image file size must be under ${
+          (model.maxImageSize as number) / (1024 * 1024)
         }MB for the selected model.`
       );
     }
     return isValidSize;
-  };
+  }
+  const isValidSize = !model.maxFileSize || file.size <= model.maxFileSize;
+  if (!isValidSize) {
+    toast.error(
+      `File size must be under ${
+        (model.maxFileSize as number) / (1024 * 1024)
+      }MB for the selected model.`
+    );
+  }
+  return isValidSize;
+}
+
+export function useFileUpload(acceptedTypes: string[]) {
+  const [uploads, setUploads] = useAtom(uploadsAtom);
+  const [model] = useAtom(modelAtom);
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
@@ -46,13 +54,9 @@ export function useFileUpload(acceptedTypes: string[]) {
   };
 
   const processFiles = (files: File[]) => {
-    const validFiles = files.filter((file) => {
-      if (!acceptedTypes.includes(file.type)) {
-        toast.error(`File type not supported at this time.`);
-        return false;
-      }
-      return validateFileSize(file);
-    });
+    const validFiles = files.filter((file) =>
+      validateFile(file, acceptedTypes, model)
+    );
 
     const newUploads: FileUpload[] = validFiles.map((file) => ({
       file,

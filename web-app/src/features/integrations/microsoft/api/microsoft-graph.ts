@@ -1,77 +1,108 @@
+interface GraphSite {
+  id: string;
+  webUrl: string;
+  name?: string;
+  displayName?: string;
+}
+
+interface GraphDrive {
+  id: string;
+  webUrl: string;
+  name?: string;
+  driveType?: string;
+}
+
+interface GraphDriveItem {
+  id: string;
+  name: string;
+  folder?: { childCount: number };
+  file?: { mimeType: string; hashes?: any };
+  webUrl: string;
+  parentReference?: {
+    driveId: string;
+    path?: string;
+  };
+  "@microsoft.graph.downloadUrl"?: string;
+  size?: number;
+}
+
+interface GraphApiError {
+  error: {
+    code: string;
+    message: string;
+  };
+}
+
 class MicrosoftGraphApi {
-  async getSite(accessToken: string) {
-    const response = await fetch(
-      `https://graph.microsoft.com/v1.0/sites/root`,
-      {
-        credentials: "omit",
-        headers: {
-          Authorization: "Bearer " + accessToken,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+  private readonly baseUrl = "https://graph.microsoft.com/v1.0";
+
+  private async makeRequest<T>(
+    url: string,
+    accessToken: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const response = await fetch(url, {
+      ...options,
+      credentials: "omit",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch site: ${response.status}`);
+      const errorMessage = await this.getErrorMessage(response);
+      throw new Error(errorMessage);
     }
 
-    const data = await response.json();
-    return data;
-  }
-  async getFile(driveId: string, fileId: string, accessToken: string) {
-    const response = await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`,
-      {
-        credentials: "omit",
-        headers: {
-          Authorization: "Bearer " + accessToken,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Graph request failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    return data;
+    return response.json();
   }
 
-  async getOrgDrive(
-    accessToken: string
-  ): Promise<{ id: string; webUrl: string } | null> {
+  private async getErrorMessage(response: Response): Promise<string> {
     try {
-      const response = await fetch(
-        "https://graph.microsoft.com/v1.0/me/drive",
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "omit",
-        }
+      const errorData: GraphApiError = await response.json();
+      return `Graph API error (${response.status}): ${
+        errorData.error?.message || response.statusText
+      }`;
+    } catch {
+      return `Graph API error: ${response.status} ${response.statusText}`;
+    }
+  }
+
+  async getSite(accessToken: string): Promise<GraphSite> {
+    return this.makeRequest<GraphSite>(
+      `${this.baseUrl}/sites/root`,
+      accessToken
+    );
+  }
+
+  async getFile(
+    driveId: string,
+    fileId: string,
+    accessToken: string
+  ): Promise<GraphDriveItem> {
+    return this.makeRequest<GraphDriveItem>(
+      `${this.baseUrl}/drives/${driveId}/items/${fileId}`,
+      accessToken
+    );
+  }
+
+  async getOrgDrive(accessToken: string): Promise<GraphDrive | null> {
+    try {
+      const drive = await this.makeRequest<GraphDrive>(
+        `${this.baseUrl}/me/drive`,
+        accessToken
       );
 
-      if (!response.ok) {
-        console.error(
-          "Failed to fetch org drive URL, status:",
-          response.status
-        );
-        // throw new Error("Failed to fetch org drive URL");
+      if (!drive?.id || !drive?.webUrl) {
+        console.error("Drive data is missing required fields:", drive);
         return null;
       }
 
-      const data = await response.json();
-      if (data && data.id && data.webUrl) {
-        return { id: data.id, webUrl: data.webUrl };
-      } else {
-        console.error("Org drive data is missing id or webUrl:", data);
-        return null;
-      }
+      return drive;
     } catch (error) {
-      console.error("Error fetching org drive URL:", error);
-      // return { webUrl: "" };
+      console.error("Error fetching org drive:", error);
       return null;
     }
   }
@@ -80,94 +111,64 @@ class MicrosoftGraphApi {
     driveId: string,
     folderPath: string,
     accessToken: string
-  ) {
+  ): Promise<GraphDriveItem[]> {
     try {
-      let url;
-      if (!folderPath) {
-        url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root/children`;
-      } else {
-        // Encode the folder path to handle spaces and special characters
-        const encodedPath = encodeURIComponent(folderPath);
-        url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodedPath}:/children`;
-      }
-
-      console.log("getFolderContent: Fetching from URL:", url);
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        credentials: "omit",
-      });
-
-      if (!response.ok) {
-        console.error(
-          `getFolderContent: Failed with status ${response.status} for path: "${folderPath}"`
-        );
-        throw new Error(`Failed to fetch folder content: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.value;
+      const url = this.buildFolderUrl(driveId, folderPath);
+      const response = await this.makeRequest<{ value: GraphDriveItem[] }>(
+        url,
+        accessToken
+      );
+      return response.value || [];
     } catch (error) {
       console.error("Error fetching folder content:", error);
       return [];
     }
   }
 
-  async getDrives(accessToken: string, siteId: string) {
+  async getDrives(accessToken: string, siteId: string): Promise<GraphDrive[]> {
     try {
-      const response = await fetch(
-        `https://graph.microsoft.com/v1.0/sites/${siteId}/drives`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "omit",
-        }
+      const response = await this.makeRequest<{ value: GraphDrive[] }>(
+        `${this.baseUrl}/sites/${siteId}/drives`,
+        accessToken
       );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch drives: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.value;
+      return response.value || [];
     } catch (error) {
       console.error("Error fetching drives:", error);
       return [];
     }
   }
 
-  async searchFiles(driveId: string, searchText: string, accessToken: string) {
-    if (!searchText) {
-      return []; // Or handle as a regular folder browse if search text is empty
+  async searchFiles(
+    driveId: string,
+    searchText: string,
+    accessToken: string
+  ): Promise<GraphDriveItem[]> {
+    if (!searchText.trim()) {
+      return [];
     }
+
     try {
-      const response = await fetch(
-        `https://graph.microsoft.com/v1.0/drives/${driveId}/root/search(q='${searchText}')`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "omit",
-        }
+      const encodedSearch = encodeURIComponent(searchText);
+      const response = await this.makeRequest<{ value: GraphDriveItem[] }>(
+        `${this.baseUrl}/drives/${driveId}/root/search(q='${encodedSearch}')`,
+        accessToken
       );
-
-      if (!response.ok) {
-        throw new Error(`Failed to search files: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.value;
+      return response.value || [];
     } catch (error) {
       console.error("Error searching files:", error);
       return [];
     }
   }
+
+  private buildFolderUrl(driveId: string, folderPath: string): string {
+    if (!folderPath) {
+      return `${this.baseUrl}/drives/${driveId}/root/children`;
+    }
+
+    const encodedPath = encodeURIComponent(folderPath);
+    return `${this.baseUrl}/drives/${driveId}/root:/${encodedPath}:/children`;
+  }
 }
 
 export default new MicrosoftGraphApi();
+export type { GraphSite, GraphDrive, GraphDriveItem };
