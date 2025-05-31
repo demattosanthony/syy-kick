@@ -27,8 +27,12 @@ import microsoftGraphApi from "@/features/integrations/microsoft/api/microsoft-g
 import type { GraphDriveItem } from "@/features/integrations/microsoft/api/microsoft-graph";
 import sharepointLogo from "@/assets/logos/sharepoint.svg";
 
+// Local Storage Keys
+const SHAREPOINT_DRIVE_ID_KEY = "sharepointDriveId";
+const SHAREPOINT_ROOT_ITEMS_KEY = "sharepointRootItems";
+
 // Types
-type SharePointItem = Omit<GraphDriveItem, "folder" | "file"> & {
+export type SharePointItem = Omit<GraphDriveItem, "folder" | "file"> & {
   folder?: boolean;
   file?: boolean;
   driveId?: string;
@@ -38,6 +42,7 @@ interface SharePointFileBrowserProps {
   onFileSelect?: (file: SharePointItem) => void;
   onFolderSelect?: (folder: SharePointItem) => void;
   isDownloading?: boolean;
+  displayMode?: "popover" | "inline";
 }
 
 interface AuthState {
@@ -155,6 +160,14 @@ const useSharePointBrowser = (accessToken: string | null) => {
         }));
 
         updateState({ items: transformedItems, loading: false });
+
+        // Cache root items
+        if (folderPath === "") {
+          localStorage.setItem(
+            SHAREPOINT_ROOT_ITEMS_KEY,
+            JSON.stringify(transformedItems)
+          );
+        }
       } catch (err) {
         updateState({
           error: "Failed to load folder content. Please try again.",
@@ -214,13 +227,49 @@ const useSharePointBrowser = (accessToken: string | null) => {
   const loadInitialDrive = useCallback(async () => {
     if (!accessToken) return;
 
+    // Try to load from local storage first, WITHOUT setting loading: true yet
+    const cachedDriveId = localStorage.getItem(SHAREPOINT_DRIVE_ID_KEY);
+    const cachedRootItemsString = localStorage.getItem(
+      SHAREPOINT_ROOT_ITEMS_KEY
+    );
+
+    if (cachedDriveId && cachedRootItemsString) {
+      try {
+        const cachedRootItems: SharePointItem[] = JSON.parse(
+          cachedRootItemsString
+        );
+        if (cachedRootItems.length > 0) {
+          // We found valid cached items. Update state without a loading flicker.
+          updateState({
+            driveId: cachedDriveId,
+            items: cachedRootItems,
+            loading: false, // Ensure loading is false
+            currentPath: [], // Ensure path is root
+            error: null, // Clear any previous error
+          });
+          // Successfully loaded from cache.
+          return;
+        }
+      } catch (e) {
+        console.warn("Failed to parse cached SharePoint items", e);
+        // Clear potentially corrupted cache
+        localStorage.removeItem(SHAREPOINT_ROOT_ITEMS_KEY);
+        localStorage.removeItem(SHAREPOINT_DRIVE_ID_KEY);
+        // Proceed to API load if cache was corrupt
+      }
+    }
+
+    // If we reached here, cache was missed, empty, or corrupt.
+    // Now, set loading to true and fetch from API.
     updateState({ loading: true, error: null });
 
     try {
       const driveData = await microsoftGraphApi.getOrgDrive(accessToken);
 
       if (driveData?.id) {
-        updateState({ driveId: driveData.id });
+        updateState({ driveId: driveData.id }); // loading is already true
+        localStorage.setItem(SHAREPOINT_DRIVE_ID_KEY, driveData.id);
+        // loadFolderContent will now cache the root items and set loading to false
         await loadFolderContent(driveData.id, "");
       } else {
         updateState({
@@ -344,7 +393,7 @@ const FileBrowserHeader: React.FC<{
   onNavigateBack: () => void;
 }> = ({ currentPath, isSearching, searchQuery, onNavigateBack }) => {
   const getCurrentPathDisplay = () => {
-    if (currentPath.length === 0) return "SharePoint Files";
+    if (currentPath.length === 0) return "SharePoint Fils";
     return currentPath.join(" / ");
   };
 
@@ -424,7 +473,7 @@ const FileList: React.FC<{
           {fileDetailLoading === item.id ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : item.folder ? (
-            <FolderOpen className="h-4 w-4 text-muted-foreground" />
+            <FolderOpen className="h-4 w-4 text-blue-400 fill-blue-400 border-blue-400" />
           ) : (
             <File className="h-4 w-4 text-muted-foreground" />
           )}
@@ -440,8 +489,9 @@ export function SharePointFileBrowser({
   onFileSelect,
   onFolderSelect,
   isDownloading = false,
+  displayMode = "popover",
 }: SharePointFileBrowserProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(displayMode === "inline" ? true : false);
   const [initialLoadAttempted, setInitialLoadAttempted] = useState(false);
   const navigate = useNavigate();
 
@@ -463,33 +513,16 @@ export function SharePointFileBrowser({
     loadInitialDrive,
   } = useSharePointBrowser(accessToken);
 
-  // Reset state when popover closes
+  // Check auth when component mounts
   useEffect(() => {
-    if (!open) {
-      updateState({
-        items: [],
-        currentPath: [],
-        driveId: undefined,
-        error: null,
-        searchQuery: "",
-        isSearching: false,
-        fileDetailLoading: null,
-      });
-      setInitialLoadAttempted(false);
-    }
-  }, [open, updateState]);
-
-  // Check auth when popover opens
-  useEffect(() => {
-    if (open && (isAuthenticated === null || isAuthenticated === false)) {
+    if (isAuthenticated === null || isAuthenticated === false) {
       checkAuth();
     }
-  }, [open, isAuthenticated, checkAuth]);
+  }, [isAuthenticated, checkAuth]);
 
   // Load initial data
   useEffect(() => {
     if (
-      open &&
       isAuthenticated &&
       accessToken &&
       !driveId &&
@@ -500,7 +533,6 @@ export function SharePointFileBrowser({
       loadInitialDrive();
     }
   }, [
-    open,
     isAuthenticated,
     accessToken,
     driveId,
@@ -521,7 +553,7 @@ export function SharePointFileBrowser({
         }
       } else if (isSearching) {
         updateState({ isSearching: false });
-        if (driveId && open) {
+        if (driveId) {
           const folderPath = currentPath.join("/");
           loadFolderContent(driveId, folderPath);
         }
@@ -534,7 +566,6 @@ export function SharePointFileBrowser({
     driveId,
     isSearching,
     currentPath,
-    open,
     updateState,
     searchFiles,
     loadFolderContent,
@@ -639,7 +670,9 @@ export function SharePointFileBrowser({
 
           if (fileToSelect["@microsoft.graph.downloadUrl"]) {
             onFileSelect(fileToSelect);
-            setOpen(false);
+            if (displayMode === "popover") {
+              setOpen(false);
+            }
           }
         } catch (err) {
           updateState({
@@ -649,7 +682,14 @@ export function SharePointFileBrowser({
         }
       }
     },
-    [accessToken, navigateToFolder, onFileSelect, updateState, setOpen]
+    [
+      accessToken,
+      navigateToFolder,
+      onFileSelect,
+      updateState,
+      setOpen,
+      displayMode,
+    ]
   );
 
   const handleGoToIntegrations = () => {
@@ -657,57 +697,48 @@ export function SharePointFileBrowser({
     navigate("/integrations");
   };
 
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          className="h-8 px-2 gap-2"
-          type="button"
-          disabled={isDownloading}
-        >
-          {isDownloading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <img src={sharepointLogo} alt="SharePoint" width={16} height={16} />
-          )}
-          <span className="text-sm hidden sm:inline">Browse</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start">
-        {isAuthenticated === false ? (
-          <AuthPrompt
-            onAuthenticate={authenticate}
-            onNavigateToIntegrations={handleGoToIntegrations}
+  const browserContent = (
+    <>
+      {isAuthenticated === false ? (
+        <AuthPrompt
+          onAuthenticate={authenticate}
+          onNavigateToIntegrations={handleGoToIntegrations}
+        />
+      ) : (
+        <Command className="h-[400px] flex flex-col">
+          <FileBrowserHeader
+            currentPath={currentPath}
+            isSearching={isSearching}
+            searchQuery={searchQuery}
+            onNavigateBack={navigateBack}
           />
-        ) : (
-          <Command>
-            <FileBrowserHeader
-              currentPath={currentPath}
+          <CommandInput
+            placeholder="Search files and folders..."
+            className="h-9"
+            value={searchQuery}
+            onValueChange={(value) => updateState({ searchQuery: value })}
+          />
+          <CommandList className="flex-1 overflow-y-auto">
+            <FileList
+              items={items}
+              loading={loading}
+              error={error}
               isSearching={isSearching}
               searchQuery={searchQuery}
-              onNavigateBack={navigateBack}
+              fileDetailLoading={fileDetailLoading}
+              onItemSelect={handleItemSelect}
             />
-            <CommandInput
-              placeholder="Search files and folders..."
-              className="h-9"
-              value={searchQuery}
-              onValueChange={(value) => updateState({ searchQuery: value })}
-            />
-            <CommandList>
-              <FileList
-                items={items}
-                loading={loading}
-                error={error}
-                isSearching={isSearching}
-                searchQuery={searchQuery}
-                fileDetailLoading={fileDetailLoading}
-                onItemSelect={handleItemSelect}
-              />
-            </CommandList>
-          </Command>
-        )}
-      </PopoverContent>
-    </Popover>
+          </CommandList>
+        </Command>
+      )}
+    </>
   );
+
+  if (displayMode === "inline") {
+    return (
+      <div className="w-full h-full border rounded-md">{browserContent}</div>
+    );
+  }
+
+  return browserContent;
 }

@@ -240,8 +240,7 @@ export default function ThreadPage({
               onSubmit={onSubmit}
               stop={stop}
               isGenerating={status === "streaming"}
-              showContextSelector={thread?.project !== null}
-              projectId={thread?.project?.id}
+              hasThread={true}
             />
           </div>
         )}

@@ -57,7 +57,7 @@ export type ChatMessage = {
   reasoning?: string;
 };
 
-export type FileUploadMimeType = "image" | "pdf";
+export type FileUploadMimeType = "image" | "pdf" | "other";
 
 export type FileUpload = {
   file: File;

@@ -38,7 +38,7 @@ import { openai } from "@ai-sdk/openai";
 async function getModelConfig(model: string) {
   if (model !== "Auto") return MODELS[model];
 
-  return MODELS["gpt-4.1"];
+  return MODELS["claude-4-sonnet"];
 }
 
 /** If environment is production and user allows, return a presigned URL, else base64. */

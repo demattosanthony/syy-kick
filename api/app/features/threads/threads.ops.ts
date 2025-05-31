@@ -382,10 +382,6 @@ const threadsOps = {
       if (modelConfig.supportsToolUse) {
         tools = {
           web_search: createWebSearchTool(),
-          search_knowledge_base: createKnowledgeBaseSearchTool(
-            modelConfig,
-            thread.knowledgeBase || undefined
-          ),
         };
       }
 

@@ -4,10 +4,13 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { modelAtom } from "@/atoms/chat";
+import { modelAtom, uploadsAtom } from "@/atoms/chat";
 import { FileUploadSection } from "./file-upload-section";
 import { TextInputArea } from "./chat-input-text-area";
 import { ActionButtons } from "./action-buttons";
+import { validateFile } from "@/lib/utils/file-validation";
+import { FileUploadMimeType } from "@/types/chat";
+import { ContextSelector } from "./context-selector";
 
 interface ChatInputFormProps {
   onSubmit: (e: React.FormEvent) => void;
@@ -17,6 +20,7 @@ interface ChatInputFormProps {
   placeholder?: string;
   isGenerating?: boolean;
   stop?: () => void;
+  hasThread?: boolean;
 }
 
 export interface ChatInputFormRef {
@@ -33,6 +37,7 @@ function ChatInputForm(
     placeholder = "How can I help you today?",
     isGenerating,
     stop,
+    hasThread,
   }: ChatInputFormProps,
   ref: React.ForwardedRef<ChatInputFormRef>
 ) {
@@ -40,10 +45,12 @@ function ChatInputForm(
   const [focused, setFocused] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedModel] = useAtom(modelAtom);
+  const [uploads, setUploads] = useAtom(uploadsAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const { uploads, handleFiles, removeUpload, handleDrop, processFiles } =
-    useFileUpload(selectedModel.supportedMimeTypes || []);
+  const { handleFiles, removeUpload, handleDrop, processFiles } = useFileUpload(
+    selectedModel.supportedMimeTypes || []
+  );
 
   React.useImperativeHandle(ref, () => ({
     triggerFileInput: () => fileInputRef.current?.click(),
@@ -129,9 +136,10 @@ function ChatInputForm(
       <Card
         ref={cardRef}
         className={cn(
-          "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-3xl border shadow-md ",
+          "relative flex flex-col h-auto min-h-[115px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-3xl border  ",
           focused && !isMobile && "border-border border-[1.5px]",
-          isDragging && "border-border border-[1.5px]"
+          isDragging && "border-border border-[1.5px]",
+          hasThread && "min-h-[130px]"
         )}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -143,6 +151,10 @@ function ChatInputForm(
           className="relative flex flex-col flex-1 w-full justify-center p-2"
           onSubmit={onSubmit}
         >
+          <ContextSelector
+            showContextSelector={!!hasThread}
+            selectedModel={selectedModel}
+          />
           <div className="flex flex-col flex-1 relative">
             {/* Drag message section above the input */}
             {isDragging && (
@@ -188,6 +200,7 @@ function ChatInputForm(
             fileInputRef={fileInputRef}
             handleFiles={handleFiles}
             onFileUploadComplete={handleFileUploadComplete}
+            showSharePointPopoverButton={false}
           />
         </form>
       </Card>

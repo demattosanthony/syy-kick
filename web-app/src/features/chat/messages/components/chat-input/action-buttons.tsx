@@ -7,15 +7,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useState } from "react";
-import { useAtom } from "jotai";
-import { uploadsAtom } from "@/atoms/chat";
-import { FileUploadMimeType } from "@/types/chat";
-import sharepointLogo from "@/assets/logos/sharepoint.svg";
-import useMicrosoftPicker, {
-  SharePointFile,
-} from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
-import { SharePointFileBrowser } from "@/features/integrations/microsoft/components/sharepoint-file-browser";
-import { validateFile } from "@/hooks/use-file-upload";
 
 interface ActionButtonsProps {
   isGenerating?: boolean;
@@ -30,6 +21,7 @@ interface ActionButtonsProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFileUploadComplete?: () => void;
+  showSharePointPopoverButton?: boolean;
 }
 
 export function ActionButtons({
@@ -41,100 +33,14 @@ export function ActionButtons({
   fileInputRef,
   handleFiles,
   onFileUploadComplete,
+  showSharePointPopoverButton = true,
 }: ActionButtonsProps) {
-  const [uploads, setUploads] = useAtom(uploadsAtom);
-  const [isDownloadingFile, setIsDownloadingFile] = useState(false);
-
   const [open, setOpen] = useState(false);
-  const {
-    openPicker,
-    pickerSelectionsToFiles,
-    loading: isMicrosoftPickerLoading,
-    isProcessingFiles,
-  } = useMicrosoftPicker({
-    onFilesSelected: async (files: SharePointFile[]) => {
-      const filesToUpload = await pickerSelectionsToFiles(files);
-      const fileUploads = filesToUpload.map((file) => ({
-        file: file,
-        preview: URL.createObjectURL(file),
-        type: file.type.startsWith("image/")
-          ? "image"
-          : ("pdf" as FileUploadMimeType),
-      }));
-      setUploads([...uploads, ...fileUploads]);
-      setOpen(false);
-      onFileUploadComplete?.();
-    },
-  });
-
-  const isAnyLoading =
-    isMicrosoftPickerLoading || isProcessingFiles || isDownloadingFile;
-
-  const handleSharePointFileSelect = async (file: any) => {
-    if (!file["@microsoft.graph.downloadUrl"]) {
-      console.error("No download URL available for this file");
-      return;
-    }
-
-    setIsDownloadingFile(true);
-    try {
-      // Download the file directly using the download URL
-      const response = await fetch(file["@microsoft.graph.downloadUrl"]);
-
-      if (!response.ok) {
-        throw new Error(`Failed to download file: ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      const contentType =
-        response.headers.get("Content-Type") || "application/octet-stream";
-
-      // Create a File object
-      const downloadedFile = new window.File([blob], file.name, {
-        type: contentType,
-      });
-
-      // Validate file using shared logic
-      if (
-        !validateFile(downloadedFile, selectedModel.supportedMimeTypes || [], {
-          maxFileSize: selectedModel.maxFileSize,
-          maxImageSize: selectedModel.maxImageSize,
-        })
-      ) {
-        return;
-      }
-
-      // Determine file type for uploads
-      let fileType: FileUploadMimeType = "pdf";
-      if (contentType.startsWith("image/")) {
-        fileType = "image";
-      }
-
-      // Add to uploads
-      const fileUpload = {
-        file: downloadedFile,
-        preview:
-          fileType === "image" ? URL.createObjectURL(downloadedFile) : "",
-        type: fileType,
-      };
-
-      setUploads([...uploads, fileUpload]);
-      onFileUploadComplete?.();
-    } catch (error) {
-      console.error("Error downloading SharePoint file:", error);
-    } finally {
-      setIsDownloadingFile(false);
-    }
-  };
 
   return (
     <div className="w-full flex justify-between items-center px-1 pb-1">
       <div className="flex items-center gap-1">
         <ModelSelector />
-        <SharePointFileBrowser
-          onFileSelect={handleSharePointFileSelect}
-          isDownloading={isDownloadingFile}
-        />
       </div>
       <div className="flex items-center gap-1 h-full">
         {selectedModel.supportedMimeTypes &&
@@ -180,24 +86,6 @@ export function ActionButtons({
                       </span>
                     </Button>
                   </label>
-                  <Button
-                    variant="ghost"
-                    onClick={() => openPicker({ mode: "files" })}
-                    className="w-full justify-start gap-2 text-sm cursor-pointer"
-                    disabled={isAnyLoading}
-                  >
-                    {isAnyLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <img
-                        src={sharepointLogo}
-                        alt="Sharepoint"
-                        width={16}
-                        height={16}
-                      />
-                    )}
-                    Add from SharePoint
-                  </Button>
                 </PopoverContent>
               </Popover>
             </>

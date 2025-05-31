@@ -27,7 +27,7 @@ export function IntegrationButton({
       className={cn(
         "relative overflow-hidden transition-all duration-200",
         "hover:shadow-lg hover:scale-[1.01]",
-        "border-gray-200"
+        "border dark:border-border"
       )}
     >
       <div className="p-6">
@@ -38,8 +38,10 @@ export function IntegrationButton({
             <div
               className={cn(
                 "flex h-14 w-14 items-center justify-center rounded-xl",
-                "bg-white shadow-sm border",
-                isConnected ? "border-green-200" : "border-gray-200"
+                "bg-card shadow-sm border",
+                isConnected
+                  ? "border-green-200 dark:border-green-700"
+                  : "border-border"
               )}
             >
               <img src={logo} alt={name} className="w-8 h-8 object-contain" />
@@ -48,12 +50,14 @@ export function IntegrationButton({
             {/* Info Section */}
             <div className="flex-1 space-y-1">
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-semibold text-gray-900">{name}</h3>
+                <h3 className="text-lg font-semibold text-foreground">
+                  {name}
+                </h3>
                 {isConnected && (
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />
                 )}
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 {description}
               </p>
 
@@ -63,14 +67,16 @@ export function IntegrationButton({
                   className={cn(
                     "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
                     isConnected
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-600"
+                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                      : "bg-muted text-muted-foreground"
                   )}
                 >
                   <div
                     className={cn(
                       "h-1.5 w-1.5 rounded-full",
-                      isConnected ? "bg-green-600" : "bg-gray-400"
+                      isConnected
+                        ? "bg-green-600 dark:bg-green-500"
+                        : "bg-gray-400 dark:bg-gray-500"
                     )}
                   />
                   {isConnected ? "Connected" : "Not connected"}
