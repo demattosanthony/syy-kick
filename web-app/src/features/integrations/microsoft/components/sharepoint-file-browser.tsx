@@ -362,7 +362,7 @@ const AuthPrompt: React.FC<{
   onAuthenticate: () => void;
   onNavigateToIntegrations: () => void;
 }> = ({ onAuthenticate, onNavigateToIntegrations }) => (
-  <div className="p-4 space-y-3">
+  <div className="p-4 space-y-3 bg-card rounded-md">
     <div className="flex items-center gap-2 mb-2">
       <img src={sharepointLogo} alt="SharePoint" width={20} height={20} />
       <h3 className="font-medium">Connect SharePoint</h3>
@@ -393,7 +393,7 @@ const FileBrowserHeader: React.FC<{
   onNavigateBack: () => void;
 }> = ({ currentPath, isSearching, searchQuery, onNavigateBack }) => {
   const getCurrentPathDisplay = () => {
-    if (currentPath.length === 0) return "SharePoint Fils";
+    if (currentPath.length === 0) return "SharePoint Files";
     return currentPath.join(" / ");
   };
 
@@ -571,6 +571,13 @@ export function SharePointFileBrowser({
     loadFolderContent,
   ]);
 
+  // Effect to clear item-specific loading when parent signals download is complete
+  useEffect(() => {
+    if (!isDownloading && fileDetailLoading) {
+      updateState({ fileDetailLoading: null });
+    }
+  }, [isDownloading, fileDetailLoading, updateState]);
+
   const navigateToFolder = useCallback(
     async (folder: SharePointItem) => {
       if (!accessToken) return;
@@ -705,7 +712,7 @@ export function SharePointFileBrowser({
           onNavigateToIntegrations={handleGoToIntegrations}
         />
       ) : (
-        <Command className="h-[400px] flex flex-col">
+        <Command className="h-[400px] flex flex-col bg-card">
           <FileBrowserHeader
             currentPath={currentPath}
             isSearching={isSearching}
@@ -718,7 +725,7 @@ export function SharePointFileBrowser({
             value={searchQuery}
             onValueChange={(value) => updateState({ searchQuery: value })}
           />
-          <CommandList className="flex-1 overflow-y-auto">
+          <CommandList className="flex-1 overflow-y-auto max-h-[320px]">
             <FileList
               items={items}
               loading={loading}

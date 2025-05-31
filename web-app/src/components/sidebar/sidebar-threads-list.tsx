@@ -50,7 +50,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
     <SidebarGroup key={"Recents"}>
       <SidebarGroupLabel className="gap-1">
         <History className="max-h-[12px] max-w-[12px]" />
-        {"Recent Threads"}
+        {"Recent Chats"}
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>

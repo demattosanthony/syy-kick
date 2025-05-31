@@ -76,11 +76,11 @@ const ModelSelector: React.FC = () => {
             ) : (
               getModelImage(selectedModel.provider)
             )} */}
-            <div className="hidden md:flex truncate text-xs ml-2">
+            <div className="hidden md:flex truncate text-xs">
               {selectedModel.name || "Select model..."}
             </div>
           </div>
-          <ChevronsUpDown className="md:ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="md:ml-2 h-3 w-3 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="p-0 ">

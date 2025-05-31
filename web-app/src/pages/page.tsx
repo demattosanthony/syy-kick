@@ -2,14 +2,13 @@ import api from "@/lib/api";
 
 // Hooks
 import { useAtom } from "jotai";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 // State
 import { initalInputAtom, uploadsAtom, modelAtom } from "@/atoms/chat";
 import { pricingPlanDialogOpenAtom } from "@/components/PricingDialog";
 
 // Components
-import ConversationStarters from "@/features/chat/messages/components/conversation-starters";
 import { toast } from "sonner";
 import {
   AnimatedGreeting,
@@ -22,6 +21,7 @@ import { SharePointFileBrowser } from "@/features/integrations/microsoft/compone
 import type { GraphDriveItem } from "@/features/integrations/microsoft/api/microsoft-graph";
 import { validateFile } from "@/lib/utils/file-validation";
 import { FileUploadMimeType } from "@/types/chat";
+import ThreadsList from "@/features/chat/threads/components/threads-list";
 
 // Images
 import logo from "@/assets/logo192.png";
@@ -128,22 +128,24 @@ export function HomePage() {
     } catch (error) {
       console.error("Error downloading SharePoint file from widget:", error);
       toast.error("Failed to add SharePoint file. Please try again.");
-    } finally {
-      setIsDownloadingSPFile(false);
     }
+
+    setIsDownloadingSPFile(false);
   };
 
   return (
     <div className="flex flex-col h-full overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 items-center">
-      <div className="flex flex-col items-center w-full gap-4 md:gap-8 max-w-3xl">
-        <div className="w-[60px] md:w-[75px] flex items-center justify-center min-h-[60px] md:min-h-[75px] mt-[10vh] md:mt-[12vh]">
-          <img src={logo} width={75} height={75} alt="Logo" />
-        </div>
+      <div className="flex flex-col items-center w-full gap-4 md:gap-12 max-w-3xl">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-[75px] md:w-[75px] flex items-center justify-center min-h-[75px] md:min-h-[75px] mt-[10vh] md:mt-[12vh]">
+            <img src={logo} width={75} height={75} alt="Logo" />
+          </div>
 
-        <div className="flex flex-col gap-4 md:gap-6 min-h-[60px] md:min-h-[72px]">
-          {userFetched && (
-            <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
-          )}
+          <div className="flex flex-col gap-4 md:gap-6">
+            {userFetched && (
+              <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col w-full">
@@ -159,36 +161,25 @@ export function HomePage() {
 
         {userFetched && (
           <div className="w-full">
-            {!user ? (
-              <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-                <div className="w-full md:w-1/2 h-[400px]">
+            {user && (
+              <div className="flex flex-col md:flex-row gap-4 md:gap-6 w-full max-w-3xl mx-auto">
+                <div className="w-full md:w-1/2 h-min">
                   <SharePointFileBrowser
                     displayMode="inline"
                     onFileSelect={handleSharePointFileSelectForWidget}
                     isDownloading={isDownloadingSPFile}
                   />
                 </div>
-                <div className="w-full md:w-1/2 h-[400px] border rounded-md p-3 bg-card overflow-y-auto">
-                  <h3 className="text-lg font-semibold mb-2">
-                    Conversation Starters
-                  </h3>
-                  <ConversationStarters
-                    triggerFileInput={() =>
-                      chatInputRef.current?.triggerFileInput()
-                    }
-                    triggerTextAreaFocus={() =>
-                      chatInputRef.current?.focusTextArea()
-                    }
-                  />
+                <div className="w-full md:w-1/2 h-[400px] border rounded-md bg-card">
+                  <div className="flex items-center border-b px-3 h-10">
+                    <span className="text-sm font-medium truncate flex-1">
+                      Recent Chats
+                    </span>
+                  </div>
+                  <div className="px-1 py-1 overflow-y-auto h-[355px]">
+                    <ThreadsList compact={true} showLatestMessage={false} />
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="w-full max-w-[625px] mx-auto">
-                <SharePointFileBrowser
-                  displayMode="inline"
-                  onFileSelect={handleSharePointFileSelectForWidget}
-                  isDownloading={isDownloadingSPFile}
-                />
               </div>
             )}
           </div>

@@ -1,13 +1,18 @@
-import { useMemo, useState } from "react";
-import { ChevronDown, Plus, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { Plus, ChevronsUpDown } from "lucide-react";
 import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { useWorkspace } from "@/workspace-context";
 import {
   Dialog,
@@ -29,63 +34,14 @@ export function WorkSpaceSwitcher({
 }) {
   const navigate = useNavigate();
   const { workspaces, activeWorkspace, setActiveWorkspace } = useWorkspace();
+  const { isMobile } = useSidebar();
 
   const [open, setOpen] = useState(false);
-  const [hoveredWorkspaceId, setHoveredWorkspaceId] = useState<string | null>(
-    null
-  );
-  const [hoveredSiteId, setHoveredSiteId] = useState<string | null>(null);
-  const [workspaceSearch, setWorkspaceSearch] = useState("");
-  const [siteSearch, setSiteSearch] = useState("");
-  const [projectSearch, setProjectSearch] = useState("");
-
-  const filteredWorkspaces = workspaces.filter((w) =>
-    w.name.toLowerCase().includes(workspaceSearch.toLowerCase())
-  );
-
-  const hoveredWorkspace = workspaces.find((w) => w.id === hoveredWorkspaceId);
-  const hoveredSite = hoveredWorkspace?.sites.find(
-    (s) => s.id === hoveredSiteId
-  );
-
-  const filteredSites = useMemo(() => {
-    if (!hoveredWorkspace) return [];
-
-    return hoveredWorkspace?.sites.filter((s) =>
-      s.address?.toLowerCase().includes(siteSearch.toLowerCase())
-    );
-  }, [hoveredWorkspace, siteSearch]);
-
-  const filteredProjects =
-    hoveredSite?.projects.filter((p) =>
-      p.name.toLowerCase().includes(projectSearch.toLowerCase())
-    ) || [];
-
-  const onProjectSelect = (projectId: string) => {
-    const project = hoveredSite?.projects.find((p) => p.id === projectId);
-    if (!hoveredSite || !hoveredWorkspace || !project) return;
-
-    setActiveWorkspace(hoveredWorkspace);
-    setOpen(false);
-
-    navigate(`/projects/${projectId}`);
-  };
-
-  const onSiteSelect = (siteId: string) => {
-    const site = hoveredWorkspace?.sites.find((s) => s.id === siteId);
-    if (!hoveredWorkspace || !site) return;
-
-    setActiveWorkspace(hoveredWorkspace);
-    setOpen(false);
-
-    navigate(`/projects?siteId=${siteId}`);
-  };
 
   const handleCreateOrgComplete = async (org: {
     id: string;
     seats: number;
   }) => {
-    // go to checkout for the org
     const url = await api.payments.createCheckoutSession(
       PRICING_PLANS.TEAMS.lookup_key,
       org.seats,
@@ -100,160 +56,87 @@ export function WorkSpaceSwitcher({
     navigate("/");
   };
 
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-10 gap-2 px-2 font-normal max-w-[175px]"
-        >
-          <WorkspaceLogo workspace={activeWorkspace} />
-          {state === "expanded" && (
-            <>
-              <p className="text-base font-medium truncate">
-                {activeWorkspace?.name || "Select Workspace"}
-              </p>
-              <ChevronDown className="h-4 w-4" />
-            </>
-          )}
-        </Button>
-      </PopoverTrigger>
+  if (!activeWorkspace) {
+    return null;
+  }
 
-      <PopoverContent className="flex w-fit p-0" align="start" sideOffset={8}>
-        {/* Workspace Column */}
-        <div className="flex h-[400px] w-[240px] flex-col border-r">
-          <div className="p-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search workspaces..."
-                className="pl-8"
-                value={workspaceSearch}
-                onChange={(e) => setWorkspaceSearch(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto py-1">
-            {filteredWorkspaces.map((w) => (
-              <div
+  return (
+    <SidebarMenuItem className="w-full">
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <SidebarMenuButton
+            size="lg"
+            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer w-full flex items-center justify-center"
+          >
+            <WorkspaceLogo workspace={activeWorkspace} />
+            {state === "expanded" && (
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">
+                  {activeWorkspace?.name || "Select Workspace"}
+                </span>
+              </div>
+            )}
+            {state === "expanded" && (
+              <ChevronsUpDown className="ml-auto h-4 w-4" />
+            )}
+          </SidebarMenuButton>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent
+          className="min-w-56 rounded-lg w-[var(--radix-dropdown-menu-trigger-width)]"
+          align="start"
+          side={isMobile ? "bottom" : "right"}
+          sideOffset={4}
+        >
+          <DropdownMenuLabel className="text-muted-foreground text-xs px-2">
+            Workspaces
+          </DropdownMenuLabel>
+          <div className="max-h-[200px] overflow-y-auto">
+            {workspaces.map((w) => (
+              <DropdownMenuItem
                 key={w.id}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent  max-h-10",
-                  hoveredWorkspaceId === w.id && "bg-accent"
-                )}
-                onMouseEnter={() => {
-                  setHoveredWorkspaceId(w.id);
-                  setHoveredSiteId(null); // Important pour reset les projets
-                }}
                 onClick={() => handleWorkspaceChange(w)}
+                className="gap-2 p-2 cursor-pointer"
               >
                 <WorkspaceLogo workspace={w} />
                 {w.name}
-              </div>
+              </DropdownMenuItem>
             ))}
           </div>
-          <div className="border-t p-2">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start gap-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
+          <DropdownMenuSeparator />
+          <Dialog>
+            <DialogTrigger asChild>
+              <DropdownMenuItem
+                className="gap-2 p-2 cursor-pointer"
+                onSelect={(e) => e.preventDefault()}
+              >
+                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                   <Plus className="h-4 w-4" />
-                  Create Organization
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-none w-fit pt-2 pb-8">
-                <DialogTitle className="h-0 p-0" />
-                <CreateOrgForm
-                  onComplete={handleCreateOrgComplete}
-                  showBackButton={false}
-                  includeSamlSetup={false}
-                />
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-
-        {hoveredWorkspace && (
-          <div className="flex h-[400px] w-[240px] flex-col border-r">
-            <div className="p-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search sites..."
-                  className="pl-8"
-                  value={siteSearch}
-                  onChange={(e) => setSiteSearch(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto py-1">
-              {filteredSites.map((site) => (
-                <div
-                  key={site.id}
-                  className={cn(
-                    "px-3 text-sm cursor-pointer hover:bg-accent h-10 flex items-center",
-                    hoveredSiteId === site.id && "bg-accent"
-                  )}
-                  onMouseEnter={() => setHoveredSiteId(site.id)}
-                  onClick={() => onSiteSelect(site.id)}
-                >
-                  <span className="line-clamp-1">{site.address}</span>
                 </div>
-              ))}
-              {filteredSites.length === 0 && (
-                <div className="px-3 text-sm text-center text-muted-foreground">
-                  No sites found
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {hoveredSite && (
-          <div className="flex h-[400px] w-[240px] flex-col">
-            <div className="p-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search projects..."
-                  className="pl-8"
-                  value={projectSearch}
-                  onChange={(e) => setProjectSearch(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto py-1">
-              {filteredProjects.map((project) => (
-                <div
-                  key={project.id}
-                  className="px-3 py-2 text-sm cursor-pointer hover:bg-accent h-10 flex items-center"
-                  onClick={() => onProjectSelect(project.id)}
-                >
-                  {project.name}
-                </div>
-              ))}
-              {filteredProjects.length === 0 && (
-                <div className="px-3 text-sm text-center text-muted-foreground">
-                  No projects found
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+                <div className="font-medium">Create Organization</div>
+              </DropdownMenuItem>
+            </DialogTrigger>
+            <DialogContent className="max-w-none w-fit pt-2 pb-8">
+              <DialogTitle className="h-0 p-0" />
+              <CreateOrgForm
+                onComplete={handleCreateOrgComplete}
+                showBackButton={false}
+                includeSamlSetup={false}
+              />
+            </DialogContent>
+          </Dialog>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </SidebarMenuItem>
   );
 }
 
 const WorkspaceLogo = ({ workspace }: { workspace?: Workspace | null }) => {
-  if (!workspace) return null;
+  if (!workspace) {
+    return (
+      <div className="flex h-7 w-7 items-center justify-center shrink-0 rounded-lg bg-muted text-muted-foreground"></div>
+    );
+  }
   return (
     <div className="flex h-7 w-7 items-center justify-center shrink-0">
       <Avatar className="h-7 w-7 rounded-full bg-transparent">

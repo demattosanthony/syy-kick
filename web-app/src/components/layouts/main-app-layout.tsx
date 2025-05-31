@@ -2,7 +2,11 @@ import { Outlet, useLoaderData } from "react-router";
 import { LoginButtons } from "@/features/auth/components";
 import { FinishOrgSetupBanner } from "@/features/organizations/components";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { User } from "@/types/user";
 import { useCookies } from "react-cookie";
 
@@ -16,6 +20,10 @@ export default function MainAppLayout() {
       {user && <AppSidebar user={user} />}
 
       <SidebarInset className="overflow-hidden  flex flex-1 flex-col overflow-y-auto h-screen max-h-[calc(100vh-15px)]">
+        <div className="flex items-center  absolute top-4 left-4">
+          <SidebarTrigger className="-ml-1" />
+        </div>
+
         <FinishOrgSetupBanner />
         {!user && (
           <div className="absolute top-4 right-4 z-10">

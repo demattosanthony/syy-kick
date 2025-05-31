@@ -558,20 +558,7 @@ Do not mention knowledge base IDs to users; refer to them by name only.
 </knowledge_bases>
 
 <tools>
-1. **Web Search:**
-   - **Purpose:** To access external, publicly available information from the internet.
-   - **When to Use:** 
-     - For information not specific to the current project.
-     - For external products or data sheets not contained within project files.
-   - **Output:** Provides information found from web sources.
-
-2. **Knowledge Base Search:**
-   - **Purpose:** To search across the knowledge base for documents containing relevant information based on keywords or concepts.
-   - **When to Use:** 
-     - When the answer is likely within the knowledge base.
-     - To find all mentions of a specific term or specification across the knowledge base.
-   - **Output:** Provides a list of relevant document chunks, text snippets, and images.
-   
+You have access to tools that you allow you take action to perform tasks and complete the user's request.
 Tools can also be used in parallel. For example, maybe you want to read multiple files at once. You just need to return multiple tool calls in the same message. Then the tools will get executed and the results will be returned back to you.
 </tools>
 

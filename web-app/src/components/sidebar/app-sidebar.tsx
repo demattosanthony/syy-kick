@@ -5,9 +5,14 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -22,11 +27,68 @@ import { DropdownMenuGroup } from "../ui/dropdown-menu";
 import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "@/workspace-context";
 import { Button } from "../ui/button";
-import { BookOpen, MapPinIcon, Plus, Workflow, Link } from "lucide-react";
+import {
+  BookOpen,
+  MapPinIcon,
+  Plus,
+  Workflow,
+  LinkIcon,
+  Brain,
+  House,
+  LucideIcon,
+  ChevronRight,
+} from "lucide-react";
+import { Link, useLocation } from "react-router";
 import { NewThreadButton } from "./new-thread-button";
 import { usePermissions } from "@/features/permissions/context";
 import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
 import CreateKnowledgeBaseDialog from "@/features/knowledge-bases/components/create-knowledge-base-dialog";
+import { CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import { Collapsible } from "../ui/collapsible";
+
+const products: {
+  title: string;
+  url: string;
+  icon?: LucideIcon;
+  isActive?: boolean;
+  items?: {
+    title: string;
+    url: string;
+  }[];
+}[] = [
+  {
+    title: "AI Engineer",
+    url: "/ai-engineer",
+    icon: Brain,
+    isActive: true,
+    items: [
+      {
+        title: "New Chat",
+        url: "/",
+      },
+      {
+        title: "Chat History",
+        url: "/threads",
+      },
+    ],
+  },
+  {
+    title: "Workflows",
+    url: "/workflows",
+    icon: Workflow,
+    isActive: true,
+    items: [
+      {
+        title: "View All",
+        url: "/workflows",
+      },
+      {
+        title: "Workflow History",
+        url: "/workflows",
+      },
+    ],
+  },
+];
 
 export function AppSidebar({
   user,
@@ -37,17 +99,14 @@ export function AppSidebar({
   const { activeWorkspace } = useWorkspace();
   const sidebarRef = React.useRef<HTMLDivElement>(null);
   const { canCreateOrgKnowledgeBases } = usePermissions();
+  const location = useLocation();
 
   return (
     <Sidebar collapsible={"icon"} variant="inset" ref={sidebarRef} {...props}>
       <SidebarHeader>
         <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between ">
-          {isMobile ? (
-            <MobileWorkspaceSwitcher />
-          ) : (
-            <WorkSpaceSwitcher state={state} />
-          )}
-          {state === "expanded" && <SidebarTrigger />}
+          <WorkSpaceSwitcher state={state} />
+          {/* {state === "expanded" && <SidebarTrigger />} */}
         </SidebarMenu>
       </SidebarHeader>
 
@@ -60,6 +119,10 @@ export function AppSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
+                <ThreadsLink />
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
                 <SidebarButton
                   href="/workflows"
                   icon={Workflow}
@@ -67,7 +130,7 @@ export function AppSidebar({
                   label="Workflows"
                 />
               </SidebarMenuItem>
-
+              {/* 
               <SidebarMenuItem>
                 {!(
                   activeWorkspace?.type === "personal" &&
@@ -80,7 +143,7 @@ export function AppSidebar({
                     label="Sites"
                   />
                 )}
-              </SidebarMenuItem>
+              </SidebarMenuItem> */}
 
               <SidebarMenuItem>
                 <SidebarButton
@@ -105,20 +168,61 @@ export function AppSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <ThreadsLink />
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
                 <SidebarButton
                   href="/integrations"
                   label="Integrations"
-                  icon={Link}
-                  hoverIcon={Link}
+                  icon={LinkIcon}
+                  hoverIcon={LinkIcon}
                 />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* <SidebarGroup>
+          <SidebarGroupLabel>Products</SidebarGroupLabel>
+          <SidebarMenu>
+            {products.map((item) => (
+              <Collapsible
+                key={item.title}
+                asChild
+                defaultOpen={item.isActive}
+                className="group/collapsible"
+              >
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip={item.title}>
+                      {item.icon && <item.icon />}
+                      <span>{item.title}</span>
+                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub className="w-full">
+                      {item.items?.map((subItem) => (
+                        <SidebarMenuSubItem key={subItem.title}>
+                          <SidebarMenuSubButton asChild className="h-8">
+                            <Link to={subItem.url}>
+                              <span
+                                className={
+                                  location.pathname === subItem.url
+                                    ? "text-primary"
+                                    : ""
+                                }
+                              >
+                                {subItem.title}
+                              </span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup> */}
 
         {(state === "expanded" || isMobile) && <ThreadsList user={user} />}
       </SidebarContent>

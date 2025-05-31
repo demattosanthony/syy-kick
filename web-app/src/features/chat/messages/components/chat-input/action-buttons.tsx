@@ -7,6 +7,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useState } from "react";
+import { useMicrosoftPicker } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
+import { SharePointFile } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
+import { uploadsAtom } from "@/atoms/chat";
+import { FileUploadMimeType } from "@/types/chat";
+import { useAtom } from "jotai";
+import sharepointLogo from "@/assets/logos/sharepoint.svg";
 
 interface ActionButtonsProps {
   isGenerating?: boolean;
@@ -35,7 +41,30 @@ export function ActionButtons({
   onFileUploadComplete,
   showSharePointPopoverButton = true,
 }: ActionButtonsProps) {
+  const [uploads, setUploads] = useAtom(uploadsAtom);
   const [open, setOpen] = useState(false);
+  const {
+    openPicker,
+    pickerSelectionsToFiles,
+    loading: isMicrosoftPickerLoading,
+    isProcessingFiles,
+  } = useMicrosoftPicker({
+    onFilesSelected: async (files: SharePointFile[]) => {
+      const filesToUpload = await pickerSelectionsToFiles(files);
+      const fileUploads = filesToUpload.map((file) => ({
+        file: file,
+        preview: URL.createObjectURL(file),
+        type: file.type.startsWith("image/")
+          ? "image"
+          : ("pdf" as FileUploadMimeType),
+      }));
+      setUploads([...uploads, ...fileUploads]);
+      setOpen(false);
+      onFileUploadComplete?.();
+    },
+  });
+
+  const isAnyLoading = isMicrosoftPickerLoading || isProcessingFiles;
 
   return (
     <div className="w-full flex justify-between items-center px-1 pb-1">
@@ -86,6 +115,24 @@ export function ActionButtons({
                       </span>
                     </Button>
                   </label>
+                  <Button
+                    variant="ghost"
+                    onClick={() => openPicker({ mode: "files" })}
+                    className="w-full justify-start gap-2 text-sm cursor-pointer"
+                    disabled={isAnyLoading}
+                  >
+                    {isAnyLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <img
+                        src={sharepointLogo}
+                        alt="Sharepoint"
+                        width={16}
+                        height={16}
+                      />
+                    )}
+                    Add from SharePoint
+                  </Button>
                 </PopoverContent>
               </Popover>
             </>

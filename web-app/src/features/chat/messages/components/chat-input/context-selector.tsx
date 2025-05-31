@@ -1,12 +1,9 @@
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { X } from "lucide-react";
 import { DocumentContent } from "@/types/project";
 import { useAtom } from "jotai";
@@ -121,35 +118,28 @@ export function ContextSelector({
 
   return (
     <div className="flex items-center w-full h-auto flex-wrap gap-2">
-      <Button
-        variant="ghost"
-        className="text-xs px-2 font-normal  hover:bg-transparent hover:text-accent-foreground h-6 "
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setShowFileExplorer(true);
-        }}
-      >
-        + Add context
-      </Button>
-
-      <Dialog open={showFileExplorer} onOpenChange={setShowFileExplorer}>
-        <DialogContent className="max-w-[500px] h-auto max-h-[700px] md:max-w-[650px] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Select files for context from SharePoint</DialogTitle>
-            <DialogDescription>
-              Choose files from SharePoint to add as context.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 min-h-[400px] overflow-y-auto">
-            <SharePointFileBrowser
-              displayMode="inline"
-              onFileSelect={handleSharePointFileSelect}
-              isDownloading={isDownloadingFile}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+      <Popover open={showFileExplorer} onOpenChange={setShowFileExplorer}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            className="text-xs px-2 font-normal  hover:bg-transparent hover:text-accent-foreground h-6 "
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowFileExplorer(true);
+            }}
+          >
+            + Add context
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[325px] p-0 border-none">
+          <SharePointFileBrowser
+            displayMode="inline"
+            onFileSelect={handleSharePointFileSelect}
+            isDownloading={isDownloadingFile}
+          />
+        </PopoverContent>
+      </Popover>
 
       {selectedProjectDocs.length > 0 && (
         <div className="flex gap-2 flex-wrap">
