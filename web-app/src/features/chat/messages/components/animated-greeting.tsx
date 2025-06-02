@@ -33,7 +33,7 @@ const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
         initial={isAnimated ? false : { opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="scroll-m-20 text-2xl md:text-4xl font-medium text-center tracking-normal"
+        className="scroll-m-20 text-2xl md:text-4xl font-normal text-center tracking-normal"
         aria-label={greetingText}
       >
         {greetingText}

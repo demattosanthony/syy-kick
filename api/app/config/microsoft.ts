@@ -218,14 +218,15 @@ export class MicrosoftAPI {
   async searchFiles(
     driveId: string,
     searchText: string,
-    accessToken: string
+    accessToken: string,
+    limit: number = 25
   ): Promise<any[]> {
     if (!searchText.trim()) {
       return [];
     }
 
     const encodedSearch = encodeURIComponent(searchText);
-    const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root/search(q='${encodedSearch}')`;
+    const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root/search(q='${encodedSearch}')?$top=${limit}`;
 
     const response = await fetch(url, {
       headers: {

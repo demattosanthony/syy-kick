@@ -25,6 +25,12 @@ const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
       return <WebSearchTool tool={tool} />;
     case "workflow-step":
       return <WorkflowStepTool tool={tool} />;
+    case "sharepoint_graph":
+      return <SharepointSearchTool tool={tool} />;
+    case "sharepoint_ls":
+      return <SharepointListTool tool={tool} />;
+    case "sharepoint_open_file":
+      return <SharepointOpenFileTool tool={tool} />;
     default:
       return null;
   }
@@ -417,6 +423,289 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
         </div>
       </SheetContent>
     </Sheet>
+  );
+};
+
+const SharepointSearchTool = ({ tool }: { tool: ToolInvocation }) => {
+  const [open, setOpen] = React.useState(false);
+  const loading = tool.state === "partial-call" || tool.state === "call";
+  const hasResults = tool.state === "result" && tool.result?.files;
+  const resultCount = hasResults ? tool.result.files.length : 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2">
+        <Loader
+          variant="text-shimmer"
+          text="Searching SharePoint..."
+          size="lg"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <div
+          className={cn(
+            "w-fit rounded-3xl border border-border p-2 cursor-pointer hover:bg-secondary/30 transition-colors duration-200 h-[34px] flex items-center"
+          )}
+        >
+          {hasResults ? (
+            <div className="flex items-center gap-2">
+              {resultCount > 0 ? (
+                <>
+                  <div className="flex -space-x-1">
+                    {tool.result.files
+                      .slice(0, 3)
+                      .map((_: any, idx: number) => (
+                        <div
+                          key={`file-icon-${idx}`}
+                          className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"
+                        >
+                          <File className="w-3 h-3 text-muted-foreground" />
+                        </div>
+                      ))}
+                  </div>
+                  <span className="font-normal text-sm">
+                    {resultCount} {resultCount === 1 ? "result" : "results"}
+                  </span>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Search className="w-3 h-3 text-muted-foreground" />
+                  <span className="font-normal text-sm text-muted-foreground">
+                    No results found in SharePoint
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs">
+              <Search className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">
+                Searching SharePoint for:
+              </span>
+              <span className="font-medium max-w-[300px] truncate">
+                {tool.args?.query}
+              </span>
+            </div>
+          )}
+        </div>
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>SharePoint Search Results</SheetTitle>
+          <SheetDescription>Results for "{tool.args?.query}"</SheetDescription>
+        </SheetHeader>
+        <div className="flex flex-col gap-3 max-h-[85vh] overflow-y-auto mt-4 pr-2">
+          {tool.result?.files?.map(
+            (
+              item: {
+                name: string;
+                id: string;
+                type: "file" | "folder";
+                webUrl: string;
+                lastModified?: string;
+              },
+              idx: number
+            ) => (
+              <a
+                key={`result-${idx}`}
+                href={item.webUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
+              >
+                <div className="w-8 h-8 flex-shrink-0">
+                  <Avatar className="w-full h-full">
+                    <AvatarFallback>
+                      {item.type === "folder" ? "📁" : "📄"}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">
+                    {item.name}
+                  </div>
+                  {item.lastModified && (
+                    <span className="text-xs text-muted-foreground">
+                      Modified:{" "}
+                      {new Date(item.lastModified).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </a>
+            )
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+const SharepointListTool = ({ tool }: { tool: ToolInvocation }) => {
+  const [open, setOpen] = React.useState(false);
+  const loading = tool.state === "partial-call" || tool.state === "call";
+  const hasResults = tool.state === "result" && tool.result?.files;
+  const resultCount = hasResults ? tool.result.files.length : 0;
+  const path = tool.args?.path || "root";
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2">
+        <Loader
+          variant="text-shimmer"
+          text={`Listing SharePoint files in ${path}...`}
+          size="lg"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <div
+          className={cn(
+            "w-fit rounded-3xl border border-border p-2 cursor-pointer hover:bg-secondary/30 transition-colors duration-200 h-[34px] flex items-center"
+          )}
+        >
+          {hasResults ? (
+            <div className="flex items-center gap-2">
+              {resultCount > 0 ? (
+                <>
+                  <div className="flex -space-x-1">
+                    {tool.result.files
+                      .slice(0, 3)
+                      .map((_: any, idx: number) => (
+                        <div
+                          key={`file-icon-${idx}`}
+                          className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"
+                        >
+                          <File className="w-3 h-3 text-muted-foreground" />
+                        </div>
+                      ))}
+                  </div>
+                  <span className="font-normal text-sm">
+                    {resultCount} {resultCount === 1 ? "item" : "items"}
+                  </span>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Search className="w-3 h-3 text-muted-foreground" />
+                  <span className="font-normal text-sm text-muted-foreground">
+                    No items found in {path}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs">
+              <Search className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">Listing items in:</span>
+              <span className="font-medium max-w-[300px] truncate">{path}</span>
+            </div>
+          )}
+        </div>
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>SharePoint Folder Contents</SheetTitle>
+          <SheetDescription>Items in "{path}"</SheetDescription>
+        </SheetHeader>
+        <div className="flex flex-col gap-3 max-h-[85vh] overflow-y-auto mt-4 pr-2">
+          {tool.result?.files?.map(
+            (
+              item: {
+                name: string;
+                id: string;
+                type: "file" | "folder";
+                webUrl: string;
+                lastModified?: string;
+              },
+              idx: number
+            ) => (
+              <a
+                key={`result-${idx}`}
+                href={item.webUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
+              >
+                <div className="w-8 h-8 flex-shrink-0">
+                  <Avatar className="w-full h-full">
+                    <AvatarFallback>
+                      {item.type === "folder" ? "📁" : "📄"}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">
+                    {item.name}
+                  </div>
+                  {item.lastModified && (
+                    <span className="text-xs text-muted-foreground">
+                      Modified:{" "}
+                      {new Date(item.lastModified).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </a>
+            )
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
+  const loading = tool.state === "partial-call" || tool.state === "call";
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2">
+        <Loader
+          variant="text-shimmer"
+          text="Reading SharePoint file content..."
+          size="lg"
+        />
+      </div>
+    );
+  }
+
+  if (tool.result?.error) {
+    return (
+      <div className="text-sm text-red-500">Error: {tool.result.error}</div>
+    );
+  }
+
+  const fileName = tool.result?.fileName || tool.args?.fileId;
+
+  return (
+    <div className="w-fit rounded-3xl border border-border p-2 cursor-default hover:bg-secondary/30 transition-colors duration-200 min-h-[34px] h-auto flex items-center gap-2">
+      <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+        <svg
+          className="w-3.5 h-3.5 text-green-500"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      </div>
+      <span className="text-sm text-muted-foreground">
+        {fileName
+          ? `Successfully read file: ${fileName}`
+          : "Successfully read file content"}
+      </span>
+    </div>
   );
 };
 

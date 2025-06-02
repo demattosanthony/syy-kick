@@ -35,8 +35,8 @@ import { MicrosoftAPI } from "../../config/microsoft";
 import {
   createSharepointListTool,
   createSharepointSearchTool,
+  openSharepointFileTool,
 } from "../tools/tool-definitions";
-import { jwtDecode } from "jwt-decode";
 
 const threadsOps = {
   async createThread(
@@ -404,6 +404,12 @@ const threadsOps = {
           drive?.id,
           microsoftGraph
         );
+
+        tools.sharepoint_open_file = openSharepointFileTool(
+          accessToken.accessToken,
+          drive?.id,
+          microsoftGraph
+        );
       }
 
       let aiResponse = "";
@@ -465,13 +471,13 @@ const threadsOps = {
           finishReason,
           reasoning,
         }) => {
-          //   console.log("Finish reason:", finishReason);
-          //   console.log("Tool calls:", toolCalls);
-          //   console.log("Tool results:", toolResults);
-          //   console.log("Text:", text);
-          //   console.log("Reasoning:", reasoning);
+          console.log("Finish reason:", finishReason);
+          console.log("Tool calls:", toolCalls);
+          console.log("Tool results:", toolResults);
+          // console.log("Text:", text);
+          // console.log("Reasoning:", reasoning);
 
-          //   console.log("\n\n\n");
+          console.log("\n\n\n");
 
           if (finishReason === "tool-calls") {
             // First create a message for the assistant's tool call
