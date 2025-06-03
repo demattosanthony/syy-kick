@@ -69,6 +69,8 @@ const useSharePointAuth = () => {
       const redirectUri = encodeURIComponent(window.location.href);
       const userToken = await api.auth.getUploadToken(redirectUri);
 
+      console.log("userToken", userToken);
+
       if (userToken.accessToken) {
         setAuthState({
           isAuthenticated: true,
