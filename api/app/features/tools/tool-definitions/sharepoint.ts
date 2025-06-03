@@ -1,10 +1,24 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { GraphDriveItem, MicrosoftAPI } from "../../../config/microsoft";
+import { MicrosoftAPI } from "../../../config/microsoft";
 import { markitdown, ocrIt } from "../../../doc-processor-v2";
 
+interface GraphDriveItem {
+  id: string;
+  name: string;
+  folder?: { childCount: number };
+  file?: { mimeType: string; hashes?: any };
+  webUrl: string;
+  parentReference?: {
+    driveId: string;
+    path?: string;
+  };
+  lastModifiedDateTime?: string;
+  "@microsoft.graph.downloadUrl"?: string;
+  size?: number;
+}
+
 export const createSharepointSearchTool = (
-  accessToken: string,
   driveId: string,
   microsoftAPI: MicrosoftAPI
 ) =>
@@ -15,16 +29,35 @@ export const createSharepointSearchTool = (
       query: z.string(),
     }),
     execute: async ({ query }) => {
-      const files = await microsoftAPI.searchFiles(driveId, query, accessToken);
-      const formattedFiles = formatGraphDriveItems(files);
-      return {
-        files: formattedFiles,
-      };
+      const client = await microsoftAPI.getGraphClient("graph");
+      if (!client) {
+        return { error: "Failed to authenticate with Microsoft Graph" };
+      }
+
+      try {
+        if (!query.trim()) {
+          return { files: [] };
+        }
+
+        const encodedSearch = encodeURIComponent(query);
+        const response = await client
+          .api(`/drives/${driveId}/root/search(q='${encodedSearch}')`)
+          .top(25)
+          .get();
+
+        const files = response.value || [];
+        const formattedFiles = formatGraphDriveItems(files);
+        return {
+          files: formattedFiles,
+        };
+      } catch (error) {
+        console.error("Search error:", error);
+        return { error: "Failed to search files" };
+      }
     },
   });
 
 export const createSharepointListTool = (
-  accessToken: string,
   driveId: string,
   microsoftAPI: MicrosoftAPI
 ) =>
@@ -35,21 +68,32 @@ export const createSharepointListTool = (
       path: z.string().nullable(),
     }),
     execute: async ({ path }) => {
-      if (!path) {
-        path = "/";
+      const client = await microsoftAPI.getGraphClient("graph");
+      if (!client) {
+        return { error: "Failed to authenticate with Microsoft Graph" };
       }
-      const files = await microsoftAPI.getFolderContent(
-        driveId,
-        path,
-        accessToken
-      );
 
-      // Format files to only include essential information
-      const formattedFiles = formatGraphDriveItems(files);
+      try {
+        let apiPath = `/drives/${driveId}/root/children`;
 
-      return {
-        files: formattedFiles,
-      };
+        if (path && path !== "/") {
+          const encodedPath = encodeURIComponent(path);
+          apiPath = `/drives/${driveId}/root:/${encodedPath}:/children`;
+        }
+
+        const response = await client.api(apiPath).get();
+        const files = response.value || [];
+
+        // Format files to only include essential information
+        const formattedFiles = formatGraphDriveItems(files);
+
+        return {
+          files: formattedFiles,
+        };
+      } catch (error) {
+        console.error("List folder error:", error);
+        return { error: "Failed to list folder contents" };
+      }
     },
   });
 
@@ -65,7 +109,6 @@ const formatGraphDriveItems = (items: GraphDriveItem[]) => {
 };
 
 export const openSharepointFileTool = (
-  accessToken: string,
   driveId: string,
   microsoftAPI: MicrosoftAPI
 ) =>
@@ -76,8 +119,15 @@ export const openSharepointFileTool = (
       fileId: z.string(),
     }),
     execute: async ({ fileId }) => {
+      const client = await microsoftAPI.getGraphClient("graph");
+      if (!client) {
+        return { error: "Failed to authenticate with Microsoft Graph" };
+      }
+
       try {
-        const file = await microsoftAPI.getFile(driveId, fileId, accessToken);
+        const file = (await client
+          .api(`/drives/${driveId}/items/${fileId}`)
+          .get()) as GraphDriveItem;
 
         if (!file["@microsoft.graph.downloadUrl"]) {
           return {
@@ -96,7 +146,6 @@ export const openSharepointFileTool = (
 
         if (file.file?.mimeType === "application/pdf") {
           const pdfContent = await ocrIt(buffer, "application/pdf");
-
           content = pdfContent.markdown;
         } else {
           content = await markitdown(buffer, file.name);
@@ -107,7 +156,7 @@ export const openSharepointFileTool = (
           file: content,
         };
       } catch (error) {
-        console.error(error);
+        console.error("Open file error:", error);
         return {
           error: "Failed to open file.",
         };

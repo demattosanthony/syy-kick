@@ -17,6 +17,22 @@ import {
 } from "./auth.utils";
 import { jwtDecode } from "jwt-decode";
 
+// Define the interface locally since we removed it from microsoft.ts
+type MicrosoftSite = {
+  "@odata.context": string;
+  createdDateTime: string;
+  description: string;
+  id: string;
+  lastModifiedDateTime: string;
+  name: string;
+  webUrl: string;
+  displayName: string;
+  root: any;
+  siteCollection: {
+    hostname: string;
+  };
+};
+
 export const handlers = {
   oauthCallback: async (req: Request, res: Response) => {
     const user = req.user as DbUser;
@@ -185,9 +201,6 @@ export const handlers = {
       const graphToken = await microsoftGraph.getAccessToken("graph");
       const pickerToken = await microsoftPicker.getAccessToken("picker");
 
-      console.log("graphToken", graphToken);
-      console.log("pickerToken", pickerToken);
-
       if (
         graphToken &&
         pickerToken &&
@@ -323,7 +336,24 @@ export const handlers = {
           refreshedToken = tokenData;
         }
 
-        const site = await microsoftApi.getSite(access_token);
+        // Save the Graph token first so we can use getGraphClient()
+        await microsoftApi.saveToken(
+          refreshedToken.access_token,
+          refreshedToken.refresh_token,
+          "graph.microsoft.com",
+          "graph",
+          tx
+        );
+
+        // Now use the class method to get the Graph client, passing the transaction
+        const graphClient = await microsoftApi.getGraphClient("graph", tx);
+        if (!graphClient) {
+          throw new Error("Failed to create Graph client");
+        }
+
+        const site = (await graphClient
+          .api("/sites/root")
+          .get()) as MicrosoftSite;
 
         const tokenForSharepointData = await microsoftApi.getMicrosoftToken(
           `login.microsoftonline.com/${jwt.tid}`,
@@ -334,22 +364,14 @@ export const handlers = {
           }
         );
 
-        await Promise.all([
-          microsoftApi.saveToken(
-            tokenData.access_token,
-            tokenData.refresh_token,
-            "graph.microsoft.com",
-            "graph",
-            tx
-          ),
-          microsoftApi.saveToken(
-            tokenForSharepointData.access_token,
-            tokenForSharepointData.refresh_token,
-            site.siteCollection.hostname,
-            "picker",
-            tx
-          ),
-        ]);
+        // Save the SharePoint token
+        await microsoftApi.saveToken(
+          tokenForSharepointData.access_token,
+          tokenForSharepointData.refresh_token,
+          site.siteCollection.hostname,
+          "picker",
+          tx
+        );
       });
 
       clearStateEntry(state as string);

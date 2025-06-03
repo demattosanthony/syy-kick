@@ -71,10 +71,7 @@ export const integrationsHandlers = {
     };
 
     try {
-      const graphToken = await microsoftGraph.getAccessToken(
-        "graph",
-        "graph.microsoft.com"
-      );
+      const graphToken = await microsoftGraph.getAccessToken("graph");
       const pickerToken = await microsoftPicker.getAccessToken("picker");
 
       if (

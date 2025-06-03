@@ -7,7 +7,6 @@ import { z } from "zod";
 // Internal configuration
 import db from "../../config/db";
 import {
-  accessTokens,
   messageAttachments,
   messages,
   threads,
@@ -19,7 +18,6 @@ import { embeddingModel } from "../models";
 import { inferenceSchema } from "./threads.schemas";
 import { MyMessage, ThreadWithMessages } from "./threads.types";
 import {
-  createKnowledgeBaseSearchTool,
   createWebSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
@@ -391,25 +389,42 @@ const threadsOps = {
       const accessToken = await microsoftGraph.getAccessToken("graph");
 
       if (accessToken && tools) {
-        const drive = await microsoftGraph.getOrgDrive(accessToken.accessToken);
+        const graphClient = await microsoftGraph.getGraphClient("graph");
+        let driveId: string | undefined = undefined;
 
-        tools.sharepoint_graph = createSharepointSearchTool(
-          accessToken.accessToken,
-          drive?.id,
-          microsoftGraph
-        );
+        if (graphClient) {
+          try {
+            const drive = await graphClient.api("/me/drive").get();
+            driveId = drive?.id;
+          } catch (error) {
+            console.error("Failed to get drive ID:", error);
+            // Potentially handle the error, e.g., by not creating SharePoint tools
+            // or by creating them in a disabled state.
+          }
+        }
 
-        tools.sharepoint_ls = createSharepointListTool(
-          accessToken.accessToken,
-          drive?.id,
-          microsoftGraph
-        );
+        if (driveId) {
+          tools.sharepoint_graph = createSharepointSearchTool(
+            driveId,
+            microsoftGraph
+          );
 
-        tools.sharepoint_open_file = openSharepointFileTool(
-          accessToken.accessToken,
-          drive?.id,
-          microsoftGraph
-        );
+          tools.sharepoint_ls = createSharepointListTool(
+            driveId,
+            microsoftGraph
+          );
+
+          tools.sharepoint_open_file = openSharepointFileTool(
+            driveId,
+            microsoftGraph
+          );
+        } else {
+          // Handle the case where driveId could not be fetched
+          // For example, log a warning or disable SharePoint tools
+          console.warn(
+            "SharePoint tools could not be initialized as drive ID was not found."
+          );
+        }
       }
 
       let aiResponse = "";

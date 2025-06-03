@@ -15,6 +15,7 @@
         "@ai-sdk/xai": "^1.2.15",
         "@mastra/client-js": "^0.10.1",
         "@mastra/core": "^0.10.1",
+        "@microsoft/microsoft-graph-client": "^3.0.7",
         "@mistralai/mistralai": "^1.6.0",
         "ai": "^4.3.13",
         "bun": "^1.2.11",
@@ -164,6 +165,8 @@
 
     "@aws-sdk/util-utf8-browser": ["@aws-sdk/util-utf8-browser@3.259.0", "", { "dependencies": { "tslib": "^2.3.1" } }, "sha512-UvFa/vR+e19XookZF8RzFZBrw2EUkQWxiBW0yYQAhvk3C+QVGl0H3ouca8LDBlBfQKXwmW3huo/59H8rwb1wJw=="],
 
+    "@babel/runtime": ["@babel/runtime@7.27.4", "", {}, "sha512-t3yaEOuGu9NlIZ+hIeGbBjFtZT7j2cb2tg0fuaJKeGotchRjjLfrBA9Kwf8quhpP1EUuxModQg04q/mBwyg8uA=="],
+
     "@bufbuild/protobuf": ["@bufbuild/protobuf@2.5.1", "", {}, "sha512-lut4UTvKL8tqtend0UDu7R79/n9jA7Jtxf77RNPbxtmWqfWI4qQ9bTjf7KCS4vfqLmpQbuHr1ciqJumAgJODdw=="],
 
     "@colors/colors": ["@colors/colors@1.6.0", "", {}, "sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA=="],
@@ -289,6 +292,8 @@
     "@mastra/client-js": ["@mastra/client-js@0.10.1", "", { "dependencies": { "@ag-ui/client": "^0.0.27", "@ai-sdk/ui-utils": "^1.1.19", "json-schema": "^0.4.0", "rxjs": "7.8.1", "zod": "^3.24.3", "zod-to-json-schema": "^3.24.5" }, "peerDependencies": { "@mastra/core": "^0.10.0" } }, "sha512-oMJiQnyjW9VNnG7AT9lKG9/Q1y4HlBvsdE1Tso9U9h2onFLPWpMSY1dLleovJGygt2figYJbobgYaNCoGYqXhg=="],
 
     "@mastra/core": ["@mastra/core@0.10.1", "", { "dependencies": { "@opentelemetry/api": "^1.9.0", "@opentelemetry/auto-instrumentations-node": "^0.59.0", "@opentelemetry/core": "^2.0.1", "@opentelemetry/exporter-trace-otlp-grpc": "^0.201.0", "@opentelemetry/exporter-trace-otlp-http": "^0.201.0", "@opentelemetry/otlp-exporter-base": "^0.201.0", "@opentelemetry/otlp-transformer": "^0.201.0", "@opentelemetry/resources": "^2.0.1", "@opentelemetry/sdk-metrics": "^2.0.1", "@opentelemetry/sdk-node": "^0.201.0", "@opentelemetry/sdk-trace-base": "^2.0.1", "@opentelemetry/sdk-trace-node": "^2.0.1", "@opentelemetry/semantic-conventions": "^1.33.0", "@sindresorhus/slugify": "^2.2.1", "ai": "^4.2.2", "cohere-ai": "^7.16.0", "date-fns": "^3.6.0", "dotenv": "^16.4.7", "hono": "^4.5.1", "hono-openapi": "^0.4.6", "json-schema": "^0.4.0", "json-schema-to-zod": "^2.6.0", "pino": "^9.6.0", "pino-pretty": "^13.0.0", "radash": "^12.1.0", "sift": "^17.1.3", "xstate": "^5.19.2", "zod-from-json-schema": "^0.0.5", "zod-to-json-schema": "^3.24.5" }, "peerDependencies": { "zod": "^3.0.0" } }, "sha512-m+W5i1AKRmWi2E6AoW99OtTIstvSgCFCgc0jE4oN915sDBCwIJ0pzZK/7jVk3BVo1z9t8RbHrW3fpUyfA7OFJQ=="],
+
+    "@microsoft/microsoft-graph-client": ["@microsoft/microsoft-graph-client@3.0.7", "", { "dependencies": { "@babel/runtime": "^7.12.5", "tslib": "^2.2.0" } }, "sha512-/AazAV/F+HK4LIywF9C+NYHcJo038zEnWkteilcxC1FM/uK/4NVGDKGrxx7nNq1ybspAroRKT4I1FHfxQzxkUw=="],
 
     "@mistralai/mistralai": ["@mistralai/mistralai@1.7.0", "", { "dependencies": { "zod-to-json-schema": "^3.24.1" }, "peerDependencies": { "zod": ">= 3" } }, "sha512-yM12kf1mGxSBCZWVvSA8gMvLG1lZ+MilvHUJskU4QWVWc+uYOgupZPRgDarPerzEp6/jm9XDR/rCO7U3ElNAOg=="],
 
