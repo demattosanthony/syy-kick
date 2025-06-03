@@ -26,7 +26,7 @@ export async function convertPdfToImages(
   try {
     await fs.writeFile(tempPdfPath, Buffer.from(pdfData));
 
-    const gsCommand = `gs -dNOPAUSE -dBATCH -sDEVICE=png16m -r150 -sOutputFile="${outputPattern}" "${tempPdfPath}"`;
+    const gsCommand = `gs -dNOPAUSE -dBATCH -sDEVICE=png16m -r300 -sOutputFile="${outputPattern}" "${tempPdfPath}"`;
 
     await execAsync(gsCommand);
 
@@ -83,7 +83,7 @@ export async function convertPdfFromS3ToImages(
   fileKey: string,
   workflowId: string,
   workflowRunId: string,
-  options: { maxDimension: number } = { maxDimension: 4000 }
+  options: { maxDimension: number } = { maxDimension: 8000 }
 ): Promise<
   {
     type: "file";

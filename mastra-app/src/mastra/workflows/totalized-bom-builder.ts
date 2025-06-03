@@ -6,9 +6,8 @@ import fs from "fs";
 
 // AI/ML dependencies
 import { generateObject } from "ai";
-import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
-import type { AnthropicProviderOptions } from "@ai-sdk/anthropic";
+import { anthropic, type AnthropicProviderOptions } from "@ai-sdk/anthropic";
 
 // Code execution
 import { Sandbox } from "@e2b/code-interpreter";
@@ -26,6 +25,7 @@ import {
   type WorkflowExecutionInputValues,
   type WorkflowFile,
 } from "../../types.ts";
+import { google, type GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
   controlsDrawings: z.object({
@@ -318,13 +318,13 @@ Remember to use your expertise to provide the most accurate and comprehensive co
           ],
         },
       ],
-      //   providerOptions: {
-      //     google: {
-      //       thinkingConfig: {
-      //         thinkingBudget: 12000,
-      //       },
-      //     } satisfies GoogleGenerativeAIProviderOptions,
-      //   },
+      providerOptions: {
+        google: {
+          thinkingConfig: {
+            thinkingBudget: 35000,
+          },
+        } satisfies GoogleGenerativeAIProviderOptions,
+      },
     });
     const totalizedBomMarkdownContent = object.totalizedBomMarkdownContent;
 
@@ -452,11 +452,11 @@ ${markdownData}
           },
         ],
         {
-          maxSteps: 20,
+          maxSteps: 30,
           runtimeContext: codeExecutionContext,
           providerOptions: {
             anthropic: {
-              thinking: { type: "enabled", budgetTokens: 4000 },
+              thinking: { type: "enabled", budgetTokens: 35000 },
             } satisfies AnthropicProviderOptions,
           },
         }

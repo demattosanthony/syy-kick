@@ -66,7 +66,7 @@ export async function performOcrOnS3Images(
   const ocrResults = await Promise.all(
     loadedImages.map((image) =>
       generateObject({
-        model: options.model ? openai(options.model) : openai("gpt-4.1"),
+        model: options.model ? openai(options.model) : openai("o4-mini"),
         schema: z.object({
           ocrResult: z.string(),
         }),
