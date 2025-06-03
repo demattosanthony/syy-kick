@@ -9,7 +9,6 @@ interface OcrOptions {
   tableType: string;
   columns?: string[];
   additionalInstructions?: string;
-  model?: string;
 }
 
 const STANDARD_OCR_PROMPT = `Your task is to operate an OCR model to extract the text from an image. You will be given an image of a {tableType} table. You will need to extract the text from the image and return it as a string in markdown format.
@@ -66,7 +65,7 @@ export async function performOcrOnS3Images(
   const ocrResults = await Promise.all(
     loadedImages.map((image) =>
       generateObject({
-        model: options.model ? openai(options.model) : openai("o4-mini"),
+        model: openai("o4-mini"),
         schema: z.object({
           ocrResult: z.string(),
         }),
