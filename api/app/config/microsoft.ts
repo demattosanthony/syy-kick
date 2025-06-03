@@ -65,39 +65,89 @@ export class MicrosoftAPI {
   }
 
   async getAccessToken(
-    type: "picker" | "graph",
-    domain?: string
-  ): Promise<{ accessToken: string; baseUrl: string | null } | undefined> {
-    const accessToken = await this.getUserToken(type);
+    type: "picker" | "graph"
+  ): Promise<{ accessToken: string; baseUrl: string } | undefined> {
+    const storedToken = await this.getUserToken(type);
 
-    if (!accessToken) {
+    if (!storedToken || !storedToken.domain) {
+      console.warn(
+        `No stored token or domain missing for type: ${type}, userId: ${this.userId}`
+      );
       return undefined;
     }
 
     if (
-      this.isAccessTokenExpired(accessToken.accessToken) &&
-      accessToken.refreshToken
+      this.isAccessTokenExpired(storedToken.accessToken) &&
+      storedToken.refreshToken
     ) {
-      const jwt = jwtDecode(accessToken.accessToken) as any;
+      console.log(
+        `Access token expired for type: ${type}, userId: ${this.userId}. Attempting refresh.`
+      );
+      const jwt = jwtDecode(storedToken.accessToken) as any;
 
       if (!jwt.tid) {
-        throw new Error("Invalid access token");
+        console.error(
+          `Invalid access token for type: ${type}, userId: ${this.userId}. Missing tenant ID (tid).`
+        );
+        throw new Error("Invalid access token: missing tenant ID (tid)");
       }
 
-      const newToken = await this.refreshTokenSilently(
-        domain ?? `login.microsoftonline.com/${jwt.tid}`,
-        accessToken.refreshToken
-      );
+      const tokenEndpointAuthority = `login.microsoftonline.com/${jwt.tid}`;
+      const resourceForScope = storedToken.domain; // e.g. graph.microsoft.com or TENANT.sharepoint.com
 
-      return {
-        accessToken: newToken.access_token,
-        baseUrl: accessToken.domain ?? domain ?? null,
-      };
+      try {
+        const refreshedTokenData = await this.refreshTokenSilently(
+          tokenEndpointAuthority,
+          storedToken.refreshToken,
+          resourceForScope
+        );
+
+        console.log(
+          `Refreshed token data for type ${type}, userId: ${this.userId}:`,
+          refreshedTokenData
+        );
+
+        if (!refreshedTokenData.access_token) {
+          const errorResponse =
+            refreshedTokenData as MicrosoftRefreshTokenResponse &
+              MicrosoftRefreshTokenError;
+          const errorInfo =
+            errorResponse.error_description ||
+            errorResponse.error ||
+            JSON.stringify(refreshedTokenData);
+          console.error(
+            `Failed to refresh token for type ${type}, userId: ${this.userId}. API returned error: ${errorInfo}`
+          );
+          return undefined;
+        }
+
+        // Save the new tokens
+        await this.saveToken(
+          refreshedTokenData.access_token,
+          refreshedTokenData.refresh_token || storedToken.refreshToken, // Use new refresh token if provided
+          resourceForScope,
+          type
+        );
+        console.log(
+          `Successfully refreshed and saved token for type ${type}, userId: ${this.userId}`
+        );
+
+        return {
+          accessToken: refreshedTokenData.access_token,
+          baseUrl: resourceForScope,
+        };
+      } catch (error: any) {
+        console.error(
+          `Exception during token refresh or save for type ${type}, userId: ${this.userId}. Error:`,
+          error.message || error
+        );
+        return undefined;
+      }
     }
 
     return {
-      accessToken: accessToken.accessToken,
-      baseUrl: accessToken.domain ?? domain ?? null,
+      accessToken: storedToken.accessToken,
+      baseUrl: storedToken.domain,
     };
   }
 
@@ -135,14 +185,36 @@ export class MicrosoftAPI {
       grant_type: "refresh_token" | "authorization_code";
       redirect_uri?: string;
       scope: string;
+      client_id?: string;
+      client_secret?: string;
     }
   ): Promise<MicrosoftRefreshTokenResponse> {
     try {
-      const params = new URLSearchParams({
-        client_id: process.env.MICROSOFT_CLIENT_ID!,
-        client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
-        ...options,
+      const params = new URLSearchParams();
+      if (options.client_id) {
+        params.append("client_id", options.client_id);
+      }
+      if (options.client_secret) {
+        params.append("client_secret", options.client_secret);
+      }
+      // Append other options, filtering out client_id and client_secret if they were handled
+      Object.entries(options).forEach(([key, value]) => {
+        if (
+          value !== undefined &&
+          key !== "client_id" &&
+          key !== "client_secret"
+        ) {
+          params.append(key, value as string);
+        }
       });
+
+      // Default client_id and client_secret if not provided in options
+      if (!options.client_id) {
+        params.append("client_id", process.env.MICROSOFT_CLIENT_ID!);
+      }
+      if (!options.client_secret) {
+        params.append("client_secret", process.env.MICROSOFT_CLIENT_SECRET!);
+      }
 
       const response = await fetch(`https://${domain}/oauth2/v2.0/token`, {
         method: "POST",
@@ -162,33 +234,18 @@ export class MicrosoftAPI {
   }
 
   async refreshTokenSilently(
-    domain: string,
-    refreshToken: string
+    tokenEndpointAuthority: string,
+    refreshToken: string,
+    resourceForScope: string
   ): Promise<MicrosoftRefreshTokenResponse> {
-    const params = new URLSearchParams({
+    return this.getMicrosoftToken(tokenEndpointAuthority, {
       client_id: process.env.MICROSOFT_CLIENT_ID!,
       client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
       grant_type: "refresh_token",
       refresh_token: refreshToken,
       redirect_uri: process.env.MICROSOFT_FILES_CALLBACK_URL!,
-      scope: `https://${domain}/.default`,
+      scope: `https://${resourceForScope}/.default`,
     });
-
-    try {
-      const response = await fetch(`https://${domain}/oauth2/v2.0/token`, {
-        method: "POST",
-        body: params,
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      });
-
-      const data = (await response.json()) as MicrosoftRefreshTokenResponse;
-
-      return data;
-    } catch (error) {
-      throw error as MicrosoftRefreshTokenError;
-    }
   }
 
   getConsentUrl(state: string) {

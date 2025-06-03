@@ -182,11 +182,11 @@ export const handlers = {
     };
 
     try {
-      const graphToken = await microsoftGraph.getAccessToken(
-        "graph",
-        "graph.microsoft.com"
-      );
+      const graphToken = await microsoftGraph.getAccessToken("graph");
       const pickerToken = await microsoftPicker.getAccessToken("picker");
+
+      console.log("graphToken", graphToken);
+      console.log("pickerToken", pickerToken);
 
       if (
         graphToken &&
@@ -315,8 +315,9 @@ export const handlers = {
 
         if (microsoftApi.isAccessTokenExpired(access_token)) {
           refreshedToken = await microsoftApi.refreshTokenSilently(
-            "graph.microsoft.com",
-            tokenData.refresh_token
+            `login.microsoftonline.com/${jwt.tid}`,
+            tokenData.refresh_token,
+            "graph.microsoft.com"
           );
         } else {
           refreshedToken = tokenData;
