@@ -22,9 +22,11 @@ import microsoftGraphApi from "@/features/integrations/microsoft/api/microsoft-g
 import type { GraphDriveItem } from "@/features/integrations/microsoft/api/microsoft-graph";
 import sharepointLogo from "@/assets/logos/sharepoint.svg";
 
-// Local Storage Keys
-const SHAREPOINT_DRIVE_ID_KEY = "sharepointDriveId";
-const SHAREPOINT_ROOT_ITEMS_KEY = "sharepointRootItems";
+// Cache keys for localStorage
+const CACHE_KEYS = {
+  SHAREPOINT_ROOT_ITEMS: "sharepoint_root_items",
+  SHAREPOINT_DRIVE_ID: "sharepoint_drive_id",
+} as const;
 
 // Types
 export type SharePointItem = Omit<GraphDriveItem, "folder" | "file"> & {
@@ -56,6 +58,70 @@ interface BrowserState {
   fileDetailLoading: string | null;
 }
 
+// Cache helper functions
+const getCachedRootItems = (): SharePointItem[] => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEYS.SHAREPOINT_ROOT_ITEMS);
+    return cached ? JSON.parse(cached) : [];
+  } catch {
+    return [];
+  }
+};
+
+const setCachedRootItems = (items: SharePointItem[]) => {
+  try {
+    localStorage.setItem(
+      CACHE_KEYS.SHAREPOINT_ROOT_ITEMS,
+      JSON.stringify(items)
+    );
+  } catch {
+    // Ignore storage errors
+  }
+};
+
+const getCachedDriveId = (): string | undefined => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEYS.SHAREPOINT_DRIVE_ID);
+    return cached || undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const setCachedDriveId = (driveId: string) => {
+  try {
+    localStorage.setItem(CACHE_KEYS.SHAREPOINT_DRIVE_ID, driveId);
+  } catch {
+    // Ignore storage errors
+  }
+};
+
+const clearSharePointCache = () => {
+  try {
+    localStorage.removeItem(CACHE_KEYS.SHAREPOINT_ROOT_ITEMS);
+    localStorage.removeItem(CACHE_KEYS.SHAREPOINT_DRIVE_ID);
+  } catch {
+    // Ignore storage errors
+  }
+};
+
+// Get initial browser state with cached data
+const getInitialBrowserState = (): BrowserState => {
+  const cachedItems = getCachedRootItems();
+  const cachedDriveId = getCachedDriveId();
+
+  return {
+    items: cachedItems,
+    currentPath: [],
+    driveId: cachedDriveId,
+    loading: cachedItems.length === 0, // Don't show loading if we have cached items
+    error: null,
+    searchQuery: "",
+    isSearching: false,
+    fileDetailLoading: null,
+  };
+};
+
 // Custom hook for authentication
 const useSharePointAuth = () => {
   const [authState, setAuthState] = useState<AuthState>({
@@ -68,8 +134,6 @@ const useSharePointAuth = () => {
     try {
       const redirectUri = encodeURIComponent(window.location.href);
       const userToken = await api.auth.getUploadToken(redirectUri);
-
-      console.log("userToken", userToken);
 
       if (userToken.accessToken) {
         setAuthState({
@@ -121,26 +185,25 @@ const useSharePointAuth = () => {
 
 // Custom hook for file browser logic
 const useSharePointBrowser = (accessToken: string | null) => {
-  const [state, setState] = useState<BrowserState>({
-    items: [],
-    currentPath: [],
-    driveId: undefined,
-    loading: false,
-    error: null,
-    searchQuery: "",
-    isSearching: false,
-    fileDetailLoading: null,
-  });
+  const [state, setState] = useState<BrowserState>(getInitialBrowserState);
 
   const updateState = useCallback((updates: Partial<BrowserState>) => {
     setState((prev) => ({ ...prev, ...updates }));
   }, []);
 
   const loadFolderContent = useCallback(
-    async (driveId: string, folderPath: string) => {
+    async (
+      driveId: string,
+      folderPath: string,
+      showLoading: boolean = true
+    ) => {
       if (!accessToken || !driveId) return;
 
-      updateState({ loading: true, error: null });
+      if (showLoading) {
+        updateState({ loading: true, error: null });
+      } else {
+        updateState({ error: null });
+      }
 
       try {
         const content = await microsoftGraphApi.getFolderContent(
@@ -156,15 +219,13 @@ const useSharePointBrowser = (accessToken: string | null) => {
           driveId,
         }));
 
-        updateState({ items: transformedItems, loading: false });
-
-        // Cache root items
+        // Cache root items if this is the root folder
         if (folderPath === "") {
-          localStorage.setItem(
-            SHAREPOINT_ROOT_ITEMS_KEY,
-            JSON.stringify(transformedItems)
-          );
+          setCachedRootItems(transformedItems);
+          setCachedDriveId(driveId);
         }
+
+        updateState({ items: transformedItems, loading: false });
       } catch (err) {
         updateState({
           error: "Failed to load folder content. Please try again.",
@@ -181,7 +242,7 @@ const useSharePointBrowser = (accessToken: string | null) => {
         if (state.driveId && !query) {
           // Clear search - reload current folder
           const folderPath = state.currentPath.join("/");
-          await loadFolderContent(state.driveId, folderPath);
+          await loadFolderContent(state.driveId, folderPath, true);
         }
         return;
       }
@@ -224,63 +285,43 @@ const useSharePointBrowser = (accessToken: string | null) => {
   const loadInitialDrive = useCallback(async () => {
     if (!accessToken) return;
 
-    // Try to load from local storage first, WITHOUT setting loading: true yet
-    const cachedDriveId = localStorage.getItem(SHAREPOINT_DRIVE_ID_KEY);
-    const cachedRootItemsString = localStorage.getItem(
-      SHAREPOINT_ROOT_ITEMS_KEY
-    );
-
-    if (cachedDriveId && cachedRootItemsString) {
-      try {
-        const cachedRootItems: SharePointItem[] = JSON.parse(
-          cachedRootItemsString
-        );
-        if (cachedRootItems.length > 0) {
-          // We found valid cached items. Update state without a loading flicker.
-          updateState({
-            driveId: cachedDriveId,
-            items: cachedRootItems,
-            loading: false, // Ensure loading is false
-            currentPath: [], // Ensure path is root
-            error: null, // Clear any previous error
-          });
-          // Successfully loaded from cache.
-          return;
-        }
-      } catch (e) {
-        console.warn("Failed to parse cached SharePoint items", e);
-        // Clear potentially corrupted cache
-        localStorage.removeItem(SHAREPOINT_ROOT_ITEMS_KEY);
-        localStorage.removeItem(SHAREPOINT_DRIVE_ID_KEY);
-        // Proceed to API load if cache was corrupt
-      }
+    // If we have cached items but still need to refresh, don't show loading
+    const hasCachedItems = state.items.length > 0;
+    if (!hasCachedItems) {
+      updateState({ loading: true, error: null });
     }
-
-    // If we reached here, cache was missed, empty, or corrupt.
-    // Now, set loading to true and fetch from API.
-    updateState({ loading: true, error: null });
 
     try {
       const driveData = await microsoftGraphApi.getOrgDrive(accessToken);
 
       if (driveData?.id) {
-        updateState({ driveId: driveData.id }); // loading is already true
-        localStorage.setItem(SHAREPOINT_DRIVE_ID_KEY, driveData.id);
-        // loadFolderContent will now cache the root items and set loading to false
-        await loadFolderContent(driveData.id, "");
+        // Update drive ID in state and cache
+        updateState({ driveId: driveData.id, currentPath: [] });
+        setCachedDriveId(driveData.id);
+
+        // Load root folder content - don't show loading if we have cached items
+        await loadFolderContent(driveData.id, "", !hasCachedItems);
       } else {
+        // Clear cache if we can't get drive data
+        clearSharePointCache();
         updateState({
           error: "Failed to load your SharePoint drive. Please try again.",
           loading: false,
+          items: [],
+          driveId: undefined,
         });
       }
     } catch (err) {
+      // Clear cache on error
+      clearSharePointCache();
       updateState({
         error: "An error occurred while loading SharePoint content.",
         loading: false,
+        items: [],
+        driveId: undefined,
       });
     }
-  }, [accessToken, loadFolderContent, updateState]);
+  }, [accessToken, state.items.length, loadFolderContent, updateState]);
 
   return {
     ...state,
@@ -424,6 +465,7 @@ const FileList: React.FC<{
   searchQuery: string;
   fileDetailLoading: string | null;
   onItemSelect: (item: SharePointItem) => void;
+  initialLoadAttempted: boolean;
 }> = ({
   items,
   loading,
@@ -432,8 +474,9 @@ const FileList: React.FC<{
   searchQuery,
   fileDetailLoading,
   onItemSelect,
+  initialLoadAttempted,
 }) => {
-  if (loading) {
+  if (!initialLoadAttempted || loading) {
     return (
       <div className="space-y-1 py-1 px-2">
         {[...Array(6)].map((_, i) => (
@@ -519,24 +562,13 @@ export function SharePointFileBrowser({
 
   // Load initial data
   useEffect(() => {
-    if (
-      isAuthenticated &&
-      accessToken &&
-      !driveId &&
-      !initialLoadAttempted &&
-      !loading
-    ) {
+    if (isAuthenticated && accessToken && !initialLoadAttempted) {
       setInitialLoadAttempted(true);
+      // Always load initial drive to refresh data in background
+      // loadInitialDrive will handle showing cached items immediately if available
       loadInitialDrive();
     }
-  }, [
-    isAuthenticated,
-    accessToken,
-    driveId,
-    initialLoadAttempted,
-    loading,
-    loadInitialDrive,
-  ]);
+  }, [isAuthenticated, accessToken, initialLoadAttempted, loadInitialDrive]);
 
   // Handle search with debounce
   useEffect(() => {
@@ -552,7 +584,7 @@ export function SharePointFileBrowser({
         updateState({ isSearching: false });
         if (driveId) {
           const folderPath = currentPath.join("/");
-          loadFolderContent(driveId, folderPath);
+          loadFolderContent(driveId, folderPath, true);
         }
       }
     }, 500);
@@ -608,7 +640,7 @@ export function SharePointFileBrowser({
       });
 
       if (targetDriveId) {
-        await loadFolderContent(targetDriveId, newPath.join("/"));
+        await loadFolderContent(targetDriveId, newPath.join("/"), true);
       }
 
       if (onFolderSelect) {
@@ -636,7 +668,7 @@ export function SharePointFileBrowser({
       isSearching: false,
     });
 
-    await loadFolderContent(driveId, newPath.join("/"));
+    await loadFolderContent(driveId, newPath.join("/"), true);
   }, [driveId, currentPath, accessToken, updateState, loadFolderContent]);
 
   const handleItemSelect = useCallback(
@@ -731,6 +763,7 @@ export function SharePointFileBrowser({
               searchQuery={searchQuery}
               fileDetailLoading={fileDetailLoading}
               onItemSelect={handleItemSelect}
+              initialLoadAttempted={initialLoadAttempted}
             />
           </CommandList>
         </Command>
