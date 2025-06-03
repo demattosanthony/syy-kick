@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getFileFromS3, uploadFileToS3 } from "./s3.ts";
 import type { WorkflowFile, WorkflowRunStepOutput } from "./types.ts";
+import { google } from "@ai-sdk/google";
 
 interface OcrOptions {
   tableType: string;
@@ -12,6 +13,10 @@ interface OcrOptions {
 }
 
 const STANDARD_OCR_PROMPT = `Your task is to operate an OCR model to extract the text from an image. You will be given an image of a {tableType} table. You will need to extract the text from the image and return it as a string in markdown format.
+
+Warning:
+- Some of the letters or numbers may be slightly off. If so, zoom in on the image to see the exact characters.
+- Carefully check characters that looks like numbers or letters. They may be slightly off. Example: 1 and I, 0 and O, 5 and S, 8 and B.
 
 Requirements:
 1. Return ONLY the markdown text representing the table content
@@ -65,7 +70,7 @@ export async function performOcrOnS3Images(
   const ocrResults = await Promise.all(
     loadedImages.map((image) =>
       generateObject({
-        model: openai("o4-mini"),
+        model: google("gemini-2.5-pro-preview-05-06"),
         schema: z.object({
           ocrResult: z.string(),
         }),
