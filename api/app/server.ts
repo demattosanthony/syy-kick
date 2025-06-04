@@ -31,21 +31,6 @@ async function main() {
   app.use("/auth/saml/:slug/callback", Express.urlencoded({ extended: false }));
   app.use(Express.json({ limit: "50mb" }));
 
-  app.use((req, res, next) => {
-    logger.info("Incoming request", {
-      method: req.method,
-      url: req.url,
-      ip: req.ip,
-      body: req.body,
-      headers: req.headers,
-      query: req.query,
-      params: req.params,
-      user: req.dbUser,
-      workspace: req.workspace,
-    });
-    next();
-  });
-
   app.use(
     cors({
       credentials: true,

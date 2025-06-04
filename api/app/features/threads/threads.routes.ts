@@ -68,18 +68,51 @@ router.put(
   })
 );
 
-// Inference (SSE)
-router.post("/:threadId/inference", async (req: Request, res: Response) => {
+// Get thread messages
+router.get(
+  "/:threadId/messages",
+  handle(async (req) => {
+    return threadsOps.getThreadMessages(req.params.threadId);
+  })
+);
+
+// Post a new message and trigger inference
+router.post(
+  "/:threadId/messages",
+  handle(async (req) => {
+    const { message, model, maxTokens, instructions } = inferenceSchema.parse(
+      req.body
+    );
+    const { threadId } = req.params;
+
+    // Store the user message and start inference asynchronously
+    await threadsOps.postMessageAndStartInference(
+      req.dbUser!.id,
+      threadId,
+      message,
+      model,
+      maxTokens,
+      instructions,
+      req.workspace
+    );
+
+    return { success: true, message: "Message posted and inference started" };
+  })
+);
+
+// Stream new messages for a thread (SSE)
+router.get("/:threadId/stream", async (req: Request, res: Response) => {
   try {
-    // Validate request body with Zod
-    await inferenceSchema.parseAsync(req.body);
-    return threadsOps.inference(req, res);
+    console.log("Streaming messages for thread:", req.params.threadId);
+    return threadsOps.streamMessages(req, res);
   } catch (error: any) {
-    console.error("Error in inference endpoint:", error);
-    res.status(500).json({
-      error: "An error occurred during inference",
-      details: error.message,
-    });
+    console.error("Error in stream endpoint:", error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: "An error occurred during streaming",
+        details: error.message,
+      });
+    }
     return;
   }
 });

@@ -231,7 +231,7 @@ export const files = pgTable("files", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const filesPages = pgTable("file_pages", {
+export const filePages = pgTable("file_pages", {
   id: uuid("id").primaryKey().defaultRandom(),
   fileId: uuid("file_id")
     .notNull()
@@ -246,7 +246,7 @@ export const filePageChunks = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     filePageId: uuid("file_page_id")
       .notNull()
-      .references(() => filesPages.id, { onDelete: "cascade" }),
+      .references(() => filePages.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
     position: integer("position"), // indexed at 0 and relative to the page
     embeddings: vector("embeddings", { dimensions: 1024 }),
@@ -265,7 +265,7 @@ export const filePageImages = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     filePageId: uuid("file_page_id")
       .notNull()
-      .references(() => filesPages.id, { onDelete: "cascade" }),
+      .references(() => filePages.id, { onDelete: "cascade" }),
     chunkId: uuid("chunk_id").references(() => filePageChunks.id, {
       onDelete: "cascade",
     }),
@@ -737,8 +737,39 @@ export const accessTokensRelations = relations(accessTokens, ({ one }) => ({
 }));
 
 export const filesRelations = relations(files, ({ one, many }) => ({
-  pages: many(filesPages),
+  pages: many(filePages),
   messages: many(messagesFiles),
+}));
+
+export const filePagesRelations = relations(filePages, ({ one, many }) => ({
+  file: one(files, {
+    fields: [filePages.fileId],
+    references: [files.id],
+  }),
+  chunks: many(filePageChunks),
+  images: many(filePageImages),
+}));
+
+export const filePageChunksRelations = relations(
+  filePageChunks,
+  ({ one, many }) => ({
+    page: one(filePages, {
+      fields: [filePageChunks.filePageId],
+      references: [filePages.id],
+    }),
+    images: many(filePageImages),
+  })
+);
+
+export const filePageImagesRelations = relations(filePageImages, ({ one }) => ({
+  page: one(filePages, {
+    fields: [filePageImages.filePageId],
+    references: [filePages.id],
+  }),
+  chunk: one(filePageChunks, {
+    fields: [filePageImages.chunkId],
+    references: [filePageChunks.id],
+  }),
 }));
 
 export type MessageAttachment = {

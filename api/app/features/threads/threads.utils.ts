@@ -34,7 +34,7 @@ import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases
 import { openai } from "@ai-sdk/openai";
 
 /** Retrieve the model config. */
-async function getModelConfig(model: string) {
+function getModelConfig(model: string) {
   if (model !== "Auto") return MODELS[model];
 
   return MODELS["claude-4-sonnet"];
@@ -541,20 +541,6 @@ You must follow these rules and restrictions when responding to users.
 8. Don't ever use h1 headings in your responses, it looks jarring and is not needed.
 </restrictions>
 
-<knowledge_bases>
-A knowledge base is a collection of organized and curated information to support accurate and relevant responses. Available knowledge bases:
-
-${
-  knowledgeBase
-    ? `The user is currently focused on the "${knowledgeBase.name}". This knowledge base contains specific information that the user is interested in exploring. Prioritize searching and referencing this knowledge base when responding to user queries. Don't respond to the user first without checking this knowledge base for more context`
-    : knowledgeBases?.length
-      ? `Here are the following knowledge bases available for reference (use the ID when searching for information):
-${knowledgeBasesString}`
-      : ""
-}
-
-Do not mention knowledge base IDs to users; refer to them by name only.
-</knowledge_bases>
 
 <tools>
 You have access to tools that you allow you take action to perform tasks and complete the user's request.
@@ -835,9 +821,7 @@ async function dbMessagesToInferenceMessages(
     supportsSystemMessages?: boolean;
   },
   user: User,
-  instructions?: string,
-  knowledgeBase?: KnowledgeBase,
-  knowledgeBases?: KnowledgeBase[]
+  instructions?: string
 ): Promise<CoreMessage[]> {
   // Initialize the result array
   const inferenceMessages: CoreMessage[] = [];
@@ -846,12 +830,7 @@ async function dbMessagesToInferenceMessages(
   if (modelConfig.supportsSystemMessages) {
     inferenceMessages.push({
       role: "system",
-      content: buildSystemMessage(
-        user,
-        instructions,
-        knowledgeBase,
-        knowledgeBases
-      ),
+      content: buildSystemMessage(user, instructions),
     });
   }
 
@@ -1047,13 +1026,10 @@ async function createAttachmentMessages(
 }
 
 /** Generates a thread title from the first user message if it doesn’t already exist. */
-async function maybeGenerateTitle(
+async function createAndSaveThreadTitle(
   threadId: string,
-  rawMessages: MyMessage[],
-  existingTitle?: string | null
+  rawMessages: MyMessage[]
 ) {
-  if (existingTitle) return; // no need to do anything if we have a title
-
   const firstUserTextMessage = rawMessages.find((msg) => msg.role === "user");
   if (!firstUserTextMessage) return;
 
@@ -1079,5 +1055,5 @@ export {
   createKnowledgeBaseSearchTool,
   processDocumentImages,
   dbMessagesToInferenceMessages,
-  maybeGenerateTitle,
+  createAndSaveThreadTitle,
 };

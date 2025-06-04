@@ -4,7 +4,7 @@ import { ApiResponse } from "./config/schema";
 import { Request, Response } from "express";
 import { Workspace } from "./middleware";
 import { promisify } from "util";
-import { exec } from "child_process";
+import { exec as _exec } from "child_process";
 import path from "path";
 import fs from "fs/promises";
 import os from "os";
@@ -269,11 +269,8 @@ export interface PdfImageInfo {
   base64: string;
 }
 
-/**
- * Rasterise a PDF into PNGs.
- * – Set `firstPageOnly:true` to get just the first page.
- * – Images are returned in page order, each already Base-64 encoded.
- */
+const exec = promisify(_exec);
+
 export async function convertPdfToImages(
   pdfData: Buffer,
   {
@@ -282,65 +279,50 @@ export async function convertPdfToImages(
     firstPageOnly = false,
   }: PdfToImagesOptions = {}
 ): Promise<PdfImageInfo[]> {
-  const execAsync = promisify(exec);
-  const uniqueId = crypto.randomUUID();
-  const tempDir = await fs.mkdtemp(
-    path.join(os.tmpdir(), `pdf-images-${uniqueId}`)
+  const tmpDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), `pdf2img-${crypto.randomUUID()}-`)
   );
-  const tempPdf = path.join(tempDir, "input.pdf");
-  const outputPattern = path.join(tempDir, "output-%d.png");
+  const inputPdf = path.join(tmpDir, "in.pdf");
+  const outPattern = path.join(tmpDir, "page-%d.png");
 
   try {
-    await fs.writeFile(tempPdf, pdfData);
+    await fs.writeFile(inputPdf, pdfData);
 
-    // Limit pages when requested
-    const pageArgs = firstPageOnly ? "-dFirstPage=1 -dLastPage=1" : "";
-
+    /* ----------  Ghostscript  ---------- */
+    const pages = firstPageOnly ? "-dFirstPage=1 -dLastPage=1" : "";
+    const threads = `-dNumRenderingThreads=${os.cpus().length}`;
     const gsCmd = `gs -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r${dpi} \
-${pageArgs} -sOutputFile="${outputPattern}" "${tempPdf}"`;
-    await execAsync(gsCmd);
-    console.log("Finished converting PDF to images");
+${threads} ${pages} -dPDFFitPage -g${maxDimension}x${maxDimension} \
+-sOutputFile="${outPattern}" "${inputPdf}"`;
 
-    const files = await fs.readdir(tempDir);
-    const images: PdfImageInfo[] = [];
+    await exec(gsCmd);
 
-    for (const file of files) {
-      if (!file.startsWith("output-") || !file.endsWith(".png")) continue;
-      console.log("Processing file:", file);
+    /* ----------  Gather PNGs  ---------- */
+    const files = (await fs.readdir(tmpDir)).filter(
+      (f) => f.startsWith("page-") && f.endsWith(".png")
+    );
 
-      const imgPath = path.join(tempDir, file);
+    const images = await Promise.all(
+      files.map(async (file) => {
+        const page = Number(file.match(/page-(\d+)\.png/)?.[1] ?? "0");
+        const fullPath = path.join(tmpDir, file);
+        const buf = await fs.readFile(fullPath);
+        const { size } = await fs.stat(fullPath);
 
-      // Optional resize
-      if (maxDimension && maxDimension > 0) {
-        try {
-          await execAsync(
-            `convert "${imgPath}" -resize "${maxDimension}x${maxDimension}>" "${imgPath}"`
-          );
-        } catch (err) {
-          console.error(`Resize failed for ${file}:`, err);
-        }
-      }
+        return {
+          name: file,
+          path: fullPath,
+          size,
+          page,
+          base64: buf.toString("base64"),
+        } as PdfImageInfo;
+      })
+    );
 
-      const pageMatch = file.match(/output-(\d+)\.png/);
-      const pageNum = pageMatch ? Number(pageMatch[1]) : 0;
-
-      const buf = await fs.readFile(imgPath);
-      const { size } = await fs.stat(imgPath);
-
-      images.push({
-        name: file,
-        path: imgPath,
-        size,
-        page: pageNum,
-        base64: buf.toString("base64"),
-      });
-    }
-
-    // ensure natural order
-    images.sort((a, b) => a.page - b.page);
-    return images;
+    // return in natural page order
+    return images.sort((a, b) => a.page - b.page);
   } finally {
-    // clean-up no matter what
-    await fs.rm(tempDir, { recursive: true, force: true });
+    // best-effort cleanup
+    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
   }
 }

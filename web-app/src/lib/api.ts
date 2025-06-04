@@ -13,7 +13,7 @@ import {
   CustomWorkflowRuns,
   EnhancedWorkflowResponse,
 } from "@/features/workflows/workflows.types";
-import { Thread, UpdateThreadMutationData } from "@/types/chat";
+import { ChatMessage, Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { DocumentContent } from "@/types/project";
 import { Organization, User } from "@/types/user";
@@ -576,6 +576,29 @@ class ThreadApi extends ApiRequest {
     data: UpdateThreadMutationData
   ): Promise<Thread> {
     return await this.request<Thread>(`/threads/${threadId}`, "PUT", data);
+  }
+
+  async getThreadMessages(threadId: string): Promise<ChatMessage[]> {
+    return await this.request<ChatMessage[]>(`/threads/${threadId}/messages`);
+  }
+
+  async postMessage(params: {
+    threadId: string;
+    message: {
+      content: string;
+      role?: string;
+      experimental_attachments?: any[];
+    };
+    model: string;
+    maxTokens?: number;
+    instructions?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const { threadId, ...body } = params;
+    return await this.request<{ success: boolean; message: string }>(
+      `/threads/${threadId}/messages`,
+      "POST",
+      body
+    );
   }
 
   async deleteThread(

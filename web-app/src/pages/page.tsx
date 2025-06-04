@@ -5,7 +5,12 @@ import { useAtom } from "jotai";
 import { useRef, useState } from "react";
 
 // State
-import { initalInputAtom, uploadsAtom, modelAtom } from "@/atoms/chat";
+import {
+  initalInputAtom,
+  uploadsAtom,
+  modelAtom,
+  chatStatusAtom,
+} from "@/atoms/chat";
 import { pricingPlanDialogOpenAtom } from "@/components/PricingDialog";
 
 // Components
@@ -46,6 +51,7 @@ export function HomePage() {
   const chatInputRef = useRef<ChatInputFormRef>(null);
   const [uploads, setUploads] = useAtom(uploadsAtom);
   const [selectedModel] = useAtom(modelAtom);
+  const [, setChatStatus] = useAtom(chatStatusAtom);
   const [isDownloadingSPFile, setIsDownloadingSPFile] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -62,12 +68,22 @@ export function HomePage() {
     }
 
     setInitalInput(initalInput.trim());
+    setChatStatus("submitted");
 
     try {
       // Create thread in background
       const { id: threadId } = await api.threads.createThread({});
-      navigate(`/threads/${threadId}?isNew=true`);
+      await api.threads.postMessage({
+        threadId,
+        message: {
+          content: initalInput,
+          role: "user",
+        },
+        model: selectedModel.name,
+      });
+      navigate(`/threads/${threadId}`);
     } catch (error: unknown) {
+      setChatStatus("error");
       if (error instanceof Error && error.message === "subscription_required") {
         setShowPricingDialog(true);
         toast.error("Pro plan required to create a new thread.");
@@ -79,6 +95,8 @@ export function HomePage() {
           },
         });
       }
+      // Reset status after showing error
+      setTimeout(() => setChatStatus("ready"), 3000);
     }
   };
 

@@ -86,9 +86,7 @@ If the first page is a regular document, return "document".`,
 
     // If its an engineering drawing, we want to turn all the pages into images
     if (object.category === "drawing") {
-      const images = await convertPdfToImages(fileContent, {
-        dpi: 150,
-      });
+      const images = await convertPdfToImages(fileContent);
       console.log("images", images.length);
 
       const filePages: FilePage[] = [];

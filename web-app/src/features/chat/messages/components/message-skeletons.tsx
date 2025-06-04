@@ -16,9 +16,8 @@ export const AssistantSkeletonMessage = () => (
 export const UserSkeletonMessage = () => (
   <div className="mb-4">
     <div className="group flex w-full justify-end">
-      <div className="relative flex flex-col rounded-lg p-4 bg-primary/20 max-w-[85%] animate-pulse">
+      <div className="relative flex flex-col rounded-lg p-4 bg-muted max-w-[85%] animate-pulse">
         <div className="h-5 w-64 bg-muted rounded mb-3"></div>
-        <div className="h-5 w-48 bg-muted rounded"></div>
       </div>
     </div>
   </div>

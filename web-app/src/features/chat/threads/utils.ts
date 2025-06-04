@@ -1,11 +1,13 @@
-import { Thread } from "@/types/chat";
+import { ChatMessage } from "@/types/chat";
 import { Message } from "ai/react";
 
-export function mapThreadMessagesToMessages(thread: Thread): Message[] {
-  if (!thread) return [];
+export function mapThreadMessagesToMessages(
+  messages: ChatMessage[]
+): Message[] {
+  if (!messages) return [];
 
   return (
-    thread?.messages
+    messages
       ?.map(
         (message): Message => ({
           content: message.text,

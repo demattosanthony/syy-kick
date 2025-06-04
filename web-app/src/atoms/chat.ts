@@ -89,7 +89,9 @@ export const instructionsAtom = atomWithStorage("customInstructions", "");
 
 // Session atoms
 export const messagesAtom = atom<ChatMessage[]>([]);
-export const isGeneratingAtom = atom(false);
+export const chatStatusAtom = atom<
+  "ready" | "submitted" | "streaming" | "error"
+>("ready");
 export const initalInputAtom = atom("");
 export const inputAtom = atom("");
 export const uploadsAtom = atom<FileUpload[]>([]);

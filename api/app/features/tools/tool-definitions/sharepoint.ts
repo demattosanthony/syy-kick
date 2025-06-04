@@ -2,8 +2,15 @@ import { tool } from "ai";
 import { z } from "zod";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Client } from "@microsoft/microsoft-graph-client";
-import { processFile } from "../../../doc-processor-v2";
+import { FilePage, processFile } from "../../../doc-processor-v2";
 
+import { eq } from "drizzle-orm";
+import {
+  filePageChunks,
+  filePageImages,
+  filePages,
+  files,
+} from "../../../config/schema";
 interface GraphDriveItem {
   id: string;
   name: string;
@@ -99,34 +106,42 @@ const formatGraphDriveItems = (items: GraphDriveItem[]) => {
   }));
 };
 
-// const getFileFromCache = async (
-//   tx: NodePgDatabase<typeof import("../../../config/schema")> | undefined,
-//   filePath: string | undefined
-// ) => {
-//   if (!tx || !filePath) return null;
+const getFileFromCache = async (
+  tx: NodePgDatabase<typeof import("../../../config/schema")> | undefined,
+  filePath: string | undefined
+) => {
+  if (!tx || !filePath) return null;
 
-//   const existingFile = await tx.query.files.findFirst({
-//     where: eq(files.sharepoint_path, filePath),
-//   });
+  const existingFile = await tx.query.files.findFirst({
+    where: eq(files.sharepoint_path, filePath),
+  });
 
-//   if (existingFile) {
-//     const chunks = await tx.query.fileContentChunks.findMany({
-//       where: eq(fileContentChunks.fileId, existingFile.id),
-//     });
-//     if (chunks && chunks.length > 0) {
-//       return {
-//         fileName: existingFile.name,
-//         file: chunks.map((chunk) => chunk.content).join("\n") + "\n",
-//       };
-//     }
-//   }
-//   return null;
-// };
+  if (existingFile) {
+    const pages = await tx.query.filePages.findMany({
+      where: eq(filePages.fileId, existingFile.id),
+      with: {
+        chunks: true,
+        images: true,
+      },
+    });
+
+    if (pages && pages.length > 0) {
+      return {
+        fileName: existingFile.name,
+        file: pages.map(
+          (page) => page.chunks.map((chunk) => chunk.content).join("\n") + "\n"
+        ),
+      };
+    }
+  }
+
+  return null;
+};
 
 const downloadAndProcessFile = async (
   file: GraphDriveItem,
   downloadUrl: string
-) => {
+): Promise<FilePage[]> => {
   const response = await fetch(downloadUrl);
   if (!response.ok) {
     throw new Error(`Failed to download file: ${response.statusText}`);
@@ -140,57 +155,45 @@ const downloadAndProcessFile = async (
     file.file?.mimeType || "application/octet-stream"
   );
 
-  return filePages
-    .map((page) => page.chunks.map((chunk) => chunk.content).join("\n"))
-    .join("\n");
+  return filePages;
 };
 
-// const storeFileInDb = async (
-//   tx: NodePgDatabase<typeof import("../../../config/schema")> | undefined,
-//   file: GraphDriveItem,
-//   content: string
-// ) => {
-//   if (!tx) return null; // Or throw an error if tx is mandatory for this operation
+const storeFileInDb = async (
+  tx: NodePgDatabase<typeof import("../../../config/schema")> | undefined,
+  file: GraphDriveItem
+) => {
+  if (!tx) return null; // Or throw an error if tx is mandatory for this operation
 
-//   const filePath = file.parentReference?.path
-//     ? file.parentReference.path + "/" + file.name
-//     : file.name; // Handle cases where parentReference or path might be undefined
+  const filePath = file.parentReference?.path
+    ? file.parentReference.path + "/" + file.name
+    : file.name; // Handle cases where parentReference or path might be undefined
 
-//   const insertedFile = await tx
-//     .insert(files)
-//     .values({
-//       name: file.name,
-//       mimeType: file.file?.mimeType || "application/octet-stream",
-//       size: file.size,
-//       type: "file",
-//       sharepoint_path: filePath,
-//       file_origin_type: "sharepoint",
-//       createdAt: new Date(),
-//       updatedAt: new Date(),
-//     })
-//     .returning();
+  const insertedFile = await tx
+    .insert(files)
+    .values({
+      name: file.name,
+      mimeType: file.file?.mimeType || "application/octet-stream",
+      size: file.size,
+      type: "file",
+      sharepoint_path: filePath,
+      file_origin_type: "sharepoint",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
 
-//   if (!insertedFile || insertedFile.length === 0) {
-//     // Consider throwing an error here if insertion is critical
-//     return null;
-//   }
+  if (!insertedFile || insertedFile.length === 0) {
+    // Consider throwing an error here if insertion is critical
+    return null;
+  }
 
-//   const chunks = content.match(/.{1,1000}/g);
-//   if (chunks) {
-//     await tx.insert(fileContentChunks).values(
-//       chunks.map((chunk) => ({
-//         fileId: insertedFile[0].id,
-//         content: chunk,
-//       }))
-//     );
-//   }
-//   return insertedFile[0];
-// };
+  return insertedFile[0];
+};
 
 export const openSharepointFileTool = (
   driveId: string,
   graphClient: Client,
-  tx?: NodePgDatabase<typeof import("../../../config/schema")>
+  tx: NodePgDatabase<typeof import("../../../config/schema")>
 ) =>
   tool({
     description:
@@ -214,21 +217,81 @@ export const openSharepointFileTool = (
           ? fileMetadata.parentReference.path + "/" + fileMetadata.name
           : fileMetadata.name; // Handle cases where parentReference or path might be undefined
 
-        // const cachedFile = await getFileFromCache(tx, filePath);
-        // if (cachedFile) {
-        //   return cachedFile;
-        // }
+        const cachedFile = await getFileFromCache(tx, filePath);
+        if (cachedFile) {
+          console.log("Cached file found");
+          return cachedFile;
+        }
 
-        const content = await downloadAndProcessFile(
+        console.log("No cached file found, downloading and processing file");
+
+        const pages = await downloadAndProcessFile(
           fileMetadata,
           fileMetadata["@microsoft.graph.downloadUrl"]
         );
 
-        // await storeFileInDb(tx, fileMetadata, content);
+        const insertedFile = await storeFileInDb(tx, fileMetadata);
+
+        if (!insertedFile) {
+          return {
+            error: "Failed to store file in database",
+          };
+        }
+
+        for (const pageData of pages) {
+          // Insert the file page and get its ID
+          const insertedDbPageResult = await tx
+            .insert(filePages)
+            .values({
+              fileId: insertedFile.id,
+              pageNumber: pageData.pageNumber,
+            })
+            .returning({ id: filePages.id });
+
+          if (!insertedDbPageResult || insertedDbPageResult.length === 0) {
+            console.error(
+              `Failed to insert page number ${pageData.pageNumber} for file ${insertedFile.name} into database.`
+            );
+            // Depending on requirements, might continue to next page, or abort.
+            // Aborting to prevent partial data.
+            return {
+              error: `Failed to store page ${pageData.pageNumber} data.`,
+            };
+          }
+          const dbPageId = insertedDbPageResult[0].id;
+
+          // Save the file chunks for this page
+          if (pageData.chunks && pageData.chunks.length > 0) {
+            const chunkValues = pageData.chunks.map((chunk) => ({
+              filePageId: dbPageId,
+              content: chunk.content,
+              position: chunk.position,
+            }));
+            if (chunkValues.length > 0) {
+              await tx.insert(filePageChunks).values(chunkValues);
+            }
+          }
+
+          // Save the file images for this page
+          if (pageData.images && pageData.images.length > 0) {
+            const imageValues = pageData.images.map((image) => ({
+              filePageId: dbPageId,
+              name: image.name,
+              imagePath: image.path,
+              size: image.size,
+            }));
+            if (imageValues.length > 0) {
+              await tx.insert(filePageImages).values(imageValues);
+            }
+          }
+        }
 
         return {
           fileName: fileMetadata.name,
-          file: content,
+          file: pages.map(
+            (page) =>
+              page.chunks.map((chunk) => chunk.content).join("\n") + "\n"
+          ),
         };
       } catch (error) {
         console.error("Open file error:", error);

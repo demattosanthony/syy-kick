@@ -2,7 +2,7 @@
 import { streamText } from "ai";
 import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { Request, Response } from "express";
-import { z } from "zod";
+import { EventEmitter } from "events";
 
 // Internal configuration
 import db from "../../config/db";
@@ -15,18 +15,16 @@ import {
 
 // Internal features
 import { embeddingModel } from "../models";
-import { inferenceSchema } from "./threads.schemas";
-import { MyMessage, ThreadWithMessages } from "./threads.types";
+import { MyMessage } from "./threads.types";
 import {
   createWebSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
-  maybeGenerateTitle,
   processThreadMessages,
+  processAttachments,
+  createAndSaveThreadTitle,
 } from "./threads.utils";
-import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
-import { getOrgIdOrUnedfined } from "../../utils";
-import { markitdown } from "../../doc-processor-v2";
+import { FilePage, markitdown } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { MicrosoftAPI } from "../../config/microsoft";
@@ -36,6 +34,20 @@ import {
   openSharepointFileTool,
 } from "../tools/tool-definitions";
 import { MARKITDOWN_MIME_TYPES } from "../../config/constants";
+import { Workspace } from "../auth/auth.types";
+
+const eventEmitter = new EventEmitter();
+
+// In-memory cache for active streams
+interface ActiveStreamData {
+  currentAssistantMessageId: string | null;
+  accumulatedResponseText: string;
+  assistantMessageCreatedAt: Date | null;
+  role: "assistant"; // Typically always assistant for this cache
+  model?: string;
+  provider?: string;
+}
+const activeStreamCache = new Map<string, ActiveStreamData>();
 
 const threadsOps = {
   async createThread(
@@ -94,16 +106,20 @@ const threadsOps = {
     if (message.experimental_attachments?.length) {
       for (const attachment of message.experimental_attachments) {
         // convert attachment to markdown
-        let markdown = null;
+        let filePage: FilePage | null = null;
         if (MARKITDOWN_MIME_TYPES.includes(attachment.contentType!)) {
           const attachmentBuffer = await s3
             .file(attachment.file_key)
             .arrayBuffer();
-          markdown = await markitdown(
+          filePage = await markitdown(
             Buffer.from(attachmentBuffer),
             attachment.name || ""
           );
         }
+
+        const markdownContent = filePage?.chunks
+          .map((chunk) => chunk.content)
+          .join("\n");
 
         await db.insert(messageAttachments).values({
           messageId,
@@ -115,7 +131,7 @@ const threadsOps = {
             : attachment.contentType?.includes("markdown")
               ? "markdown"
               : "file",
-          markdown,
+          markdown: markdownContent,
         });
       }
     }
@@ -126,48 +142,44 @@ const threadsOps = {
     const thread = await db.query.threads.findFirst({
       where: eq(threads.id, threadId),
       with: {
-        messages: {
-          orderBy: messages.createdAt,
-          columns: {
-            embedding: false,
-            id: true,
-            threadId: true,
-            userId: true,
-            role: true,
-            text: true,
-            reasoning: true,
-            model: true,
-            provider: true,
-            createdAt: true,
-          },
-          with: {
-            attachments: true,
-            toolCalls: true,
-          },
-        },
         organization: true,
         knowledgeBase: true,
       },
     });
     if (!thread) return null;
 
-    // Cast the thread to match ThreadWithMessages type
-    const typedThread: ThreadWithMessages = {
-      ...thread,
-      knowledgeBase: thread.knowledgeBase || undefined,
-      messages: thread.messages.map((msg) => ({
-        ...msg,
-        attachments: (msg.attachments || []).map((att) => ({
-          ...att,
-          fileName: att.fileName || undefined,
-          mimeType: att.mimeType || undefined,
-          size: att.size || undefined,
-        })),
-      })),
-    };
+    return thread;
+  },
 
-    // Return the thread with processed attachments
-    return processThreadMessages(typedThread);
+  async getThreadMessages(threadId: string) {
+    const threadMessages = await db.query.messages.findMany({
+      where: eq(messages.threadId, threadId),
+      orderBy: messages.createdAt,
+      with: {
+        attachments: true,
+        toolCalls: true,
+      },
+    });
+
+    // Process attachments for each message to add URLs
+    const processedMessages = [];
+    for (const msg of threadMessages) {
+      // Map database attachments to MessageAttachment type
+      const mappedAttachments = msg.attachments.map((att) => ({
+        ...att,
+        fileName: att.fileName || undefined,
+        mimeType: att.mimeType || undefined,
+        size: att.size || undefined,
+      }));
+
+      const processedAttachments = await processAttachments(mappedAttachments);
+      processedMessages.push({
+        ...msg,
+        attachments: processedAttachments,
+      });
+    }
+
+    return processedMessages;
   },
 
   async updateThread(
@@ -307,134 +319,166 @@ const threadsOps = {
     return processed;
   },
 
-  async inference(req: Request, res: Response) {
-    const controller = new AbortController();
+  async deleteThread(
+    userId: string,
+    threadId: string,
+    organizationId?: string
+  ) {
+    // First delete messages
+    await db
+      .delete(messages)
+      .where(and(eq(messages.threadId, threadId), eq(messages.userId, userId)));
 
-    // SSE Setup - Set essential headers manually, but don't flush yet.
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("Cache-Control", "no-cache");
+    // Then delete the thread
+    await db
+      .delete(threads)
+      .where(
+        and(
+          eq(threads.id, threadId),
+          eq(threads.userId, userId),
+          organizationId
+            ? eq(threads.organizationId, organizationId)
+            : sql`${threads.organizationId} IS NULL`
+        )
+      );
+    return { success: true };
+  },
+
+  async postMessageAndStartInference(
+    userId: string,
+    threadId: string,
+    message: any,
+    model: string,
+    maxTokens?: number,
+    instructions?: string,
+    workspace?: Workspace
+  ) {
+    // 1) Store the user message
+    if (message) {
+      await threadsOps.createMessage(userId, threadId, "user", {
+        content: message.content || "",
+        experimental_attachments: message.experimental_attachments as any,
+        role: message.role as any,
+      });
+    }
+
+    // 2) Start inference asynchronously (don't await)
+    setImmediate(async () => {
+      try {
+        await threadsOps.runInferenceForThread(
+          userId,
+          threadId,
+          model,
+          maxTokens,
+          instructions,
+          workspace
+        );
+      } catch (error) {
+        console.error("Error during background inference:", error);
+        // Clean up cache if background inference setup fails
+        activeStreamCache.delete(threadId);
+      }
+    });
+
+    return { success: true };
+  },
+
+  async runInferenceForThread(
+    userId: string,
+    threadId: string,
+    model: string,
+    maxTokens?: number,
+    instructions?: string,
+    workspace?: Workspace
+  ) {
+    const controller = new AbortController();
+    // Initialize local state for this specific inference run
+    let runState: ActiveStreamData = {
+      currentAssistantMessageId: null,
+      accumulatedResponseText: "",
+      assistantMessageCreatedAt: null,
+      role: "assistant",
+      model: model,
+      provider: undefined, // Will be set from modelConfig
+    };
 
     try {
-      const { threadId } = req.params;
-      const { model, maxTokens, instructions, message } = req.body as z.infer<
-        typeof inferenceSchema
-      >;
-
-      // 1) Store the user message
-      if (message) {
-        await threadsOps.createMessage(req.dbUser!.id, threadId, "user", {
-          content: message.content || "",
-          experimental_attachments: message.experimental_attachments as any,
-          role: message.role as any,
-        });
-      }
-
-      // 2) Fetch thread and knowledge bases in parallel
-      const [thread, knowledgeBases, modelConfig] = await Promise.all([
-        db.query.threads.findFirst({
-          where: eq(threads.id, threadId),
-          with: {
-            organization: true,
-            knowledgeBase: true,
-            messages: {
-              with: {
-                attachments: true,
-                toolCalls: true,
-              },
-              orderBy: messages.createdAt,
+      const thread = await db.query.threads.findFirst({
+        where: eq(threads.id, threadId),
+        with: {
+          organization: true,
+          knowledgeBase: true,
+          messages: {
+            with: {
+              attachments: true,
+              toolCalls: true,
             },
+            orderBy: messages.createdAt,
           },
-        }),
-        listKnowledgeBases(
-          req.dbUser!.id,
-          getOrgIdOrUnedfined(req.workspace),
-          1,
-          999
-        ),
-        Promise.resolve(getModelConfig(model)),
-      ]);
+        },
+      });
+      const modelConfig = getModelConfig(model);
+      runState.provider = modelConfig.provider;
 
       if (!thread) {
-        console.error("Thread not found");
-        res.status(404).json({ error: "Thread not found" });
+        console.error(`Thread not found: ${threadId}`);
+        activeStreamCache.delete(threadId); // Clean up cache
         return;
       }
 
-      // 3) Prepare messages for inference
+      // Associate this run's state with the threadId in the global cache
+      // This allows streamMessages to potentially pick it up on reconnect
+      activeStreamCache.set(threadId, runState);
+
       const inferenceMsgs = await dbMessagesToInferenceMessages(
         thread.messages,
         modelConfig,
-        req.dbUser!,
-        instructions && instructions.length > 0 ? instructions : undefined,
-        thread.knowledgeBase || undefined,
-        knowledgeBases.data
+        { id: userId } as any,
+        instructions && instructions.length > 0 ? instructions : undefined
       );
 
-      // 4) Generate a thread title if missing
       if (!thread.title) {
-        maybeGenerateTitle(threadId, inferenceMsgs, thread.title);
+        createAndSaveThreadTitle(threadId, inferenceMsgs);
       }
 
-      // 5) Create tools for the assistant if model supports it and context requires them
       let tools: Record<string, any> | undefined = undefined;
       if (modelConfig.supportsToolUse) {
-        tools = {
-          web_search: createWebSearchTool(),
-        };
-      }
-
-      const microsoftGraph = new MicrosoftAPI({
-        userId: req.dbUser!.id,
-      });
-      const accessToken = await microsoftGraph.getAccessToken("graph");
-
-      if (accessToken && tools) {
-        const graphClient = await microsoftGraph.getGraphClient("graph");
-        let driveId: string | undefined = undefined;
-
-        if (graphClient) {
-          try {
-            const drive = await graphClient.api("/me/drive").get();
-            driveId = drive?.id;
-          } catch (error) {
-            console.error("Failed to get drive ID:", error);
-            // Potentially handle the error, e.g., by not creating SharePoint tools
-            // or by creating them in a disabled state.
+        tools = { web_search: createWebSearchTool() };
+        const microsoftGraph = new MicrosoftAPI({ userId: userId });
+        const accessToken = await microsoftGraph.getAccessToken("graph");
+        if (accessToken) {
+          const graphClient = await microsoftGraph.getGraphClient("graph");
+          let driveId: string | undefined = undefined;
+          if (graphClient) {
+            try {
+              const drive = await graphClient.api("/me/drive").get();
+              driveId = drive?.id;
+            } catch (error) {
+              console.error("Failed to get drive ID:", error);
+            }
+          }
+          if (driveId && graphClient) {
+            tools.sharepoint_graph = createSharepointSearchTool(
+              driveId,
+              graphClient
+            );
+            tools.sharepoint_ls = createSharepointListTool(
+              driveId,
+              graphClient
+            );
+            tools.sharepoint_open_file = openSharepointFileTool(
+              driveId,
+              graphClient,
+              db
+            );
           }
         }
-
-        if (driveId && graphClient) {
-          tools.sharepoint_graph = createSharepointSearchTool(
-            driveId,
-            graphClient
-          );
-
-          tools.sharepoint_ls = createSharepointListTool(driveId, graphClient);
-
-          tools.sharepoint_open_file = openSharepointFileTool(
-            driveId,
-            graphClient,
-            db
-          );
-        } else {
-          // Handle the case where driveId could not be fetched
-          // For example, log a warning or disable SharePoint tools
-          console.warn(
-            "SharePoint tools could not be initialized as drive ID was not found."
-          );
-        }
       }
 
-      let aiResponse = "";
-      let requestCompleted = false;
-
-      // Start the streaming from the AI
       const result = streamText({
         model: modelConfig.model,
         messages: inferenceMsgs,
         temperature: 0.45,
-        // Conditionally pass tool-related parameters only if tools are defined (i.e., supported by the model)
         ...(tools && {
           tools: tools,
           maxSteps: 8,
@@ -466,17 +510,70 @@ const threadsOps = {
         },
         onChunk: async ({ chunk }) => {
           if (chunk.type === "text-delta") {
-            aiResponse += chunk.textDelta;
+            const cachedRunState = activeStreamCache.get(threadId);
+            if (!cachedRunState) {
+              // Should ideally not happen if set at start of run
+              console.warn(
+                `Cache miss for thread ${threadId} during onChunk. Re-initializing minimally.`
+              );
+              // This is a fallback, ideally the cache is always present during an active run.
+              // This minimal re-init won't have the original createdAt or message ID if it was already set.
+              activeStreamCache.set(threadId, {
+                currentAssistantMessageId: null, // Cannot recover old ID here
+                accumulatedResponseText: chunk.textDelta,
+                assistantMessageCreatedAt: new Date(), // Best guess for createdAt
+                role: "assistant",
+                model: model,
+                provider: modelConfig.provider,
+              });
+            }
+            const currentRunState = activeStreamCache.get(threadId)!; // Assert non-null after check/set
+
+            if (!currentRunState.currentAssistantMessageId) {
+              currentRunState.assistantMessageCreatedAt = new Date();
+              const [insertedMessage] = await db
+                .insert(messages)
+                .values({
+                  userId: userId,
+                  id: crypto.randomUUID(),
+                  threadId,
+                  role: "assistant",
+                  text: "", // Start with empty text, cache holds the truth for stream
+                  createdAt: currentRunState.assistantMessageCreatedAt,
+                  model: currentRunState.model,
+                  provider: currentRunState.provider,
+                })
+                .returning();
+              currentRunState.currentAssistantMessageId = insertedMessage.id;
+              currentRunState.accumulatedResponseText = chunk.textDelta; // First chunk to cache
+
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "text-delta",
+                messageId: currentRunState.currentAssistantMessageId,
+                content: chunk.textDelta,
+                role: "assistant",
+                createdAt:
+                  currentRunState.assistantMessageCreatedAt.toISOString(),
+                isInitialChunk: true,
+              });
+            } else {
+              currentRunState.accumulatedResponseText += chunk.textDelta;
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "text-delta",
+                messageId: currentRunState.currentAssistantMessageId,
+                content: chunk.textDelta,
+              });
+            }
+            // Update cache with the latest accumulated text
+            activeStreamCache.set(threadId, currentRunState);
           }
         },
         onError: (error) => {
-          console.error("Error running inference:", error);
-          res.status(500).json({
-            error: "An error occurred during inference",
-          });
-        },
-        onFinish: async () => {
-          requestCompleted = true;
+          console.error(
+            `Error running inference for thread ${threadId}:`,
+            error
+          );
+          activeStreamCache.delete(threadId); // Clean up cache on error
         },
         onStepFinish: async ({
           toolCalls,
@@ -485,181 +582,209 @@ const threadsOps = {
           finishReason,
           reasoning,
         }) => {
-          //   console.log("Finish reason:", finishReason);
-          //   console.log("Tool calls:", toolCalls);
-          //   console.log("Tool results:", toolResults);
-          // console.log("Text:", text);
-          // console.log("Reasoning:", reasoning);
+          const now = new Date();
+          const finalRunState = activeStreamCache.get(threadId);
 
-          //   console.log("\n\n\n");
-
-          if (finishReason === "tool-calls") {
-            // First create a message for the assistant's tool call
-            const toolCallMessage = await db
-              .insert(messages)
-              .values({
-                userId: req.dbUser!.id,
+          if (!finalRunState || !finalRunState.currentAssistantMessageId) {
+            console.error(
+              `Critical: onStepFinish for thread ${threadId} but no assistant message ID was created or cache lost.`
+            );
+            // Attempt to create a message if none exists, though it's a degraded state
+            if (!finalRunState?.currentAssistantMessageId) {
+              const tempMsgId = crypto.randomUUID();
+              await db.insert(messages).values({
+                userId: userId,
+                id: tempMsgId,
                 threadId,
                 role: "assistant",
-                text,
+                text:
+                  text ||
+                  (toolCalls && toolCalls.length > 0
+                    ? "Calling tools..."
+                    : "Processing..."), // Best effort text
                 reasoning,
+                createdAt: now,
                 model,
                 provider: modelConfig.provider,
-              })
-              .returning();
+              });
+              // No cache to update here as it was missing or didn't have an ID
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type:
+                  finishReason === "tool-calls"
+                    ? "tool-call"
+                    : "message-complete",
+                message: {
+                  id: tempMsgId,
+                  text: text,
+                  reasoning,
+                  toolCalls: toolCalls || [],
+                  role: "assistant",
+                  createdAt: now.toISOString(),
+                },
+              });
+              if (finishReason !== "tool-calls")
+                activeStreamCache.delete(threadId); // Clean cache on completion
+              return;
+            }
+          }
 
-            // Then persist each tool call and its result
+          const currentMsgId = finalRunState.currentAssistantMessageId!;
+          const fullAccumulatedText = finalRunState.accumulatedResponseText;
+
+          // Persist the final accumulated text and reasoning from the cache to DB
+          await db
+            .update(messages)
+            .set({
+              text: fullAccumulatedText, // Use full text from cache
+              reasoning,
+            })
+            .where(eq(messages.id, currentMsgId));
+
+          if (finishReason === "tool-calls") {
+            const persistedToolCalls = [];
+            for (const toolCall of toolCalls) {
+              /* ... as before ... */
+            }
+            // Ensure tool calls are persisted to DB, linked to currentMsgId
             for (const toolCall of toolCalls) {
               if (!toolCall) continue;
-              const toolCallId = crypto.randomUUID();
+              const toolCallDbId = crypto.randomUUID();
               await db.insert(toolCallsTable).values({
-                id: toolCallId,
-                messageId: toolCallMessage[0].id,
+                id: toolCallDbId,
+                messageId: currentMsgId,
                 toolName: toolCall.toolName,
                 toolCallId: toolCall.toolCallId,
                 args: toolCall.args,
                 status: "pending",
-                createdAt: new Date(),
-                updatedAt: new Date(),
+                createdAt: now,
+                updatedAt: now,
               });
-
-              // Find matching result for this tool call
               const result = toolResults.find(
                 (r) => r.toolCallId === toolCall.toolCallId
               );
-
               if (result) {
                 await db
                   .update(toolCallsTable)
                   .set({
                     status: "completed",
                     result: result.result,
-                    updatedAt: new Date(),
+                    updatedAt: now,
                   })
-                  .where(eq(toolCallsTable.toolCallId, toolCall.toolCallId));
+                  .where(eq(toolCallsTable.id, toolCallDbId));
               }
             }
-
-            return;
-          }
-
-          // Create a message for the assistant's response
-          if ((finishReason === "stop" || finishReason === "length") && text) {
+            const assistantMessageWithTools = await db.query.messages.findFirst(
+              {
+                where: eq(messages.id, currentMsgId),
+                with: { toolCalls: true },
+              }
+            );
+            eventEmitter.emit(`thread-${threadId}-message`, {
+              type: "tool-call",
+              message: assistantMessageWithTools,
+            });
+            // Keep cache for this messageId if LLM might generate more text after tool use
+            // The accumulatedResponseText in cache is now the text *before* this tool call.
+            // If subsequent text comes, it will append to it.
+          } else if (finishReason === "stop" || finishReason === "length") {
             let embedding = null;
-            if (text && text.length > 0) {
+            if (fullAccumulatedText && fullAccumulatedText.length > 0) {
               try {
                 const embeddingResult = await embeddingModel.doEmbed({
-                  values: [text],
+                  values: [fullAccumulatedText],
                 });
                 embedding = embeddingResult.embeddings[0];
               } catch (error) {
-                console.error("Error embedding message", error);
+                console.error("Error embedding final message", error);
               }
             }
+            await db
+              .update(messages)
+              .set({ text: fullAccumulatedText, reasoning, embedding })
+              .where(eq(messages.id, currentMsgId));
 
-            // Persist the assistant's response
-            await db.insert(messages).values({
-              userId: req.dbUser!.id,
-              id: crypto.randomUUID(),
-              threadId,
-              role: "assistant",
-              text: text,
-              reasoning,
-              createdAt: new Date(),
-              model,
-              embedding: embedding,
-              provider: modelConfig.provider,
+            const finalAssistantMessage = await db.query.messages.findFirst({
+              where: eq(messages.id, currentMsgId),
+              with: { attachments: true, toolCalls: true },
             });
-            return;
+            eventEmitter.emit(`thread-${threadId}-message`, {
+              type: "message-complete",
+              message: finalAssistantMessage,
+            });
+            activeStreamCache.delete(threadId); // Clean up cache on completion
           }
         },
       });
 
-      req.on("close", () => {
-        // If the request completed normally, we don't need to do anything
-        if (requestCompleted) {
-          console.log("Request completed normally");
-          return;
-        }
-
-        console.log("Client aborted inference");
-        try {
-          // Abort the controller first
-          controller.abort();
-        } catch (error) {
-          console.error("Error aborting controller:", error);
-        }
-
-        // Save the AI response if it's not empty - this will now execute even if abort() throws
-        if (aiResponse && aiResponse.trim().length > 0) {
-          console.log("Saving partial AI response after client disconnect");
-          db.insert(messages)
-            .values({
-              userId: req.dbUser!.id,
-              id: crypto.randomUUID(),
-              threadId,
-              role: "assistant",
-              reasoning: null,
-              text: aiResponse,
-              createdAt: new Date(),
-              model,
-              embedding: null,
-              provider: modelConfig.provider,
-            })
-            .then(() => console.log("Successfully saved partial response"))
-            .catch((err) =>
-              console.error("Failed to save partial response:", err)
-            );
-        } else {
-          console.log("No AI response to save after client disconnect");
-        }
-      });
-
-      // Pipe the data out as SSE
-      return result.pipeDataStreamToResponse(res, {
-        sendReasoning: true,
-        sendSources: true,
-        headers: {
-          "Content-Encoding": "none",
-        },
-      });
-    } catch (error: any) {
-      console.error("Error in inference:", error);
-      // Check if headers are already sent before trying to send an error response
-      if (!res.headersSent) {
-        res.status(500).json({
-          error: "An error occurred during inference",
-        });
-      } else {
-        // Headers already sent, just log the error
-        console.error("Headers already sent, cannot send error response.");
+      for await (const _ of result.textStream) {
       }
+    } catch (error: any) {
+      console.error(
+        `Unhandled error in runInferenceForThread for ${threadId}:`,
+        error
+      );
+      activeStreamCache.delete(threadId); // Ensure cache cleanup on any catastrophic error
+    } finally {
+      // If the stream finished without a "stop" or "length" (e.g. aborted, error not caught by onStepFinish)
+      // and there's still an active cache entry, it implies an incomplete generation.
+      // Depending on policy, you might clear it or leave it for a short TTL for potential quick reconnects.
+      // For now, if not explicitly cleared by stop/length, we'll clear it.
+      // However, if it was a tool_call, it should persist.
+      const cacheEntry = activeStreamCache.get(threadId);
+      if (cacheEntry && cacheEntry.currentAssistantMessageId) {
+        // Check if last event was tool_call, if so, don't clear yet
+        // This logic needs to be more robust if we want to keep cache after tool_calls
+        // For now, assuming errors or aborts lead to cleanup.
+      }
+      // activeStreamCache.delete(threadId); // Revisit this cleanup based on desired resume behavior post-tool-call
     }
   },
 
-  async deleteThread(
-    userId: string,
-    threadId: string,
-    organizationId?: string
-  ) {
-    // First delete messages
-    await db
-      .delete(messages)
-      .where(and(eq(messages.threadId, threadId), eq(messages.userId, userId)));
+  async streamMessages(req: Request, res: Response) {
+    const { threadId } = req.params;
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.write("data: " + JSON.stringify({ type: "connected" }) + "\n\n");
 
-    // Then delete the thread
-    await db
-      .delete(threads)
-      .where(
-        and(
-          eq(threads.id, threadId),
-          eq(threads.userId, userId),
-          organizationId
-            ? eq(threads.organizationId, organizationId)
-            : sql`${threads.organizationId} IS NULL`
-        )
+    // Check cache for active stream data on new connection
+    const cachedStreamData = activeStreamCache.get(threadId);
+    if (cachedStreamData && cachedStreamData.currentAssistantMessageId) {
+      console.log(
+        `Resuming stream for thread ${threadId} from cache for message ${cachedStreamData.currentAssistantMessageId}`
       );
-    return { success: true };
+      res.write(
+        "event: message\ndata: " +
+          JSON.stringify({
+            type: "stream-resume",
+            messageId: cachedStreamData.currentAssistantMessageId,
+            fullText: cachedStreamData.accumulatedResponseText,
+            createdAt:
+              cachedStreamData.assistantMessageCreatedAt?.toISOString(),
+            role: cachedStreamData.role,
+            // Potentially include model, provider if needed by client to reconstruct
+          }) +
+          "\n\n"
+      );
+    }
+
+    const messageHandler = (data: any) => {
+      res.write("event: message\ndata: " + JSON.stringify(data) + "\n\n");
+    };
+    eventEmitter.on(`thread-${threadId}-message`, messageHandler);
+
+    req.on("close", () => {
+      console.log(`Client disconnected from thread ${threadId} stream`);
+      eventEmitter.removeListener(`thread-${threadId}-message`, messageHandler);
+      // Do NOT clear activeStreamCache here, another client might reconnect or stream might still be running.
+      // Cache is cleared by runInferenceForThread on completion/error.
+      res.end();
+    });
+    req.on("aborted", () => {
+      console.log(`Client aborted thread ${threadId} stream`);
+      eventEmitter.removeListener(`thread-${threadId}-message`, messageHandler);
+      res.end();
+    });
   },
 
   async cloneThread(userId: string, threadId: string) {
@@ -715,8 +840,8 @@ const threadsOps = {
     }
 
     // Now handle attachments and tool calls for each message
-    for (let i = 0; i < sourceThread.messages.length; i++) {
-      const sourceMsg = sourceThread.messages[i];
+    for (let i = 0; i < originalMessages.length; i++) {
+      const sourceMsg = originalMessages[i];
       const newMsg = insertedMessages[i];
 
       // Clone attachments
