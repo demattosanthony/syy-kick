@@ -5,10 +5,9 @@ export function convertChatMessagesToMessages(
   messages: ChatMessage[]
 ): Message[] {
   return messages.map((msg) => {
-    // Create parts array in the proper order
     const parts: any[] = [];
 
-    // Add reasoning part first if it exists
+    // Add reasoning part first if it exists (thinking always comes first)
     if (msg.reasoning) {
       parts.push({
         type: "reasoning",
@@ -16,7 +15,15 @@ export function convertChatMessagesToMessages(
       });
     }
 
-    // Add tool invocation parts
+    // Add text part (AI typically generates text before deciding to use tools)
+    if (msg.text) {
+      parts.push({
+        type: "text",
+        text: msg.text,
+      });
+    }
+
+    // Add tool invocation parts last (tools are used after generating text)
     if (msg.toolCalls?.length) {
       msg.toolCalls.forEach((toolCall) => {
         parts.push({
@@ -31,14 +38,6 @@ export function convertChatMessagesToMessages(
             state: "result" as const,
           },
         });
-      });
-    }
-
-    // Add text part if it exists
-    if (msg.text) {
-      parts.push({
-        type: "text",
-        text: msg.text,
       });
     }
 

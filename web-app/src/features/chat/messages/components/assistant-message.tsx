@@ -113,36 +113,28 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
     if (message.parts?.length) {
       return (
         <React.Fragment>
-          {message.parts
-            // .sort((a, b) => {
-            //   if (a.type === "reasoning") return -1;
-            //   if (b.type === "reasoning") return 1;
-            //   if (a.type === "text") return -1;
-            //   if (b.type === "text") return 1;
-            //   return 0;
-            // })
-            .map((part, index) =>
-              part.type === "reasoning" ? (
-                <ThinkingDropdown
-                  key={`reasoning-${index}`}
-                  autoClose={shouldAutoCloseThinking}
-                >
-                  <MarkdownViewer content={part.reasoning} />
-                </ThinkingDropdown>
-              ) : part.type === "tool-invocation" ? (
-                <ToolCallMessageContent
-                  key={`tool-${index}`}
-                  tool={part.toolInvocation}
-                />
-              ) : part.type === "text" ? (
-                <TextContent
-                  key={`text-${index}`}
-                  text={part.text}
-                  messages={messages}
-                  index={index}
-                />
-              ) : null
-            )}
+          {message.parts.map((part, index) =>
+            part.type === "reasoning" ? (
+              <ThinkingDropdown
+                key={`reasoning-${index}`}
+                autoClose={shouldAutoCloseThinking}
+              >
+                <MarkdownViewer content={part.reasoning} />
+              </ThinkingDropdown>
+            ) : part.type === "tool-invocation" ? (
+              <ToolCallMessageContent
+                key={`tool-${index}`}
+                tool={part.toolInvocation}
+              />
+            ) : part.type === "text" ? (
+              <TextContent
+                key={`text-${index}`}
+                text={part.text}
+                messages={messages}
+                index={index}
+              />
+            ) : null
+          )}
         </React.Fragment>
       );
     }

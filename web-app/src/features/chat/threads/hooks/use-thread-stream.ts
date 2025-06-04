@@ -45,7 +45,7 @@ export function useThreadStream({
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("SSE data received:", data);
+        // console.log("SSE data received:", data);
 
         if (data.type === "connected") {
           console.log("Connected to message stream");
@@ -94,7 +94,10 @@ export function useThreadStream({
             if (targetMessageId && messageExists) {
               return prev.map((msg) =>
                 msg.id === targetMessageId
-                  ? { ...msg, text: (msg.text || "") + data.content }
+                  ? {
+                      ...msg,
+                      text: (msg.text || "") + data.content,
+                    }
                   : msg
               );
             } else if (targetMessageId && isInitialChunk) {
@@ -118,7 +121,10 @@ export function useThreadStream({
               ) {
                 return prev.map((msg, index) =>
                   index === prev.length - 1
-                    ? { ...msg, text: (msg.text || "") + data.content }
+                    ? {
+                        ...msg,
+                        text: (msg.text || "") + data.content,
+                      }
                     : msg
                 );
               } else {
@@ -161,7 +167,8 @@ export function useThreadStream({
               return [...prev, data.message];
             }
           });
-          setChatStatus("ready");
+          // Don't set status to "ready" here - the AI might continue with more steps
+          // Status will be set to "ready" when the entire inference run completes
         } else if (data.type === "tool-call") {
           setChatStatus("streaming");
           // The `data.message` here IS the assistant message that contains the tool calls
@@ -172,13 +179,25 @@ export function useThreadStream({
             if (existingMessageIndex !== -1) {
               // Replace the existing message with the one from the event, which includes tool_calls
               return prev.map((msg, index) =>
-                index === existingMessageIndex ? data.message : msg
+                index === existingMessageIndex
+                  ? {
+                      ...data.message,
+                    }
+                  : msg
               );
             } else {
               // If for some reason this assistant message isn't in state, add it.
-              return [...prev, data.message];
+              return [
+                ...prev,
+                {
+                  ...data.message,
+                },
+              ];
             }
           });
+        } else if (data.type === "inference-complete") {
+          // New event type to indicate the entire inference run is complete
+          setChatStatus("ready");
         } else if (data.type === "reasoning-delta") {
           setChatStatus("streaming");
           // Handle reasoning text deltas (for models that support thinking)
@@ -195,8 +214,19 @@ export function useThreadStream({
                     }
                   : msg
               );
+            } else {
+              // Create a new message if it doesn't exist (happens when reasoning comes first in a new step)
+              const newMessage: ChatMessage = {
+                id: data.messageId,
+                role: MessageRole.assistant,
+                text: "", // Start with empty text, will be filled by subsequent text-delta events
+                reasoning: data.content,
+                createdAt: new Date().toISOString(),
+                attachments: [],
+                toolCalls: [],
+              };
+              return [...prev, newMessage];
             }
-            return prev;
           });
         } else if (data.type === "source") {
           // Handle source information - for now just log it since ChatMessage doesn't have sources
