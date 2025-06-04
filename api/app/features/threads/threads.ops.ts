@@ -430,6 +430,40 @@ const threadsOps = {
       // This allows streamMessages to potentially pick it up on reconnect
       activeStreamCache.set(threadId, runState);
 
+      // Create the assistant message immediately at the start of inference
+      // This ensures we always have a message ID for any type of chunk (text, tool calls, etc.)
+      runState.assistantMessageCreatedAt = new Date();
+      const [insertedMessage] = await db
+        .insert(messages)
+        .values({
+          userId: userId,
+          id: crypto.randomUUID(),
+          threadId,
+          role: "assistant",
+          text: "", // Start with empty text
+          createdAt: runState.assistantMessageCreatedAt,
+          model: runState.model,
+          provider: runState.provider,
+        })
+        .returning();
+      runState.currentAssistantMessageId = insertedMessage.id;
+
+      // Initialize accumulated response text since we're starting with empty message
+      runState.accumulatedResponseText = "";
+
+      // Update the cache with the message ID
+      activeStreamCache.set(threadId, runState);
+
+      // Emit initial message event so frontend knows about the new message
+      eventEmitter.emit(`thread-${threadId}-message`, {
+        type: "text-delta",
+        messageId: runState.currentAssistantMessageId,
+        content: "",
+        role: "assistant",
+        createdAt: runState.assistantMessageCreatedAt.toISOString(),
+        isInitialChunk: true,
+      });
+
       const inferenceMsgs = await dbMessagesToInferenceMessages(
         thread.messages,
         modelConfig,
@@ -530,42 +564,93 @@ const threadsOps = {
             const currentRunState = activeStreamCache.get(threadId)!; // Assert non-null after check/set
 
             if (!currentRunState.currentAssistantMessageId) {
-              currentRunState.assistantMessageCreatedAt = new Date();
-              const [insertedMessage] = await db
-                .insert(messages)
-                .values({
-                  userId: userId,
-                  id: crypto.randomUUID(),
-                  threadId,
-                  role: "assistant",
-                  text: "", // Start with empty text, cache holds the truth for stream
-                  createdAt: currentRunState.assistantMessageCreatedAt,
-                  model: currentRunState.model,
-                  provider: currentRunState.provider,
-                })
-                .returning();
-              currentRunState.currentAssistantMessageId = insertedMessage.id;
-              currentRunState.accumulatedResponseText = chunk.textDelta; // First chunk to cache
+              // This should not happen since we create the message upfront now
+              console.error(
+                `No assistant message ID found for thread ${threadId} during text-delta`
+              );
+              return;
+            }
 
+            // Accumulate the text delta
+            currentRunState.accumulatedResponseText += chunk.textDelta;
+
+            // Emit the delta event
+            eventEmitter.emit(`thread-${threadId}-message`, {
+              type: "text-delta",
+              messageId: currentRunState.currentAssistantMessageId,
+              content: chunk.textDelta,
+            });
+
+            // Update cache with the latest accumulated text
+            activeStreamCache.set(threadId, currentRunState);
+          } else if (chunk.type === "reasoning") {
+            // Handle reasoning chunks (for models that support thinking)
+            const cachedRunState = activeStreamCache.get(threadId);
+            if (cachedRunState?.currentAssistantMessageId) {
               eventEmitter.emit(`thread-${threadId}-message`, {
-                type: "text-delta",
-                messageId: currentRunState.currentAssistantMessageId,
-                content: chunk.textDelta,
-                role: "assistant",
-                createdAt:
-                  currentRunState.assistantMessageCreatedAt.toISOString(),
-                isInitialChunk: true,
-              });
-            } else {
-              currentRunState.accumulatedResponseText += chunk.textDelta;
-              eventEmitter.emit(`thread-${threadId}-message`, {
-                type: "text-delta",
-                messageId: currentRunState.currentAssistantMessageId,
+                type: "reasoning-delta",
+                messageId: cachedRunState.currentAssistantMessageId,
                 content: chunk.textDelta,
               });
             }
-            // Update cache with the latest accumulated text
-            activeStreamCache.set(threadId, currentRunState);
+          } else if (chunk.type === "source") {
+            // Handle source chunks
+            const cachedRunState = activeStreamCache.get(threadId);
+            if (cachedRunState?.currentAssistantMessageId) {
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "source",
+                messageId: cachedRunState.currentAssistantMessageId,
+                source: chunk.source,
+              });
+            }
+          } else if (chunk.type === "tool-call") {
+            // Handle complete tool call chunks
+            const cachedRunState = activeStreamCache.get(threadId);
+            if (cachedRunState?.currentAssistantMessageId) {
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "tool-call-chunk",
+                messageId: cachedRunState.currentAssistantMessageId,
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+                args: chunk.args,
+              });
+            }
+          } else if (chunk.type === "tool-call-streaming-start") {
+            // Handle start of streaming tool call
+            const cachedRunState = activeStreamCache.get(threadId);
+            if (cachedRunState?.currentAssistantMessageId) {
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "tool-call-streaming-start",
+                messageId: cachedRunState.currentAssistantMessageId,
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+              });
+            }
+          } else if (chunk.type === "tool-call-delta") {
+            // Handle streaming tool call argument deltas
+            const cachedRunState = activeStreamCache.get(threadId);
+            if (cachedRunState?.currentAssistantMessageId) {
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "tool-call-delta",
+                messageId: cachedRunState.currentAssistantMessageId,
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+                argsTextDelta: chunk.argsTextDelta,
+              });
+            }
+          } else if (chunk.type === "tool-result") {
+            // Handle tool execution results
+            const cachedRunState = activeStreamCache.get(threadId);
+            if (cachedRunState?.currentAssistantMessageId) {
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "tool-result",
+                messageId: cachedRunState.currentAssistantMessageId,
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+                args: chunk.args,
+                result: chunk.result,
+              });
+            }
           }
         },
         onError: (error) => {
@@ -597,11 +682,7 @@ const threadsOps = {
                 id: tempMsgId,
                 threadId,
                 role: "assistant",
-                text:
-                  text ||
-                  (toolCalls && toolCalls.length > 0
-                    ? "Calling tools..."
-                    : "Processing..."), // Best effort text
+                text: text || "",
                 reasoning,
                 createdAt: now,
                 model,
@@ -641,10 +722,7 @@ const threadsOps = {
             .where(eq(messages.id, currentMsgId));
 
           if (finishReason === "tool-calls") {
-            const persistedToolCalls = [];
-            for (const toolCall of toolCalls) {
-              /* ... as before ... */
-            }
+            console.log("Tool calls:", toolCalls);
             // Ensure tool calls are persisted to DB, linked to currentMsgId
             for (const toolCall of toolCalls) {
               if (!toolCall) continue;

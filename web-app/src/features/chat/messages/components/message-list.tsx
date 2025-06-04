@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { Fragment, useRef } from "react";
 import { Check, Copy } from "lucide-react";
 
 interface MessageBubbleProps {
@@ -176,16 +176,21 @@ const ChatMessagesList = React.memo(
                 return message.role === MessageRole.user ? (
                   <UserMessage key={index} message={message} />
                 ) : (
-                  <AssistantMessage
-                    key={index}
-                    message={message}
-                    showEye={showEye}
-                    messages={messages}
-                  />
+                  <Fragment key={index}>
+                    {status === "submitted" ? (
+                      <LoadingMessage status={status} />
+                    ) : (
+                      <AssistantMessage
+                        key={index}
+                        message={message}
+                        showEye={showEye}
+                        messages={messages}
+                      />
+                    )}
+                  </Fragment>
                 );
               })
             )}
-            {status === "submitted" && <LoadingMessage status={status} />}
           </div>
         </ChatContainer>
 

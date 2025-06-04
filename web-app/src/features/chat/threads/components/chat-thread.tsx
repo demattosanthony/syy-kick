@@ -49,7 +49,7 @@ export default function ThreadPage({
   const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
   const [, setAlreadyOpenedArtifact] = useAtom(alreadyAutoSelectedArtifactAtom);
   const [chatStatus, setChatStatus] = useAtom(chatStatusAtom);
-  console.log("chatStatus:", chatStatus);
+  console.log("chatStatus", chatStatus);
 
   // Local state for messages and error
   const [messages, setMessages] = useState<ChatMessage[]>(initalMessages);
@@ -72,7 +72,9 @@ export default function ThreadPage({
   });
 
   // Convert messages for component compatibility
+  console.log("messages", messages);
   const convertedMessages = convertChatMessagesToMessages(messages);
+  console.log("convertedMessages", convertedMessages);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);

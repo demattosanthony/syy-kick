@@ -39,7 +39,7 @@ export type ChatToolCall = {
   createdAt: string;
   id: string;
   messageId: string;
-  status: "completed" | "failed" | "pending";
+  status: "completed" | "failed" | "pending" | "streaming";
   toolCallId: string;
   toolName: string;
   result?: any;

@@ -22,8 +22,6 @@ export function ThreadPage() {
   const messagesAreBeingFetched =
     status === "pending" || isFetching || isRefetching;
 
-  console.log("threadMessages:", threadMessages);
-
   return (
     <ChatThread
       initalMessages={threadMessages || []}

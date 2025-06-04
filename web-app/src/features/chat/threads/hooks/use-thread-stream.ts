@@ -45,7 +45,7 @@ export function useThreadStream({
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        // console.log("SSE data received:", data);
+        console.log("SSE data received:", data);
 
         if (data.type === "connected") {
           console.log("Connected to message stream");
@@ -81,7 +81,7 @@ export function useThreadStream({
               return [...prev, newMessage];
             }
           });
-          setChatStatus("streaming");
+          //   setChatStatus("streaming");
         } else if (data.type === "text-delta") {
           setChatStatus("streaming");
           onMessagesUpdate((prev) => {
@@ -163,6 +163,7 @@ export function useThreadStream({
           });
           setChatStatus("ready");
         } else if (data.type === "tool-call") {
+          setChatStatus("streaming");
           // The `data.message` here IS the assistant message that contains the tool calls
           onMessagesUpdate((prev) => {
             const existingMessageIndex = prev.findIndex(
@@ -177,6 +178,163 @@ export function useThreadStream({
               // If for some reason this assistant message isn't in state, add it.
               return [...prev, data.message];
             }
+          });
+        } else if (data.type === "reasoning-delta") {
+          setChatStatus("streaming");
+          // Handle reasoning text deltas (for models that support thinking)
+          onMessagesUpdate((prev) => {
+            const targetMessageIndex = prev.findIndex(
+              (msg) => msg.id === data.messageId
+            );
+            if (targetMessageIndex !== -1) {
+              return prev.map((msg, index) =>
+                index === targetMessageIndex
+                  ? {
+                      ...msg,
+                      reasoning: (msg.reasoning || "") + data.content,
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
+        } else if (data.type === "source") {
+          // Handle source information - for now just log it since ChatMessage doesn't have sources
+          console.log("Source data received:", data.source);
+        } else if (data.type === "tool-call-chunk") {
+          // Handle complete tool call chunks
+          onMessagesUpdate((prev) => {
+            const targetMessageIndex = prev.findIndex(
+              (msg) => msg.id === data.messageId
+            );
+            if (targetMessageIndex !== -1) {
+              return prev.map((msg, index) =>
+                index === targetMessageIndex
+                  ? {
+                      ...msg,
+                      toolCalls: (() => {
+                        const existingToolCalls = msg.toolCalls || [];
+                        const existingToolCallIndex =
+                          existingToolCalls.findIndex(
+                            (tc) => tc.toolCallId === data.toolCallId
+                          );
+
+                        if (existingToolCallIndex !== -1) {
+                          // Update existing tool call
+                          return existingToolCalls.map((tc, tcIndex) =>
+                            tcIndex === existingToolCallIndex
+                              ? {
+                                  ...tc,
+                                  toolName: data.toolName,
+                                  args: data.args,
+                                  status: "pending" as const,
+                                }
+                              : tc
+                          );
+                        } else {
+                          // Add new tool call
+                          return [
+                            ...existingToolCalls,
+                            {
+                              id: crypto.randomUUID(),
+                              messageId: data.messageId,
+                              toolCallId: data.toolCallId,
+                              toolName: data.toolName,
+                              args: data.args,
+                              status: "pending" as const,
+                              createdAt: new Date().toISOString(),
+                            },
+                          ];
+                        }
+                      })(),
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
+        } else if (data.type === "tool-call-streaming-start") {
+          setChatStatus("streaming");
+          // Handle start of streaming tool call
+          onMessagesUpdate((prev) => {
+            const targetMessageIndex = prev.findIndex(
+              (msg) => msg.id === data.messageId
+            );
+            if (targetMessageIndex !== -1) {
+              return prev.map((msg, index) =>
+                index === targetMessageIndex
+                  ? {
+                      ...msg,
+                      toolCalls: (() => {
+                        const existingToolCalls = msg.toolCalls || [];
+                        const existingToolCallIndex =
+                          existingToolCalls.findIndex(
+                            (tc) => tc.toolCallId === data.toolCallId
+                          );
+
+                        if (existingToolCallIndex !== -1) {
+                          // Update existing tool call to streaming status
+                          return existingToolCalls.map((tc, tcIndex) =>
+                            tcIndex === existingToolCallIndex
+                              ? {
+                                  ...tc,
+                                  toolName: data.toolName,
+                                  args: {},
+                                  status: "streaming" as const,
+                                }
+                              : tc
+                          );
+                        } else {
+                          // Add new streaming tool call
+                          return [
+                            ...existingToolCalls,
+                            {
+                              id: crypto.randomUUID(),
+                              messageId: data.messageId,
+                              toolCallId: data.toolCallId,
+                              toolName: data.toolName,
+                              args: {},
+                              status: "streaming" as const,
+                              createdAt: new Date().toISOString(),
+                            },
+                          ];
+                        }
+                      })(),
+                    }
+                  : msg
+              );
+            }
+            return prev;
+          });
+        } else if (data.type === "tool-call-delta") {
+          // Handle streaming tool call argument deltas
+          //   console.log("Tool call delta received:", data);
+        } else if (data.type === "tool-result") {
+          // Handle tool execution results
+          onMessagesUpdate((prev) => {
+            const targetMessageIndex = prev.findIndex(
+              (msg) => msg.id === data.messageId
+            );
+            if (targetMessageIndex !== -1) {
+              return prev.map((msg, index) =>
+                index === targetMessageIndex
+                  ? {
+                      ...msg,
+                      toolCalls: (msg.toolCalls || []).map((toolCall) =>
+                        toolCall.toolCallId === data.toolCallId
+                          ? {
+                              ...toolCall,
+                              args: data.args,
+                              result: data.result,
+                              status: "completed" as const,
+                            }
+                          : toolCall
+                      ),
+                    }
+                  : msg
+              );
+            }
+            return prev;
           });
         } else if (data.type === "message-error") {
           console.error("Message error event from server:", data.error);
