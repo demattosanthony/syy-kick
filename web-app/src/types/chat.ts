@@ -76,7 +76,7 @@ export interface Thread {
   knowledgeBaseId?: string;
   knowledgeBase?: KnowledgeBase;
   workflowId?: string;
-  messages: ChatMessage[];
+  //   messages: ChatMessage[];
 }
 
 export type Artifact = {

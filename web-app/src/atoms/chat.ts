@@ -3,7 +3,6 @@ import { atomWithStorage } from "jotai/utils";
 import { Model } from "@/types/model";
 import { Artifact, ChatMessage, FileUpload } from "@/types/chat";
 import { DocumentContent } from "@/types/project";
-import { WorkflowAttachment } from "@/features/workflows/components/workflow-page-content";
 
 export const CLAUDE_3_5_CONFIG = {
   name: "claude-3.7-sonnet",

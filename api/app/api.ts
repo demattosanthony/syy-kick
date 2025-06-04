@@ -31,6 +31,12 @@ export default Router()
       return threadsOps.getThread(req.params.threadId);
     })
   )
+  .get(
+    "/public/threads/:threadId/messages",
+    handle(async (req) => {
+      return threadsOps.getThreadMessages(req.params.threadId);
+    })
+  )
   .use("/threads", auth, checkSub, threadRoutes)
   .post("/payments/webhook", webhook)
   .use("/payments", auth, paymentRoutes)

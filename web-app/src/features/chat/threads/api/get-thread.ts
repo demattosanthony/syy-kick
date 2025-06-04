@@ -1,11 +1,10 @@
 import api from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 
-export function useThreadQuery(threadId: string, isNewThread: boolean) {
+export function useThreadQuery(threadId: string) {
   return useQuery({
     queryKey: ["thread", threadId],
     queryFn: () => api.threads.getThread(threadId),
-    enabled: !isNewThread, // Only fetch if it's not a new thread
     refetchOnWindowFocus: false,
   });
 }

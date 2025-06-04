@@ -571,6 +571,12 @@ class ThreadApi extends ApiRequest {
     return await this.request<Thread>(`/public/threads/${threadId}`);
   }
 
+  async getPublicThreadMessages(threadId: string): Promise<ChatMessage[]> {
+    return await this.request<ChatMessage[]>(
+      `/public/threads/${threadId}/messages`
+    );
+  }
+
   async updateThread(
     threadId: string,
     data: UpdateThreadMutationData

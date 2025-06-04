@@ -82,6 +82,7 @@ export function HomePage() {
         model: selectedModel.name,
       });
       navigate(`/threads/${threadId}`);
+      setInitalInput("");
     } catch (error: unknown) {
       setChatStatus("error");
       if (error instanceof Error && error.message === "subscription_required") {
