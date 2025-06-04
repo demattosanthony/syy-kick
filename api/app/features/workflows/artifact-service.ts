@@ -18,12 +18,7 @@ export type ArtifactEvent = {
 };
 
 export class ArtifactService {
-  constructor(
-    private workflowId: string,
-    private workflowRunId: string,
-    private workflowStepId: string,
-    private onEvent?: (event: ArtifactEvent) => void
-  ) {}
+  constructor(private threadId: string) {}
 
   private normalizeFilename(filename: string): string {
     // Replace various whitespace characters (including narrow no-break space \u202f,
@@ -44,23 +39,12 @@ export class ArtifactService {
   ): Promise<void> {
     try {
       const normalizedFilename = this.normalizeFilename(filename);
-      const fileKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${normalizedFilename}`;
+      const fileKey = `files/threads/${this.threadId}/${normalizedFilename}`;
       await s3
         .file(fileKey, {
           type: artifact.mimeType,
         })
         .write(artifact.data);
-      if (triggerEvent) {
-        this.onEvent?.({
-          type: "created",
-          filename: normalizedFilename,
-          fileKey,
-          mimeType: artifact.mimeType,
-          stepId: this.workflowStepId,
-          ts: Date.now(),
-          url: s3.presign(fileKey, { expiresIn: 60 * 60 * 24 }),
-        });
-      }
     } catch (error) {
       console.error("Failed to save artifact:", error);
       throw error;
@@ -75,7 +59,7 @@ export class ArtifactService {
   async loadArtifact(filename: string): Promise<ArtifactData | undefined> {
     try {
       const normalizedFilename = this.normalizeFilename(filename);
-      const fileKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${normalizedFilename}`;
+      const fileKey = `files/threads/${this.threadId}/${normalizedFilename}`;
       const file = s3.file(fileKey);
       if (await file.exists()) {
         const stat = await file.stat();
@@ -100,7 +84,7 @@ export class ArtifactService {
   async listArtifacts(): Promise<string[]> {
     try {
       const keys = await s3.list({
-        prefix: `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/`,
+        prefix: `files/threads/${this.threadId}/`,
       });
       return keys.contents?.map((obj) => obj.key.split("/").pop() ?? "") ?? [];
     } catch (error) {
@@ -118,9 +102,7 @@ export class ArtifactService {
     try {
       const normalizedFilename = this.normalizeFilename(filename);
       await s3
-        .file(
-          `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${normalizedFilename}`
-        )
+        .file(`files/threads/${this.threadId}/${normalizedFilename}`)
         .delete();
       return true;
     } catch (error) {
@@ -177,7 +159,7 @@ export class ArtifactService {
     mimeType: string
   ): Promise<void> {
     const normalizedTargetFilename = this.normalizeFilename(targetFilename);
-    const targetKey = `workflows/${this.workflowId}/${this.workflowRunId}/${this.workflowStepId}/${normalizedTargetFilename}`;
+    const targetKey = `files/threads/${this.threadId}/${normalizedTargetFilename}`;
     try {
       const sourceFile = s3.file(sourceKey);
       if (!(await sourceFile.exists())) {

@@ -1,24 +1,141 @@
 import os from "os";
 import { mistralAi } from "./features/models";
+import { CharacterTextSplitter } from "@langchain/textsplitters";
+import s3 from "./config/s3";
+import { generateObject } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { z } from "zod";
+import { convertPdfToImages } from "./utils";
+import { MARKITDOWN_MIME_TYPES } from "./config/constants";
 
-export const markitdownMimeTypes = [
-  //   "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/msword",
-  "text/plain",
-  "text/markdown",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.ms-powerpoint",
-  "text/html",
-  "text/csv",
-  "application/json",
-  "text/xml",
-  "application/zip",
-];
+export type FilePageImage = {
+  name: string;
+  path: string;
+  size: number;
+};
 
-export const markitdown = async (input: string | Buffer, fileName: string) => {
+export type FilePageChunk = {
+  content: string;
+  position?: number;
+  images?: FilePageImage[];
+  // embeddings: number[]
+};
+
+export type FilePage = {
+  pageNumber: number;
+  chunks: FilePageChunk[];
+  images?: FilePageImage[];
+};
+
+const textSplitter = new CharacterTextSplitter({
+  chunkSize: 1024,
+  chunkOverlap: 0,
+});
+
+export async function processFile(
+  fileContent: Buffer,
+  fileName: string,
+  mimeType: string
+): Promise<FilePage[]> {
+  if (mimeType === "application/pdf") {
+    const [firstPage] = await convertPdfToImages(fileContent, {
+      firstPageOnly: true,
+    });
+
+    const firstPageBuffer = Buffer.from(firstPage.base64, "base64");
+    const firstPageBase64 = firstPageBuffer.toString("base64");
+    const firstPageMimeType = "image/png";
+
+    // save locally for testing
+    // await Bun.write("./first-page.png", firstPageBuffer);
+
+    const { object } = await generateObject({
+      model: openai("gpt-4.1-mini"),
+      messages: [
+        {
+          role: "system",
+          content: `You are a helpful assistant that classifies pdfs into two categories: drawing and document.
+The purpose of this is to determine which extraction process to run based on if its an engineering drawing or a regular document.
+
+The first page of the pdf is provided to you.
+
+If the first page is an engineering drawing, return "drawing".
+If the first page is a regular document, return "document".`,
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Here is the first page of the pdf",
+            },
+            {
+              type: "image",
+              image: firstPageBase64,
+              mimeType: firstPageMimeType,
+            },
+          ],
+        },
+      ],
+      schema: z.object({
+        category: z.enum(["drawing", "document"]),
+      }),
+    });
+
+    console.log("object", object);
+
+    // If its an engineering drawing, we want to turn all the pages into images
+    if (object.category === "drawing") {
+      const images = await convertPdfToImages(fileContent, {
+        dpi: 150,
+      });
+      console.log("images", images.length);
+
+      const filePages: FilePage[] = [];
+
+      for (const image of images) {
+        // Upload the image to s3
+        const uuid = crypto.randomUUID();
+        const fileKey = `files/images/${uuid.split("-")[0]}-${image.name}`;
+        const file = s3.file(fileKey);
+        await file.write(Buffer.from(image.base64, "base64"), {
+          type: "image/png",
+        });
+
+        const url = s3.presign(fileKey, { expiresIn: 60 * 60 * 24 });
+        console.log("url", url);
+
+        filePages.push({
+          pageNumber: image.page,
+          chunks: [],
+          images: [
+            { name: image.name, path: fileKey, size: image.base64.length },
+          ],
+        });
+      }
+
+      return filePages;
+    }
+
+    // If its a regular pdf doc we want to run OCR on it
+    if (object.category === "document") {
+      const filePages = await processPdf(fileContent, mimeType);
+      return filePages;
+    }
+  }
+
+  if (MARKITDOWN_MIME_TYPES.includes(mimeType)) {
+    const page = await markitdown(fileContent, fileName);
+    return [page];
+  }
+
+  return [];
+}
+
+export async function markitdown(
+  input: string | Buffer,
+  fileName: string
+): Promise<FilePage> {
   let filePath: string;
   let tempFile: string | null = null;
 
@@ -36,18 +153,35 @@ export const markitdown = async (input: string | Buffer, fileName: string) => {
   try {
     const proc = Bun.spawn(["markitdown", expandedPath]);
     const output = await new Response(proc.stdout).text();
-    return output;
+
+    const chunkedOutput = await textSplitter.splitText(output);
+
+    const page: FilePage = {
+      pageNumber: 1,
+      chunks: [],
+    };
+
+    for (const chunk of chunkedOutput) {
+      page.chunks.push({
+        content: chunk,
+      });
+    }
+
+    return page;
   } finally {
     // Clean up temp file if one was created
     if (tempFile) {
       await Bun.file(tempFile).delete();
     }
   }
-};
+}
 
-export const ocrIt = async (input: Buffer, mimeType: string) => {
+export async function processPdf(
+  input: Buffer,
+  mimeType: string
+): Promise<FilePage[]> {
   // Convert buffer to base64 string
-  const base64String = input.toString("base64");
+  const base64String = Buffer.from(input).toString("base64");
 
   const result = await mistralAi.ocr.process({
     model: "mistral-ocr-latest",
@@ -55,38 +189,87 @@ export const ocrIt = async (input: Buffer, mimeType: string) => {
       documentUrl: `data:${mimeType};base64,${base64String}`,
       type: "document_url",
     },
+    includeImageBase64: true,
   });
 
-  let markdown = "";
-  let images = [];
+  let filePages: FilePage[] = [];
 
-  for (const [_, item] of result.pages.entries()) {
-    if (item.markdown) {
-      markdown += item.markdown + "\n\n";
-    }
+  for (const page of result.pages) {
+    const pageMarkdown = page.markdown;
+    const pageImages = page.images;
 
-    for (let imageIndex = 0; imageIndex < item.images.length; imageIndex++) {
-      const image = item.images[imageIndex];
-      if (!image.imageBase64) {
-        continue;
+    let filePage: FilePage = {
+      pageNumber: page.index + 1,
+      chunks: [],
+    };
+
+    // We need to chunk the markdown content and use regex to find the references to the images inside of the chunks
+    const pageChunks = await textSplitter.splitText(pageMarkdown);
+
+    for (let [index, chunk] of pageChunks.entries()) {
+      let filePageChunk: FilePageChunk = {
+        content: chunk,
+        position: index,
+      };
+
+      // Find the images in the chunk
+      // If there is an image in the chunk, it will look like this:
+      // ![image_id.jpeg](image_id.jpeg)
+      // We need to extract the image_id and the path to the image
+      const imageRegex = /!\[(.*?)\]\((.*?)\)/g;
+      const imagesInChunk = chunk.match(imageRegex);
+
+      if (imagesInChunk) {
+        for (const image of imagesInChunk) {
+          const imageId = image.split("(")[1].split(")")[0];
+
+          // Try to find the image in the pageImages
+          const foundImage = pageImages.find((img) => img.id === imageId);
+          console.log("foundImage", foundImage?.id);
+
+          if (foundImage && foundImage.imageBase64) {
+            try {
+              // Extract base64 data, removing any prefix if present
+              let imageBase64 = foundImage.imageBase64;
+              if (imageBase64.includes(",")) {
+                imageBase64 = imageBase64.split(",", 2)[1];
+              }
+              const imageBuffer = Buffer.from(imageBase64, "base64");
+              const uuid = crypto.randomUUID();
+              const fileKey = `files/images/${uuid.split("-")[0]}-${imageId}`;
+
+              const file = s3.file(fileKey);
+              await file.write(imageBuffer, {
+                type: "image/jpeg",
+              });
+
+              const url = s3.presign(fileKey, { expiresIn: 60 * 60 * 24 });
+              console.log("url", url);
+
+              filePageChunk.images = [
+                ...(filePageChunk.images || []),
+                {
+                  name: foundImage.id,
+                  path: fileKey,
+                  size: imageBuffer.length,
+                },
+              ];
+            } catch (error) {
+              console.error(
+                `Failed to process or upload image ${foundImage.id}:`,
+                error
+              );
+            }
+          }
+        }
       }
 
-      // Extract base64 data, removing any prefix if present
-      let imageBase64 = image.imageBase64;
-      if (imageBase64.includes(",")) {
-        imageBase64 = imageBase64.split(",", 2)[1];
-      }
-
-      images.push({
-        url: imageBase64,
-        fileName: image.id,
-        mimeType: "image/jpeg",
-      });
+      console.log("filePageChunk", filePageChunk);
+      filePage.chunks.push(filePageChunk);
     }
+
+    filePages.push(filePage);
   }
 
-  return {
-    markdown,
-    images,
-  };
-};
+  return filePages;
+}

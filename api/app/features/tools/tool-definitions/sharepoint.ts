@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { MicrosoftAPI } from "../../../config/microsoft";
-import { markitdown, ocrIt } from "../../../doc-processor-v2";
+import { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Client } from "@microsoft/microsoft-graph-client";
+import { processFile } from "../../../doc-processor-v2";
 
 interface GraphDriveItem {
   id: string;
@@ -20,7 +21,7 @@ interface GraphDriveItem {
 
 export const createSharepointSearchTool = (
   driveId: string,
-  microsoftAPI: MicrosoftAPI
+  graphClient: Client
 ) =>
   tool({
     description:
@@ -29,18 +30,13 @@ export const createSharepointSearchTool = (
       query: z.string(),
     }),
     execute: async ({ query }) => {
-      const client = await microsoftAPI.getGraphClient("graph");
-      if (!client) {
-        return { error: "Failed to authenticate with Microsoft Graph" };
-      }
-
       try {
         if (!query.trim()) {
           return { files: [] };
         }
 
         const encodedSearch = encodeURIComponent(query);
-        const response = await client
+        const response = await graphClient
           .api(`/drives/${driveId}/root/search(q='${encodedSearch}')`)
           .top(25)
           .get();
@@ -59,7 +55,7 @@ export const createSharepointSearchTool = (
 
 export const createSharepointListTool = (
   driveId: string,
-  microsoftAPI: MicrosoftAPI
+  graphClient: Client
 ) =>
   tool({
     description:
@@ -68,11 +64,6 @@ export const createSharepointListTool = (
       path: z.string().nullable(),
     }),
     execute: async ({ path }) => {
-      const client = await microsoftAPI.getGraphClient("graph");
-      if (!client) {
-        return { error: "Failed to authenticate with Microsoft Graph" };
-      }
-
       try {
         let apiPath = `/drives/${driveId}/root/children`;
 
@@ -81,7 +72,7 @@ export const createSharepointListTool = (
           apiPath = `/drives/${driveId}/root:/${encodedPath}:/children`;
         }
 
-        const response = await client.api(apiPath).get();
+        const response = await graphClient.api(apiPath).get();
         const files = response.value || [];
 
         // Format files to only include essential information
@@ -108,9 +99,98 @@ const formatGraphDriveItems = (items: GraphDriveItem[]) => {
   }));
 };
 
+// const getFileFromCache = async (
+//   tx: NodePgDatabase<typeof import("../../../config/schema")> | undefined,
+//   filePath: string | undefined
+// ) => {
+//   if (!tx || !filePath) return null;
+
+//   const existingFile = await tx.query.files.findFirst({
+//     where: eq(files.sharepoint_path, filePath),
+//   });
+
+//   if (existingFile) {
+//     const chunks = await tx.query.fileContentChunks.findMany({
+//       where: eq(fileContentChunks.fileId, existingFile.id),
+//     });
+//     if (chunks && chunks.length > 0) {
+//       return {
+//         fileName: existingFile.name,
+//         file: chunks.map((chunk) => chunk.content).join("\n") + "\n",
+//       };
+//     }
+//   }
+//   return null;
+// };
+
+const downloadAndProcessFile = async (
+  file: GraphDriveItem,
+  downloadUrl: string
+) => {
+  const response = await fetch(downloadUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download file: ${response.statusText}`);
+  }
+  const blob = await response.blob();
+  const buffer = Buffer.from(await blob.arrayBuffer());
+
+  const filePages = await processFile(
+    buffer,
+    file.name,
+    file.file?.mimeType || "application/octet-stream"
+  );
+
+  return filePages
+    .map((page) => page.chunks.map((chunk) => chunk.content).join("\n"))
+    .join("\n");
+};
+
+// const storeFileInDb = async (
+//   tx: NodePgDatabase<typeof import("../../../config/schema")> | undefined,
+//   file: GraphDriveItem,
+//   content: string
+// ) => {
+//   if (!tx) return null; // Or throw an error if tx is mandatory for this operation
+
+//   const filePath = file.parentReference?.path
+//     ? file.parentReference.path + "/" + file.name
+//     : file.name; // Handle cases where parentReference or path might be undefined
+
+//   const insertedFile = await tx
+//     .insert(files)
+//     .values({
+//       name: file.name,
+//       mimeType: file.file?.mimeType || "application/octet-stream",
+//       size: file.size,
+//       type: "file",
+//       sharepoint_path: filePath,
+//       file_origin_type: "sharepoint",
+//       createdAt: new Date(),
+//       updatedAt: new Date(),
+//     })
+//     .returning();
+
+//   if (!insertedFile || insertedFile.length === 0) {
+//     // Consider throwing an error here if insertion is critical
+//     return null;
+//   }
+
+//   const chunks = content.match(/.{1,1000}/g);
+//   if (chunks) {
+//     await tx.insert(fileContentChunks).values(
+//       chunks.map((chunk) => ({
+//         fileId: insertedFile[0].id,
+//         content: chunk,
+//       }))
+//     );
+//   }
+//   return insertedFile[0];
+// };
+
 export const openSharepointFileTool = (
   driveId: string,
-  microsoftAPI: MicrosoftAPI
+  graphClient: Client,
+  tx?: NodePgDatabase<typeof import("../../../config/schema")>
 ) =>
   tool({
     description:
@@ -119,46 +199,44 @@ export const openSharepointFileTool = (
       fileId: z.string(),
     }),
     execute: async ({ fileId }) => {
-      const client = await microsoftAPI.getGraphClient("graph");
-      if (!client) {
-        return { error: "Failed to authenticate with Microsoft Graph" };
-      }
-
       try {
-        const file = (await client
+        const fileMetadata = (await graphClient
           .api(`/drives/${driveId}/items/${fileId}`)
           .get()) as GraphDriveItem;
 
-        if (!file["@microsoft.graph.downloadUrl"]) {
+        if (!fileMetadata["@microsoft.graph.downloadUrl"]) {
           return {
             error: "No download URL available for this file.",
           };
         }
 
-        const response = await fetch(file["@microsoft.graph.downloadUrl"]);
-        if (!response.ok) {
-          throw new Error(`Failed to download file: ${response.statusText}`);
-        }
-        const blob = await response.blob();
-        const buffer = Buffer.from(await blob.arrayBuffer());
+        const filePath = fileMetadata.parentReference?.path
+          ? fileMetadata.parentReference.path + "/" + fileMetadata.name
+          : fileMetadata.name; // Handle cases where parentReference or path might be undefined
 
-        let content = "";
+        // const cachedFile = await getFileFromCache(tx, filePath);
+        // if (cachedFile) {
+        //   return cachedFile;
+        // }
 
-        if (file.file?.mimeType === "application/pdf") {
-          const pdfContent = await ocrIt(buffer, "application/pdf");
-          content = pdfContent.markdown;
-        } else {
-          content = await markitdown(buffer, file.name);
-        }
+        const content = await downloadAndProcessFile(
+          fileMetadata,
+          fileMetadata["@microsoft.graph.downloadUrl"]
+        );
+
+        // await storeFileInDb(tx, fileMetadata, content);
 
         return {
-          fileName: file.name,
+          fileName: fileMetadata.name,
           file: content,
         };
       } catch (error) {
         console.error("Open file error:", error);
+        // It's good practice to return a more specific error or log the error for diagnostics
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to open file.";
         return {
-          error: "Failed to open file.",
+          error: errorMessage,
         };
       }
     },

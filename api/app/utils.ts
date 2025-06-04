@@ -3,6 +3,11 @@ import { MODELS } from "./features/models";
 import { ApiResponse } from "./config/schema";
 import { Request, Response } from "express";
 import { Workspace } from "./middleware";
+import { promisify } from "util";
+import { exec } from "child_process";
+import path from "path";
+import fs from "fs/promises";
+import os from "os";
 
 export function getOrgIdOrUnedfined(workspace?: Workspace) {
   return workspace?.type === "organization" ? workspace.id : undefined;
@@ -235,5 +240,107 @@ export async function pdfToImages(
     } catch (error) {
       console.error("Error cleaning up temporary files:", error);
     }
+  }
+}
+
+export async function getFileHash(fileBuffer: Buffer): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer)); // Convert buffer to byte array
+  const hashHex = hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join(""); // Convert bytes to hex string
+  return hashHex;
+}
+
+export interface PdfToImagesOptions {
+  /** Longest edge after optional resize. 0 or undefined ⇒ no resize */
+  maxDimension?: number;
+  /** Raster DPI sent to Ghostscript */
+  dpi?: number;
+  /** When true, extract only page 1 */
+  firstPageOnly?: boolean;
+}
+
+export interface PdfImageInfo {
+  name: string;
+  path: string;
+  size: number;
+  page: number;
+  base64: string;
+}
+
+/**
+ * Rasterise a PDF into PNGs.
+ * – Set `firstPageOnly:true` to get just the first page.
+ * – Images are returned in page order, each already Base-64 encoded.
+ */
+export async function convertPdfToImages(
+  pdfData: Buffer,
+  {
+    maxDimension = 8000,
+    dpi = 300,
+    firstPageOnly = false,
+  }: PdfToImagesOptions = {}
+): Promise<PdfImageInfo[]> {
+  const execAsync = promisify(exec);
+  const uniqueId = crypto.randomUUID();
+  const tempDir = await fs.mkdtemp(
+    path.join(os.tmpdir(), `pdf-images-${uniqueId}`)
+  );
+  const tempPdf = path.join(tempDir, "input.pdf");
+  const outputPattern = path.join(tempDir, "output-%d.png");
+
+  try {
+    await fs.writeFile(tempPdf, pdfData);
+
+    // Limit pages when requested
+    const pageArgs = firstPageOnly ? "-dFirstPage=1 -dLastPage=1" : "";
+
+    const gsCmd = `gs -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r${dpi} \
+${pageArgs} -sOutputFile="${outputPattern}" "${tempPdf}"`;
+    await execAsync(gsCmd);
+    console.log("Finished converting PDF to images");
+
+    const files = await fs.readdir(tempDir);
+    const images: PdfImageInfo[] = [];
+
+    for (const file of files) {
+      if (!file.startsWith("output-") || !file.endsWith(".png")) continue;
+      console.log("Processing file:", file);
+
+      const imgPath = path.join(tempDir, file);
+
+      // Optional resize
+      if (maxDimension && maxDimension > 0) {
+        try {
+          await execAsync(
+            `convert "${imgPath}" -resize "${maxDimension}x${maxDimension}>" "${imgPath}"`
+          );
+        } catch (err) {
+          console.error(`Resize failed for ${file}:`, err);
+        }
+      }
+
+      const pageMatch = file.match(/output-(\d+)\.png/);
+      const pageNum = pageMatch ? Number(pageMatch[1]) : 0;
+
+      const buf = await fs.readFile(imgPath);
+      const { size } = await fs.stat(imgPath);
+
+      images.push({
+        name: file,
+        path: imgPath,
+        size,
+        page: pageNum,
+        base64: buf.toString("base64"),
+      });
+    }
+
+    // ensure natural order
+    images.sort((a, b) => a.page - b.page);
+    return images;
+  } finally {
+    // clean-up no matter what
+    await fs.rm(tempDir, { recursive: true, force: true });
   }
 }

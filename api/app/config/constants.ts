@@ -26,3 +26,20 @@ export const CONFIG = {
   ],
   __prod__: process.env.NODE_ENV === "production",
 };
+
+export const MARKITDOWN_MIME_TYPES = [
+  //   "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  "text/plain",
+  "text/markdown",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-powerpoint",
+  "text/html",
+  "text/csv",
+  "application/json",
+  "text/xml",
+  "application/zip",
+];

@@ -26,7 +26,7 @@ import {
 } from "./threads.utils";
 import { listKnowledgeBases } from "../knowledge-bases/knowledge-bases.ops";
 import { getOrgIdOrUnedfined } from "../../utils";
-import { markitdown, markitdownMimeTypes } from "../../doc-processor-v2";
+import { markitdown } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { MicrosoftAPI } from "../../config/microsoft";
@@ -35,6 +35,7 @@ import {
   createSharepointSearchTool,
   openSharepointFileTool,
 } from "../tools/tool-definitions";
+import { MARKITDOWN_MIME_TYPES } from "../../config/constants";
 
 const threadsOps = {
   async createThread(
@@ -94,7 +95,7 @@ const threadsOps = {
       for (const attachment of message.experimental_attachments) {
         // convert attachment to markdown
         let markdown = null;
-        if (markitdownMimeTypes.includes(attachment.contentType!)) {
+        if (MARKITDOWN_MIME_TYPES.includes(attachment.contentType!)) {
           const attachmentBuffer = await s3
             .file(attachment.file_key)
             .arrayBuffer();
@@ -403,20 +404,18 @@ const threadsOps = {
           }
         }
 
-        if (driveId) {
+        if (driveId && graphClient) {
           tools.sharepoint_graph = createSharepointSearchTool(
             driveId,
-            microsoftGraph
+            graphClient
           );
 
-          tools.sharepoint_ls = createSharepointListTool(
-            driveId,
-            microsoftGraph
-          );
+          tools.sharepoint_ls = createSharepointListTool(driveId, graphClient);
 
           tools.sharepoint_open_file = openSharepointFileTool(
             driveId,
-            microsoftGraph
+            graphClient,
+            db
           );
         } else {
           // Handle the case where driveId could not be fetched
@@ -486,13 +485,13 @@ const threadsOps = {
           finishReason,
           reasoning,
         }) => {
-          console.log("Finish reason:", finishReason);
-          console.log("Tool calls:", toolCalls);
-          console.log("Tool results:", toolResults);
+          //   console.log("Finish reason:", finishReason);
+          //   console.log("Tool calls:", toolCalls);
+          //   console.log("Tool results:", toolResults);
           // console.log("Text:", text);
           // console.log("Reasoning:", reasoning);
 
-          console.log("\n\n\n");
+          //   console.log("\n\n\n");
 
           if (finishReason === "tool-calls") {
             // First create a message for the assistant's tool call

@@ -212,6 +212,85 @@ export const documentThumbnails = pgTable("document_thumbnails", {
 });
 export type DocumentThumbnail = typeof documentThumbnails.$inferSelect;
 
+export const files = pgTable("files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size"),
+  type: text("type", { enum: ["file", "folder"] }).notNull(),
+  syyclops_path: text("syyclops_path"),
+  sharepoint_path: text("sharepoint_path"),
+  google_drive_path: text("google_drive_path"),
+  file_origin_type: text("file_origin_type", {
+    enum: ["syyclops", "sharepoint", "google_drive"],
+  }).notNull(),
+  category: text("category", {
+    enum: ["drawing", "document"],
+  }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const filesPages = pgTable("file_pages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  fileId: uuid("file_id")
+    .notNull()
+    .references(() => files.id, { onDelete: "cascade" }),
+  pageNumber: integer("page_number"), // Indexed at 1
+  sheetName: text("sheet_name"),
+});
+
+export const filePageChunks = pgTable(
+  "file_page_chunks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    filePageId: uuid("file_page_id")
+      .notNull()
+      .references(() => filesPages.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    position: integer("position"), // indexed at 0 and relative to the page
+    embeddings: vector("embeddings", { dimensions: 1024 }),
+  },
+  (table) => [
+    index("file_page_chunk_embeddings_index").using(
+      "hnsw",
+      table.embeddings.op("vector_cosine_ops")
+    ),
+  ]
+);
+
+export const filePageImages = pgTable(
+  "file_page_images",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    filePageId: uuid("file_page_id")
+      .notNull()
+      .references(() => filesPages.id, { onDelete: "cascade" }),
+    chunkId: uuid("chunk_id").references(() => filePageChunks.id, {
+      onDelete: "cascade",
+    }),
+    imagePath: text("image_path").notNull(),
+    name: text("name"),
+    embeddings: vector("embeddings", { dimensions: 1024 }),
+  },
+  (table) => [
+    index("file_page_image_embeddings_index").using(
+      "hnsw",
+      table.embeddings.op("vector_cosine_ops")
+    ),
+  ]
+);
+
+export const messagesFiles = pgTable("messages_files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  messageId: uuid("message_id")
+    .notNull()
+    .references(() => messages.id, { onDelete: "cascade" }),
+  fileId: uuid("file_id")
+    .notNull()
+    .references(() => files.id, { onDelete: "cascade" }),
+});
+
 // Threads table with user association
 export const threads = pgTable("threads", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -655,6 +734,11 @@ export const accessTokensRelations = relations(accessTokens, ({ one }) => ({
     fields: [accessTokens.userId],
     references: [users.id],
   }),
+}));
+
+export const filesRelations = relations(files, ({ one, many }) => ({
+  pages: many(filesPages),
+  messages: many(messagesFiles),
 }));
 
 export type MessageAttachment = {

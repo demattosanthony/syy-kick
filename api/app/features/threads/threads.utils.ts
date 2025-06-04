@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 // Internal configuration
-import { CONFIG } from "../../config/constants";
+import { CONFIG, MARKITDOWN_MIME_TYPES } from "../../config/constants";
 import db from "../../config/db";
 import reranker from "../../config/reranker";
 import s3 from "../../config/s3";
@@ -31,7 +31,6 @@ import {
 } from "./threads.types";
 import { DbUser } from "../../createAuthToken";
 import { searchKnowledgeBaseDocuments } from "../knowledge-bases/knowledge-bases.ops";
-import { markitdownMimeTypes } from "../../doc-processor-v2";
 import { openai } from "@ai-sdk/openai";
 
 /** Retrieve the model config. */
@@ -1017,7 +1016,7 @@ async function createAttachmentMessages(
   for (const att of attachments) {
     const data = await generateAttachmentData(att.fileKey, att.mimeType!, true);
 
-    if (markitdownMimeTypes.includes(att.mimeType!)) {
+    if (MARKITDOWN_MIME_TYPES.includes(att.mimeType!)) {
       chunks.push({
         type: "text",
         text: `<file_attachment>
