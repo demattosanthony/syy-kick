@@ -1,7 +1,6 @@
 /** Components */
 export { default as ChatMessagesList } from "./message-list";
 export { default as AssistantMessage } from "./assistant-message";
-export { default as ArtifactPreview } from "./artifact-preview";
 export { default as ChatAttachment } from "./chat-attachment";
 export { default as ArtifactViewer } from "./viewers/artifact-viewer";
 export { default as MultiSheetViewer } from "./viewers/excel-viewer";

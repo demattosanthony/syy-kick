@@ -21,7 +21,6 @@ import { selectedArtifactAtom, userClosedArtifactsAtom } from "@/atoms/chat";
 
 // Utilities and helpers
 import { cn } from "@/lib/utils";
-import { getArtifactVersionInfo } from "@/lib/artifact-utils";
 
 // Types
 import { Artifact } from "@/types/chat";
@@ -30,79 +29,13 @@ import { Message } from "ai";
 // Content renderers and parsers
 import MarkdownViewer from "./markdown-viewer";
 import { marked } from "marked";
-// import mermaid from "mermaid"; // Remove static import
-import Papa from "papaparse";
-
-export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
-  // Parse CSV
-  const parseResult = Papa.parse(content, {
-    header: false,
-    skipEmptyLines: true,
-    delimiter: ",", // explicitly set delimiter
-    quoteChar: '"', // explicitly set quote character
-    escapeChar: '"', // use double quotes for escaping
-  });
-
-  const rows = parseResult.data as string[][];
-  const headerRow = rows[0];
-  const bodyRows = rows.slice(1);
-
-  // Find the maximum number of columns
-  const maxColumns = Math.max(
-    headerRow?.length || 0,
-    ...bodyRows.map((row) => row.length)
-  );
-
-  // Pad header cells if needed
-  const headerCells = [...(headerRow || [])];
-  while (headerCells.length < maxColumns) {
-    headerCells.push("");
-  }
-
-  return (
-    <div className="h-full w-full overflow-auto whitespace-nowrap">
-      <table className="min-w-full table-fixed border-collapse">
-        <thead>
-          <tr className="bg-secondary font-semibold">
-            {headerCells.map((cell, i) => (
-              <td
-                key={i}
-                className="px-4 py-2 border overflow-hidden text-ellipsis"
-              >
-                {cell.trim()}
-              </td>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {bodyRows.map((row, i) => {
-            // Pad row cells with empty strings if needed
-            const cells = [...row];
-            while (cells.length < maxColumns) {
-              cells.push("");
-            }
-            return (
-              <tr key={i} className="border-t">
-                {cells.map((cell, j) => (
-                  <td
-                    key={j}
-                    className="px-4 py-2 border overflow-hidden text-ellipsis"
-                  >
-                    {cell.trim()}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-};
+import { CsvViewer } from "./csv-viewer";
+import { CodeViewer } from "./code-viewer";
+import { SvgViewer } from "./svg-viewer";
 
 const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
-  const mermaidRef = useRef<HTMLDivElement>(null); // Outer container ref
-  const diagramRef = useRef<HTMLDivElement>(null); // Inner container ref (for transform)
+  const mermaidRef = useRef<HTMLDivElement>(null);
+  const diagramRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const isDragging = useRef(false);
@@ -113,9 +46,8 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
 
     const initializeAndRenderMermaid = async () => {
       try {
-        // Dynamically import mermaid
         const mermaidModule = await import("mermaid");
-        const mermaid = mermaidModule.default; // Access the default export
+        const mermaid = mermaidModule.default;
 
         mermaid.initialize({
           startOnLoad: false,
@@ -124,14 +56,12 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
         });
 
         const id = `mermaid-diagram-${Date.now()}`;
-        const currentDiagramRef = diagramRef.current; // Capture ref value
+        const currentDiagramRef = diagramRef.current;
 
-        // Clear previous content and show loading indicator
-        if (!currentDiagramRef) return; // Guard against null ref
+        if (!currentDiagramRef) return;
         currentDiagramRef.innerHTML = "<p>Loading diagram...</p>";
-        currentDiagramRef.style.cursor = "default"; // Reset cursor
+        currentDiagramRef.style.cursor = "default";
 
-        // Use a temporary invisible div for rendering
         const tempRenderDiv = document.createElement("div");
         tempRenderDiv.id = id;
         tempRenderDiv.className = "mermaid";
@@ -140,17 +70,13 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
         tempRenderDiv.style.position = "absolute";
         document.body.appendChild(tempRenderDiv);
 
-        // Use a try-finally block for cleanup, even if parse fails
         try {
-          await mermaid.parse(content); // Ensure parsing completes before rendering
+          await mermaid.parse(content);
           const { svg } = await mermaid.render(id, content);
 
           if (currentDiagramRef) {
-            currentDiagramRef.innerHTML = svg; // Inject SVG
-            currentDiagramRef.style.cursor = "grab"; // Set cursor for panning
-            // Reset zoom/pan state when content changes (already handled by content dependency)
-            // setScale(1); // Consider if resetting is needed here or if effect dependency handles it
-            // setPosition({ x: 0, y: 0 });
+            currentDiagramRef.innerHTML = svg;
+            currentDiagramRef.style.cursor = "grab";
           }
         } catch (error) {
           console.error("Error parsing or rendering mermaid diagram:", error);
@@ -159,7 +85,6 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
               '<p class="text-red-500 p-4">Error rendering diagram. Check console for details.</p>';
           }
         } finally {
-          // Clean up the temporary div regardless of success/failure
           if (document.body.contains(tempRenderDiv)) {
             document.body.removeChild(tempRenderDiv);
           }
@@ -167,7 +92,6 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
       } catch (error) {
         console.error("Error loading or initializing mermaid:", error);
         if (diagramRef.current) {
-          // Check diagramRef.current again
           diagramRef.current.innerHTML =
             '<p class="text-red-500 p-4">Error setting up diagram rendering.</p>';
         }
@@ -175,75 +99,57 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
     };
 
     initializeAndRenderMermaid();
-
-    // We still need the cleanup for event listeners, keep this part
-    // return () => {
-    //   // Any specific mermaid cleanup needed? Usually not, but depends on lib.
-    // };
-  }, [content]); // Rerun effect when content changes
+  }, [content]);
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomFactor = 1.1;
-    // Calculate scale delta based on scroll direction
     const scaleDelta = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
 
     setScale((prevScale) => {
-      const newScale = Math.max(0.1, Math.min(prevScale * scaleDelta, 10)); // Min/Max scale
-
-      // TODO: Adjust position based on cursor location during zoom for better UX
-      // This requires calculating the pointer position relative to the diagram element
-      // For now, we keep the position fixed during zoom, effectively zooming towards the center.
-
+      const newScale = Math.max(0.1, Math.min(prevScale * scaleDelta, 10));
       return newScale;
     });
   };
 
-  // Mouse move handler (attached to window)
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging.current || !diagramRef.current) return;
-    e.preventDefault(); // Prevent text selection during drag
+    e.preventDefault();
     const newX = e.clientX - startDragPos.current.x;
     const newY = e.clientY - startDragPos.current.y;
     setPosition({ x: newX, y: newY });
   };
 
-  // Mouse up handler (attached to window)
   const handleMouseUp = () => {
-    if (!isDragging.current) return; // Avoid removing listeners if not dragging
+    if (!isDragging.current) return;
     isDragging.current = false;
     if (diagramRef.current) {
-      diagramRef.current.style.cursor = "grab"; // Change cursor back
+      diagramRef.current.style.cursor = "grab";
     }
     window.removeEventListener("mousemove", handleMouseMove);
     window.removeEventListener("mouseup", handleMouseUp);
   };
 
-  // Mouse down handler (on the diagram)
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Prevent dragging on error messages or loading text
     if (
       !diagramRef.current ||
       diagramRef.current.querySelector("svg") === null
     ) {
       return;
     }
-    e.preventDefault(); // Prevent default image drag behavior
+    e.preventDefault();
     isDragging.current = true;
-    // Calculate starting position relative to the current transform
     startDragPos.current = {
       x: e.clientX - position.x,
       y: e.clientY - position.y,
     };
     if (diagramRef.current) {
-      diagramRef.current.style.cursor = "grabbing"; // Change cursor
+      diagramRef.current.style.cursor = "grabbing";
     }
-    // Add listeners to window to capture mouse movements outside the element
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
   };
 
-  // Cleanup window event listeners on component unmount
   useEffect(() => {
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
@@ -252,72 +158,24 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
   }, []);
 
   return (
-    // Outer container: Handles viewport clipping and wheel events
     <div
       ref={mermaidRef}
-      className="w-full flex-1 h-full overflow-hidden cursor-default bg-muted/20" // Added subtle background
+      className="w-full flex-1 h-full overflow-hidden cursor-default bg-muted/20"
       onWheel={handleWheel}
     >
-      {/* Inner container: Handles dragging and transforms */}
       <div
         ref={diagramRef}
-        className="w-full h-full flex justify-center items-center" // Center content initially
+        className="w-full h-full flex justify-center items-center"
         style={{
-          // Apply scale first, then translation
           transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-          transformOrigin: "center", // Zoom/scale relative to the center
-          transition: isDragging.current ? "none" : "transform 0.1s ease-out", // Faster updates during drag
+          transformOrigin: "center",
+          transition: isDragging.current ? "none" : "transform 0.1s ease-out",
         }}
         onMouseDown={handleMouseDown}
-        // Prevent context menu while dragging
         onContextMenu={(e) => {
           if (isDragging.current) e.preventDefault();
         }}
-      >
-        {/* Mermaid SVG will be rendered here by the useEffect */}
-      </div>
-    </div>
-  );
-};
-
-const CodeViewer: React.FC<{ content: string; mimeType: string }> = ({
-  content,
-  mimeType,
-}) => {
-  // Extract language from MIME type
-  let language = "";
-
-  // Check if the MIME type contains a language attribute
-  if (mimeType.includes("language=")) {
-    // Try to extract the language value
-    const match = mimeType.match(/language=["']?([^"'\s;]+)["']?/);
-    if (match && match[1]) {
-      language = match[1];
-    }
-  } else {
-    // Fall back to MIME type parsing
-    language = mimeType.split("/")[1] || "";
-    // Clean up any additional parameters
-    language = language.split(";")[0].split(" ")[0];
-  }
-
-  const wrappedContent = `\`\`\`${language}\n${content}\n\`\`\``;
-
-  return (
-    <div className="w-full max-w-full">
-      <MarkdownViewer content={wrappedContent} />
-    </div>
-  );
-};
-
-const SvgViewer: React.FC<{ content: string }> = ({ content }) => {
-  return (
-    <div className="flex justify-center w-full">
-      <div
-        className="max-w-full"
-        style={{ width: "100%", maxHeight: "80vh" }}
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
+      ></div>
     </div>
   );
 };
@@ -356,7 +214,6 @@ const DownloadOptions: React.FC<{
       default: { ext: ".txt", type: "text/plain", name: "Text" },
     } as const;
 
-    // Check for the special case with language attribute
     if (
       mimeType.includes("application/vnd.ant.code") &&
       mimeType.includes("csv")
@@ -491,21 +348,19 @@ const DownloadOptions: React.FC<{
   );
 };
 
-// Update the main ArtifactViewer component to use these new components
 const ArtifactViewer: React.FC<{
   artifact: Artifact;
   splitPosition: number;
-  messages: Message[];
-}> = ({ artifact, splitPosition, messages }) => {
+}> = ({ artifact, splitPosition }) => {
   const [copied, setCopied] = useState(false);
   const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
   const [userClosedArtifacts, setUserClosedArtifacts] = useAtom(
     userClosedArtifactsAtom
   );
-  const { version, content, title } = getArtifactVersionInfo(
-    artifact,
-    messages
-  );
+  const content = artifact.content;
+  const title = artifact.title;
+  const version = artifact.version;
+
   const mimeType = artifact.type || "text/markdown";
   const isStreaming = !artifact.isComplete;
 
@@ -516,7 +371,6 @@ const ArtifactViewer: React.FC<{
   };
 
   const handleClose = () => {
-    // Track that user explicitly closed this artifact
     setUserClosedArtifacts((prev) => new Set([...prev, artifact.identifier]));
     setSelectedArtifact(null);
   };
@@ -549,7 +403,7 @@ const ArtifactViewer: React.FC<{
     }
 
     return (
-      <div className="max-w-[750px]">
+      <div className="max-w-[750px] w-full">
         <MarkdownViewer content={content} />
       </div>
     );

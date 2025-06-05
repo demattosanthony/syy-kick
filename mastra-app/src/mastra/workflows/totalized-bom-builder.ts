@@ -271,7 +271,7 @@ const stepFive = createStep({
     logger.info(markdownFilesContent[0]);
 
     const { object } = await generateObject({
-      model: google("gemini-2.5-pro-preview-05-06"),
+      model: google("gemini-2.5-pro-preview-06-05"),
       schema: z.object({
         totalizedBomMarkdownContent: z.string(),
       }),

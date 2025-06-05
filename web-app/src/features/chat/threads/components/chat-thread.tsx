@@ -1,24 +1,6 @@
 // Types
 import { ChatMessage } from "@/types/chat";
 
-// Atoms
-import {
-  alreadyAutoSelectedArtifactAtom,
-  selectedArtifactAtom,
-  chatStatusAtom,
-  userClosedArtifactsAtom,
-} from "@/atoms/chat";
-
-// Hooks
-import { useAtom } from "jotai";
-import { useParams } from "react-router";
-import { useEffect, useState, useCallback } from "react";
-import {
-  useResizeLayout,
-  useThreadStream,
-  useMessageSubmission,
-} from "../hooks";
-
 // Components
 import { Thread } from "@/types/chat";
 import ThreadHeader from "./thread-header";
@@ -28,6 +10,15 @@ import {
   ChatMessagesList,
 } from "@/features/chat/messages/components";
 import { CloneThreadButton } from "./clone-thread-button";
+
+// Hooks
+import { useCallback } from "react";
+import {
+  useResizeLayout,
+  useThreadStream,
+  useMessageSubmission,
+} from "../hooks";
+import { useChatState } from "../hooks/use-chat-state";
 
 // Utils
 import { convertChatMessagesToMessages } from "../utils/message-conversion";
@@ -45,17 +36,17 @@ export default function ThreadPage({
   messagesAreBeingFetched?: boolean;
   showCloneThreadButton?: boolean;
 }) {
-  const params = useParams<{ threadId: string }>();
-  const { threadId } = params;
-  const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
-  const [, setAlreadyOpenedArtifact] = useAtom(alreadyAutoSelectedArtifactAtom);
-  const [chatStatus, setChatStatus] = useAtom(chatStatusAtom);
-  const [, setUserClosedArtifacts] = useAtom(userClosedArtifactsAtom);
-
-  // Local state for messages and error
-  const [messages, setMessages] = useState<ChatMessage[]>(initalMessages);
-  const [input, setInput] = useState("");
-  const [, setError] = useState<string | null>(null);
+  const {
+    threadId,
+    selectedArtifact,
+    chatStatus,
+    messages,
+    setMessages,
+    input,
+    setInput,
+    setError,
+    handleInputChange,
+  } = useChatState(initalMessages);
 
   // Custom hooks
   useThreadStream({
@@ -72,12 +63,10 @@ export default function ThreadPage({
     onError: setError,
   });
 
+  const { splitPosition, handleMouseDown } = useResizeLayout();
+
   // Convert messages for component compatibility
   const convertedMessages = convertChatMessagesToMessages(messages);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-  };
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -87,31 +76,8 @@ export default function ThreadPage({
         setInput("");
       }
     },
-    [input, submitMessage]
+    [input, submitMessage, setInput]
   );
-
-  // Update messages when initialMessages change
-  useEffect(() => {
-    setMessages(initalMessages);
-  }, [initalMessages]);
-
-  // Cleanup effect
-  useEffect(() => {
-    return () => {
-      setSelectedArtifact(null);
-      setAlreadyOpenedArtifact(null);
-      setChatStatus("ready");
-      setUserClosedArtifacts(new Set<string>());
-    };
-  }, [
-    threadId,
-    setChatStatus,
-    setSelectedArtifact,
-    setAlreadyOpenedArtifact,
-    setUserClosedArtifacts,
-  ]);
-
-  const { splitPosition, handleMouseDown } = useResizeLayout();
 
   return (
     <div id="chat-container" className="flex h-full w-full relative">
@@ -120,7 +86,6 @@ export default function ThreadPage({
           <ArtifactViewer
             artifact={selectedArtifact}
             splitPosition={splitPosition}
-            messages={convertedMessages}
           />
           <div
             className="w-[2px] hover:w-1 h-full cursor-col-resize bg-secondary transition-all"

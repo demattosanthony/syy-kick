@@ -28,7 +28,7 @@ export function createObjectDetectionTool(
       const imagebase64 = Buffer.from(imageArtifact.data).toString("base64");
 
       const { object } = await generateObject({
-        model: google("gemini-2.5-pro-preview-05-06"),
+        model: google("gemini-2.5-pro-preview-06-05"),
         schema: z.object({
           bounding_boxes: z.array(
             z.object({

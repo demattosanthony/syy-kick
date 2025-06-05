@@ -106,7 +106,7 @@ export function AppSidebar({
       <SidebarHeader>
         <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between ">
           <WorkSpaceSwitcher state={state} />
-          {/* {state === "expanded" && <SidebarTrigger />} */}
+          {state === "expanded" && <SidebarTrigger />}
         </SidebarMenu>
       </SidebarHeader>
 

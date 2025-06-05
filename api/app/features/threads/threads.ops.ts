@@ -526,7 +526,7 @@ const threadsOps = {
           } satisfies GoogleGenerativeAIProviderOptions,
         },
         onChunk: async ({ chunk }) => {
-          console.log("onChunk", chunk);
+          //   console.log("onChunk", chunk);
           // Helper function to ensure we have a message for this step
           const ensureAssistantMessage = async () => {
             if (!currentStepState.currentAssistantMessageId) {
