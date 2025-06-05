@@ -10,6 +10,10 @@ import {
   uploadsAtom,
   modelAtom,
   chatStatusAtom,
+  instructionsAtom,
+  pendingThreadAtom,
+  isPendingThreadAtom,
+  PendingThread,
 } from "@/atoms/chat";
 import { pricingPlanDialogOpenAtom } from "@/components/PricingDialog";
 
@@ -25,8 +29,9 @@ import { useNavigate } from "react-router";
 import { SharePointFileBrowser } from "@/features/integrations/microsoft/components/sharepoint-file-browser";
 import type { GraphDriveItem } from "@/features/integrations/microsoft/api/microsoft-graph";
 import { validateFile } from "@/lib/utils/file-validation";
-import { FileUploadMimeType } from "@/types/chat";
+import { FileUploadMimeType, MessageRole } from "@/types/chat";
 import ThreadsList from "@/features/chat/threads/components/threads-list";
+import { useAttachmentProcessing } from "@/features/chat/threads/hooks/use-attachment-processing";
 
 // Images
 import logo from "@/assets/logo192.png";
@@ -52,7 +57,11 @@ export function HomePage() {
   const [uploads, setUploads] = useAtom(uploadsAtom);
   const [selectedModel] = useAtom(modelAtom);
   const [, setChatStatus] = useAtom(chatStatusAtom);
+  const [instructions] = useAtom(instructionsAtom);
   const [isDownloadingSPFile, setIsDownloadingSPFile] = useState(false);
+  const { processAttachments, clearAttachments } = useAttachmentProcessing();
+  const [, setPendingThread] = useAtom(pendingThreadAtom);
+  const [, setIsPendingThread] = useAtom(isPendingThreadAtom);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInitalInput(e.target.value);
@@ -67,24 +76,81 @@ export function HomePage() {
       return;
     }
 
-    setInitalInput(initalInput.trim());
+    // Generate temporary ID for immediate navigation
+    const tempId = `pending-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
+    // Create pending thread state
+    const pendingThread: PendingThread = {
+      tempId,
+      initialMessage: initalInput.trim(),
+      uploads: [...uploads],
+      model: selectedModel.name,
+      instructions: instructions || undefined,
+      status: "processing",
+    };
+
+    // Set pending state and navigate immediately
+    setPendingThread(pendingThread);
+    setIsPendingThread(true);
     setChatStatus("submitted");
 
+    // Clear input and attachments immediately for better UX
+    setInitalInput("");
+    setUploads([]);
+
+    // Navigate to pending thread
+    navigate(`/threads/${tempId}`);
+
+    // Process thread creation in background
     try {
-      // Create thread in background
+      // Process attachments
+      const attachments = await processAttachments();
+
+      // Create thread
       const { id: threadId } = await api.threads.createThread({});
       await api.threads.postMessage({
         threadId,
         message: {
-          content: initalInput,
-          role: "user",
+          content: pendingThread.initialMessage,
+          role: MessageRole.user,
+          experimental_attachments: attachments,
         },
         model: selectedModel.name,
+        instructions: instructions || undefined,
       });
-      navigate(`/threads/${threadId}`);
-      setInitalInput("");
+
+      // Update pending thread with actual thread ID
+      setPendingThread((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "created",
+              actualThreadId: threadId,
+            }
+          : null
+      );
+
+      // Clear attachments after successful submission
+      clearAttachments();
+
+      // Navigate to actual thread
+      navigate(`/threads/${threadId}`, { replace: true });
     } catch (error: unknown) {
+      // Update pending thread with error
+      setPendingThread((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "error",
+              error: error instanceof Error ? error.message : "Unknown error",
+            }
+          : null
+      );
+
       setChatStatus("error");
+
       if (error instanceof Error && error.message === "subscription_required") {
         setShowPricingDialog(true);
         toast.error("Pro plan required to create a new thread.");
@@ -92,12 +158,22 @@ export function HomePage() {
         toast.error("Failed to create thread. Please try again.", {
           action: {
             label: "Retry",
-            onClick: () => handleSubmit(),
+            onClick: () => {
+              // Reset and retry
+              setPendingThread(null);
+              setIsPendingThread(false);
+              navigate("/");
+              setInitalInput(pendingThread.initialMessage);
+              setUploads(pendingThread.uploads);
+            },
           },
         });
       }
+
       // Reset status after showing error
-      setTimeout(() => setChatStatus("ready"), 3000);
+      setTimeout(() => {
+        setChatStatus("ready");
+      }, 3000);
     }
   };
 

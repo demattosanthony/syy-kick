@@ -19,9 +19,12 @@ import {
   useMessageSubmission,
 } from "../hooks";
 import { useChatState } from "../hooks/use-chat-state";
+import { useAtom } from "jotai";
+import { pendingThreadAtom } from "@/atoms/chat";
 
 // Utils
 import { convertChatMessagesToMessages } from "../utils/message-conversion";
+import { Loader2 } from "lucide-react";
 
 export default function ThreadPage({
   initalMessages,
@@ -47,6 +50,13 @@ export default function ThreadPage({
     setError,
     handleInputChange,
   } = useChatState(initalMessages);
+
+  const [pendingThread] = useAtom(pendingThreadAtom);
+
+  // Check if this is a pending thread
+  const isPendingThread = threadId?.startsWith("pending-");
+  const isProcessing =
+    isPendingThread && pendingThread?.status === "processing";
 
   // Custom hooks
   useThreadStream({
@@ -79,6 +89,9 @@ export default function ThreadPage({
     [input, submitMessage, setInput]
   );
 
+  // Show processing indicator for pending threads
+  const showProcessingIndicator = isProcessing && convertedMessages.length > 0;
+
   return (
     <div id="chat-container" className="flex h-full w-full relative">
       {selectedArtifact && (
@@ -105,9 +118,18 @@ export default function ThreadPage({
         <div className="flex-1">
           <ChatMessagesList
             messages={convertedMessages}
-            status={chatStatus}
-            showSkeletons={messagesAreBeingFetched}
+            status={isProcessing ? "submitted" : chatStatus}
+            showSkeletons={messagesAreBeingFetched && !isPendingThread}
           />
+
+          {showProcessingIndicator && (
+            <div className="flex items-center justify-center p-4 text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <span className="text-sm">
+                Creating thread and processing files...
+              </span>
+            </div>
+          )}
         </div>
 
         {!viewOnly && (
@@ -118,7 +140,7 @@ export default function ThreadPage({
               handleInputChange={handleInputChange}
               onSubmit={handleSubmit}
               stop={stop}
-              isGenerating={isSubmitting}
+              isGenerating={isSubmitting || isProcessing}
               hasThread={true}
             />
           </div>

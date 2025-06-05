@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { Check, Copy } from "lucide-react";
 
 interface MessageBubbleProps {
@@ -106,28 +106,18 @@ import { ChatContainer } from "@/components/ui/chat-container";
 import { ScrollButton } from "@/components/ui/scroll-button";
 import logo from "@/assets/logo192.png";
 
-const LoadingMessage = React.memo(
-  ({ status }: { status: "error" | "submitted" | "streaming" | "ready" }) => {
-    return (
-      <div className="mb-4 mt flex flex-col justify-start">
-        <div className="flex items-center">
-          {status === "submitted" && (
-            <div className="w-[22px] h-[22px] mr-2">
-              <img src={logo} width={22} height={22} alt="" />
-            </div>
-          )}
-          <div className="flex h-full items-start justify-center">
-            {status === "submitted" ? (
-              <Loader variant="text-shimmer" text={"Thinking..."} size="lg" />
-            ) : (
-              <Loader variant="wave" size="lg" />
-            )}
-          </div>
-        </div>
+const LoadingMessage = React.memo(() => (
+  <div className="mb-4 mt flex flex-col justify-start">
+    <div className="flex items-center">
+      <div className="w-[22px] h-[22px] mr-2">
+        <img src={logo} width={22} height={22} alt="" />
       </div>
-    );
-  }
-);
+      <div className="flex h-full items-start justify-center">
+        <Loader variant="text-shimmer" text={"Thinking..."} size="lg" />
+      </div>
+    </div>
+  </div>
+));
 
 LoadingMessage.displayName = "LoadingMessage";
 
@@ -144,6 +134,10 @@ const ChatMessagesList = React.memo(
   }) => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
+
+    const lastMessage = useMemo(() => {
+      return messages[messages.length - 1] || null;
+    }, [messages]);
 
     return (
       <div className="flex-1 w-full h-full relative">
@@ -185,7 +179,8 @@ const ChatMessagesList = React.memo(
                 );
               })
             )}
-            {status === "submitted" && <LoadingMessage status={status} />}
+            {(status === "submitted" ||
+              lastMessage?.role === MessageRole.user) && <LoadingMessage />}
           </div>
         </ChatContainer>
 

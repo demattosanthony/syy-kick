@@ -440,7 +440,7 @@ const SharepointSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                 <span className="text-sm font-medium text-slate-600">
                   Searching SharePoint for "{tool.args?.query}"
                 </span>
-                <div className="flex space-x-1">
+                <div className="flex space-x-1 p-2">
                   <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                   <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                   <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
@@ -561,14 +561,14 @@ const SharepointSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                           </div>
                           <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
                             <span className="capitalize">{item.type}</span>
-                            {item.size && (
+                            {/* {item.size && (
                               <>
                                 <span>•</span>
                                 <span>
                                   {(item.size / 1024 / 1024).toFixed(1)}MB
                                 </span>
                               </>
-                            )}
+                            )} */}
                             {item.lastModified && (
                               <>
                                 <span>•</span>

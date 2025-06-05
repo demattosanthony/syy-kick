@@ -100,3 +100,18 @@ export const selectedArtifactAtom = atom<Artifact | null>(null);
 export const alreadyAutoSelectedArtifactAtom = atom<string | null>(null);
 export const userClosedArtifactsAtom = atom<Set<string>>(new Set<string>());
 export const artifactSelectionModeAtom = atom<"auto" | "manual">("auto");
+
+// Pending thread creation atoms
+export interface PendingThread {
+  tempId: string;
+  initialMessage: string;
+  uploads: FileUpload[];
+  model: string;
+  instructions?: string;
+  status: "processing" | "created" | "error";
+  actualThreadId?: string;
+  error?: string;
+}
+
+export const pendingThreadAtom = atom<PendingThread | null>(null);
+export const isPendingThreadAtom = atom<boolean>(false);
