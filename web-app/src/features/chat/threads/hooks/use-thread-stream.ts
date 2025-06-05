@@ -69,19 +69,81 @@ const addOrUpdateMessage = (
 const updateOrCreateToolCall = (
   toolCalls: any[],
   toolCallId: string,
-  data: any
+  data: any,
+  isArgsTextDelta: boolean = false
 ) => {
   const index = toolCalls.findIndex((tc) => tc.toolCallId === toolCallId);
-  const toolCall = {
-    id: crypto.randomUUID(),
-    toolCallId,
-    createdAt: new Date().toISOString(),
-    ...data,
-  };
 
-  return index !== -1
-    ? toolCalls.map((tc, i) => (i === index ? { ...tc, ...data } : tc))
-    : [...toolCalls, toolCall];
+  if (index !== -1) {
+    return toolCalls.map((tc, i) => {
+      if (i === index) {
+        if (isArgsTextDelta) {
+          // For streaming args, accumulate the argsTextDelta fragments
+          const currentArgsText = tc.argsText || "";
+          const newArgsText = currentArgsText + (data.argsTextDelta || "");
+
+          // Try to parse the accumulated args text as JSON
+          let parsedArgs = tc.args || {};
+          try {
+            parsedArgs = JSON.parse(newArgsText);
+          } catch (error) {
+            // If it's not valid JSON yet, keep the previous args
+            parsedArgs = tc.args || {};
+          }
+
+          const updatedToolCall = {
+            ...tc,
+            argsText: newArgsText,
+            args: parsedArgs,
+            status: "streaming" as const,
+            state: "call" as const,
+          };
+          return updatedToolCall;
+        } else {
+          return { ...tc, ...data };
+        }
+      }
+      return tc;
+    });
+  } else {
+    // Creating a new tool call entry
+    let initialArgs = data.args || {};
+    let initialArgsText = "";
+
+    if (isArgsTextDelta && data.argsTextDelta) {
+      // Start with the first fragment
+      initialArgsText = data.argsTextDelta;
+      try {
+        initialArgs = JSON.parse(initialArgsText);
+      } catch {
+        // If first fragment isn't valid JSON, keep empty args
+        initialArgs = {};
+      }
+    } else if (data.args) {
+      try {
+        initialArgsText = JSON.stringify(data.args);
+      } catch {
+        initialArgsText = "";
+      }
+    }
+
+    const toolCall = {
+      id: crypto.randomUUID(),
+      toolCallId,
+      createdAt: new Date().toISOString(),
+      argsText: initialArgsText,
+      args: initialArgs,
+      ...data,
+    };
+
+    // Clean up to avoid duplicate data
+    delete toolCall.argsTextDelta;
+    if (isArgsTextDelta) {
+      delete toolCall.args; // Will be set correctly above
+    }
+
+    return [...toolCalls, toolCall];
+  }
 };
 
 // Simplified event handlers
@@ -212,9 +274,11 @@ const handleToolCallChunk = (
               messageId: data.messageId,
               toolName: data.toolName,
               args: data.args,
-              status: "pending" as const,
+              status:
+                data.toolName === "create_artifact" ? "streaming" : "pending",
               state: "call" as const,
-            }
+            },
+            false // isArgsTextDelta = false
           ),
         }))
       : prev;
@@ -227,23 +291,27 @@ const handleToolCallStreamingStart = (
 ) => {
   setChatStatus("streaming");
   onMessagesUpdate((prev) => {
-    const index = findMessageIndex(prev, data.messageId);
-    return index !== -1
-      ? updateMessageAtIndex(prev, index, (msg) => ({
-          ...msg,
-          toolCalls: updateOrCreateToolCall(
-            msg.toolCalls || [],
-            data.toolCallId,
-            {
-              messageId: data.messageId,
-              toolName: data.toolName,
-              args: {},
-              status: "streaming" as const,
-              state: "call" as const,
-            }
-          ),
-        }))
-      : prev;
+    const messageIndex = findMessageIndex(prev, data.messageId);
+    if (messageIndex === -1) {
+      return prev;
+    }
+
+    return updateMessageAtIndex(prev, messageIndex, (msg) => {
+      const updatedToolCalls = updateOrCreateToolCall(
+        msg.toolCalls || [],
+        data.toolCallId,
+        {
+          messageId: data.messageId,
+          toolName: data.toolName,
+          args: {}, // Initialize with empty parsed args
+          argsText: "", // Initialize with EMPTY STRING for raw fragment accumulation
+          status: "streaming" as const,
+          state: "call" as const,
+        },
+        false // This is not a delta itself, it's setting up for deltas
+      );
+      return { ...msg, toolCalls: updatedToolCalls };
+    });
   });
 };
 
@@ -290,6 +358,36 @@ const handleMessageError = (
   setChatStatus("ready");
 };
 
+const handleToolCallDelta = (
+  data: any,
+  { setChatStatus, onMessagesUpdate }: EventHandlers
+) => {
+  setChatStatus("streaming");
+  onMessagesUpdate((prev) => {
+    const index = findMessageIndex(prev, data.messageId);
+    if (index !== -1) {
+      const updatedMessages = updateMessageAtIndex(prev, index, (msg) => {
+        const updatedToolCalls = updateOrCreateToolCall(
+          msg.toolCalls || [],
+          data.toolCallId,
+          {
+            messageId: data.messageId,
+            toolName: data.toolName,
+            argsTextDelta: data.argsTextDelta,
+          },
+          true // isArgsTextDelta = true
+        );
+        return {
+          ...msg,
+          toolCalls: updatedToolCalls,
+        };
+      });
+      return updatedMessages;
+    }
+    return prev;
+  });
+};
+
 // Event dispatcher with lookup table
 const eventHandlers = {
   "stream-resume": handleStreamResume,
@@ -299,6 +397,7 @@ const eventHandlers = {
   "reasoning-delta": handleReasoningDelta,
   "tool-call-chunk": handleToolCallChunk,
   "tool-call-streaming-start": handleToolCallStreamingStart,
+  "tool-call-delta": handleToolCallDelta,
   "tool-result": handleToolResult,
   "message-error": handleMessageError,
   "inference-complete": (_data: any, { setChatStatus }: EventHandlers) =>
@@ -308,7 +407,6 @@ const eventHandlers = {
   connected: () => console.log("Connected to message stream"),
   source: (data: any) => console.log("Source data received:", data.source),
   heartbeat: () => {}, // Keep-alive
-  "tool-call-delta": () => {}, // Currently unused
 };
 
 const handleEventMessage = (event: MessageEvent, handlers: EventHandlers) => {

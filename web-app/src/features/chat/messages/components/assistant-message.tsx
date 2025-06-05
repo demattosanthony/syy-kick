@@ -19,8 +19,14 @@ const TextContent: React.FC<{
   text: string;
   messages: Message[];
   index: number;
-}> = ({ text, messages, index }) => {
-  const { artifact, cleanContent } = extractSpecialContent(text);
+  hasArtifactTool?: boolean;
+}> = ({ text, messages, index, hasArtifactTool = false }) => {
+  // If there's an artifact tool call in this message, don't extract artifacts from text
+  const shouldExtractArtifacts = !hasArtifactTool;
+  const { artifact, cleanContent } = shouldExtractArtifacts
+    ? extractSpecialContent(text)
+    : { artifact: null, cleanContent: text };
+
   const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
   const [alreadyAutoSelected, setAlreadyAutoSelected] = useAtom(
     alreadyAutoSelectedArtifactAtom
@@ -28,7 +34,7 @@ const TextContent: React.FC<{
   const processedRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (artifact && !processedRef.current) {
+    if (artifact && !processedRef.current && shouldExtractArtifacts) {
       processedRef.current = true;
       const { version } = getArtifactVersionInfo(artifact, messages);
       const artifactKey = `${artifact.identifier}-v${version}`;
@@ -49,10 +55,11 @@ const TextContent: React.FC<{
     setSelectedArtifact,
     alreadyAutoSelected,
     setAlreadyAutoSelected,
+    shouldExtractArtifacts,
   ]);
 
   const elements = [];
-  if (artifact) {
+  if (artifact && shouldExtractArtifacts) {
     // First, clean the text by removing thinking and artifact tags
     const cleanedText = text
       .replace(/<antThinking>[\s\S]*?(?:<\/antThinking>|$)/g, "")
@@ -110,6 +117,26 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
       );
     }, [message.parts]);
 
+    // Check if this message has create_artifact tool invocations
+    const hasArtifactTool = React.useMemo(() => {
+      if (!message.parts?.length && !message.toolInvocations?.length)
+        return false;
+
+      // Check in parts
+      const hasInParts = message.parts?.some(
+        (part) =>
+          part.type === "tool-invocation" &&
+          part.toolInvocation?.toolName === "create_artifact"
+      );
+
+      // Check in toolInvocations
+      const hasInToolInvocations = message.toolInvocations?.some(
+        (tool) => tool.toolName === "create_artifact"
+      );
+
+      return hasInParts || hasInToolInvocations;
+    }, [message.parts, message.toolInvocations]);
+
     if (message.parts?.length) {
       return (
         <div className="flex flex-col gap-2">
@@ -132,6 +159,7 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
                 text={part.text}
                 messages={messages}
                 index={index}
+                hasArtifactTool={hasArtifactTool}
               />
             ) : null
           )}
@@ -139,7 +167,12 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
       );
     }
     return typeof message.content === "string" ? (
-      <TextContent text={message.content} messages={messages} index={0} />
+      <TextContent
+        text={message.content}
+        messages={messages}
+        index={0}
+        hasArtifactTool={hasArtifactTool}
+      />
     ) : (
       <MarkdownViewer content={message.content} />
     );

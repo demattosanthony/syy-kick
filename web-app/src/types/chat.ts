@@ -44,6 +44,7 @@ export type ChatToolCall = {
   toolName: string;
   result?: any;
   state: "call" | "result" | "partial-call";
+  argsText?: string;
 };
 
 export type ChatMessage = {

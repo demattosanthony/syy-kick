@@ -36,6 +36,7 @@ export function convertChatMessagesToMessages(
             args: toolCall.args,
             toolCallId: toolCall.toolCallId,
             state: toolCall.state || "result",
+            argsText: toolCall.argsText,
           },
         });
       });
@@ -58,7 +59,8 @@ export function convertChatMessagesToMessages(
         result: toolCall.result,
         args: toolCall.args,
         toolCallId: toolCall.toolCallId,
-        state: "result" as const,
+        state: toolCall.state || "result",
+        argsText: toolCall.argsText,
       })),
       experimental_attachments:
         msg.attachments?.map((att) => ({

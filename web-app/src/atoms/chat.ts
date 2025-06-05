@@ -98,3 +98,4 @@ export const abortControllerAtom = atom<AbortController>(new AbortController());
 export const selectedProjectDocsAtom = atom<DocumentContent[]>([]);
 export const selectedArtifactAtom = atom<Artifact | null>(null);
 export const alreadyAutoSelectedArtifactAtom = atom<string | null>(null);
+export const userClosedArtifactsAtom = atom<Set<string>>(new Set<string>());

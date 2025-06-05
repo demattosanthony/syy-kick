@@ -31,6 +31,7 @@ import { MicrosoftAPI } from "../../config/microsoft";
 import { createSharepointToolSet } from "../tools/tool-definitions";
 import { MARKITDOWN_MIME_TYPES } from "../../config/constants";
 import { Workspace } from "../auth/auth.types";
+import { ArtifactService } from "../workflows/artifact-service";
 
 const eventEmitter = new EventEmitter();
 
@@ -485,6 +486,10 @@ const threadsOps = {
           const sharepointTools = createSharepointToolSet(userId, db);
           tools = { ...tools, ...sharepointTools };
         }
+
+        const artifactService = new ArtifactService(threadId);
+        const artifactTools = artifactService.getTools();
+        tools = { ...tools, ...artifactTools };
       }
 
       const result = streamText({
@@ -521,6 +526,7 @@ const threadsOps = {
           } satisfies GoogleGenerativeAIProviderOptions,
         },
         onChunk: async ({ chunk }) => {
+          console.log("onChunk", chunk);
           // Helper function to ensure we have a message for this step
           const ensureAssistantMessage = async () => {
             if (!currentStepState.currentAssistantMessageId) {
@@ -594,6 +600,7 @@ const threadsOps = {
             // For tool calls, we need a message to associate them with
             await ensureAssistantMessage();
 
+            // Simply emit the tool call chunk - no simulation needed since native streaming works
             eventEmitter.emit(`thread-${threadId}-message`, {
               type: "tool-call-chunk",
               messageId: currentStepState.currentAssistantMessageId,
@@ -603,37 +610,37 @@ const threadsOps = {
             });
           } else if (chunk.type === "tool-call-streaming-start") {
             // Handle start of streaming tool call
-            if (currentStepState.currentAssistantMessageId) {
-              eventEmitter.emit(`thread-${threadId}-message`, {
-                type: "tool-call-streaming-start",
-                messageId: currentStepState.currentAssistantMessageId,
-                toolCallId: chunk.toolCallId,
-                toolName: chunk.toolName,
-              });
-            }
+            await ensureAssistantMessage();
+
+            eventEmitter.emit(`thread-${threadId}-message`, {
+              type: "tool-call-streaming-start",
+              messageId: currentStepState.currentAssistantMessageId,
+              toolCallId: chunk.toolCallId,
+              toolName: chunk.toolName,
+            });
           } else if (chunk.type === "tool-call-delta") {
-            // Handle streaming tool call argument deltas
-            if (currentStepState.currentAssistantMessageId) {
-              eventEmitter.emit(`thread-${threadId}-message`, {
-                type: "tool-call-delta",
-                messageId: currentStepState.currentAssistantMessageId,
-                toolCallId: chunk.toolCallId,
-                toolName: chunk.toolName,
-                argsTextDelta: chunk.argsTextDelta,
-              });
-            }
+            // Handle streaming tool call argument deltas (if available)
+            await ensureAssistantMessage();
+
+            eventEmitter.emit(`thread-${threadId}-message`, {
+              type: "tool-call-delta",
+              messageId: currentStepState.currentAssistantMessageId,
+              toolCallId: chunk.toolCallId,
+              toolName: chunk.toolName,
+              argsTextDelta: chunk.argsTextDelta,
+            });
           } else if (chunk.type === "tool-result") {
             // Handle tool execution results
-            if (currentStepState.currentAssistantMessageId) {
-              eventEmitter.emit(`thread-${threadId}-message`, {
-                type: "tool-result",
-                messageId: currentStepState.currentAssistantMessageId,
-                toolCallId: chunk.toolCallId,
-                toolName: chunk.toolName,
-                args: chunk.args,
-                result: chunk.result,
-              });
-            }
+            await ensureAssistantMessage();
+
+            eventEmitter.emit(`thread-${threadId}-message`, {
+              type: "tool-result",
+              messageId: currentStepState.currentAssistantMessageId,
+              toolCallId: chunk.toolCallId,
+              toolName: chunk.toolName,
+              args: chunk.args,
+              result: chunk.result,
+            });
           }
         },
         onError: (error) => {

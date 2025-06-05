@@ -234,7 +234,7 @@ export class ArtifactService {
   private createArtifactTool(): Tool {
     return tool({
       description:
-        "Creates a text-based artifact in the artifact service. Saves textual data like Markdown, CSV, or plain text.",
+        "Creates an artifact in the artifact service. Use this to save substantial, self-contained content like documents, code, diagrams, or data that users might modify or reuse.",
       parameters: z.object({
         fileName: z
           .string()
@@ -255,9 +255,16 @@ export class ArtifactService {
           mimeType,
         });
 
+        // Return artifact data for frontend display
         return {
           success: true,
           message: `Successfully created artifact '${fileName}' with MIME type '${mimeType}'.`,
+          // Frontend artifact data
+          identifier: fileName.replace(/\.[^/.]+$/, ""), // Remove file extension for identifier
+          type: mimeType,
+          title: fileName,
+          content: data,
+          created: new Date().toISOString(),
         };
       },
     });
@@ -268,11 +275,11 @@ export class ArtifactService {
    * mapped by tool name.
    * @returns An object where keys are tool names and values are Tool objects.
    */
-  public getArtifactTools(): Record<string, Tool> {
+  public getTools(): Record<string, Tool> {
     return {
-      "list-artifacts": this.listArtifactsTool(),
-      "load-artifact": this.loadArtifactTool(),
-      "create-artifact": this.createArtifactTool(),
+      //   "list-artifacts": this.listArtifactsTool(),
+      //   "load-artifact": this.loadArtifactTool(),
+      create_artifact: this.createArtifactTool(),
     };
   }
 }

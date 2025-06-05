@@ -7,7 +7,7 @@ import {
 } from "./tool-definitions";
 
 export const createToolSet = (toolArtifactService: ArtifactService) => {
-  const artifactTools = toolArtifactService.getArtifactTools();
+  const artifactTools = toolArtifactService.getTools();
   return {
     "list-artifacts": artifactTools["list-artifacts"],
     "load-artifact": artifactTools["load-artifact"],

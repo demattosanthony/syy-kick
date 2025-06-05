@@ -6,6 +6,7 @@ import {
   alreadyAutoSelectedArtifactAtom,
   selectedArtifactAtom,
   chatStatusAtom,
+  userClosedArtifactsAtom,
 } from "@/atoms/chat";
 
 // Hooks
@@ -49,7 +50,7 @@ export default function ThreadPage({
   const [selectedArtifact, setSelectedArtifact] = useAtom(selectedArtifactAtom);
   const [, setAlreadyOpenedArtifact] = useAtom(alreadyAutoSelectedArtifactAtom);
   const [chatStatus, setChatStatus] = useAtom(chatStatusAtom);
-  console.log("chatStatus", chatStatus);
+  const [, setUserClosedArtifacts] = useAtom(userClosedArtifactsAtom);
 
   // Local state for messages and error
   const [messages, setMessages] = useState<ChatMessage[]>(initalMessages);
@@ -100,8 +101,15 @@ export default function ThreadPage({
       setSelectedArtifact(null);
       setAlreadyOpenedArtifact(null);
       setChatStatus("ready");
+      setUserClosedArtifacts(new Set<string>());
     };
-  }, [threadId, setChatStatus, setSelectedArtifact, setAlreadyOpenedArtifact]);
+  }, [
+    threadId,
+    setChatStatus,
+    setSelectedArtifact,
+    setAlreadyOpenedArtifact,
+    setUserClosedArtifacts,
+  ]);
 
   const { splitPosition, handleMouseDown } = useResizeLayout();
 

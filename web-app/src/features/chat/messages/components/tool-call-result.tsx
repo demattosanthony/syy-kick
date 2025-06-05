@@ -19,6 +19,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import MarkdownViewer from "./viewers/markdown-viewer";
+import { useSetAtom, useAtom } from "jotai";
+import {
+  selectedArtifactAtom,
+  alreadyAutoSelectedArtifactAtom,
+  userClosedArtifactsAtom,
+} from "@/atoms/chat";
+import { Badge } from "@/components/ui/badge";
+import { Artifact } from "@/types/chat";
 
 type SharePointItem = {
   name: string;
@@ -44,6 +52,8 @@ const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
       return <SharepointListTool tool={tool} />;
     case "sharepoint_open_file":
       return <SharepointOpenFileTool tool={tool} />;
+    case "create_artifact":
+      return <CreateArtifactTool tool={tool} />;
     default:
       return null;
   }
@@ -950,6 +960,362 @@ const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
         </svg>
       </div>
     </a>
+  );
+};
+
+const CreateArtifactTool = ({ tool }: { tool: ToolInvocation }) => {
+  const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
+  const [alreadyAutoSelected, setAlreadyAutoSelectedArtifact] = useAtom(
+    alreadyAutoSelectedArtifactAtom
+  );
+  const [selectedArtifact] = useAtom(selectedArtifactAtom);
+  const [userClosedArtifacts, setUserClosedArtifacts] = useAtom(
+    userClosedArtifactsAtom
+  );
+
+  // Use ref to access current selectedArtifact without triggering effects
+  const selectedArtifactRef = React.useRef(selectedArtifact);
+  React.useEffect(() => {
+    selectedArtifactRef.current = selectedArtifact;
+  }, [selectedArtifact]);
+
+  // Use ref to access current userClosedArtifacts without triggering effects
+  const userClosedArtifactsRef = React.useRef(userClosedArtifacts);
+  React.useEffect(() => {
+    userClosedArtifactsRef.current = userClosedArtifacts;
+  }, [userClosedArtifacts]);
+
+  // Access streaming properties from tool invocation (includes argsText from message conversion)
+  const streamingTool = tool as ToolInvocation & {
+    argsText?: string;
+  };
+
+  const safeToolResult = tool.state === "result" ? tool.result : undefined;
+  const artifactIdentifierFromTool =
+    safeToolResult && (safeToolResult as { identifier: string }).identifier
+      ? (safeToolResult as { identifier: string }).identifier
+      : undefined;
+
+  // Effect for handling streaming artifact updates
+  React.useEffect(() => {
+    const isStreaming = tool.state === "partial-call" || tool.state === "call";
+    const hasStreamingText =
+      streamingTool.argsText && streamingTool.argsText.length > 0;
+
+    if (isStreaming && hasStreamingText && streamingTool.argsText) {
+      // Try to extract meaningful content from streaming args text
+      let streamingContent = "";
+      let streamingTitle = "Untitled Artifact";
+      let streamingType = "text/markdown";
+      let streamingIdentifier = `streaming-${tool.toolCallId || Date.now()}`;
+
+      try {
+        const partialArgs = JSON.parse(streamingTool.argsText);
+        streamingContent = partialArgs.content || partialArgs.data || "";
+        streamingTitle =
+          partialArgs.title || partialArgs.fileName || "Untitled Artifact";
+        streamingType =
+          partialArgs.type || partialArgs.mimeType || "text/markdown";
+        streamingIdentifier = partialArgs.identifier || streamingIdentifier;
+      } catch {
+        // If JSON parsing fails, try to extract content from raw text
+        const argsText = streamingTool.argsText; // Capture for null safety
+        const contentMatch = argsText.match(
+          /"(?:content|data)"\s*:\s*"([^"]*(?:\\.[^"]*)*)/
+        );
+        const titleMatch = argsText.match(
+          /"(?:title|fileName)"\s*:\s*"([^"]*)/
+        );
+        const typeMatch = argsText.match(/"(?:type|mimeType)"\s*:\s*"([^"]*)/);
+        const identifierMatch = argsText.match(/"identifier"\s*:\s*"([^"]*)/);
+
+        if (contentMatch) {
+          streamingContent = contentMatch[1]
+            .replace(/\\n/g, "\n")
+            .replace(/\\"/g, '"')
+            .replace(/\\t/g, "\t")
+            .replace(/\\r/g, "\r");
+        }
+        if (titleMatch) streamingTitle = titleMatch[1];
+        if (typeMatch) streamingType = typeMatch[1];
+        if (identifierMatch) streamingIdentifier = identifierMatch[1];
+      }
+
+      // Only create/update artifact if we have meaningful content (more than just metadata)
+      if (
+        streamingContent.length > 10 ||
+        streamingTitle !== "Untitled Artifact"
+      ) {
+        const streamingArtifact: Artifact = {
+          identifier: streamingIdentifier,
+          type: streamingType,
+          title: streamingTitle,
+          content: streamingContent,
+          isComplete: false, // Mark as streaming
+        };
+
+        // Only auto-open if no artifact is currently selected, OR if the currently
+        // selected artifact is this same streaming artifact (to allow updates)
+        const currentSelected = selectedArtifactRef.current;
+        const shouldAutoOpen =
+          !currentSelected ||
+          (currentSelected.identifier === streamingIdentifier &&
+            !currentSelected.isComplete);
+
+        // Also check if user has explicitly closed this artifact
+        const userHasClosed =
+          userClosedArtifactsRef.current.has(streamingIdentifier) ||
+          userClosedArtifactsRef.current.has(`streaming-${tool.toolCallId}`);
+
+        if (shouldAutoOpen && !userHasClosed) {
+          setSelectedArtifact(streamingArtifact);
+          setAlreadyAutoSelectedArtifact(streamingIdentifier);
+        }
+      }
+    }
+  }, [
+    streamingTool.argsText,
+    tool.state,
+    tool.toolCallId,
+    setSelectedArtifact,
+    setAlreadyAutoSelectedArtifact,
+  ]);
+
+  // Effect for handling completed artifact
+  React.useEffect(() => {
+    if (tool.state === "result" && tool.result) {
+      const currentResult = tool.result as {
+        identifier: string;
+        type: string;
+        title: string;
+        content: string;
+      };
+      const currentArtifactIdentifier = currentResult.identifier;
+
+      const completedArtifact: Artifact = {
+        identifier: currentResult.identifier,
+        type: currentResult.type,
+        title: currentResult.title,
+        content: currentResult.content,
+        isComplete: true, // Mark as complete
+      };
+
+      // Only auto-select completed artifact if no artifact is selected, OR if the currently
+      // selected artifact is the streaming version of this same artifact
+      const currentSelected = selectedArtifactRef.current;
+      const shouldAutoSelect =
+        !currentSelected ||
+        currentSelected.identifier === currentArtifactIdentifier ||
+        currentSelected.identifier.startsWith(`streaming-${tool.toolCallId}`);
+
+      // Check if user has explicitly closed this or related streaming artifact
+      const userHasClosed =
+        userClosedArtifactsRef.current.has(currentArtifactIdentifier) ||
+        userClosedArtifactsRef.current.has(`streaming-${tool.toolCallId}`);
+
+      if (shouldAutoSelect && !userHasClosed) {
+        setSelectedArtifact(completedArtifact);
+        setAlreadyAutoSelectedArtifact(currentArtifactIdentifier);
+      }
+
+      // Clean up: remove this artifact from the closed set since it's now complete
+      // This allows future artifacts to auto-open normally
+      setUserClosedArtifacts((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(currentArtifactIdentifier);
+        newSet.delete(`streaming-${tool.toolCallId}`);
+        return newSet;
+      });
+    }
+  }, [
+    tool.state,
+    tool.toolCallId,
+    artifactIdentifierFromTool,
+    setSelectedArtifact,
+    setAlreadyAutoSelectedArtifact,
+    setUserClosedArtifacts,
+    safeToolResult,
+  ]);
+
+  const hasArgs = tool.args && Object.keys(tool.args).length > 0;
+  const isComplete = tool.state === "result" && !!tool.result;
+  const isStreaming = tool.state === "partial-call" || tool.state === "call";
+  const hasStreamingText =
+    streamingTool.argsText && streamingTool.argsText.length > 0;
+
+  // Show initial loading state when streaming starts but no content yet
+  if (isStreaming && !hasStreamingText && !hasArgs) {
+    return (
+      <div className="">
+        <Loader variant="text-shimmer" text="Creating artifact..." size="lg" />
+      </div>
+    );
+  }
+
+  // Show streaming progress when we have content being built
+  if (isStreaming && (hasStreamingText || hasArgs)) {
+    // Try to extract content from streaming args text or fallback to parsed args
+    let streamingContent = "";
+    let streamingTitle = "Untitled Artifact";
+    let streamingType = "";
+
+    // First try to parse the streaming JSON to extract fields
+    if (streamingTool.argsText) {
+      try {
+        const partialArgs = JSON.parse(streamingTool.argsText);
+        streamingContent = partialArgs.content || partialArgs.data || "";
+        streamingTitle =
+          partialArgs.title || partialArgs.fileName || "Untitled Artifact";
+        streamingType = partialArgs.type || partialArgs.mimeType || "";
+      } catch {
+        // If JSON parsing fails, try to extract content from raw text
+        // Look for common patterns in the streaming JSON
+        const contentMatch = streamingTool.argsText.match(
+          /"(?:content|data)"\s*:\s*"([^"]*)/
+        );
+        const titleMatch = streamingTool.argsText.match(
+          /"(?:title|fileName)"\s*:\s*"([^"]*)/
+        );
+        const typeMatch = streamingTool.argsText.match(
+          /"(?:type|mimeType)"\s*:\s*"([^"]*)/
+        );
+
+        if (contentMatch)
+          streamingContent = contentMatch[1]
+            .replace(/\\n/g, "\n")
+            .replace(/\\"/g, '"');
+        if (titleMatch) streamingTitle = titleMatch[1];
+        if (typeMatch) streamingType = typeMatch[1];
+      }
+    }
+
+    // Fallback to parsed args if available
+    if (!streamingContent && hasArgs) {
+      const args = tool.args as {
+        identifier?: string;
+        type?: string;
+        title?: string;
+        content?: string;
+        data?: string;
+        fileName?: string;
+        mimeType?: string;
+      };
+      streamingContent = args.content || args.data || "";
+      streamingTitle = args.title || args.fileName || "Untitled Artifact";
+      streamingType = args.type || args.mimeType || "";
+    }
+
+    const getArtifactIcon = (type?: string) => {
+      if (!type) return "📑";
+      if (type === "text/markdown" || type.includes("markdown")) return "📝";
+      if (type === "text/csv" || type.includes("csv")) return "📊";
+      if (type === "application/vnd.ant.mermaid") return "📈";
+      if (type === "image/svg+xml") return "🎨";
+      if (type.includes("code")) return "💻";
+      return "📑";
+    };
+
+    const handleStreamingArtifactClick = () => {
+      // Create streaming identifier
+      const streamingIdentifier = `streaming-${tool.toolCallId || Date.now()}`;
+
+      // Reopen the artifact viewer
+      const streamingArtifact: Artifact = {
+        identifier: streamingIdentifier,
+        type: streamingType,
+        title: streamingTitle,
+        content: streamingContent,
+        isComplete: false, // Mark as streaming
+      };
+
+      setSelectedArtifact(streamingArtifact);
+
+      // Remove from closed set so it can auto-update again
+      setUserClosedArtifacts((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(streamingIdentifier);
+        newSet.delete(`streaming-${tool.toolCallId}`);
+        return newSet;
+      });
+    };
+
+    return (
+      <div
+        className="rounded-lg border overflow-hidden w-full max-w-[500px] border-blue-200 bg-blue-50/30 cursor-pointer hover:bg-blue-100/50 transition-colors"
+        onClick={handleStreamingArtifactClick}
+      >
+        <div className="flex items-center p-3">
+          <div className="p-1 mr-2 text-2xl">
+            {getArtifactIcon(streamingType)}
+          </div>
+          <div className="flex flex-col flex-1">
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-medium mr-2">{streamingTitle}</h3>
+            </div>
+          </div>
+          {/* Subtle typing indicator */}
+          <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isComplete) {
+    const artifactData = tool.result as {
+      identifier: string;
+      type: string;
+      title: string;
+      content: string;
+    };
+
+    const artifact: Artifact = {
+      identifier: artifactData.identifier,
+      type: artifactData.type,
+      title: artifactData.title,
+      content: artifactData.content,
+      isComplete: true,
+    };
+
+    const getArtifactIcon = (type: string) => {
+      if (type === "text/markdown") return "📝";
+      if (type === "text/csv" || type.includes("csv")) return "📊";
+      if (type === "application/vnd.ant.mermaid") return "📈";
+      if (type === "image/svg+xml") return "🎨";
+      if (type.includes("code")) return "💻";
+      return "📑";
+    };
+
+    return (
+      <div
+        className={cn(
+          "rounded-lg border overflow-hidden w-full max-w-[500px] hover:border-2 transition-all cursor-pointer"
+        )}
+        onClick={() => {
+          setSelectedArtifact(artifact);
+        }}
+      >
+        <div className="flex items-center p-3">
+          <div className="p-1 mr-2 text-2xl">
+            {getArtifactIcon(artifact.type)}
+          </div>
+          <div className="flex flex-col flex-1">
+            <div className="flex justify-between items-center">
+              <h3 className="text-base font-medium mr-2">{artifact.title}</h3>
+              <Badge variant="secondary">v1</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Click to open document
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-sm text-muted-foreground">
+      Failed to create artifact
+    </div>
   );
 };
 

@@ -1,7 +1,7 @@
 // React and hooks
 import React from "react";
 import { useEffect, useRef, useState } from "react";
-import { useSetAtom } from "jotai";
+import { useSetAtom, useAtom } from "jotai";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { motion } from "framer-motion";
 import { Check, Copy, Download, X } from "lucide-react";
 
 // State management
-import { selectedArtifactAtom } from "@/atoms/chat";
+import { selectedArtifactAtom, userClosedArtifactsAtom } from "@/atoms/chat";
 
 // Utilities and helpers
 import { cn } from "@/lib/utils";
@@ -499,16 +499,26 @@ const ArtifactViewer: React.FC<{
 }> = ({ artifact, splitPosition, messages }) => {
   const [copied, setCopied] = useState(false);
   const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
+  const [userClosedArtifacts, setUserClosedArtifacts] = useAtom(
+    userClosedArtifactsAtom
+  );
   const { version, content, title } = getArtifactVersionInfo(
     artifact,
     messages
   );
   const mimeType = artifact.type || "text/markdown";
+  const isStreaming = !artifact.isComplete;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleClose = () => {
+    // Track that user explicitly closed this artifact
+    setUserClosedArtifacts((prev) => new Set([...prev, artifact.identifier]));
+    setSelectedArtifact(null);
   };
 
   const renderViewer = () => {
@@ -575,31 +585,28 @@ const ArtifactViewer: React.FC<{
           <div className="mx-auto h-[95%]">
             <div className="flex justify-between items-center sticky top-0 z-10 px-4 py-3 bg-background/80 backdrop-blur-md">
               <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => {
-                    setSelectedArtifact(null);
-                  }}
-                  size="icon"
-                  variant="ghost"
-                >
+                <Button onClick={handleClose} size="icon" variant="ghost">
                   <X className="min-w-[18px] min-h-[18px]" />
                 </Button>
                 <h3 className="text-lg font-medium truncate max-w-[400px]">
                   {title}
                 </h3>
-                <Badge variant="secondary">v{version}</Badge>
+                {!isStreaming && <Badge variant="secondary">v{version}</Badge>}
               </div>
               <div className="flex items-center gap-2">
-                <DownloadOptions
-                  title={title}
-                  content={content}
-                  mimeType={mimeType}
-                />
+                {!isStreaming && (
+                  <DownloadOptions
+                    title={title}
+                    content={content}
+                    mimeType={mimeType}
+                  />
+                )}
                 <Button
                   onClick={handleCopy}
                   size="sm"
                   variant="ghost"
                   className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  disabled={!content || content.length === 0}
                 >
                   {copied ? (
                     <Check className="w-[18px] h-[18px] text-green-500" />
@@ -611,8 +618,21 @@ const ArtifactViewer: React.FC<{
             </div>
 
             <div className="p-4 px-6 flex justify-center h-full">
-              <div className="w-full flex justify-center flex-1 h-full">
-                {renderViewer()}
+              <div className="w-full flex justify-center flex-1 h-full relative">
+                {content && content.length > 0 ? (
+                  renderViewer()
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    <div className="text-center">
+                      <div className="text-4xl mb-4">📄</div>
+                      <div className="text-lg font-medium mb-2">
+                        {isStreaming
+                          ? "Generating content..."
+                          : "No content yet"}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
