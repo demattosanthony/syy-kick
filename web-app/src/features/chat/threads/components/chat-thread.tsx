@@ -72,9 +72,7 @@ export default function ThreadPage({
   });
 
   // Convert messages for component compatibility
-  console.log("messages", messages);
   const convertedMessages = convertChatMessagesToMessages(messages);
-  console.log("convertedMessages", convertedMessages);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);

@@ -30,7 +30,7 @@ const ThinkingDropdown = ({
       >
         <div className="flex items-center gap-2">
           {/* <Lightbulb className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors duration-200" /> */}
-          <span className="font-medium">
+          <span className="font-bold">
             {isOpen ? "Hide thoughts" : "Show thoughts"}
           </span>
         </div>

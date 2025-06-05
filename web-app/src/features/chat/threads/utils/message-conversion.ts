@@ -35,7 +35,7 @@ export function convertChatMessagesToMessages(
             result: toolCall.result,
             args: toolCall.args,
             toolCallId: toolCall.toolCallId,
-            state: "result" as const,
+            state: toolCall.state || "result",
           },
         });
       });

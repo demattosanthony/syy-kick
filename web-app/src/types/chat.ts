@@ -43,6 +43,7 @@ export type ChatToolCall = {
   toolCallId: string;
   toolName: string;
   result?: any;
+  state: "call" | "result" | "partial-call";
 };
 
 export type ChatMessage = {

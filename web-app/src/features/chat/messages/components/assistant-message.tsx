@@ -112,7 +112,7 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
 
     if (message.parts?.length) {
       return (
-        <React.Fragment>
+        <div className="flex flex-col gap-2">
           {message.parts.map((part, index) =>
             part.type === "reasoning" ? (
               <ThinkingDropdown
@@ -135,7 +135,7 @@ const MessageContent: React.FC<{ message: Message; messages: Message[] }> =
               />
             ) : null
           )}
-        </React.Fragment>
+        </div>
       );
     }
     return typeof message.content === "string" ? (

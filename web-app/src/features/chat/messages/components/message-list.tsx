@@ -156,7 +156,7 @@ const ChatMessagesList = React.memo(
           ref={chatContainerRef}
           scrollToRef={bottomRef}
         >
-          <div className="max-w-[840px] mx-auto w-full flex-1 flex flex-col gap-2">
+          <div className="max-w-[840px] mx-auto w-full flex-1 flex flex-col gap-4">
             {showSkeletons ? (
               // Show skeleton messages when loading the thread
               <>

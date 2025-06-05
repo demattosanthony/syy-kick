@@ -28,11 +28,7 @@ import { FilePage, markitdown } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { MicrosoftAPI } from "../../config/microsoft";
-import {
-  createSharepointListTool,
-  createSharepointSearchTool,
-  openSharepointFileTool,
-} from "../tools/tool-definitions";
+import { createSharepointToolSet } from "../tools/tool-definitions";
 import { MARKITDOWN_MIME_TYPES } from "../../config/constants";
 import { Workspace } from "../auth/auth.types";
 
@@ -452,34 +448,13 @@ const threadsOps = {
       let tools: Record<string, any> | undefined = undefined;
       if (modelConfig.supportsToolUse) {
         tools = { web_search: createWebSearchTool() };
+
+        // Check if user has Microsoft Graph access and add SharePoint tools
         const microsoftGraph = new MicrosoftAPI({ userId: userId });
         const accessToken = await microsoftGraph.getAccessToken("graph");
         if (accessToken) {
-          const graphClient = await microsoftGraph.getGraphClient("graph");
-          let driveId: string | undefined = undefined;
-          if (graphClient) {
-            try {
-              const drive = await graphClient.api("/me/drive").get();
-              driveId = drive?.id;
-            } catch (error) {
-              console.error("Failed to get drive ID:", error);
-            }
-          }
-          if (driveId && graphClient) {
-            tools.sharepoint_graph = createSharepointSearchTool(
-              driveId,
-              graphClient
-            );
-            tools.sharepoint_ls = createSharepointListTool(
-              driveId,
-              graphClient
-            );
-            tools.sharepoint_open_file = openSharepointFileTool(
-              driveId,
-              graphClient,
-              db
-            );
-          }
+          const sharepointTools = createSharepointToolSet(userId, db);
+          tools = { ...tools, ...sharepointTools };
         }
       }
 
@@ -489,7 +464,7 @@ const threadsOps = {
         temperature: 0.45,
         ...(tools && {
           tools: tools,
-          maxSteps: 8,
+          maxSteps: 25,
           toolChoice: "auto",
           toolCallStreaming: true,
         }),

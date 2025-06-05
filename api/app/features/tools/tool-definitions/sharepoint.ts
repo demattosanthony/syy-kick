@@ -11,6 +11,8 @@ import {
   filePages,
   files,
 } from "../../../config/schema";
+import { MicrosoftAPI } from "../../../config/microsoft";
+
 interface GraphDriveItem {
   id: string;
   name: string;
@@ -26,9 +28,38 @@ interface GraphDriveItem {
   size?: number;
 }
 
+// Helper function to get drive ID and graph client
+const getDriveIdAndClient = async (userId: string) => {
+  const microsoftGraph = new MicrosoftAPI({ userId });
+  const accessToken = await microsoftGraph.getAccessToken("graph");
+
+  if (!accessToken) {
+    throw new Error("No Microsoft Graph access token available");
+  }
+
+  const graphClient = await microsoftGraph.getGraphClient("graph");
+  if (!graphClient) {
+    throw new Error("Failed to get Microsoft Graph client");
+  }
+
+  try {
+    const drive = await graphClient.api("/me/drive").get();
+    const driveId = drive?.id;
+
+    if (!driveId) {
+      throw new Error("Failed to get drive ID");
+    }
+
+    return { driveId, graphClient };
+  } catch (error) {
+    console.error("Failed to get drive ID:", error);
+    throw new Error("Failed to access Microsoft Graph drive");
+  }
+};
+
 export const createSharepointSearchTool = (
-  driveId: string,
-  graphClient: Client
+  userId: string,
+  db: NodePgDatabase<typeof import("../../../config/schema")>
 ) =>
   tool({
     description:
@@ -41,6 +72,8 @@ export const createSharepointSearchTool = (
         if (!query.trim()) {
           return { files: [] };
         }
+
+        const { driveId, graphClient } = await getDriveIdAndClient(userId);
 
         const encodedSearch = encodeURIComponent(query);
         const response = await graphClient
@@ -61,8 +94,8 @@ export const createSharepointSearchTool = (
   });
 
 export const createSharepointListTool = (
-  driveId: string,
-  graphClient: Client
+  userId: string,
+  db: NodePgDatabase<typeof import("../../../config/schema")>
 ) =>
   tool({
     description:
@@ -72,6 +105,8 @@ export const createSharepointListTool = (
     }),
     execute: async ({ path }) => {
       try {
+        const { driveId, graphClient } = await getDriveIdAndClient(userId);
+
         let apiPath = `/drives/${driveId}/root/children`;
 
         if (path && path !== "/") {
@@ -190,19 +225,21 @@ const storeFileInDb = async (
   return insertedFile[0];
 };
 
-export const openSharepointFileTool = (
-  driveId: string,
-  graphClient: Client,
-  tx: NodePgDatabase<typeof import("../../../config/schema")>
+export const createSharepointOpenFileTool = (
+  userId: string,
+  db: NodePgDatabase<typeof import("../../../config/schema")>
 ) =>
   tool({
     description:
       "Retrieves and opens a specific file from the user's SharePoint drive using its unique file ID. This tool extracts the content of the file, converting it to a readable format. For PDF files, Optical Character Recognition (OCR) is used to extract text, which is then returned as markdown. For other file types, content is converted to markdown. Use this tool when you need to access and understand the contents of a specific file. The file ID can be obtained from the search or list tools. Returns the file name and its content.",
     parameters: z.object({
       fileId: z.string(),
+      fileName: z.string(),
     }),
     execute: async ({ fileId }) => {
       try {
+        const { driveId, graphClient } = await getDriveIdAndClient(userId);
+
         const fileMetadata = (await graphClient
           .api(`/drives/${driveId}/items/${fileId}`)
           .get()) as GraphDriveItem;
@@ -217,10 +254,14 @@ export const openSharepointFileTool = (
           ? fileMetadata.parentReference.path + "/" + fileMetadata.name
           : fileMetadata.name; // Handle cases where parentReference or path might be undefined
 
-        const cachedFile = await getFileFromCache(tx, filePath);
+        const cachedFile = await getFileFromCache(db, filePath);
         if (cachedFile) {
           console.log("Cached file found");
-          return cachedFile;
+          return {
+            ...cachedFile,
+            webUrl: fileMetadata.webUrl,
+            fileName: fileMetadata.name,
+          };
         }
 
         console.log("No cached file found, downloading and processing file");
@@ -230,7 +271,7 @@ export const openSharepointFileTool = (
           fileMetadata["@microsoft.graph.downloadUrl"]
         );
 
-        const insertedFile = await storeFileInDb(tx, fileMetadata);
+        const insertedFile = await storeFileInDb(db, fileMetadata);
 
         if (!insertedFile) {
           return {
@@ -240,7 +281,7 @@ export const openSharepointFileTool = (
 
         for (const pageData of pages) {
           // Insert the file page and get its ID
-          const insertedDbPageResult = await tx
+          const insertedDbPageResult = await db
             .insert(filePages)
             .values({
               fileId: insertedFile.id,
@@ -268,7 +309,7 @@ export const openSharepointFileTool = (
               position: chunk.position,
             }));
             if (chunkValues.length > 0) {
-              await tx.insert(filePageChunks).values(chunkValues);
+              await db.insert(filePageChunks).values(chunkValues);
             }
           }
 
@@ -281,13 +322,14 @@ export const openSharepointFileTool = (
               size: image.size,
             }));
             if (imageValues.length > 0) {
-              await tx.insert(filePageImages).values(imageValues);
+              await db.insert(filePageImages).values(imageValues);
             }
           }
         }
 
         return {
           fileName: fileMetadata.name,
+          webUrl: fileMetadata.webUrl,
           file: pages.map(
             (page) =>
               page.chunks.map((chunk) => chunk.content).join("\n") + "\n"
@@ -304,3 +346,20 @@ export const openSharepointFileTool = (
       }
     },
   });
+
+/**
+ * Creates and returns the complete SharePoint tool set
+ * @param userId - The user ID for Microsoft Graph authentication
+ * @param db - Database connection for caching and storage
+ * @returns Object containing all SharePoint tools
+ */
+export const createSharepointToolSet = (
+  userId: string,
+  db: NodePgDatabase<typeof import("../../../config/schema")>
+) => {
+  return {
+    sharepoint_search: createSharepointSearchTool(userId, db),
+    sharepoint_ls: createSharepointListTool(userId, db),
+    sharepoint_open_file: createSharepointOpenFileTool(userId, db),
+  };
+};

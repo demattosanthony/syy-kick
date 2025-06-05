@@ -12,6 +12,318 @@ interface UseThreadStreamProps {
   onError: (error: string | null) => void;
 }
 
+interface EventHandlers {
+  setChatStatus: (
+    status: "ready" | "submitted" | "streaming" | "error"
+  ) => void;
+  onMessagesUpdate: (updateFn: (prev: ChatMessage[]) => ChatMessage[]) => void;
+}
+
+// Helper functions
+const findMessageIndex = (messages: ChatMessage[], messageId: string) =>
+  messages.findIndex((msg) => msg.id === messageId);
+
+const createMessage = (
+  id: string,
+  role: MessageRole = MessageRole.assistant,
+  text = "",
+  createdAt = new Date().toISOString(),
+  reasoning?: string
+): ChatMessage => ({
+  id,
+  role,
+  text,
+  reasoning,
+  createdAt,
+  attachments: [],
+  toolCalls: [],
+});
+
+const updateMessageField = (
+  message: ChatMessage,
+  field: string,
+  value: string
+): ChatMessage => ({
+  ...message,
+  [field]: (message[field as keyof ChatMessage] || "") + value,
+});
+
+const updateMessageAtIndex = (
+  messages: ChatMessage[],
+  index: number,
+  updater: (msg: ChatMessage) => ChatMessage
+) => messages.map((msg, i) => (i === index ? updater(msg) : msg));
+
+const addOrUpdateMessage = (
+  messages: ChatMessage[],
+  messageId: string,
+  updater: (msg: ChatMessage) => ChatMessage,
+  creator: () => ChatMessage
+) => {
+  const index = findMessageIndex(messages, messageId);
+  return index !== -1
+    ? updateMessageAtIndex(messages, index, updater)
+    : [...messages, creator()];
+};
+
+const updateOrCreateToolCall = (
+  toolCalls: any[],
+  toolCallId: string,
+  data: any
+) => {
+  const index = toolCalls.findIndex((tc) => tc.toolCallId === toolCallId);
+  const toolCall = {
+    id: crypto.randomUUID(),
+    toolCallId,
+    createdAt: new Date().toISOString(),
+    ...data,
+  };
+
+  return index !== -1
+    ? toolCalls.map((tc, i) => (i === index ? { ...tc, ...data } : tc))
+    : [...toolCalls, toolCall];
+};
+
+// Simplified event handlers
+const handleStreamResume = (data: any, { onMessagesUpdate }: EventHandlers) => {
+  onMessagesUpdate((prev) =>
+    addOrUpdateMessage(
+      prev,
+      data.messageId,
+      (msg) => ({
+        ...msg,
+        text: data.fullText,
+        createdAt: data.createdAt || msg.createdAt,
+        role: data.role || msg.role,
+      }),
+      () =>
+        createMessage(data.messageId, data.role, data.fullText, data.createdAt)
+    )
+  );
+};
+
+const handleTextDelta = (
+  data: any,
+  { setChatStatus, onMessagesUpdate }: EventHandlers
+) => {
+  setChatStatus("streaming");
+  onMessagesUpdate((prev) => {
+    const { messageId, content, isInitialChunk, role, createdAt } = data;
+
+    if (messageId && prev.some((msg) => msg.id === messageId)) {
+      return prev.map((msg) =>
+        msg.id === messageId ? updateMessageField(msg, "text", content) : msg
+      );
+    }
+
+    if (messageId && isInitialChunk) {
+      return [
+        ...prev,
+        createMessage(
+          messageId,
+          role || MessageRole.assistant,
+          content,
+          createdAt
+        ),
+      ];
+    }
+
+    // Fallback logic for messages without ID
+    if (prev.length > 0) {
+      const lastMsg = prev[prev.length - 1];
+      if (lastMsg?.role === MessageRole.assistant && lastMsg.text !== null) {
+        return updateMessageAtIndex(prev, prev.length - 1, (msg) =>
+          updateMessageField(msg, "text", content)
+        );
+      }
+    }
+
+    return [
+      ...prev,
+      createMessage(crypto.randomUUID(), MessageRole.assistant, content),
+    ];
+  });
+};
+
+const handleMessageComplete = (
+  data: any,
+  { onMessagesUpdate }: EventHandlers
+) => {
+  onMessagesUpdate((prev) =>
+    addOrUpdateMessage(
+      prev,
+      data.message.id,
+      () => data.message,
+      () => data.message
+    )
+  );
+};
+
+const handleToolCall = (
+  data: any,
+  { setChatStatus, onMessagesUpdate }: EventHandlers
+) => {
+  setChatStatus("streaming");
+  onMessagesUpdate((prev) =>
+    addOrUpdateMessage(
+      prev,
+      data.message.id,
+      () => ({ ...data.message }),
+      () => ({ ...data.message })
+    )
+  );
+};
+
+const handleReasoningDelta = (
+  data: any,
+  { setChatStatus, onMessagesUpdate }: EventHandlers
+) => {
+  setChatStatus("streaming");
+  onMessagesUpdate((prev) =>
+    addOrUpdateMessage(
+      prev,
+      data.messageId,
+      (msg) => updateMessageField(msg, "reasoning", data.content),
+      () =>
+        createMessage(
+          data.messageId,
+          MessageRole.assistant,
+          "",
+          undefined,
+          data.content
+        )
+    )
+  );
+};
+
+const handleToolCallChunk = (
+  data: any,
+  { onMessagesUpdate }: EventHandlers
+) => {
+  onMessagesUpdate((prev) => {
+    const index = findMessageIndex(prev, data.messageId);
+    return index !== -1
+      ? updateMessageAtIndex(prev, index, (msg) => ({
+          ...msg,
+          toolCalls: updateOrCreateToolCall(
+            msg.toolCalls || [],
+            data.toolCallId,
+            {
+              messageId: data.messageId,
+              toolName: data.toolName,
+              args: data.args,
+              status: "pending" as const,
+              state: "call" as const,
+            }
+          ),
+        }))
+      : prev;
+  });
+};
+
+const handleToolCallStreamingStart = (
+  data: any,
+  { setChatStatus, onMessagesUpdate }: EventHandlers
+) => {
+  setChatStatus("streaming");
+  onMessagesUpdate((prev) => {
+    const index = findMessageIndex(prev, data.messageId);
+    return index !== -1
+      ? updateMessageAtIndex(prev, index, (msg) => ({
+          ...msg,
+          toolCalls: updateOrCreateToolCall(
+            msg.toolCalls || [],
+            data.toolCallId,
+            {
+              messageId: data.messageId,
+              toolName: data.toolName,
+              args: {},
+              status: "streaming" as const,
+              state: "call" as const,
+            }
+          ),
+        }))
+      : prev;
+  });
+};
+
+const handleToolResult = (data: any, { onMessagesUpdate }: EventHandlers) => {
+  onMessagesUpdate((prev) => {
+    const index = findMessageIndex(prev, data.messageId);
+    return index !== -1
+      ? updateMessageAtIndex(prev, index, (msg) => ({
+          ...msg,
+          toolCalls: (msg.toolCalls || []).map((tc) =>
+            tc.toolCallId === data.toolCallId
+              ? {
+                  ...tc,
+                  args: data.args,
+                  result: data.result,
+                  status: "completed" as const,
+                  state: "result" as const,
+                }
+              : tc
+          ),
+        }))
+      : prev;
+  });
+};
+
+const handleMessageError = (
+  data: any,
+  { setChatStatus, onMessagesUpdate }: EventHandlers
+) => {
+  console.error("Message error event from server:", data.error);
+  toast.error(data.error || "Error processing message on server.");
+
+  if (data.message?.id) {
+    const errorText = `\n[SERVER ERROR: ${data.error || "Unknown"}]`;
+    onMessagesUpdate((prev) =>
+      addOrUpdateMessage(
+        prev,
+        data.message.id,
+        (msg) => ({ ...msg, text: msg.text + errorText }),
+        () => ({ ...data.message, text: data.message.text + errorText })
+      )
+    );
+  }
+  setChatStatus("ready");
+};
+
+// Event dispatcher with lookup table
+const eventHandlers = {
+  "stream-resume": handleStreamResume,
+  "text-delta": handleTextDelta,
+  "message-complete": handleMessageComplete,
+  "tool-call": handleToolCall,
+  "reasoning-delta": handleReasoningDelta,
+  "tool-call-chunk": handleToolCallChunk,
+  "tool-call-streaming-start": handleToolCallStreamingStart,
+  "tool-result": handleToolResult,
+  "message-error": handleMessageError,
+  "inference-complete": (_data: any, { setChatStatus }: EventHandlers) =>
+    setChatStatus("ready"),
+  connected: () => console.log("Connected to message stream"),
+  source: (data: any) => console.log("Source data received:", data.source),
+  heartbeat: () => {}, // Keep-alive
+  "tool-call-delta": () => {}, // Currently unused
+};
+
+const handleEventMessage = (event: MessageEvent, handlers: EventHandlers) => {
+  try {
+    const data = JSON.parse(event.data);
+    const handler = eventHandlers[data.type as keyof typeof eventHandlers];
+
+    if (handler) {
+      handler(data, handlers);
+    } else {
+      console.warn("Unknown event type:", data.type);
+    }
+  } catch (error) {
+    console.error("Error parsing SSE data:", error);
+  }
+};
+
 export function useThreadStream({
   threadId,
   viewOnly,
@@ -20,391 +332,26 @@ export function useThreadStream({
   onError,
 }: UseThreadStreamProps) {
   const [, setChatStatus] = useAtom(chatStatusAtom);
-
-  // EventSource ref
   const eventSourceRef = useRef<EventSource | null>(null);
   const isConnectingRef = useRef<boolean>(false);
 
-  // Initialize EventSource connection
   const connectToStream = useCallback(() => {
-    // Prevent multiple connections
     if (!threadId || eventSourceRef.current || isConnectingRef.current) return;
 
     isConnectingRef.current = true;
-
     const eventSource = new EventSource(
       `${import.meta.env.VITE_API_URL}/threads/${threadId}/stream`,
       { withCredentials: true }
     );
+
+    const handlers: EventHandlers = { setChatStatus, onMessagesUpdate };
 
     eventSource.onopen = () => {
       console.log("EventSource connection opened for thread:", threadId);
       isConnectingRef.current = false;
     };
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        // console.log("SSE data received:", data);
-
-        if (data.type === "connected") {
-          console.log("Connected to message stream");
-        } else if (data.type === "heartbeat") {
-          // Keep-alive, do nothing
-        } else if (data.type === "stream-resume") {
-          onMessagesUpdate((prev) => {
-            const existingMessageIndex = prev.findIndex(
-              (msg) => msg.id === data.messageId
-            );
-            if (existingMessageIndex !== -1) {
-              // Update existing message
-              return prev.map((msg, index) =>
-                index === existingMessageIndex
-                  ? {
-                      ...msg,
-                      text: data.fullText,
-                      createdAt: data.createdAt || msg.createdAt,
-                      role: data.role || msg.role,
-                    }
-                  : msg
-              );
-            } else {
-              // Add as a new message if it doesn't exist (edge case)
-              const newMessage: ChatMessage = {
-                id: data.messageId,
-                role: data.role as MessageRole,
-                text: data.fullText,
-                createdAt: data.createdAt || new Date().toISOString(),
-                attachments: [],
-                toolCalls: [],
-              };
-              return [...prev, newMessage];
-            }
-          });
-          //   setChatStatus("streaming");
-        } else if (data.type === "text-delta") {
-          setChatStatus("streaming");
-          onMessagesUpdate((prev) => {
-            const targetMessageId = data.messageId;
-            const isInitialChunk = data.isInitialChunk;
-
-            // Try to find the message by ID
-            let messageExists = prev.some((msg) => msg.id === targetMessageId);
-
-            if (targetMessageId && messageExists) {
-              return prev.map((msg) =>
-                msg.id === targetMessageId
-                  ? {
-                      ...msg,
-                      text: (msg.text || "") + data.content,
-                    }
-                  : msg
-              );
-            } else if (targetMessageId && isInitialChunk) {
-              // Create a new assistant message for streaming if it's an initial chunk and ID provided
-              const newMessage: ChatMessage = {
-                id: targetMessageId,
-                role: (data.role as MessageRole) || MessageRole.assistant,
-                text: data.content,
-                createdAt: data.createdAt || new Date().toISOString(),
-                attachments: [],
-                toolCalls: [],
-              };
-              return [...prev, newMessage];
-            } else if (!targetMessageId && prev.length > 0) {
-              // Fallback: If no messageId, append to the last assistant message if it's streaming
-              const lastMessage = prev[prev.length - 1];
-              if (
-                lastMessage &&
-                lastMessage.role === MessageRole.assistant &&
-                lastMessage.text !== null
-              ) {
-                return prev.map((msg, index) =>
-                  index === prev.length - 1
-                    ? {
-                        ...msg,
-                        text: (msg.text || "") + data.content,
-                      }
-                    : msg
-                );
-              } else {
-                // Fallback: Create a new assistant message if last one isn't suitable
-                const newMessage: ChatMessage = {
-                  id: crypto.randomUUID(),
-                  role: MessageRole.assistant,
-                  text: data.content,
-                  createdAt: new Date().toISOString(),
-                  attachments: [],
-                  toolCalls: [],
-                };
-                return [...prev, newMessage];
-              }
-            } else {
-              // Fallback: if no targetMessageId and no previous messages, create a new one.
-              const newMessage: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: MessageRole.assistant,
-                text: data.content,
-                createdAt: new Date().toISOString(),
-                attachments: [],
-                toolCalls: [],
-              };
-              return [...prev, newMessage];
-            }
-          });
-        } else if (data.type === "message-complete") {
-          onMessagesUpdate((prev) => {
-            // Replace the message with the complete one from the server
-            const existingMessageIndex = prev.findIndex(
-              (msg) => msg.id === data.message.id
-            );
-            if (existingMessageIndex !== -1) {
-              return prev.map((msg, index) =>
-                index === existingMessageIndex ? data.message : msg
-              );
-            } else {
-              // If message doesn't exist, add it (should be rare if streaming was handled)
-              return [...prev, data.message];
-            }
-          });
-          // Don't set status to "ready" here - the AI might continue with more steps
-          // Status will be set to "ready" when the entire inference run completes
-        } else if (data.type === "tool-call") {
-          setChatStatus("streaming");
-          // The `data.message` here IS the assistant message that contains the tool calls
-          onMessagesUpdate((prev) => {
-            const existingMessageIndex = prev.findIndex(
-              (msg) => msg.id === data.message.id
-            );
-            if (existingMessageIndex !== -1) {
-              // Replace the existing message with the one from the event, which includes tool_calls
-              return prev.map((msg, index) =>
-                index === existingMessageIndex
-                  ? {
-                      ...data.message,
-                    }
-                  : msg
-              );
-            } else {
-              // If for some reason this assistant message isn't in state, add it.
-              return [
-                ...prev,
-                {
-                  ...data.message,
-                },
-              ];
-            }
-          });
-        } else if (data.type === "inference-complete") {
-          // New event type to indicate the entire inference run is complete
-          setChatStatus("ready");
-        } else if (data.type === "reasoning-delta") {
-          setChatStatus("streaming");
-          // Handle reasoning text deltas (for models that support thinking)
-          onMessagesUpdate((prev) => {
-            const targetMessageIndex = prev.findIndex(
-              (msg) => msg.id === data.messageId
-            );
-            if (targetMessageIndex !== -1) {
-              return prev.map((msg, index) =>
-                index === targetMessageIndex
-                  ? {
-                      ...msg,
-                      reasoning: (msg.reasoning || "") + data.content,
-                    }
-                  : msg
-              );
-            } else {
-              // Create a new message if it doesn't exist (happens when reasoning comes first in a new step)
-              const newMessage: ChatMessage = {
-                id: data.messageId,
-                role: MessageRole.assistant,
-                text: "", // Start with empty text, will be filled by subsequent text-delta events
-                reasoning: data.content,
-                createdAt: new Date().toISOString(),
-                attachments: [],
-                toolCalls: [],
-              };
-              return [...prev, newMessage];
-            }
-          });
-        } else if (data.type === "source") {
-          // Handle source information - for now just log it since ChatMessage doesn't have sources
-          console.log("Source data received:", data.source);
-        } else if (data.type === "tool-call-chunk") {
-          // Handle complete tool call chunks
-          onMessagesUpdate((prev) => {
-            const targetMessageIndex = prev.findIndex(
-              (msg) => msg.id === data.messageId
-            );
-            if (targetMessageIndex !== -1) {
-              return prev.map((msg, index) =>
-                index === targetMessageIndex
-                  ? {
-                      ...msg,
-                      toolCalls: (() => {
-                        const existingToolCalls = msg.toolCalls || [];
-                        const existingToolCallIndex =
-                          existingToolCalls.findIndex(
-                            (tc) => tc.toolCallId === data.toolCallId
-                          );
-
-                        if (existingToolCallIndex !== -1) {
-                          // Update existing tool call
-                          return existingToolCalls.map((tc, tcIndex) =>
-                            tcIndex === existingToolCallIndex
-                              ? {
-                                  ...tc,
-                                  toolName: data.toolName,
-                                  args: data.args,
-                                  status: "pending" as const,
-                                }
-                              : tc
-                          );
-                        } else {
-                          // Add new tool call
-                          return [
-                            ...existingToolCalls,
-                            {
-                              id: crypto.randomUUID(),
-                              messageId: data.messageId,
-                              toolCallId: data.toolCallId,
-                              toolName: data.toolName,
-                              args: data.args,
-                              status: "pending" as const,
-                              createdAt: new Date().toISOString(),
-                            },
-                          ];
-                        }
-                      })(),
-                    }
-                  : msg
-              );
-            }
-            return prev;
-          });
-        } else if (data.type === "tool-call-streaming-start") {
-          setChatStatus("streaming");
-          // Handle start of streaming tool call
-          onMessagesUpdate((prev) => {
-            const targetMessageIndex = prev.findIndex(
-              (msg) => msg.id === data.messageId
-            );
-            if (targetMessageIndex !== -1) {
-              return prev.map((msg, index) =>
-                index === targetMessageIndex
-                  ? {
-                      ...msg,
-                      toolCalls: (() => {
-                        const existingToolCalls = msg.toolCalls || [];
-                        const existingToolCallIndex =
-                          existingToolCalls.findIndex(
-                            (tc) => tc.toolCallId === data.toolCallId
-                          );
-
-                        if (existingToolCallIndex !== -1) {
-                          // Update existing tool call to streaming status
-                          return existingToolCalls.map((tc, tcIndex) =>
-                            tcIndex === existingToolCallIndex
-                              ? {
-                                  ...tc,
-                                  toolName: data.toolName,
-                                  args: {},
-                                  status: "streaming" as const,
-                                }
-                              : tc
-                          );
-                        } else {
-                          // Add new streaming tool call
-                          return [
-                            ...existingToolCalls,
-                            {
-                              id: crypto.randomUUID(),
-                              messageId: data.messageId,
-                              toolCallId: data.toolCallId,
-                              toolName: data.toolName,
-                              args: {},
-                              status: "streaming" as const,
-                              createdAt: new Date().toISOString(),
-                            },
-                          ];
-                        }
-                      })(),
-                    }
-                  : msg
-              );
-            }
-            return prev;
-          });
-        } else if (data.type === "tool-call-delta") {
-          // Handle streaming tool call argument deltas
-          //   console.log("Tool call delta received:", data);
-        } else if (data.type === "tool-result") {
-          // Handle tool execution results
-          onMessagesUpdate((prev) => {
-            const targetMessageIndex = prev.findIndex(
-              (msg) => msg.id === data.messageId
-            );
-            if (targetMessageIndex !== -1) {
-              return prev.map((msg, index) =>
-                index === targetMessageIndex
-                  ? {
-                      ...msg,
-                      toolCalls: (msg.toolCalls || []).map((toolCall) =>
-                        toolCall.toolCallId === data.toolCallId
-                          ? {
-                              ...toolCall,
-                              args: data.args,
-                              result: data.result,
-                              status: "completed" as const,
-                            }
-                          : toolCall
-                      ),
-                    }
-                  : msg
-              );
-            }
-            return prev;
-          });
-        } else if (data.type === "message-error") {
-          console.error("Message error event from server:", data.error);
-          toast.error(data.error || "Error processing message on server.");
-          onMessagesUpdate((prev) => {
-            if (data.message && data.message.id) {
-              const existingMessageIndex = prev.findIndex(
-                (msg) => msg.id === data.message.id
-              );
-              if (existingMessageIndex !== -1) {
-                return prev.map((msg, index) =>
-                  index === existingMessageIndex
-                    ? {
-                        ...data.message,
-                        text:
-                          data.message.text +
-                          `\n[SERVER ERROR: ${data.error || "Unknown"}]`,
-                      }
-                    : msg
-                );
-              } else {
-                return [
-                  ...prev,
-                  {
-                    ...data.message,
-                    text:
-                      data.message.text +
-                      `\n[SERVER ERROR: ${data.error || "Unknown"}]`,
-                  },
-                ];
-              }
-            }
-            return prev;
-          });
-          setChatStatus("ready");
-        }
-      } catch (error) {
-        console.error("Error parsing SSE data:", error);
-      }
-    };
+    eventSource.onmessage = (event) => handleEventMessage(event, handlers);
 
     eventSource.onerror = (error) => {
       console.error("EventSource error:", error);
@@ -416,7 +363,6 @@ export function useThreadStream({
     eventSourceRef.current = eventSource;
   }, [threadId, setChatStatus, onMessagesUpdate, onError]);
 
-  // Disconnect from EventSource
   const disconnectFromStream = useCallback(() => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -426,21 +372,17 @@ export function useThreadStream({
     isConnectingRef.current = false;
   }, [threadId]);
 
-  // Initialize EventSource on mount and when threadId changes
   useEffect(() => {
     if (messagesAreBeingFetched) {
       disconnectFromStream();
       return;
     }
 
-    // Simply connect if we have a threadId and we're not in view-only mode
     if (threadId && !viewOnly) {
       connectToStream();
     }
 
-    return () => {
-      disconnectFromStream();
-    };
+    return disconnectFromStream;
   }, [
     threadId,
     viewOnly,
@@ -449,15 +391,7 @@ export function useThreadStream({
     disconnectFromStream,
   ]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      disconnectFromStream();
-    };
-  }, [disconnectFromStream]);
+  useEffect(() => disconnectFromStream, [disconnectFromStream]);
 
-  return {
-    connectToStream,
-    disconnectFromStream,
-  };
+  return { connectToStream, disconnectFromStream };
 }
