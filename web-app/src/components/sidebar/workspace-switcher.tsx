@@ -69,8 +69,10 @@ export function WorkSpaceSwitcher({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               className={cn(
-                "w-full flex items-center",
-                state === "expanded" ? "justify-start" : "justify-center"
+                "flex items-center ",
+                state === "expanded"
+                  ? "justify-start w-fit"
+                  : "justify-center  w-full"
               )}
             >
               <WorkspaceLogo workspace={activeWorkspace} />

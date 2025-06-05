@@ -1,6 +1,5 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { Loader } from "@/components/ui/loader";
 import { Artifact } from "@/types/chat";
 import { getArtifactIcon } from "./utils/artifact-utils";
@@ -54,7 +53,7 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({
           <div className="flex justify-between items-start gap-2 mb-1">
             <h3
               className={cn(
-                "text-sm font-semibold leading-tight truncate",
+                "text-sm font-semibold leading-tight truncate max-w-[250px]",
                 isStreaming
                   ? "text-blue-900"
                   : "text-foreground group-hover:text-foreground"
@@ -62,14 +61,14 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({
             >
               {title}
             </h3>
-            {!isStreaming && (
+            {/* {!isStreaming && (
               <Badge
                 variant="secondary"
                 className="shrink-0 text-xs font-medium bg-muted/60 hover:bg-muted/80 transition-colors"
               >
                 v1
               </Badge>
-            )}
+            )} */}
           </div>
           {children && (
             <div className="text-xs text-muted-foreground/80 leading-relaxed">

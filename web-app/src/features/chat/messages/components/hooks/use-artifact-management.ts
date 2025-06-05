@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSetAtom, useAtom } from "jotai";
 import { ToolInvocation } from "ai";
 import {
   selectedArtifactAtom,
   alreadyAutoSelectedArtifactAtom,
   userClosedArtifactsAtom,
+  artifactSelectionModeAtom,
 } from "@/atoms/chat";
 import { Artifact } from "@/types/chat";
 
@@ -20,13 +21,22 @@ export const useArtifactManagement = (tool: ToolInvocation) => {
   const [userClosedArtifacts, setUserClosedArtifacts] = useAtom(
     userClosedArtifactsAtom
   );
+  const [artifactSelectionMode, setArtifactSelectionMode] = useAtom(
+    artifactSelectionModeAtom
+  );
+
+  // Track the current streaming artifact for this tool
+  const [currentStreamingArtifact, setCurrentStreamingArtifact] =
+    useState<Artifact | null>(null);
 
   // Use refs to avoid stale closures
   const selectedArtifactRef = useRef(selectedArtifact);
   const userClosedArtifactsRef = useRef(userClosedArtifacts);
+  const artifactSelectionModeRef = useRef(artifactSelectionMode);
 
   selectedArtifactRef.current = selectedArtifact;
   userClosedArtifactsRef.current = userClosedArtifacts;
+  artifactSelectionModeRef.current = artifactSelectionMode;
 
   const streamingTool = tool as StreamingTool;
 
@@ -91,23 +101,45 @@ export const useArtifactManagement = (tool: ToolInvocation) => {
           isComplete: false,
         };
 
-        // Check if should auto-open
-        const currentSelected = selectedArtifactRef.current;
-        const shouldAutoOpen =
-          !currentSelected ||
-          (currentSelected.identifier === streamingIdentifier &&
-            !currentSelected.isComplete);
+        // Always update the current streaming artifact for this tool
+        setCurrentStreamingArtifact(streamingArtifact);
 
-        // Check if user closed this artifact
+        // Check if user has manually closed this specific artifact
         const userHasClosed =
           userClosedArtifactsRef.current.has(streamingIdentifier) ||
           userClosedArtifactsRef.current.has(`streaming-${tool.toolCallId}`);
 
-        if (shouldAutoOpen && !userHasClosed) {
+        // Only auto-switch to new streaming artifacts if:
+        // 1. User hasn't explicitly closed this artifact, AND
+        // 2. Either no artifact is selected OR current selection is in "auto" mode OR
+        //    current selection is the same streaming artifact (continue updating even in manual mode)
+        const currentMode = artifactSelectionModeRef.current;
+        const currentSelected = selectedArtifactRef.current;
+
+        const isSameArtifact =
+          currentSelected &&
+          (currentSelected.identifier === streamingIdentifier ||
+            currentSelected.identifier.startsWith(
+              `streaming-${tool.toolCallId}`
+            ));
+
+        const shouldAutoOpen =
+          !userHasClosed &&
+          (!currentSelected || currentMode === "auto" || isSameArtifact);
+
+        if (shouldAutoOpen) {
           setSelectedArtifact(streamingArtifact);
           setAlreadyAutoSelected(streamingIdentifier);
+          // Only change mode to auto if no artifact was selected or it was already auto
+          // Keep manual mode if user manually selected this same streaming artifact
+          if (!currentSelected || currentMode === "auto") {
+            setArtifactSelectionMode("auto");
+          }
         }
       }
+    } else if (!isStreaming) {
+      // Clear streaming artifact when streaming stops
+      setCurrentStreamingArtifact(null);
     }
   }, [
     streamingTool.argsText,
@@ -115,6 +147,7 @@ export const useArtifactManagement = (tool: ToolInvocation) => {
     tool.toolCallId,
     setSelectedArtifact,
     setAlreadyAutoSelected,
+    setArtifactSelectionMode,
   ]);
 
   // Handle completed artifacts
@@ -135,21 +168,33 @@ export const useArtifactManagement = (tool: ToolInvocation) => {
         isComplete: true,
       };
 
-      // Check if should auto-select
-      const currentSelected = selectedArtifactRef.current;
-      const shouldAutoSelect =
-        !currentSelected ||
-        currentSelected.identifier === result.identifier ||
-        currentSelected.identifier.startsWith(`streaming-${tool.toolCallId}`);
+      // Clear streaming artifact when completed
+      setCurrentStreamingArtifact(null);
 
-      // Check if user closed this artifact
+      // Check if user has manually closed this artifact
       const userHasClosed =
         userClosedArtifactsRef.current.has(result.identifier) ||
         userClosedArtifactsRef.current.has(`streaming-${tool.toolCallId}`);
 
-      if (shouldAutoSelect && !userHasClosed) {
+      // Auto-select completed artifacts only if:
+      // 1. User hasn't closed this artifact, AND
+      // 2. This completion corresponds to the currently selected streaming artifact
+      const currentSelected = selectedArtifactRef.current;
+      const currentMode = artifactSelectionModeRef.current;
+
+      const shouldAutoSelect =
+        !userHasClosed &&
+        currentSelected &&
+        (currentSelected.identifier === result.identifier ||
+          currentSelected.identifier.startsWith(
+            `streaming-${tool.toolCallId}`
+          )) &&
+        currentMode === "auto"; // Only auto-complete if in auto mode
+
+      if (shouldAutoSelect) {
         setSelectedArtifact(completedArtifact);
         setAlreadyAutoSelected(result.identifier);
+        // Keep mode as "auto" since this is completing an auto-selected artifact
       }
 
       // Clean up closed artifacts set
@@ -166,11 +211,13 @@ export const useArtifactManagement = (tool: ToolInvocation) => {
     setSelectedArtifact,
     setAlreadyAutoSelected,
     setUserClosedArtifacts,
+    setArtifactSelectionMode,
   ]);
 
-  // Manual artifact reopen function
-  const reopenArtifact = (artifact: Artifact) => {
+  // Manual artifact selection function
+  const selectArtifact = (artifact: Artifact) => {
     setSelectedArtifact(artifact);
+    setArtifactSelectionMode("manual"); // Mark as manually selected
     setUserClosedArtifacts((prev) => {
       const newSet = new Set(prev);
       newSet.delete(artifact.identifier);
@@ -179,5 +226,23 @@ export const useArtifactManagement = (tool: ToolInvocation) => {
     });
   };
 
-  return { reopenArtifact };
+  // Function to select the current streaming artifact (with latest content)
+  const selectCurrentStreamingArtifact = () => {
+    if (currentStreamingArtifact) {
+      selectArtifact(currentStreamingArtifact);
+    }
+  };
+
+  // Function to switch back to auto mode (for new streams)
+  const switchToAutoMode = () => {
+    setArtifactSelectionMode("auto");
+  };
+
+  return {
+    selectArtifact,
+    selectCurrentStreamingArtifact,
+    switchToAutoMode,
+    artifactSelectionMode,
+    currentStreamingArtifact,
+  };
 };

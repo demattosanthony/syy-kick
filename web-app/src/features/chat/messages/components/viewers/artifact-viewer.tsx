@@ -5,7 +5,6 @@ import { useSetAtom, useAtom } from "jotai";
 
 // UI Components
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -17,14 +16,17 @@ import { motion } from "framer-motion";
 import { Check, Copy, Download, X } from "lucide-react";
 
 // State management
-import { selectedArtifactAtom, userClosedArtifactsAtom } from "@/atoms/chat";
+import {
+  selectedArtifactAtom,
+  userClosedArtifactsAtom,
+  artifactSelectionModeAtom,
+} from "@/atoms/chat";
 
 // Utilities and helpers
 import { cn } from "@/lib/utils";
 
 // Types
 import { Artifact } from "@/types/chat";
-import { Message } from "ai";
 
 // Content renderers and parsers
 import MarkdownViewer from "./markdown-viewer";
@@ -354,9 +356,8 @@ const ArtifactViewer: React.FC<{
 }> = ({ artifact, splitPosition }) => {
   const [copied, setCopied] = useState(false);
   const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
-  const [userClosedArtifacts, setUserClosedArtifacts] = useAtom(
-    userClosedArtifactsAtom
-  );
+  const [, setUserClosedArtifacts] = useAtom(userClosedArtifactsAtom);
+  const [, setArtifactSelectionMode] = useAtom(artifactSelectionModeAtom);
   const content = artifact.content;
   const title = artifact.title;
   const version = artifact.version;
@@ -373,6 +374,7 @@ const ArtifactViewer: React.FC<{
   const handleClose = () => {
     setUserClosedArtifacts((prev) => new Set([...prev, artifact.identifier]));
     setSelectedArtifact(null);
+    setArtifactSelectionMode("auto");
   };
 
   const renderViewer = () => {
@@ -384,10 +386,7 @@ const ArtifactViewer: React.FC<{
       return <SvgViewer content={content} />;
     }
 
-    if (
-      mimeType.startsWith("application/vnd.ant.code") &&
-      mimeType.includes("csv")
-    ) {
+    if (mimeType === "text/csv") {
       return <CsvViewer content={content} />;
     }
 
@@ -445,7 +444,7 @@ const ArtifactViewer: React.FC<{
                 <h3 className="text-lg font-medium truncate max-w-[400px]">
                   {title}
                 </h3>
-                {!isStreaming && <Badge variant="secondary">v{version}</Badge>}
+                {/* {!isStreaming && <Badge variant="secondary">v{version}</Badge>} */}
               </div>
               <div className="flex items-center gap-2">
                 {!isStreaming && (
@@ -476,14 +475,120 @@ const ArtifactViewer: React.FC<{
                 {content && content.length > 0 ? (
                   renderViewer()
                 ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="flex items-center justify-center h-[85%] text-muted-foreground">
                     <div className="text-center">
-                      <div className="text-4xl mb-4">📄</div>
-                      <div className="text-lg font-medium mb-2">
-                        {isStreaming
-                          ? "Generating content..."
-                          : "No content yet"}
-                      </div>
+                      {true ? (
+                        <motion.div
+                          className="flex flex-col items-center space-y-6"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5 }}
+                        >
+                          {/* Animated Document Icon */}
+                          <motion.div
+                            className="relative"
+                            animate={{
+                              scale: [1, 1.05, 1],
+                              rotate: [0, 1, -1, 0],
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                            }}
+                          >
+                            <div className="text-6xl mb-2">📝</div>
+                            <motion.div
+                              className="absolute -top-2 -right-2 w-3 h-3 bg-blue-500 rounded-full"
+                              animate={{
+                                scale: [0, 1.2, 0],
+                                opacity: [0, 1, 0],
+                              }}
+                              transition={{
+                                duration: 1.5,
+                                repeat: Infinity,
+                                delay: 0.2,
+                              }}
+                            />
+                            <motion.div
+                              className="absolute -bottom-1 -left-1 w-2 h-2 bg-green-500 rounded-full"
+                              animate={{
+                                scale: [0, 1, 0],
+                                opacity: [0, 0.8, 0],
+                              }}
+                              transition={{
+                                duration: 1.5,
+                                repeat: Infinity,
+                                delay: 0.8,
+                              }}
+                            />
+                          </motion.div>
+
+                          {/* Animated Text */}
+                          <div className="space-y-3">
+                            <motion.div
+                              className="text-xl font-semibold text-foreground"
+                              animate={{ opacity: [0.7, 1, 0.7] }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                            >
+                              Generating document...
+                            </motion.div>
+
+                            {/* Simulated Writing Lines */}
+                            <div className="space-y-2 w-80 max-w-full">
+                              {[1, 2, 3, 4].map((i) => (
+                                <motion.div
+                                  key={i}
+                                  className="flex space-x-1"
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: [0, 0.3, 0.6, 0.3, 0] }}
+                                  transition={{
+                                    duration: 3,
+                                    repeat: Infinity,
+                                    delay: i * 0.5,
+                                  }}
+                                >
+                                  <div className="h-2 bg-muted rounded-full flex-1" />
+                                  <div className="h-2 bg-muted rounded-full flex-1" />
+                                  <div className="h-2 bg-muted rounded-full w-16" />
+                                </motion.div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Subtle particles effect */}
+                          <div className="absolute inset-0 pointer-events-none">
+                            {[...Array(6)].map((_, i) => (
+                              <motion.div
+                                key={i}
+                                className="absolute w-1 h-1 bg-primary/30 rounded-full"
+                                style={{
+                                  left: `${20 + i * 12}%`,
+                                  top: `${30 + (i % 2) * 20}%`,
+                                }}
+                                animate={{
+                                  y: [-10, -20, -10],
+                                  opacity: [0, 0.6, 0],
+                                  scale: [0.5, 1, 0.5],
+                                }}
+                                transition={{
+                                  duration: 2.5,
+                                  repeat: Infinity,
+                                  delay: i * 0.4,
+                                  ease: "easeInOut",
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <div>
+                          <div className="text-4xl mb-4">📄</div>
+                          <div className="text-lg font-medium mb-2">
+                            No content yet
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

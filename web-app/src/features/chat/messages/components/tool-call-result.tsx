@@ -19,13 +19,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import MarkdownViewer from "./viewers/markdown-viewer";
-import { useSetAtom, useAtom } from "jotai";
-import {
-  selectedArtifactAtom,
-  alreadyAutoSelectedArtifactAtom,
-  userClosedArtifactsAtom,
-} from "@/atoms/chat";
-import { Badge } from "@/components/ui/badge";
 import { Artifact } from "@/types/chat";
 import { useArtifactManagement } from "./hooks/use-artifact-management";
 import {
@@ -972,9 +965,11 @@ const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
 
 const CreateArtifactTool = ({ tool }: { tool: ToolInvocation }) => {
   // This hook handles automatic artifact streaming and selection
-  useArtifactManagement(tool);
-
-  const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
+  const {
+    selectArtifact,
+    selectCurrentStreamingArtifact,
+    currentStreamingArtifact,
+  } = useArtifactManagement(tool);
 
   const hasArgs = tool.args && Object.keys(tool.args).length > 0;
   const isComplete = tool.state === "result" && !!(tool as any).result;
@@ -992,15 +987,23 @@ const CreateArtifactTool = ({ tool }: { tool: ToolInvocation }) => {
     const { content, title, type } = parseToolArgs(tool, hasArgs);
 
     const handleStreamingClick = () => {
-      const streamingIdentifier = `streaming-${tool.toolCallId || Date.now()}`;
-      const streamingArtifact: Artifact = {
-        identifier: streamingIdentifier,
-        type: type || "text/markdown",
-        title: title || "Untitled Artifact",
-        content: content || "",
-        isComplete: false,
-      };
-      setSelectedArtifact(streamingArtifact);
+      // Use the current streaming artifact if available (contains latest content)
+      // Otherwise fallback to creating one from parsed args
+      if (currentStreamingArtifact) {
+        selectCurrentStreamingArtifact();
+      } else {
+        const streamingIdentifier = `streaming-${
+          tool.toolCallId || Date.now()
+        }`;
+        const streamingArtifact: Artifact = {
+          identifier: streamingIdentifier,
+          type: type || "text/markdown",
+          title: title || "Untitled Artifact",
+          content: content || "",
+          isComplete: false,
+        };
+        selectArtifact(streamingArtifact);
+      }
     };
 
     return (
@@ -1032,7 +1035,7 @@ const CreateArtifactTool = ({ tool }: { tool: ToolInvocation }) => {
     return (
       <CompletedArtifactCard
         artifact={artifact}
-        onClick={() => setSelectedArtifact(artifact)}
+        onClick={() => selectArtifact(artifact)}
       />
     );
   }

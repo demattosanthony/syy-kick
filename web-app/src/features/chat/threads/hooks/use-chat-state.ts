@@ -6,6 +6,7 @@ import {
   selectedArtifactAtom,
   chatStatusAtom,
   userClosedArtifactsAtom,
+  artifactSelectionModeAtom,
 } from "@/atoms/chat";
 import { ChatMessage } from "@/types/chat";
 
@@ -17,6 +18,7 @@ export const useChatState = (initialMessages: ChatMessage[]) => {
   const [, setAlreadyOpenedArtifact] = useAtom(alreadyAutoSelectedArtifactAtom);
   const [chatStatus, setChatStatus] = useAtom(chatStatusAtom);
   const [, setUserClosedArtifacts] = useAtom(userClosedArtifactsAtom);
+  const [, setArtifactSelectionMode] = useAtom(artifactSelectionModeAtom);
 
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
@@ -41,6 +43,7 @@ export const useChatState = (initialMessages: ChatMessage[]) => {
       setAlreadyOpenedArtifact(null);
       setChatStatus("ready");
       setUserClosedArtifacts(new Set<string>());
+      setArtifactSelectionMode("auto");
     };
   }, [
     threadId,
@@ -48,6 +51,7 @@ export const useChatState = (initialMessages: ChatMessage[]) => {
     setSelectedArtifact,
     setAlreadyOpenedArtifact,
     setUserClosedArtifacts,
+    setArtifactSelectionMode,
   ]);
 
   return {

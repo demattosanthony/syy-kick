@@ -13,7 +13,7 @@
   background-color: #ffffff;
 
   /* Pure white background with slight orange tint */
-  --background: 25 5% 100%; /* Added slight orange tint */
+  --background: 25 5% 100%; /* Added Aslight orange tint */
   --foreground: 25 5% 10%; /* Added slight orange tint with contrast */
   /* Slightly whiter cards with orange hint */
   --card: 25 5% 100%; /* Added slight orange tint */
@@ -41,7 +41,7 @@
   --ring: 25 5% 15%; /* Added slight orange tint */
   --radius: 0.75rem; /* Unchanged */
   /* Sidebar with greys and orange hint */
-  --sidebar-background: 25 10% 96%; /* Added slight orange tint to background */
+  --sidebar-background: 25 10% 94%; /* Added slight orange tint to background */
   --sidebar-foreground: 25 5.3% 20%; /* Added slight orange tint to foreground */
   --sidebar-primary: 25 5.9% 8%; /* Added slight orange tint to primary */
   --sidebar-primary-foreground: 25 2% 98%; /* Added very subtle orange tint */
@@ -55,7 +55,7 @@
   /* Location marker colors with orange hint */
   --marker-fill: 25 8% 8%;
   --marker-border: 25 5% 100%;
-  --sidebar: 25 10% 96%;
+  --sidebar: 25 10% 94%;
 }
 
 @theme inline {
