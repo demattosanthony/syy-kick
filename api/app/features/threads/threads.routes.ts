@@ -134,4 +134,12 @@ router.post(
   })
 );
 
+// Stop inference for a thread
+router.post(
+  "/:threadId/stop",
+  handle(async (req) => {
+    return threadsOps.stopInference(req.params.threadId);
+  })
+);
+
 export default router;

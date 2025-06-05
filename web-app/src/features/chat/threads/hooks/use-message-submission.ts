@@ -109,8 +109,16 @@ export function useMessageSubmission({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+
+    // Call the server endpoint to stop inference
+    if (threadId) {
+      api.threads.stopInference(threadId).catch((error: any) => {
+        console.error("Error stopping inference:", error);
+      });
+    }
+
     setChatStatus("ready");
-  }, [setChatStatus]);
+  }, [setChatStatus, threadId]);
 
   return {
     submitMessage,

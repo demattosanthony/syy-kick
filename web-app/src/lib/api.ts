@@ -624,6 +624,15 @@ class ThreadApi extends ApiRequest {
       "POST"
     );
   }
+
+  async stopInference(
+    threadId: string
+  ): Promise<{ success: boolean; stopped: boolean }> {
+    return await this.request<{ success: boolean; stopped: boolean }>(
+      `/threads/${threadId}/stop`,
+      "POST"
+    );
+  }
 }
 
 class PermissionsApi extends ApiRequest {

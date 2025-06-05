@@ -45,6 +45,9 @@ interface ActiveStreamData {
 }
 const activeStreamCache = new Map<string, ActiveStreamData>();
 
+// In-memory cache for abort controllers
+const abortControllers = new Map<string, AbortController>();
+
 const threadsOps = {
   async createThread(
     userId: string,
@@ -373,10 +376,27 @@ const threadsOps = {
         console.error("Error during background inference:", error);
         // Clean up cache if background inference setup fails
         activeStreamCache.delete(threadId);
+        abortControllers.delete(threadId);
       }
     });
 
     return { success: true };
+  },
+
+  async stopInference(threadId: string) {
+    const controller = abortControllers.get(threadId);
+    if (controller) {
+      console.log(`Aborting inference for thread ${threadId}`);
+      controller.abort();
+
+      // Emit an event to notify clients that inference was stopped
+      eventEmitter.emit(`thread-${threadId}-message`, {
+        type: "inference-stopped",
+      });
+
+      return { success: true, stopped: true };
+    }
+    return { success: true, stopped: false };
   },
 
   async runInferenceForThread(
@@ -390,6 +410,9 @@ const threadsOps = {
     const controller = new AbortController();
     let inferenceCompleteEmitted = false;
 
+    // Store the abort controller so it can be accessed from the stop endpoint
+    abortControllers.set(threadId, controller);
+
     // Helper function to emit inference complete event only once
     const emitInferenceComplete = () => {
       if (!inferenceCompleteEmitted) {
@@ -398,6 +421,12 @@ const threadsOps = {
           type: "inference-complete",
         });
       }
+    };
+
+    // Cleanup function to remove abort controller and cache
+    const cleanup = () => {
+      abortControllers.delete(threadId);
+      activeStreamCache.delete(threadId);
     };
 
     // Track the current step's message state
@@ -430,7 +459,7 @@ const threadsOps = {
 
       if (!thread) {
         console.error(`Thread not found: ${threadId}`);
-        activeStreamCache.delete(threadId);
+        cleanup();
         return;
       }
 
@@ -612,7 +641,30 @@ const threadsOps = {
             `Error running inference for thread ${threadId}:`,
             error
           );
-          activeStreamCache.delete(threadId);
+
+          // Check if this was an abort
+          if (
+            error.error instanceof Error &&
+            error.error.name === "AbortError"
+          ) {
+            console.log(`Inference aborted for thread ${threadId}`);
+            // Save accumulated text if we have any
+            if (
+              currentStepState.currentAssistantMessageId &&
+              currentStepState.accumulatedResponseText
+            ) {
+              db.update(messages)
+                .set({ text: currentStepState.accumulatedResponseText })
+                .where(
+                  eq(messages.id, currentStepState.currentAssistantMessageId)
+                )
+                .catch((err) =>
+                  console.error("Error saving aborted message:", err)
+                );
+            }
+          }
+
+          cleanup();
           // Emit inference complete event on error so frontend doesn't get stuck
           emitInferenceComplete();
         },
@@ -721,8 +773,8 @@ const threadsOps = {
             };
             activeStreamCache.set(threadId, currentStepState);
           } else if (finishReason === "stop" || finishReason === "length") {
-            // This is the final step, clean up cache
-            activeStreamCache.delete(threadId);
+            // This is the final step, clean up
+            cleanup();
             // Emit inference complete event so frontend knows the entire run is done
             emitInferenceComplete();
           }
@@ -736,12 +788,34 @@ const threadsOps = {
         `Unhandled error in runInferenceForThread for ${threadId}:`,
         error
       );
-      activeStreamCache.delete(threadId);
+
+      // Check if this was an abort
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log(`Inference aborted for thread ${threadId}`);
+        // Save accumulated text if we have any
+        if (
+          currentStepState.currentAssistantMessageId &&
+          currentStepState.accumulatedResponseText
+        ) {
+          try {
+            await db
+              .update(messages)
+              .set({ text: currentStepState.accumulatedResponseText })
+              .where(
+                eq(messages.id, currentStepState.currentAssistantMessageId)
+              );
+          } catch (err) {
+            console.error("Error saving aborted message:", err);
+          }
+        }
+      }
+
+      cleanup();
       // Emit inference complete event on unhandled error
       emitInferenceComplete();
     } finally {
-      // Ensure cache cleanup on any exit
-      activeStreamCache.delete(threadId);
+      // Ensure cleanup on any exit
+      cleanup();
       // Emit inference complete as a final safety net
       emitInferenceComplete();
     }

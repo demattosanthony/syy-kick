@@ -303,6 +303,8 @@ const eventHandlers = {
   "message-error": handleMessageError,
   "inference-complete": (_data: any, { setChatStatus }: EventHandlers) =>
     setChatStatus("ready"),
+  "inference-stopped": (_data: any, { setChatStatus }: EventHandlers) =>
+    setChatStatus("ready"),
   connected: () => console.log("Connected to message stream"),
   source: (data: any) => console.log("Source data received:", data.source),
   heartbeat: () => {}, // Keep-alive
