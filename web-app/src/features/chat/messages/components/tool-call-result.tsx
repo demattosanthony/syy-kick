@@ -36,28 +36,6 @@ type SharePointItem = {
   size?: number;
 };
 
-const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
-  switch (tool.toolName) {
-    case "search_project_information":
-    case "search_documents":
-    case "search_projects_information":
-    case "search_knowledge_base":
-      return <SearchDocumentsTool tool={tool} />;
-    case "web_search":
-      return <WebSearchTool tool={tool} />;
-    case "sharepoint_search":
-      return <SharepointSearchTool tool={tool} />;
-    case "sharepoint_ls":
-      return <SharepointListTool tool={tool} />;
-    case "sharepoint_open_file":
-      return <SharepointOpenFileTool tool={tool} />;
-    case "create_artifact":
-      return <CreateArtifactTool tool={tool} />;
-    default:
-      return null;
-  }
-};
-
 const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
   const [open, setOpen] = React.useState(false);
   const hasResults = tool.state === "result" && tool.result;
@@ -939,6 +917,289 @@ const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
   );
 };
 
+const LoadFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
+  const [open, setOpen] = React.useState(false);
+  const loading = tool.state === "partial-call" || tool.state === "call";
+  const hasResult = tool.state === "result" && tool.result;
+  const result = hasResult ? (tool.result as any) : null;
+  const fileName = tool.args?.fileName || "Unknown file";
+
+  if (loading) {
+    return (
+      <div className="">
+        <Loader
+          variant="text-shimmer"
+          text={`Loading content from ${fileName}...`}
+          size="lg"
+        />
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (hasResult && !result.success) {
+    return (
+      <div className="w-fit rounded-3xl border border-red-200 bg-red-50 p-2 cursor-default min-h-[34px] h-auto flex items-center gap-2">
+        <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center">
+          <svg
+            className="w-3.5 h-3.5 text-red-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
+            />
+          </svg>
+        </div>
+        <span className="text-sm text-red-700">{result.message}</span>
+      </div>
+    );
+  }
+
+  if (!hasResult || !result.success) {
+    return null;
+  }
+
+  //   const formatContentSize = (length: number) => {
+  //     if (length < 1000) return `${length} chars`;
+  //     if (length < 1000000) return `${(length / 1000).toFixed(1)}K chars`;
+  //     return `${(length / 1000000).toFixed(1)}M chars`;
+  //   };
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <div className="w-fit rounded-3xl border border-border p-2 cursor-pointer hover:bg-secondary/30 transition-colors duration-200 h-[34px] flex items-center gap-2">
+          <div className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden">
+            <File className="w-3 h-3 text-muted-foreground" />
+          </div>
+          <span className="font-normal text-sm">
+            {result.fileName || fileName}
+          </span>
+          {result.pageInfo && (
+            <>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground">
+                {result.pageInfo}
+              </span>
+            </>
+          )}
+          {/* {result.content && (
+            <>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground">
+                {formatContentSize(result.content.length)}
+              </span>
+            </>
+          )}
+          {result.images && result.images.length > 0 && (
+            <>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground">
+                {result.images.length}{" "}
+                {result.images.length === 1 ? "image" : "images"}
+              </span>
+            </>
+          )} */}
+        </div>
+      </SheetTrigger>
+      <SheetContent className="w-full max-w-4xl">
+        <SheetHeader>
+          <SheetTitle>File Content: {result.fileName || fileName}</SheetTitle>
+          <SheetDescription>
+            {result.mimeType && `${result.mimeType} • `}
+            {result.pageInfo}
+            {result.images &&
+              result.images.length > 0 &&
+              ` • ${result.images.length} images`}
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto mt-4">
+          {/* Show images if available */}
+          {result.images && result.images.length > 0 && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Images
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {result.images.map((image: any, idx: number) => (
+                  <div
+                    key={`image-${idx}`}
+                    className="border rounded-lg overflow-hidden"
+                  >
+                    <img
+                      src={`data:${image.mimeType || "image/png"};base64,${
+                        image.base64Data
+                      }`}
+                      alt={image.name || `Image ${idx + 1}`}
+                      className="w-full h-auto"
+                    />
+                    {image.name && (
+                      <div className="p-2 text-xs text-muted-foreground border-t">
+                        {image.name}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Show text content */}
+          {result.content && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Content
+              </h4>
+              <div className="text-sm bg-secondary/30 rounded p-4 max-h-[calc(100vh-400px)] overflow-y-auto font-mono whitespace-pre-wrap">
+                {result.content}
+              </div>
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+const SearchFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
+  const [open, setOpen] = React.useState(false);
+  const loading = tool.state === "partial-call" || tool.state === "call";
+  const hasResult = tool.state === "result" && tool.result;
+  const result = hasResult ? (tool.result as any) : null;
+  const fileName = tool.args?.fileName || "Unknown file";
+  const query = tool.args?.query || "";
+
+  if (loading) {
+    return (
+      <div className="">
+        <Loader
+          variant="text-shimmer"
+          text={`Searching in ${fileName}...`}
+          size="lg"
+        />
+      </div>
+    );
+  }
+
+  // Handle error state or no matches
+  if (hasResult && (!result.success || result.matches === 0)) {
+    return (
+      <div className="w-fit rounded-3xl border border-orange-200 bg-orange-50 p-2 cursor-default min-h-[34px] h-auto flex items-center gap-2">
+        <div className="w-5 h-5 rounded-full bg-orange-500/20 flex items-center justify-center">
+          <Search className="w-3 h-3 text-orange-500" />
+        </div>
+        <span className="text-sm text-orange-700">
+          No matches found for "{query}" in {fileName}
+        </span>
+      </div>
+    );
+  }
+
+  if (!hasResult || !result.success) {
+    return null;
+  }
+
+  //   const formatContentSize = (length: number) => {
+  //     if (length < 1000) return `${length} chars`;
+  //     if (length < 1000000) return `${(length / 1000).toFixed(1)}K chars`;
+  //     return `${(length / 1000000).toFixed(1)}M chars`;
+  //   };
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <div className="w-fit rounded-3xl border border-border p-2 cursor-pointer hover:bg-secondary/30 transition-colors duration-200 h-[34px] flex items-center gap-2">
+          <div className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden">
+            <Search className="w-3 h-3 text-muted-foreground" />
+          </div>
+          <span className="font-normal text-sm">
+            {result.matches} {result.matches === 1 ? "match" : "matches"} in{" "}
+            {result.fileName || fileName}
+          </span>
+          {/* {result.content && (
+            <>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground">
+                {formatContentSize(result.content.length)}
+              </span>
+            </>
+          )}
+          {result.images && result.images.length > 0 && (
+            <>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground">
+                {result.images.length}{" "}
+                {result.images.length === 1 ? "image" : "images"}
+              </span>
+            </>
+          )} */}
+        </div>
+      </SheetTrigger>
+      <SheetContent className="w-full max-w-4xl">
+        <SheetHeader>
+          <SheetTitle>Search Results: {result.fileName || fileName}</SheetTitle>
+          <SheetDescription>
+            {result.matches} {result.matches === 1 ? "match" : "matches"} for "
+            {result.query || query}"
+            {result.images &&
+              result.images.length > 0 &&
+              ` • ${result.images.length} images`}
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto mt-4">
+          {/* Show images if available */}
+          {result.images && result.images.length > 0 && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Related Images
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {result.images.map((image: any, idx: number) => (
+                  <div
+                    key={`search-image-${idx}`}
+                    className="border rounded-lg overflow-hidden"
+                  >
+                    <img
+                      src={`data:${image.mimeType || "image/png"};base64,${
+                        image.base64Data
+                      }`}
+                      alt={image.name || `Image ${idx + 1}`}
+                      className="w-full h-auto"
+                    />
+                    {image.name && (
+                      <div className="p-2 text-xs text-muted-foreground border-t">
+                        {image.name}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Show search results */}
+          {result.content && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Matching Content ({result.matches}{" "}
+                {result.matches === 1 ? "result" : "results"})
+              </h4>
+              <div className="text-sm bg-secondary/30 rounded p-4 max-h-[calc(100vh-400px)] overflow-y-auto font-mono whitespace-pre-wrap">
+                {result.content}
+              </div>
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
 const CreateArtifactTool = ({ tool }: { tool: ToolInvocation }) => {
   // This hook handles automatic artifact streaming and selection
   const {
@@ -1021,6 +1282,32 @@ const CreateArtifactTool = ({ tool }: { tool: ToolInvocation }) => {
       Failed to create artifact
     </div>
   );
+};
+
+const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
+  switch (tool.toolName) {
+    case "search_project_information":
+    case "search_documents":
+    case "search_projects_information":
+    case "search_knowledge_base":
+      return <SearchDocumentsTool tool={tool} />;
+    case "web_search":
+      return <WebSearchTool tool={tool} />;
+    case "sharepoint_search":
+      return <SharepointSearchTool tool={tool} />;
+    case "sharepoint_ls":
+      return <SharepointListTool tool={tool} />;
+    case "sharepoint_open_file":
+      return <SharepointOpenFileTool tool={tool} />;
+    case "load_file_content":
+      return <LoadFileContentTool tool={tool} />;
+    case "search_file_content":
+      return <SearchFileContentTool tool={tool} />;
+    case "create_artifact":
+      return <CreateArtifactTool tool={tool} />;
+    default:
+      return null;
+  }
 };
 
 export default ToolCallMessageContent;
