@@ -18,7 +18,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import MarkdownViewer from "./viewers/markdown-viewer";
 import { Artifact } from "@/types/chat";
 import { useArtifactManagement } from "./hooks/use-artifact-management";
 import {
@@ -195,12 +194,12 @@ const SearchDocumentsTool = ({ tool }: { tool: ToolInvocation }) => {
 
 const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
   const [open, setOpen] = React.useState(false);
+  const [showDebug, setShowDebug] = React.useState(false);
   const hasResults = tool.state === "result" && tool.result;
   const toolResponse = hasResults ? tool.result : undefined;
   const sources: Array<{ url?: string; title?: string; snippet?: string }> =
     toolResponse?.sources || [];
   const resultCount = sources.length;
-  const queries: string[] = toolResponse?.queries || [];
 
   if (tool.state === "partial-call" || tool.state === "call") {
     return (
@@ -243,32 +242,6 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
     } catch (e) {
       return null;
     }
-  };
-
-  // Process inline citations to make them clickable
-  const processCitations = (text: string): string => {
-    if (!text || !sources.length) return text;
-
-    // Regular expression to find citation patterns like [1], [2], etc.
-    const citationRegex = /(?<!\]\()(\[\d+\])(?!\))/g;
-
-    return text.replace(citationRegex, (match) => {
-      // Extract the number from [n]
-      const numMatch = match.match(/\[(\d+)\]/);
-      if (!numMatch) return match;
-
-      const sourceIndex = parseInt(numMatch[1]) - 1;
-      if (sourceIndex < 0 || sourceIndex >= sources.length) return match;
-
-      const source = sources[sourceIndex];
-      const url = getSourceUrl(source);
-
-      // Only convert to link if we have a valid URL
-      if (!url) return match;
-
-      // Create a markdown link
-      return `[${match}](${url})`;
-    });
   };
 
   return (
@@ -327,86 +300,88 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-4 h-[calc(100vh-100px)] overflow-hidden mt-4">
-          <div className="flex-1 overflow-y-auto pr-2">
+          {/* Debug toggle button */}
+          <div className="flex justify-between items-center">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              {sources.length} {sources.length === 1 ? "Source" : "Sources"}
+            </h3>
             {toolResponse?.text && (
-              <div className="flex flex-col gap-3 p-4 rounded-lg bg-secondary/30 mb-6">
-                {queries?.length > 0 && (
-                  <div className="border-b border-border pb-3 mb-3">
-                    <h4 className="text-xs uppercase font-medium text-muted-foreground mb-2">
-                      Search Query
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {queries.map((query, idx) => (
-                        <div
-                          key={`query-${idx}`}
-                          className="text-xs bg-secondary/40 rounded-full px-3 py-1"
-                        >
-                          {query}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="text-sm prose prose-sm max-w-none">
-                  <MarkdownViewer
-                    content={processCitations(toolResponse.text)}
-                  />
-                </div>
-                {sources.length > 0 && (
-                  <div className="mt-4 pt-3 border-t border-border">
-                    <h4 className="text-xs uppercase font-medium text-muted-foreground mb-3">
-                      Sources
-                    </h4>
-                    <div className="grid gap-2.5">
-                      {sources.map((source, idx) => {
-                        const url = getSourceUrl(source);
-                        const title = getSourceTitle(source);
-                        if (!url) return null;
+              <button
+                onClick={() => setShowDebug(!showDebug)}
+                className="text-xs px-2 py-1 bg-secondary/50 hover:bg-secondary rounded-md transition-colors"
+              >
+                {showDebug ? "Hide Debug" : "Show Debug"}
+              </button>
+            )}
+          </div>
 
-                        return (
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            id={`source-${idx}`}
-                            key={`source-${idx}`}
-                            className="flex items-center gap-3 p-2.5 rounded-md hover:bg-primary/10 hover:text-primary transition-colors duration-150 group relative pl-8"
-                          >
-                            <div className="absolute left-0 w-6 h-6 flex items-center justify-center">
-                              <div className="font-semibold text-xs group-hover:text-primary">
-                                [{idx + 1}]
-                              </div>
-                            </div>
-                            <div className="w-5 h-5 flex-shrink-0">
-                              <Avatar className="w-full h-full">
-                                <AvatarImage
-                                  src={getFaviconUrl(source) || ""}
-                                  alt=""
-                                />
-                                <AvatarFallback className="bg-secondary/70">
-                                  <Search className="w-3 h-3 text-muted-foreground" />
-                                </AvatarFallback>
-                              </Avatar>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm truncate group-hover:underline">
-                                {title}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {formatUrl(url)}
-                              </div>
-                              {source.snippet && (
-                                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                  {source.snippet}
-                                </div>
-                              )}
-                            </div>
-                          </a>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+          <div className="flex-1 overflow-y-auto pr-2">
+            {showDebug && toolResponse?.text ? (
+              <div className="mb-6 p-4 rounded-lg bg-secondary/30 border">
+                <h4 className="text-sm font-medium mb-3 text-muted-foreground">
+                  Full Text (Model Input)
+                </h4>
+                <div className="text-xs bg-secondary/50 rounded p-3 max-h-[calc(100vh-400px)] overflow-y-auto font-mono whitespace-pre-wrap">
+                  {toolResponse.text}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sources.map((source, idx) => {
+                  const url = getSourceUrl(source);
+                  const title = getSourceTitle(source);
+                  if (!url) return null;
+
+                  return (
+                    <button
+                      key={`source-${idx}`}
+                      onClick={() =>
+                        window.open(url, "_blank", "noopener,noreferrer")
+                      }
+                      className="w-full flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary/20 hover:bg-primary/5 transition-all duration-200 group text-left"
+                    >
+                      <div className="w-8 h-8 flex-shrink-0">
+                        <Avatar className="w-full h-full">
+                          <AvatarImage
+                            src={getFaviconUrl(source) || ""}
+                            alt=""
+                          />
+                          <AvatarFallback className="bg-secondary/70">
+                            <Search className="w-4 h-4 text-muted-foreground" />
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm group-hover:text-primary transition-colors line-clamp-2">
+                          {title}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1 mb-2">
+                          {formatUrl(url)}
+                        </div>
+                        {source.snippet && (
+                          <div className="text-xs text-muted-foreground line-clamp-3">
+                            {source.snippet}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -93,10 +93,10 @@ export class MicrosoftAPI {
           resourceForScope
         );
 
-        console.log(
-          `Refreshed token data for type ${type}, userId: ${this.userId}:`,
-          refreshedTokenData
-        );
+        // console.log(
+        //   `Refreshed token data for type ${type}, userId: ${this.userId}:`,
+        //   refreshedTokenData
+        // );
 
         if (!refreshedTokenData.access_token) {
           const errorResponse =
@@ -120,9 +120,9 @@ export class MicrosoftAPI {
           type,
           tx // Pass the transaction here
         );
-        console.log(
-          `Successfully refreshed and saved token for type ${type}, userId: ${this.userId}`
-        );
+        // console.log(
+        //   `Successfully refreshed and saved token for type ${type}, userId: ${this.userId}`
+        // );
 
         // Clear the current client so it gets recreated with the new token
         this.graphClient = undefined;
