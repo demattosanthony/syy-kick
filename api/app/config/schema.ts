@@ -169,12 +169,6 @@ export const documents = pgTable("documents", {
   parentId: uuid("parent_id").references((): any => documents.id, {
     onDelete: "cascade",
   }),
-  knowledgeBaseId: uuid("knowledge_base_id").references(
-    () => knowledgeBases.id,
-    {
-      onDelete: "cascade",
-    }
-  ),
   size: integer("size"), // size in bytes
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -304,17 +298,12 @@ export const threads = pgTable("threads", {
   organizationId: uuid("organization_id").references(() => organizations.id, {
     onDelete: "cascade",
   }),
-  knowledgeBaseId: uuid("knowledge_base_id").references(
-    () => knowledgeBases.id,
-    { onDelete: "cascade" }
-  ),
   workflowId: text("workflow_id"),
 });
 export type Thread = typeof threads.$inferSelect;
 export type ThreadWithRelations = Thread & {
   messages: Message[];
   organization?: Organization;
-  knowledgeBase?: KnowledgeBase;
   user: User;
 };
 
@@ -375,31 +364,6 @@ export const toolCalls = pgTable("tool_calls", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
-
-export const knowledgeBases = pgTable(
-  "knowledge_bases",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    name: varchar("name", { length: 255 }).notNull(),
-    description: text("description"),
-    organizationId: uuid("organization_id").references(() => organizations.id, {
-      onDelete: "cascade",
-    }), // Optional
-    userId: uuid("user_id").references(() => users.id, {
-      onDelete: "cascade",
-    }), // Optional
-    createdBy: uuid("created_by")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [
-    // Ensure a knowledge base belongs to either a user OR an organization, not both
-    sql`CONSTRAINT user_or_organization CHECK ((user_id IS NOT NULL AND organization_id IS NULL) OR (user_id IS NULL AND organization_id IS NOT NULL))`,
-  ]
-);
-export type KnowledgeBase = typeof knowledgeBases.$inferSelect;
 
 /** ---- Permissions ---- */
 export const roles = pgTable("roles", {
@@ -482,12 +446,6 @@ export const accessLogs = pgTable("access_logs", {
   documentId: uuid("document_id").references(() => documents.id, {
     onDelete: "cascade",
   }),
-  knowledgeBaseId: uuid("knowledge_base_id").references(
-    () => knowledgeBases.id,
-    {
-      onDelete: "cascade",
-    }
-  ),
   actionId: uuid("action_id")
     .references(() => actions.id, { onDelete: "cascade" })
     .notNull(),
@@ -530,7 +488,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   threads: many(threads),
   messages: many(messages),
   organizationMembers: many(organizationMembers),
-  knowledgeBases: many(knowledgeBases),
   accessTokens: many(accessTokens),
 }));
 
@@ -544,10 +501,6 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
     references: [organizations.id],
   }),
   messages: many(messages),
-  knowledgeBase: one(knowledgeBases, {
-    fields: [threads.knowledgeBaseId],
-    references: [knowledgeBases.id],
-  }),
 }));
 
 export const documentsRelations = relations(documents, ({ one, many }) => ({
@@ -599,7 +552,6 @@ export const organizationsRelations = relations(
     threads: many(threads),
     samlConfig: one(samlConfigs),
     sites: many(sites),
-    knowledgeBases: many(knowledgeBases),
   })
 );
 
@@ -641,26 +593,6 @@ export const samlConfigsRelations = relations(samlConfigs, ({ one }) => ({
     references: [organizations.id],
   }),
 }));
-
-export const knowledgeBasesRelations = relations(
-  knowledgeBases,
-  ({ one, many }) => ({
-    organization: one(organizations, {
-      fields: [knowledgeBases.organizationId],
-      references: [organizations.id],
-    }),
-    user: one(users, {
-      fields: [knowledgeBases.userId],
-      references: [users.id],
-    }),
-    createdBy: one(users, {
-      fields: [knowledgeBases.createdBy],
-      references: [users.id],
-    }),
-    documents: many(documents),
-    threads: many(threads),
-  })
-);
 
 // Permissions relations
 export const rolesRelations = relations(roles, ({ many }) => ({
@@ -722,10 +654,6 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
   site: one(sites, {
     fields: [accessLogs.siteId],
     references: [sites.id],
-  }),
-  knowledgeBase: one(knowledgeBases, {
-    fields: [accessLogs.knowledgeBaseId],
-    references: [knowledgeBases.id],
   }),
 }));
 

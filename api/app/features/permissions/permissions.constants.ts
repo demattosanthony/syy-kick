@@ -7,9 +7,6 @@ const {
     ORGANIZATION_MEMBERS,
     ORGANIZATION_SEATS,
     ORGANIZATION_ACCESS_LOGS,
-    ORGANIZATION_KNOWLEDGE_BASES,
-    ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-    ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS,
   },
   Actions: { CREATE, READ, UPDATE, DELETE },
   Roles: {
@@ -32,9 +29,6 @@ export default class Constants {
       [ORGANIZATION_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_SEATS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_ACCESS_LOGS]: [READ],
-      [ORGANIZATION_KNOWLEDGE_BASES]: [CREATE, READ, UPDATE, DELETE],
-      [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: [CREATE, READ, UPDATE, DELETE],
-      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: [READ],
     },
     [ORGANIZATION_MANAGER]: {
       [ORGANIZATION]: [READ, UPDATE],
@@ -42,9 +36,6 @@ export default class Constants {
       [ORGANIZATION_MEMBERS]: [CREATE, READ, UPDATE, DELETE],
       [ORGANIZATION_SEATS]: [READ],
       [ORGANIZATION_ACCESS_LOGS]: [READ],
-      [ORGANIZATION_KNOWLEDGE_BASES]: [CREATE, READ, UPDATE, DELETE],
-      [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: [CREATE, READ, UPDATE, DELETE],
-      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: [READ],
     },
     [PROJECT_MANAGER]: {
       [ORGANIZATION]: [READ],
@@ -52,9 +43,6 @@ export default class Constants {
       [ORGANIZATION_MEMBERS]: [], // No access
       [ORGANIZATION_SEATS]: [], // No access
       [ORGANIZATION_ACCESS_LOGS]: [], // No access
-      [ORGANIZATION_KNOWLEDGE_BASES]: [READ], // Config
-      [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: [CREATE, READ, UPDATE, DELETE],
-      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: [], // No access
     },
     [PROJECT_MEMBER]: {
       [ORGANIZATION]: [READ],
@@ -62,9 +50,6 @@ export default class Constants {
       [ORGANIZATION_MEMBERS]: [], // No access
       [ORGANIZATION_SEATS]: [], // No access
       [ORGANIZATION_ACCESS_LOGS]: [], // No access
-      [ORGANIZATION_KNOWLEDGE_BASES]: [READ], // Config
-      [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: [READ], // Config
-      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: [], // No access
     },
   };
 
@@ -105,21 +90,6 @@ export default class Constants {
       [ORGANIZATION_ACCESS_LOGS]: {
         [READ]: { default: true, configurable: false },
       },
-      [ORGANIZATION_KNOWLEDGE_BASES]: {
-        [CREATE]: { default: true, configurable: false },
-        [READ]: { default: true, configurable: false },
-        [UPDATE]: { default: true, configurable: false },
-        [DELETE]: { default: true, configurable: false },
-      },
-      [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: {
-        [CREATE]: { default: true, configurable: false },
-        [READ]: { default: true, configurable: false },
-        [UPDATE]: { default: true, configurable: false },
-        [DELETE]: { default: true, configurable: false },
-      },
-      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: {
-        [READ]: { default: true, configurable: false },
-      },
     },
     [ORGANIZATION_MANAGER]: {
       [ORGANIZATION]: {
@@ -147,21 +117,6 @@ export default class Constants {
         [DELETE]: { default: false, configurable: false },
       },
       [ORGANIZATION_ACCESS_LOGS]: {
-        [READ]: { default: true, configurable: false },
-      },
-      [ORGANIZATION_KNOWLEDGE_BASES]: {
-        [CREATE]: { default: true, configurable: false },
-        [READ]: { default: true, configurable: false },
-        [UPDATE]: { default: true, configurable: false },
-        [DELETE]: { default: true, configurable: false },
-      },
-      [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: {
-        [CREATE]: { default: true, configurable: false },
-        [READ]: { default: true, configurable: false },
-        [UPDATE]: { default: true, configurable: false },
-        [DELETE]: { default: true, configurable: false },
-      },
-      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: {
         [READ]: { default: true, configurable: false },
       },
     },
@@ -193,21 +148,6 @@ export default class Constants {
       [ORGANIZATION_ACCESS_LOGS]: {
         [READ]: { default: false, configurable: false },
       },
-      [ORGANIZATION_KNOWLEDGE_BASES]: {
-        [CREATE]: { default: false, configurable: true },
-        [READ]: { default: true, configurable: false },
-        [UPDATE]: { default: false, configurable: true },
-        [DELETE]: { default: false, configurable: true },
-      },
-      [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: {
-        [CREATE]: { default: true, configurable: false },
-        [READ]: { default: true, configurable: false },
-        [UPDATE]: { default: true, configurable: false },
-        [DELETE]: { default: true, configurable: false },
-      },
-      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: {
-        [READ]: { default: false, configurable: false },
-      },
     },
     [PROJECT_MEMBER]: {
       [ORGANIZATION]: {
@@ -237,21 +177,6 @@ export default class Constants {
       [ORGANIZATION_ACCESS_LOGS]: {
         [READ]: { default: false, configurable: false },
       },
-      [ORGANIZATION_KNOWLEDGE_BASES]: {
-        [CREATE]: { default: false, configurable: true },
-        [READ]: { default: true, configurable: false },
-        [UPDATE]: { default: false, configurable: true },
-        [DELETE]: { default: false, configurable: false },
-      },
-      [ORGANIZATION_KNOWLEDGE_BASES_DOCS]: {
-        [CREATE]: { default: false, configurable: true },
-        [READ]: { default: true, configurable: false },
-        [UPDATE]: { default: false, configurable: true },
-        [DELETE]: { default: false, configurable: true },
-      },
-      [ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]: {
-        [READ]: { default: false, configurable: false },
-      },
     },
   };
 
@@ -261,12 +186,6 @@ export default class Constants {
     ORGANIZATION_MEMBERS,
     ORGANIZATION_SEATS,
     ORGANIZATION_ACCESS_LOGS,
-  ];
-
-  static OrganizationKnowledgeBaseResources: Permissions.Resources[] = [
-    ORGANIZATION_KNOWLEDGE_BASES,
-    ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-    ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS,
   ];
 
   static RoleHierarchy: Permissions.Roles[] = [

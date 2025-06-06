@@ -1,5 +1,3 @@
-import { KnowledgeBase } from "@/features/knowledge-bases/types";
-
 export enum MessageRole {
   system = "system",
   user = "user",
@@ -75,10 +73,8 @@ export interface Thread {
   title?: string;
   organizationId?: string;
   isPublic?: boolean;
-  knowledgeBaseId?: string;
-  knowledgeBase?: KnowledgeBase;
   workflowId?: string;
-  //   messages: ChatMessage[];
+  messages: ChatMessage[];
 }
 
 export type Artifact = {

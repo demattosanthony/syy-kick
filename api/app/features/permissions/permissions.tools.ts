@@ -550,7 +550,6 @@ export class PermissionManager {
       organizationId?: string;
       documentId?: string;
       siteId?: string;
-      knowledgeBaseId?: string;
     }
   ) {
     const actionId = await PermissionManager.getActionId(action);
@@ -567,7 +566,6 @@ export class PermissionManager {
       actionId,
       resourceId,
       siteId: identifiers.siteId,
-      knowledgeBaseId: identifiers.knowledgeBaseId,
       status,
     });
   }

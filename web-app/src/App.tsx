@@ -21,10 +21,6 @@ import {
   WorkflowRunsPage,
   SitesPage,
   UserSettings,
-  KnowledgeBasesPage,
-  KnowledgeBasePage,
-  KnowledgeBaseBlobPage,
-  KnowledgeBaseSettingsPage,
   ForbiddenPage,
   LandingPage,
   IntegrationsPage,
@@ -33,7 +29,6 @@ import { Providers } from "./providers";
 import MainAppLayout from "./components/layouts/main-app-layout";
 import { queryClient } from "./providers/tanstack-query-client-provider";
 import api from "./lib/api";
-import { KnowledgeBaseLayout } from "./components/layouts/knowledge-base-layout";
 import { User } from "./types/user";
 import { RouteErrorElement } from "./components/route-error";
 
@@ -144,19 +139,6 @@ const router = createBrowserRouter([
           },
           { path: "sites", element: <SitesPage /> },
           { path: "settings", element: <UserSettings /> },
-          {
-            path: "knowledge-bases",
-            element: <KnowledgeBasesPage />,
-          },
-          {
-            path: "knowledge-bases/:kbId",
-            element: <KnowledgeBaseLayout />,
-            children: [
-              { index: true, element: <KnowledgeBasePage /> },
-              { path: "blob/*", element: <KnowledgeBaseBlobPage /> },
-              { path: "settings", element: <KnowledgeBaseSettingsPage /> },
-            ],
-          },
           { path: "integrations", element: <IntegrationsPage /> },
         ],
       },

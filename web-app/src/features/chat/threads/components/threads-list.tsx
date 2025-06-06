@@ -7,15 +7,11 @@ import { useThreadsQuery } from "@/features/chat/threads/api";
 import { cn, getRelativeTimeString } from "@/lib/utils";
 
 export default function ThreadsList({
-  projectId,
   compact = false,
-  knowledgeBaseId,
   workflowId,
   showLatestMessage = true,
 }: {
-  projectId?: string;
   compact?: boolean;
-  knowledgeBaseId?: string;
   workflowId?: string;
   showLatestMessage?: boolean;
 }) {
@@ -26,8 +22,6 @@ export default function ThreadsList({
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useThreadsQuery({
       search,
-      projectId,
-      knowledgeBaseId,
       workflowId,
     });
 

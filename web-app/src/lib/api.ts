@@ -15,11 +15,10 @@ import {
 } from "@/features/workflows/workflows.types";
 import { ChatMessage, Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
-import { DocumentContent } from "@/types/project";
 import { Organization, User } from "@/types/user";
-import { FileUploadMixin } from "./file-upload-mixin";
-import { KnowledgeBase } from "@/features/knowledge-bases/types";
 import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
+import { Comment } from "@/features/workflows/features/runs/features/comments/types";
+import { AccessToken } from "@/features/integrations/types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -39,13 +38,6 @@ export class ApiError extends Error {
 const getCommonHeaders = () => ({
   "Content-Type": "application/json",
 });
-
-import {
-  KnowledgeBaseAccessLogFilters,
-  KnowledgeBaseAccessLogsResponse,
-} from "@/features/knowledge-bases/types";
-import { Comment } from "@/features/workflows/features/runs/features/comments/types";
-import { AccessToken } from "@/features/integrations/types";
 
 // Client-side fetch
 async function clientFetch<T>(
@@ -522,14 +514,12 @@ class UploadApi extends ApiRequest {
 class ThreadApi extends ApiRequest {
   async createThread(params: {
     organizationId?: string;
-    knowledgeBaseId?: string;
     workflowId?: string;
   }): Promise<{ id: string }> {
     try {
-      const { organizationId, knowledgeBaseId, workflowId } = params;
+      const { organizationId, workflowId } = params;
       return await this.request<{ id: string }>("/threads", "POST", {
         organizationId,
-        knowledgeBaseId,
         workflowId,
       });
     } catch (error: unknown) {
@@ -544,14 +534,12 @@ class ThreadApi extends ApiRequest {
     page: number = 1,
     pageSize: number = 10,
     search: string = "",
-    knowledgeBaseId?: string,
     workflowId?: string
   ): Promise<Thread[]> {
     const queryParams = new URLSearchParams({
       page: page.toString(),
       pageSize: pageSize.toString(),
       search: search,
-      ...(knowledgeBaseId && { knowledgeBaseId }),
       ...(workflowId && { workflowId }),
     });
     const endpoint = `/threads?${queryParams.toString()}`;
@@ -852,150 +840,6 @@ class SitesApi extends ApiRequest {
   }
 }
 
-/**
- * Knowledge Bases API Module
- */
-export class KnowledgeBasesApi extends ApiRequest {
-  private fileUploadMixin = new FileUploadMixin();
-
-  async createKnowledgeBase(data: {
-    name: string;
-    description?: string;
-  }): Promise<KnowledgeBase> {
-    return await this.request("/knowledge-bases", "POST", data);
-  }
-
-  async getKnowledgeBase(knowledgeBaseId: string): Promise<KnowledgeBase> {
-    return await this.request(`/knowledge-bases/${knowledgeBaseId}`);
-  }
-
-  async listKnowledgeBases(
-    page: number = 1,
-    pageSize: number = 10,
-    search?: string
-  ): Promise<{
-    data: KnowledgeBase[];
-    pagination: {
-      page: number;
-      pageSize: number;
-      totalCount: number;
-      totalPages: number;
-      hasMore: boolean;
-    };
-  }> {
-    const queryParams = new URLSearchParams();
-    queryParams.append("page", page.toString());
-    queryParams.append("pageSize", pageSize.toString());
-    if (search) queryParams.append("search", search);
-
-    return await this.request(`/knowledge-bases?${queryParams.toString()}`);
-  }
-
-  async deleteKnowledgeBase(
-    knowledgeBaseId: string
-  ): Promise<{ success: boolean }> {
-    return await this.request(`/knowledge-bases/${knowledgeBaseId}`, "DELETE");
-  }
-
-  async updateKnowledgeBase(
-    knowledgeBaseId: string,
-    data: {
-      name?: string;
-      description?: string;
-    }
-  ): Promise<KnowledgeBase> {
-    return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}`,
-      "PATCH",
-      data
-    );
-  }
-
-  async getDocuments(
-    knowledgeBaseId: string,
-    path?: string
-  ): Promise<DocumentContent[]> {
-    const queryParams = new URLSearchParams();
-    if (path) queryParams.append("path", path);
-    return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents${
-        queryParams.toString() ? "?" + queryParams.toString() : ""
-      }`
-    );
-  }
-
-  async uploadFiles(
-    knowledgeBaseId: string,
-    files: File[],
-    basePath: string = "",
-    onProgress?: (progress: number) => void
-  ): Promise<{ success: boolean }> {
-    // Use the mixin to prepare files and get entries
-    const payload = await this.fileUploadMixin.prepareFilesForUpload(
-      knowledgeBaseId,
-      "knowledge-bases",
-      files,
-      basePath,
-      onProgress
-    );
-
-    // Make the actual API request with the prepared data
-    return this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents`,
-      "POST",
-      payload
-    );
-  }
-
-  async deleteDocs(
-    knowledgeBaseId: string,
-    path: string
-  ): Promise<{ success: boolean }> {
-    const queryParams = new URLSearchParams();
-    queryParams.append("path", path);
-
-    return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/documents?${queryParams.toString()}`,
-      "DELETE"
-    );
-  }
-
-  async getDocument(
-    knowledgeBaseId: string,
-    path: string
-  ): Promise<DocumentContent> {
-    const queryParams = new URLSearchParams();
-    queryParams.append("path", path);
-
-    return await this.request(
-      `/knowledge-bases/${knowledgeBaseId}/document?${queryParams.toString()}`
-    );
-  }
-
-  async getAccessLogs(
-    knowledgeBaseId: string,
-    page: number,
-    limit: number,
-    filters: KnowledgeBaseAccessLogFilters
-  ): Promise<KnowledgeBaseAccessLogsResponse> {
-    const queryParams = new URLSearchParams({
-      page: page.toString(),
-      limit: limit.toString(),
-      ...(filters.search && { search: filters.search }),
-      ...(filters.resource !== "all" && { resource: filters.resource }),
-      ...(filters.action !== "all" && { action: filters.action }),
-      ...(filters.status !== "all" && { status: filters.status }),
-    });
-    try {
-      return await this.request(
-        `/knowledge-bases/${knowledgeBaseId}/access-logs?${queryParams.toString()}`
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-}
-
 class IntegrationsApi extends ApiRequest {
   async getTokens(): Promise<AccessToken[]> {
     return await this.request<AccessToken[]>("/integrations", "GET");
@@ -1024,7 +868,6 @@ class ApiClient {
   workflows: WorkflowsApi;
   permissions: PermissionsApi;
   sites: SitesApi;
-  knowledgeBases: KnowledgeBasesApi;
   integrations: IntegrationsApi;
 
   constructor(baseUrl: string) {
@@ -1038,7 +881,6 @@ class ApiClient {
     this.workflows = new WorkflowsApi(baseUrl);
     this.permissions = new PermissionsApi(baseUrl);
     this.sites = new SitesApi(baseUrl);
-    this.knowledgeBases = new KnowledgeBasesApi(baseUrl);
     this.integrations = new IntegrationsApi(baseUrl);
   }
 }

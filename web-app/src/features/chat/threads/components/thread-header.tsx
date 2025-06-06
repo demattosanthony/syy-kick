@@ -41,7 +41,7 @@ export default function ThreadHeader() {
 
   const [, setMessages] = useAtom(messagesAtom);
 
-  const { data: thread } = useThreadQuery(threadId, false);
+  const { data: thread } = useThreadQuery(threadId);
 
   const handleCopyShareLink = async () => {
     if (!thread) return;
@@ -66,13 +66,7 @@ export default function ThreadHeader() {
   let parentName: string | undefined;
   let parentLink: string | undefined;
 
-  if (thread?.project) {
-    parentName = thread.project.name;
-    parentLink = `/projects/${thread.project.id}`;
-  } else if (thread?.knowledgeBase) {
-    parentName = thread.knowledgeBase.name;
-    parentLink = `/knowledge-bases/${thread.knowledgeBase.id}`;
-  } else if (thread?.workflowId) {
+  if (thread?.workflowId) {
     parentName = workflowNameMap[thread.workflowId as WorkflowId] || "Workflow";
     parentLink = `/workflows/${thread.workflowId}`;
   }

@@ -16,7 +16,6 @@ import organizationRoutes from "./features/organizations/organizations.routes";
 import workflowRoutes from "./features/workflows/workflows.routes";
 import permissionsRoutes from "./features/permissions/permissions.routes";
 import analyticsRoutes from "./features/analytics/analytics.routes";
-import knowledgeBasesRoutes from "./features/knowledge-bases/knowledge-bases.routes";
 import sitesRoutes from "./features/sites/sites.routes";
 import toolsRoutes from "./features/tools/tools.routes";
 import integrationsRoutes from "./features/integrations/integrations.routes";
@@ -88,7 +87,6 @@ export default Router()
   .use("/sites", auth, checkSub, sitesRoutes)
   .use("/workflows", auth, workflowRoutes)
   .use("/tools", auth, toolsRoutes)
-  .use("/knowledge-bases", auth, knowledgeBasesRoutes)
   .post(
     "/presigned-url",
     auth,

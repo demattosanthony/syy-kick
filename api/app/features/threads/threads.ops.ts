@@ -54,7 +54,6 @@ const threadsOps = {
   async createThread(
     userId: string,
     organizationId?: string,
-    knowledgeBaseId?: string,
     workflowId?: string
   ) {
     if (!userId) throw new Error("User ID is required");
@@ -64,7 +63,6 @@ const threadsOps = {
       id,
       userId,
       organizationId: organizationId || null,
-      knowledgeBaseId: knowledgeBaseId || null,
       workflowId: workflowId || null,
       createdAt: now,
       updatedAt: now,
@@ -144,7 +142,6 @@ const threadsOps = {
       where: eq(threads.id, threadId),
       with: {
         organization: true,
-        knowledgeBase: true,
       },
     });
     if (!thread) return null;
@@ -214,7 +211,6 @@ const threadsOps = {
     pageSize: number,
     search: string,
     organizationId?: string,
-    knowledgeBaseId?: string,
     workflowId?: string
   ) {
     const LIMIT = pageSize || 10;
@@ -226,11 +222,6 @@ const threadsOps = {
     } else {
       // organizationId is null
       conditions.push(sql`${threads.organizationId} IS NULL`);
-    }
-
-    // Add knowledge base filtering if knowledgeBaseId is provided
-    if (knowledgeBaseId) {
-      conditions.push(eq(threads.knowledgeBaseId, knowledgeBaseId));
     }
 
     if (workflowId) {
@@ -449,7 +440,6 @@ const threadsOps = {
         where: eq(threads.id, threadId),
         with: {
           organization: true,
-          knowledgeBase: true,
           messages: {
             with: {
               attachments: true,

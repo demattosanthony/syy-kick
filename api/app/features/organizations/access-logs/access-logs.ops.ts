@@ -6,7 +6,6 @@ import {
   accessLogs,
   actions,
   documents,
-  knowledgeBases,
   organizations,
   resources,
   users,
@@ -80,8 +79,7 @@ export const ops = {
           ilike(users.name, `%${searchLower}%`),
           ilike(users.email, `%${searchLower}%`),
           ilike(organizations.name, `%${searchLower}%`),
-          ilike(documents.name, `%${searchLower}%`),
-          ilike(knowledgeBases.name, `%${searchLower}%`)
+          ilike(documents.name, `%${searchLower}%`)
         ) as SQL<unknown>
       );
     }
@@ -114,10 +112,6 @@ export const ops = {
             id: documents.id,
             name: documents.name,
           },
-          knowledgeBase: {
-            id: knowledgeBases.id,
-            name: knowledgeBases.name,
-          },
         })
         .from(accessLogs)
         .leftJoin(users, eq(accessLogs.userId, users.id))
@@ -128,10 +122,6 @@ export const ops = {
         .leftJoin(actions, eq(accessLogs.actionId, actions.id))
         .leftJoin(resources, eq(accessLogs.resourceId, resources.id))
         .leftJoin(documents, eq(accessLogs.documentId, documents.id))
-        .leftJoin(
-          knowledgeBases,
-          eq(accessLogs.knowledgeBaseId, knowledgeBases.id)
-        )
         .where(and(...whereClause))
         .orderBy(desc(accessLogs.createdAt))
         .limit(limit)
@@ -145,10 +135,6 @@ export const ops = {
           eq(accessLogs.organizationId, organizations.id)
         )
         .leftJoin(documents, eq(accessLogs.documentId, documents.id))
-        .leftJoin(
-          knowledgeBases,
-          eq(accessLogs.knowledgeBaseId, knowledgeBases.id)
-        )
         .where(and(...whereClause)),
     ]);
 

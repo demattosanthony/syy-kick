@@ -42,7 +42,6 @@ import { Link, useLocation } from "react-router";
 import { NewThreadButton } from "./new-thread-button";
 import { usePermissions } from "@/features/permissions/context";
 import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
-import CreateKnowledgeBaseDialog from "@/features/knowledge-bases/components/create-knowledge-base-dialog";
 import { CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { Collapsible } from "../ui/collapsible";
 
@@ -98,7 +97,6 @@ export function AppSidebar({
   const isMobile = useIsMobile();
   const { activeWorkspace } = useWorkspace();
   const sidebarRef = React.useRef<HTMLDivElement>(null);
-  const { canCreateOrgKnowledgeBases } = usePermissions();
   const location = useLocation();
 
   return (
@@ -144,28 +142,6 @@ export function AppSidebar({
                   />
                 )}
               </SidebarMenuItem> */}
-
-              <SidebarMenuItem>
-                <SidebarButton
-                  href="/knowledge-bases"
-                  label="Knowledge Bases"
-                  icon={BookOpen}
-                  hoverIcon={BookOpen}
-                  actionTrigger={
-                    <CreateKnowledgeBaseDialog
-                      trigger={
-                        <Button
-                          disabled={!canCreateOrgKnowledgeBases}
-                          variant="ghost"
-                          className="h-7 w-7 p-0 hover:bg-accent border-none ring-0 focus-visible:ring-0 focus:ring-0 text-muted-foreground"
-                        >
-                          <Plus className="h-6 w-6" />
-                        </Button>
-                      }
-                    />
-                  }
-                />
-              </SidebarMenuItem>
 
               <SidebarMenuItem>
                 <SidebarButton

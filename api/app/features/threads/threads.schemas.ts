@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 const createThreadSchema = z.object({
-  knowledgeBaseId: z.string().optional(),
   workflowId: z.string().optional(),
 });
 
@@ -9,7 +8,6 @@ const getThreadsSchema = z.object({
   page: z.string().optional(),
   pageSize: z.string().optional(),
   search: z.string().optional(),
-  knowledgeBaseId: z.string().optional(),
   workflowId: z.string().optional(),
 });
 

@@ -39,7 +39,6 @@ type ThreadWithMessages = {
     }[];
   }[];
   organization?: any;
-  knowledgeBase?: any;
 };
 
 type DocumentSearchToolResult = {
@@ -49,7 +48,6 @@ type DocumentSearchToolResult = {
   text: string | null;
   similarity: number;
   pageNumber?: number;
-  knowledgeBaseId?: string;
   mimeType?: string | null;
   fileKey?: string | null;
 };

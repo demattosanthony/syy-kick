@@ -18,15 +18,6 @@ type PermissionsContextType = {
   canReadOrgAccessLogs: boolean;
   canReadOrgSeats: boolean;
   canUpdateOrgSeats: boolean;
-  canCreateOrgKnowledgeBases: boolean;
-  canReadOrgKnowledgeBases: boolean;
-  canUpdateOrgKnowledgeBases: boolean;
-  canDeleteOrgKnowledgeBases: boolean;
-  canCreateOrgKnowledgeBaseDocs: boolean;
-  canReadOrgKnowledgeBaseDocs: boolean;
-  canUpdateOrgKnowledgeBaseDocs: boolean;
-  canDeleteOrgKnowledgeBaseDocs: boolean;
-  canReadOrgKnowledgeBaseAccessLogs: boolean;
   isLoading: boolean;
 };
 
@@ -64,40 +55,9 @@ export const PermissionsProvider = ({
     canReadOrgAccessLogs,
     canReadOrgSeats,
     canUpdateOrgSeats,
-    canCreateOrgKnowledgeBases,
-    canReadOrgKnowledgeBases,
-    canUpdateOrgKnowledgeBases,
-    canDeleteOrgKnowledgeBases,
-    canCreateOrgKnowledgeBaseDocs,
-    canReadOrgKnowledgeBaseDocs,
-    canUpdateOrgKnowledgeBaseDocs,
-    canDeleteOrgKnowledgeBaseDocs,
-    canReadOrgKnowledgeBaseAccessLogs,
   ] = useMemo(() => {
     if (userId === orgId) {
       return [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
         true,
         true,
         true,
@@ -117,27 +77,6 @@ export const PermissionsProvider = ({
 
     if (!userPermissions) {
       return [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
         false,
         false,
         false,
@@ -211,42 +150,6 @@ export const PermissionsProvider = ({
         Permissions.Resources.ORGANIZATION_SEATS,
         Permissions.Actions.UPDATE
       ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
-        Permissions.Actions.CREATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
-        Permissions.Actions.READ
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
-        Permissions.Actions.UPDATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
-        Permissions.Actions.DELETE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-        Permissions.Actions.CREATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-        Permissions.Actions.READ
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-        Permissions.Actions.UPDATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-        Permissions.Actions.DELETE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS,
-        Permissions.Actions.READ
-      ),
     ];
   }, [userPermissions, userId, orgId]);
 
@@ -267,15 +170,6 @@ export const PermissionsProvider = ({
         canReadOrgAccessLogs,
         canReadOrgSeats,
         canUpdateOrgSeats,
-        canCreateOrgKnowledgeBases,
-        canReadOrgKnowledgeBases,
-        canUpdateOrgKnowledgeBases,
-        canDeleteOrgKnowledgeBases,
-        canCreateOrgKnowledgeBaseDocs,
-        canReadOrgKnowledgeBaseDocs,
-        canUpdateOrgKnowledgeBaseDocs,
-        canDeleteOrgKnowledgeBaseDocs,
-        canReadOrgKnowledgeBaseAccessLogs,
         isLoading,
       }}
     >
@@ -302,15 +196,6 @@ export const usePermissions = () => {
       canReadOrgAccessLogs: false,
       canReadOrgSeats: false,
       canUpdateOrgSeats: false,
-      canCreateOrgKnowledgeBases: false,
-      canReadOrgKnowledgeBases: false,
-      canUpdateOrgKnowledgeBases: false,
-      canDeleteOrgKnowledgeBases: false,
-      canCreateOrgKnowledgeBaseDocs: false,
-      canReadOrgKnowledgeBaseDocs: false,
-      canUpdateOrgKnowledgeBaseDocs: false,
-      canDeleteOrgKnowledgeBaseDocs: false,
-      canReadOrgKnowledgeBaseAccessLogs: false,
       isLoading: true,
     };
   }

@@ -2,7 +2,6 @@
 import useDebounce from "@/hooks/use-debounce";
 import { useGetOrgAccessLogsQuery } from "../api";
 import { useState, useCallback, useMemo } from "react";
-import { useGetKnowledgeBaseAccessLogsQuery } from "@/features/knowledge-bases/api";
 
 /** UI Components */
 import { Input } from "@/components/ui/input";
@@ -38,7 +37,6 @@ import {
 } from "@/components/ui/select";
 import {
   AlertTriangle,
-  Book,
   Building,
   CheckCircle,
   ChevronLeft,
@@ -51,10 +49,6 @@ import {
 /** Types */
 import { User } from "@/types/user";
 import { Permissions } from "@/features/permissions/types/permissions";
-import {
-  KnowledgeBaseAccessLog,
-  KnowledgeBaseAccessLogsResponse,
-} from "@/features/knowledge-bases/types";
 import {
   AccessLogStatus,
   OrganizationAccessLog,
@@ -76,15 +70,9 @@ import {
 } from "../utils";
 
 const isOrganizationAccessLog = (
-  log: OrganizationAccessLog | KnowledgeBaseAccessLog
+  log: OrganizationAccessLog
 ): log is OrganizationAccessLog => {
   return "organization" in log;
-};
-
-const isKnowledgeBaseAccessLog = (
-  log: OrganizationAccessLog | KnowledgeBaseAccessLog
-): log is KnowledgeBaseAccessLog => {
-  return "knowledgeBase" in log;
 };
 
 export default function AccessLogs({
@@ -94,15 +82,13 @@ export default function AccessLogs({
   status,
   user,
   type,
-  knowledgeBaseId,
 }: {
   organizationId: string;
   resources: [string, Permissions.Resources][];
   actions: [string, Permissions.Actions][];
   status: [string, AccessLogStatus][];
   user: User;
-  type: "organization" | "project" | "knowledge-base";
-  knowledgeBaseId?: string;
+  type: "organization";
 }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -130,47 +116,23 @@ export default function AccessLogs({
     type !== "organization"
   );
 
-  const {
-    data: knowledgeBaseLogs,
-    isLoading: isKnowledgeBaseLogsLoading,
-    refetch: refetchKnowledgeBaseLogs,
-  } = useGetKnowledgeBaseAccessLogsQuery(
-    currentPage,
-    10,
-    {
-      ...filters,
-      search: debouncedSearch,
-    },
-    knowledgeBaseId,
-    type !== "knowledge-base"
-  );
-
   const refetch = useCallback(() => {
     if (type === "organization") {
       refetchOrganizationLogs();
-    } else if (type === "knowledge-base") {
-      refetchKnowledgeBaseLogs();
     }
-  }, [refetchOrganizationLogs, refetchKnowledgeBaseLogs, type]);
+  }, [refetchOrganizationLogs, type]);
 
-  const data:
-    | OrganizationAccessLogsResponse
-    | KnowledgeBaseAccessLogsResponse
-    | undefined = useMemo(() => {
+  const data: OrganizationAccessLogsResponse | undefined = useMemo(() => {
     if (type === "organization") {
       return organizationLogs;
-    } else if (type === "knowledge-base") {
-      return knowledgeBaseLogs;
     }
-  }, [organizationLogs, knowledgeBaseLogs, type]);
+  }, [organizationLogs, type]);
 
   const isLoading = useMemo(() => {
     if (type === "organization") {
       return isOrganizationLogsLoading;
-    } else if (type === "knowledge-base") {
-      return isKnowledgeBaseLogsLoading;
     }
-  }, [isOrganizationLogsLoading, isKnowledgeBaseLogsLoading, type]);
+  }, [isOrganizationLogsLoading, type]);
 
   const handleRefresh = useCallback(() => {
     refetch();
@@ -184,8 +146,10 @@ export default function AccessLogs({
     setTimeout(() => setIsFiltering(false), 300);
   }, []);
 
-  const filteredLogs: OrganizationAccessLog[] | KnowledgeBaseAccessLog[] =
-    useMemo(() => data?.data || [], [data]);
+  const filteredLogs: OrganizationAccessLog[] = useMemo(
+    () => data?.data || [],
+    [data]
+  );
   const totalLogs = useMemo(() => data?.pagination.total || 0, [data]);
   const totalPages = useMemo(() => data?.pagination.pages || 1, [data]);
 
@@ -248,54 +212,6 @@ export default function AccessLogs({
                         {resources
                           .filter(([_, value]) =>
                             Constants.OrganizationResources.includes(value)
-                          )
-                          .map(([key, value]) => (
-                            <SelectItem key={key} value={value}>
-                              <div className="flex items-center gap-2">
-                                <ResourceIcon
-                                  resource={value as Permissions.Resources}
-                                />
-                                {resourcesTranslations[value]}
-                              </div>
-                            </SelectItem>
-                          ))}
-                      </SelectGroup>
-                    </>
-                  )}
-                  {(type === "project" || type === "organization") && (
-                    <>
-                      <SelectSeparator />
-                      <SelectGroup>
-                        <SelectLabel>Organization Projects</SelectLabel>
-                        {resources
-                          .filter(([_, value]) =>
-                            Constants.OrganizationProjectResources.includes(
-                              value
-                            )
-                          )
-                          .map(([key, value]) => (
-                            <SelectItem key={key} value={value}>
-                              <div className="flex items-center gap-2">
-                                <ResourceIcon
-                                  resource={value as Permissions.Resources}
-                                />
-                                {resourcesTranslations[value]}
-                              </div>
-                            </SelectItem>
-                          ))}
-                      </SelectGroup>
-                    </>
-                  )}
-                  {(type === "knowledge-base" || type === "organization") && (
-                    <>
-                      <SelectSeparator />
-                      <SelectGroup>
-                        <SelectLabel>Knowledge Bases</SelectLabel>
-                        {resources
-                          .filter(([_, value]) =>
-                            Constants.OrganizationKnowledgeBaseResources.includes(
-                              value
-                            )
                           )
                           .map(([key, value]) => (
                             <SelectItem key={key} value={value}>
@@ -464,27 +380,12 @@ export default function AccessLogs({
                                 <span>{log.organization.name}</span>
                               </div>
                             )}
-                          {isOrganizationAccessLog(log) &&
-                            log.project?.name && (
-                              <div className="flex items-center gap-1">
-                                <FolderOpen className="h-3 w-3 text-muted-foreground" />
-                                <span>{log.project.name}</span>
-                              </div>
-                            )}
                           {log.document?.name && (
                             <div className="flex items-center gap-1">
                               <FileText className="h-3 w-3 text-muted-foreground" />
                               <span>{log.document.name}</span>
                             </div>
                           )}
-                          {(isKnowledgeBaseAccessLog(log) ||
-                            isOrganizationAccessLog(log)) &&
-                            log.knowledgeBase?.name && (
-                              <div className="flex items-center gap-1">
-                                <Book className="h-3 w-3 text-muted-foreground" />
-                                <span>{log.knowledgeBase.name}</span>
-                              </div>
-                            )}
                         </div>
                       </TableCell>
                     </TableRow>
