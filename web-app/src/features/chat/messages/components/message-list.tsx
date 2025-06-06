@@ -1,63 +1,20 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
-
-interface MessageBubbleProps {
-  content: string;
-  isUser: boolean;
-  onCopy?: () => void;
-  copied?: boolean;
-}
-
-const MessageBubble = ({
-  content,
-  isUser,
-  onCopy,
-  copied,
-}: MessageBubbleProps) => (
-  <div
-    className={`group flex w-full ${isUser ? "justify-end" : "justify-start"}`}
-  >
-    <div
-      className={`
-        relative flex flex-col rounded-lg p-2 bg-[#242628] dark:bg-input
-        ${isUser ? " text-white dark:text-white max-w-[515px]" : " max-w-full"}
-      `}
-      style={{
-        whiteSpace: isUser ? "pre-wrap" : "normal",
-      }}
-    >
-      <div
-        className="
-          break-words
-          whitespace-pre-wrap
-          w-full
-          overflow-hidden
-        "
-      >
-        {content}
-      </div>
-
-      {isUser && onCopy && (
-        <div className="absolute -bottom-6 right-0 group-hover:opacity-100 opacity-0 transition-all duration-200">
-          {copied ? (
-            <Check className="w-4 h-4 text-green-500" />
-          ) : (
-            <Copy
-              className="w-4 h-4 cursor-pointer text-primary"
-              onClick={onCopy}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  </div>
-);
+import {
+  Message as UIMessage,
+  MessageAction,
+  MessageActions,
+  MessageContent,
+  MessageAvatar,
+} from "@/components/ui/message";
+import { Button } from "@/components/ui/button";
 
 import ChatAttachment from "./chat-attachment";
 
 const UserMessage = React.memo(
   ({ message }: { message: Message }) => {
     const [copied, setCopied] = React.useState<boolean>(false);
+    const [isHovering, setIsHovering] = useState(false);
 
     const handleCopy = () => {
       if (message.content) {
@@ -74,22 +31,52 @@ const UserMessage = React.memo(
           message.experimental_attachments.length > 0 && (
             <div className="flex justify-end mb-2">
               <div className="flex flex-col gap-2 items-end">
-                {message.experimental_attachments.map((attachment, idx) => (
-                  <ChatAttachment
-                    key={`${attachment.name}-${attachment.url}-${idx}`}
-                    attachment={attachment}
-                  />
-                ))}
+                {message.experimental_attachments.map(
+                  (attachment: any, idx: number) => (
+                    <ChatAttachment
+                      key={`${attachment.name}-${attachment.url}-${idx}`}
+                      attachment={attachment}
+                    />
+                  )
+                )}
               </div>
             </div>
           )}
         {message.content && (
-          <MessageBubble
-            content={message.content || ""}
-            isUser={true}
-            onCopy={handleCopy}
-            copied={copied}
-          />
+          <UIMessage
+            className="justify-end group"
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+          >
+            <div className="flex w-full flex-col gap-2 items-end">
+              <MessageContent className="bg-[#242628] dark:bg-input text-white dark:text-white max-w-[515px] whitespace-pre-wrap">
+                {message.content}
+              </MessageContent>
+
+              <MessageActions
+                className={`self-end transition-opacity duration-200 ${
+                  isHovering ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                <MessageAction
+                  tooltip={copied ? "Copied!" : "Copy to clipboard"}
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    onClick={handleCopy}
+                  >
+                    {copied ? (
+                      <Check className="size-4 text-green-500" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
+                  </Button>
+                </MessageAction>
+              </MessageActions>
+            </div>
+          </UIMessage>
         )}
       </div>
     );
@@ -142,19 +129,9 @@ import { ScrollButton } from "@/components/ui/scroll-button";
 import logo from "@/assets/logo192.png";
 
 const LoadingMessage = React.memo(() => (
-  <div className="mb-4 mt flex flex-col justify-start">
-    <div className="flex items-center">
-      <div className="w-[22px] h-[22px] mr-2">
-        <img
-          src={logo}
-          width={22}
-          height={22}
-          alt=""
-          className="animate-spin"
-        />
-      </div>
-    </div>
-  </div>
+  <UIMessage className="justify-start">
+    <MessageAvatar src={logo} alt="AI" fallback="AI" className="animate-spin" />
+  </UIMessage>
 ));
 
 LoadingMessage.displayName = "LoadingMessage";
@@ -188,7 +165,7 @@ const ChatMessagesList = React.memo(
           ref={chatContainerRef}
           scrollToRef={bottomRef}
         >
-          <div className="max-w-[840px] mx-auto w-full flex-1 flex flex-col gap-4">
+          <div className="max-w-[840px] mx-auto w-full flex-1 flex flex-col">
             {showSkeletons ? (
               // Show skeleton messages when loading the thread
               <>

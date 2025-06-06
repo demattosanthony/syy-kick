@@ -50,18 +50,27 @@ export function ThreadPage() {
         role: MessageRole.user,
         text: pendingThread.initialMessage,
         createdAt: new Date().toISOString(),
-        attachments: pendingThread.uploads.map((upload, index) => ({
-          id: `${pendingThread.tempId}-attachment-${index}`,
-          messageId: `${pendingThread.tempId}-user-message`,
-          type: upload.type === "image" ? "image" : "file",
-          fileKey: "pending", // Placeholder
-          url: upload.preview,
-          fileName: upload.file.name,
-          mimeType: upload.file.type,
-          size: upload.file.size,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })),
+        attachments: pendingThread.uploads.map((upload, index) => {
+          // Ensure we always have a valid URL for the attachment
+          let attachmentUrl = upload.preview;
+          if (!attachmentUrl || attachmentUrl.trim() === "") {
+            // Create a blob URL for non-image files or images without preview
+            attachmentUrl = URL.createObjectURL(upload.file);
+          }
+
+          return {
+            id: `${pendingThread.tempId}-attachment-${index}`,
+            messageId: `${pendingThread.tempId}-user-message`,
+            type: upload.type === "image" ? "image" : "file",
+            fileKey: "pending", // Placeholder
+            url: attachmentUrl,
+            fileName: upload.file.name,
+            mimeType: upload.file.type,
+            size: upload.file.size,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        }),
       };
     }
     return null;
@@ -77,12 +86,53 @@ export function ThreadPage() {
 
     // 2. Transition from optimistic to real messages
     if (isTransitioning && threadMessages && threadMessages.length > 0) {
-      setDisplayedMessages(threadMessages);
+      // Smooth transition: only update if the content is actually different
+      // This helps avoid flickering when attachments are the same
+      const shouldUpdate =
+        displayedMessages.length !== threadMessages.length ||
+        displayedMessages.some((msg, index) => {
+          const threadMsg = threadMessages[index];
+          if (!threadMsg) return true;
+
+          // Compare message content
+          if (msg.text !== threadMsg.text) return true;
+
+          // Compare attachment count
+          const optimisticAttachments = msg.attachments || [];
+          const realAttachments = threadMsg.attachments || [];
+          if (optimisticAttachments.length !== realAttachments.length)
+            return true;
+
+          // Compare attachment filenames and sizes (core content)
+          return optimisticAttachments.some((optimisticAtt, attIndex) => {
+            const realAtt = realAttachments[attIndex];
+            return (
+              !realAtt ||
+              optimisticAtt.fileName !== realAtt.fileName ||
+              optimisticAtt.mimeType !== realAtt.mimeType ||
+              optimisticAtt.size !== realAtt.size
+            );
+          });
+        });
+
+      if (shouldUpdate) {
+        setDisplayedMessages(threadMessages);
+      }
+
       // 3. Clean up pending state after transition is complete
       const timer = setTimeout(() => {
         setPendingThread(null);
         setIsPendingThread(false);
         setChatStatus("ready");
+
+        // Clean up any blob URLs from optimistic message to prevent memory leaks
+        if (optimisticMessage?.attachments) {
+          optimisticMessage.attachments.forEach((att) => {
+            if (att.url.startsWith("blob:")) {
+              URL.revokeObjectURL(att.url);
+            }
+          });
+        }
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -100,6 +150,7 @@ export function ThreadPage() {
     setIsPendingThread,
     setChatStatus,
     displayedMessages.length,
+    displayedMessages, // Add displayedMessages to dependencies for comparison
   ]);
 
   const displayThread = useMemo(() => {
@@ -111,6 +162,7 @@ export function ThreadPage() {
           (pendingThread.initialMessage.length > 50 ? "..." : ""),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        messages: [], // Add missing messages property to fix linter error
       };
     }
     return thread;
