@@ -3,11 +3,6 @@ import { MODELS } from "./features/models";
 import { ApiResponse } from "./config/schema";
 import { Request, Response } from "express";
 import { Workspace } from "./middleware";
-import { promisify } from "util";
-import { exec as _exec } from "child_process";
-import path from "path";
-import fs from "fs/promises";
-import os from "os";
 
 export function getOrgIdOrUnedfined(workspace?: Workspace) {
   return workspace?.type === "organization" ? workspace.id : undefined;
@@ -37,78 +32,135 @@ export const handle =
     }
   };
 
+// ConvertAPI configuration
+const CONVERT_API_SECRET = process.env.CONVERT_API_SECRET || "";
+const CONVERT_API_URL = "https://v2.convertapi.com";
+
+interface ConvertApiResponse {
+  ConversionCost: number;
+  Files: Array<{
+    FileName: string;
+    FileSize: number;
+    Url: string;
+    FileData?: string; // Base64 encoded file data (alternative to Url)
+  }>;
+}
+
+async function callConvertApi(
+  fromFormat: string,
+  toFormat: string,
+  parameters: Record<string, any>
+): Promise<ConvertApiResponse> {
+  if (!CONVERT_API_SECRET) {
+    throw new Error("CONVERT_API_SECRET environment variable is not set");
+  }
+
+  const url = `${CONVERT_API_URL}/convert/${fromFormat}/to/${toFormat}?Secret=${CONVERT_API_SECRET}`;
+
+  console.log(`🔗 [ConvertAPI] Calling: ${fromFormat} → ${toFormat}`);
+  console.log(
+    `📋 [ConvertAPI] Parameters:`,
+    Object.keys(parameters).map((key) =>
+      key === "File"
+        ? `${key}: [Buffer ${parameters[key]?.byteLength || parameters[key]?.length || 0} bytes]`
+        : `${key}: ${parameters[key]}`
+    )
+  );
+
+  // Create FormData for multipart upload
+  const formData = new FormData();
+
+  for (const [key, value] of Object.entries(parameters)) {
+    if (key === "File") {
+      // Convert base64 back to buffer for file upload
+      let fileBuffer: Buffer;
+      if (typeof value === "string") {
+        fileBuffer = Buffer.from(value, "base64");
+      } else if (Buffer.isBuffer(value)) {
+        fileBuffer = value;
+      } else {
+        throw new Error("File parameter must be a base64 string or Buffer");
+      }
+
+      // Create a Blob from the buffer for FormData
+      const blob = new Blob([fileBuffer], { type: "application/pdf" });
+      formData.append("File", blob, "input.pdf");
+    } else {
+      // Add other parameters as regular form fields
+      formData.append(key, String(value));
+    }
+  }
+
+  console.log(
+    `🔗 [ConvertAPI] Request URL: ${url.replace(CONVERT_API_SECRET, "[SECRET]")}`
+  );
+
+  const response = await fetch(url, {
+    method: "POST",
+    body: formData, // Use FormData instead of JSON
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ [ConvertAPI] Error response:`, errorText);
+    throw new Error(
+      `ConvertAPI error: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  const result = await response.json();
+  console.log(
+    `✅ [ConvertAPI] Success: ${result.Files?.length || 0} files generated`
+  );
+
+  // Add debugging for the response structure
+  console.log(
+    `🔍 [ConvertAPI] Full response:`,
+    JSON.stringify(result, null, 2)
+  );
+
+  return result;
+}
+
 export async function getPdfPageAsImage(
   pdfBytes: Uint8Array,
   pageNumber: number,
-  options = { format: "png", dpi: 96, maxDimension: 2000 }
+  options = { format: "png", dpi: 150, maxDimension: 2048 }
 ): Promise<string> {
-  // Remove the unnecessary tempDir read
-  const uniqueId = crypto.randomUUID();
-  const tempPdfPath = `/tmp/pdf_${uniqueId}.pdf`;
-  const tempPngPath = `/tmp/png_${uniqueId}.png`;
-  const tempResizedPath = `/tmp/png_resized_${uniqueId}.png`;
-
   try {
-    // Get PDF from S3 and save to temp file
-    await Bun.write(tempPdfPath, pdfBytes);
+    console.log("Converting PDF page to image using ConvertAPI:", pageNumber);
 
-    console.log("PDF downloaded to temp file:", tempPdfPath);
+    // Convert Uint8Array to Buffer
+    const pdfBuffer = Buffer.from(pdfBytes);
 
-    // Use Ghostscript to convert PDF page to PNG
-    const proc = Bun.spawn([
-      "gs",
-      "-dQUIET",
-      "-dSAFER",
-      "-dBATCH",
-      "-dNOPAUSE",
-      "-sDEVICE=png16m",
-      `-dFirstPage=${pageNumber}`,
-      `-dLastPage=${pageNumber}`,
-      `-r${options.dpi}`,
-      `-sOutputFile=${tempPngPath}`,
-      tempPdfPath,
-    ]);
+    // Call ConvertAPI to convert PDF to PNG
+    const result = await callConvertApi("pdf", "png", {
+      File: pdfBuffer, // Pass Buffer directly
+      PageRange: `${pageNumber}-${pageNumber}`, // Convert only the specified page
+      ImageResolution: options.dpi,
+      ImageMaxWidth: options.maxDimension,
+      ImageMaxHeight: options.maxDimension,
+    });
 
-    // Wait for the process to complete
-    const success = await proc.exited;
-    if (success !== 0) {
-      throw new Error(`Ghostscript process failed with exit code ${success}`);
+    if (!result.Files || result.Files.length === 0) {
+      throw new Error("No files returned from ConvertAPI");
     }
 
-    // Resize the image if needed using ImageMagick
-    const resizeProc = Bun.spawn([
-      "convert",
-      tempPngPath,
-      "-resize",
-      `${options.maxDimension}x${options.maxDimension}>`, // Only shrink if larger
-      tempResizedPath,
-    ]);
+    // Download the converted image
+    const imageUrl = result.Files[0].Url;
+    const imageResponse = await fetch(imageUrl);
 
-    const resizeSuccess = await resizeProc.exited;
-    if (resizeSuccess !== 0) {
+    if (!imageResponse.ok) {
       throw new Error(
-        `ImageMagick resize process failed with exit code ${resizeSuccess}`
+        `Failed to download converted image: ${imageResponse.status}`
       );
     }
 
-    // Read the resized PNG
-    const imageBuffer = await Bun.file(tempResizedPath).arrayBuffer();
-
+    const imageBuffer = await imageResponse.arrayBuffer();
     return Buffer.from(imageBuffer).toString("base64");
   } catch (error: any) {
-    console.error("Error:", error);
+    console.error("Error converting PDF page to image:", error);
     throw new Error(`Failed to convert PDF page to image: ${error.message}`);
-  } finally {
-    // Clean up temporary files
-    try {
-      await Promise.all([
-        Bun.spawn(["rm", "-f", tempPdfPath]).exited,
-        Bun.spawn(["rm", "-f", tempPngPath]).exited,
-        Bun.spawn(["rm", "-f", tempResizedPath]).exited,
-      ]);
-    } catch (error) {
-      console.error("Error cleaning up temporary files:", error);
-    }
   }
 }
 
@@ -125,7 +177,7 @@ export const slugify = (text: string) => {
 
 export async function pdfToImages(
   pdfData: Uint8Array,
-  options: { maxDimension?: number } = { maxDimension: 4000 }
+  options: { maxDimension?: number } = { maxDimension: 2048 }
 ): Promise<
   {
     name: string;
@@ -135,111 +187,55 @@ export async function pdfToImages(
     base64: string;
   }[]
 > {
-  const uniqueId = crypto.randomUUID();
-  const tempPdfPath = `/tmp/pdf_${uniqueId}.pdf`;
-  const outputPattern = `/tmp/output_${uniqueId}-%d.png`;
-
   try {
-    // Write PDF data to temp file
-    await Bun.write(tempPdfPath, pdfData);
+    console.log("Converting PDF to images using ConvertAPI");
 
-    console.log("PDF written to temp file:", tempPdfPath);
+    // Convert Uint8Array to Buffer
+    const pdfBuffer = Buffer.from(pdfData);
 
-    // Use Ghostscript to convert all PDF pages to PNG images
-    const gsProc = Bun.spawn([
-      "gs",
-      "-dNOPAUSE",
-      "-dBATCH",
-      "-sDEVICE=png16m",
-      "-r150",
-      `-sOutputFile=${outputPattern}`,
-      tempPdfPath,
-    ]);
+    // Call ConvertAPI to convert PDF to PNG (all pages)
+    const result = await callConvertApi("pdf", "png", {
+      File: pdfBuffer, // Pass Buffer directly
+      ImageResolution: 150,
+      ImageMaxWidth: options.maxDimension || 2048,
+      ImageMaxHeight: options.maxDimension || 2048,
+    });
 
-    const gsSuccess = await gsProc.exited;
-    if (gsSuccess !== 0) {
-      throw new Error(`Ghostscript process failed with exit code ${gsSuccess}`);
+    if (!result.Files || result.Files.length === 0) {
+      throw new Error("No files returned from ConvertAPI");
     }
-
-    // Find all generated image files
-    const tempDir = "/tmp";
-    const files = await Array.fromAsync(
-      new Bun.Glob(`output_${uniqueId}-*.png`).scan({
-        cwd: tempDir,
-      })
-    );
 
     const images = [];
 
-    for (const fileName of files) {
-      const imagePath = `${tempDir}/${fileName}`;
+    for (let i = 0; i < result.Files.length; i++) {
+      const file = result.Files[i];
 
-      // Resize the image if maxDimension is provided
-      if (options?.maxDimension && options.maxDimension > 0) {
-        const resizedPath = `${tempDir}/resized_${fileName}`;
+      // Download the converted image
+      const imageResponse = await fetch(file.Url);
 
-        const resizeProc = Bun.spawn([
-          "convert",
-          imagePath,
-          "-resize",
-          `${options.maxDimension}x${options.maxDimension}>`,
-          resizedPath,
-        ]);
-
-        const resizeSuccess = await resizeProc.exited;
-        if (resizeSuccess === 0) {
-          // Replace original with resized version
-          await Bun.spawn(["mv", resizedPath, imagePath]).exited;
-        } else {
-          console.error(`Failed to resize image ${fileName}, using original`);
-        }
+      if (!imageResponse.ok) {
+        console.error(
+          `Failed to download image ${i + 1}: ${imageResponse.status}`
+        );
+        continue;
       }
 
-      // Extract page number from filename
-      const pageMatch = fileName.match(/output_[^-]+-(\d+)\.png/);
-      const pageNum = pageMatch ? parseInt(pageMatch[1], 10) : 0;
-
-      // Read image file
-      const imageFile = Bun.file(imagePath);
-      const imageBuffer = await imageFile.arrayBuffer();
-      const stats = await imageFile.stat();
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const base64 = Buffer.from(imageBuffer).toString("base64");
 
       images.push({
-        name: fileName,
-        path: imagePath,
-        size: stats.size,
-        page: pageNum,
-        base64: Buffer.from(imageBuffer).toString("base64"),
+        name: file.FileName,
+        path: file.Url, // We could store the original URL or update this as needed
+        size: file.FileSize,
+        page: i + 1, // Page numbers start from 1
+        base64: base64,
       });
     }
 
     return images;
   } catch (error: any) {
-    console.error("Error:", error);
+    console.error("Error converting PDF to images:", error);
     throw new Error(`Failed to convert PDF to images: ${error.message}`);
-  } finally {
-    // Clean up temporary files
-    try {
-      const tempDir = "/tmp";
-      const allTempFiles = await Array.fromAsync(
-        new Bun.Glob(
-          `{pdf_${uniqueId}.pdf,output_${uniqueId}-*.png,resized_output_${uniqueId}-*.png}`
-        ).scan({
-          cwd: tempDir,
-        })
-      );
-
-      await Promise.all(
-        allTempFiles.map(
-          (file) => Bun.spawn(["rm", "-f", `${tempDir}/${file}`]).exited
-        )
-      );
-
-      // Also clean up the original temp PDF
-      await Bun.spawn(["rm", "-f", tempPdfPath]).exited;
-    } catch (error) {
-      console.error("Error cleaning up temporary files:", error);
-    }
   }
 }
 
@@ -255,7 +251,7 @@ export async function getFileHash(fileBuffer: Buffer): Promise<string> {
 export interface PdfToImagesOptions {
   /** Longest edge after optional resize. 0 or undefined ⇒ no resize */
   maxDimension?: number;
-  /** Raster DPI sent to Ghostscript */
+  /** Raster DPI sent to ConvertAPI */
   dpi?: number;
   /** When true, extract only page 1 */
   firstPageOnly?: boolean;
@@ -269,60 +265,120 @@ export interface PdfImageInfo {
   base64: string;
 }
 
-const exec = promisify(_exec);
-
 export async function convertPdfToImages(
   pdfData: Buffer,
   {
     maxDimension = 8000,
-    dpi = 300,
+    dpi = 150,
     firstPageOnly = false,
   }: PdfToImagesOptions = {}
 ): Promise<PdfImageInfo[]> {
-  const tmpDir = await fs.mkdtemp(
-    path.join(os.tmpdir(), `pdf2img-${crypto.randomUUID()}-`)
-  );
-  const inputPdf = path.join(tmpDir, "in.pdf");
-  const outPattern = path.join(tmpDir, "page-%d.png");
-
   try {
-    await fs.writeFile(inputPdf, pdfData);
+    // Validate input buffer
+    if (!pdfData || !Buffer.isBuffer(pdfData) || pdfData.length === 0) {
+      throw new Error(
+        `Invalid PDF data: ${!pdfData ? "null/undefined" : !Buffer.isBuffer(pdfData) ? "not a Buffer" : "empty buffer (0 bytes)"}`
+      );
+    }
 
-    /* ----------  Ghostscript  ---------- */
-    const pages = firstPageOnly ? "-dFirstPage=1 -dLastPage=1" : "";
-    const threads = `-dNumRenderingThreads=${os.cpus().length}`;
-    const gsCmd = `gs -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r${dpi} \
-${threads} ${pages} -dPDFFitPage -g${maxDimension}x${maxDimension} \
--sOutputFile="${outPattern}" "${inputPdf}"`;
+    console.log("Converting PDF to images using ConvertAPI with options:", {
+      maxDimension,
+      dpi,
+      firstPageOnly,
+      bufferSize: pdfData.length,
+    });
 
-    await exec(gsCmd);
+    // Prepare parameters for ConvertAPI - pass Buffer directly
+    const parameters: Record<string, any> = {
+      File: pdfData, // Pass Buffer directly instead of base64
+      ImageResolution: dpi,
+      ImageMaxWidth: maxDimension,
+      ImageMaxHeight: maxDimension,
+    };
 
-    /* ----------  Gather PNGs  ---------- */
-    const files = (await fs.readdir(tmpDir)).filter(
-      (f) => f.startsWith("page-") && f.endsWith(".png")
-    );
+    // If only first page is requested, set page range
+    if (firstPageOnly) {
+      parameters.PageRange = "1-1";
+    }
 
-    const images = await Promise.all(
-      files.map(async (file) => {
-        const page = Number(file.match(/page-(\d+)\.png/)?.[1] ?? "0");
-        const fullPath = path.join(tmpDir, file);
-        const buf = await fs.readFile(fullPath);
-        const { size } = await fs.stat(fullPath);
+    // Call ConvertAPI to convert PDF to PNG
+    const result = await callConvertApi("pdf", "png", parameters);
 
-        return {
-          name: file,
-          path: fullPath,
-          size,
-          page,
-          base64: buf.toString("base64"),
-        } as PdfImageInfo;
-      })
-    );
+    if (!result.Files || result.Files.length === 0) {
+      throw new Error("No files returned from ConvertAPI");
+    }
 
-    // return in natural page order
+    const images: PdfImageInfo[] = [];
+
+    for (let i = 0; i < result.Files.length; i++) {
+      const file = result.Files[i];
+
+      console.log(
+        `🖼️ [ConvertAPI] Processing file ${i + 1}: ${JSON.stringify(file)}`
+      );
+
+      try {
+        let base64Data: string;
+
+        // Check if the response contains base64 data directly or a URL
+        if (file.FileData) {
+          // ConvertAPI returned base64 data directly
+          console.log(`📄 [ConvertAPI] Using direct base64 data from FileData`);
+          base64Data = file.FileData;
+        } else if (file.Url && file.Url.trim() !== "") {
+          // ConvertAPI returned a URL to download from
+          console.log(`⬇️ [ConvertAPI] Downloading image from: ${file.Url}`);
+          const imageResponse = await fetch(file.Url);
+
+          if (!imageResponse.ok) {
+            console.error(
+              `Failed to download image ${i + 1}: ${imageResponse.status}`
+            );
+            continue;
+          }
+
+          const imageBuffer = await imageResponse.arrayBuffer();
+          base64Data = Buffer.from(imageBuffer).toString("base64");
+        } else {
+          console.error(
+            `❌ [ConvertAPI] File ${i + 1} has no URL or FileData:`,
+            file
+          );
+          continue;
+        }
+
+        // Validate we have base64 data
+        if (!base64Data || base64Data.trim() === "") {
+          console.error(`❌ [ConvertAPI] File ${i + 1} has empty base64 data`);
+          continue;
+        }
+
+        images.push({
+          name: file.FileName || `page-${i + 1}.png`,
+          path: file.Url || "", // May be empty if using direct base64
+          size: file.FileSize || base64Data.length,
+          page: i + 1, // Page numbers start from 1
+          base64: base64Data,
+        });
+
+        console.log(`✅ [ConvertAPI] Successfully processed image ${i + 1}`);
+      } catch (error) {
+        console.error(`Error processing image ${i + 1}:`, error);
+        continue;
+      }
+    }
+
+    // Check if we got any valid images
+    if (images.length === 0) {
+      throw new Error(
+        "No valid images were processed from ConvertAPI response"
+      );
+    }
+
+    // Return images sorted by page number
     return images.sort((a, b) => a.page - b.page);
-  } finally {
-    // best-effort cleanup
-    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+  } catch (error: any) {
+    console.error("Error converting PDF to images with ConvertAPI:", error);
+    throw new Error(`Failed to convert PDF to images: ${error.message}`);
   }
 }

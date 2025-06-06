@@ -26,6 +26,27 @@ export type ArtifactEvent = {
   url: string;
 };
 
+export type PageImage = {
+  name: string;
+  imagePath: string;
+  base64Data?: string;
+  mimeType: string;
+};
+
+export type FileContentResult = {
+  content: string;
+  totalPages: number;
+  totalChunks: number;
+  pageInfo?: string;
+  images?: PageImage[];
+};
+
+export type SearchResult = {
+  content: string;
+  matches: number;
+  images?: PageImage[];
+};
+
 export class ArtifactService {
   constructor(private threadId: string) {}
 
@@ -33,6 +54,75 @@ export class ArtifactService {
     // Replace various whitespace characters (including narrow no-break space \u202f,
     // tabs, multiple spaces) with a single standard space. Also, trim leading/trailing whitespace.
     return filename.replace(/[\s\u202f]+/g, " ").trim();
+  }
+
+  /**
+   * Load images for given page IDs
+   */
+  private async loadImagesForPages(
+    pageIds: (string | null)[]
+  ): Promise<PageImage[]> {
+    // Filter out null values and ensure we have valid page IDs
+    const validPageIds = pageIds.filter((id): id is string => id !== null);
+
+    if (validPageIds.length === 0) return [];
+
+    console.log(
+      `🖼️ [ArtifactService] Loading images for ${validPageIds.length} pages`
+    );
+
+    const images = await db.query.filePageImages.findMany({
+      where: (images, { inArray }) => inArray(images.filePageId, validPageIds),
+    });
+
+    if (images.length === 0) {
+      console.log(
+        `📷 [ArtifactService] No images found for the selected pages`
+      );
+      return [];
+    }
+
+    console.log(
+      `🖼️ [ArtifactService] Found ${images.length} images, loading from S3...`
+    );
+
+    const imageResults: PageImage[] = [];
+
+    for (const image of images) {
+      try {
+        // Load image data from S3
+        const file = s3.file(image.imagePath);
+        if (await file.exists()) {
+          const imageBuffer = await file.arrayBuffer();
+          const base64Data = Buffer.from(imageBuffer).toString("base64");
+
+          imageResults.push({
+            name: image.name ?? "image",
+            imagePath: image.imagePath,
+            base64Data: base64Data,
+            mimeType: "image/png", // Most PDF conversions are PNG
+          });
+
+          console.log(
+            `✅ [ArtifactService] Loaded image: ${image.name} (${imageBuffer.byteLength} bytes)`
+          );
+        } else {
+          console.warn(
+            `⚠️ [ArtifactService] Image not found in S3: ${image.imagePath}`
+          );
+        }
+      } catch (error) {
+        console.error(
+          `❌ [ArtifactService] Error loading image ${image.name}:`,
+          error
+        );
+      }
+    }
+
+    console.log(
+      `🖼️ [ArtifactService] Successfully loaded ${imageResults.length}/${images.length} images`
+    );
+    return imageResults;
   }
 
   /**
@@ -262,25 +352,21 @@ export class ArtifactService {
   }
 
   /**
-   * Get paginated content from a file
+   * Get paginated content from a file with images
    */
   private async getFileContent(
     file: any,
     startPage?: number,
     endPage?: number,
     startChunk?: number,
-    endChunk?: number
-  ): Promise<{
-    content: string;
-    totalPages: number;
-    totalChunks: number;
-    pageInfo?: string;
-  }> {
+    endChunk?: number,
+    includeImages: boolean = true
+  ): Promise<FileContentResult> {
     console.log(
       `📖 [ArtifactService] Loading content from file: "${file.name}" (${file.mimeType})`
     );
     console.log(
-      `📊 [ArtifactService] Pagination params - startPage: ${startPage}, endPage: ${endPage}, startChunk: ${startChunk}, endChunk: ${endChunk}`
+      `📊 [ArtifactService] Pagination params - startPage: ${startPage}, endPage: ${endPage}, startChunk: ${startChunk}, endChunk: ${endChunk}, includeImages: ${includeImages}`
     );
 
     // Get all pages for this file
@@ -306,6 +392,7 @@ export class ArtifactService {
         content: "No content found for this file.",
         totalPages: 0,
         totalChunks: 0,
+        images: [],
       };
     }
 
@@ -318,6 +405,10 @@ export class ArtifactService {
     console.log(
       `📊 [ArtifactService] File stats - Total pages: ${totalPages}, Total chunks: ${totalChunks}`
     );
+
+    let selectedPageIds: string[] = [];
+    let content = "";
+    let pageInfo = "";
 
     // Handle PDF-style pagination (by pages)
     if (
@@ -333,7 +424,9 @@ export class ArtifactService {
       );
 
       const selectedPages = pages.slice(start, end + 1);
-      const content = selectedPages
+      selectedPageIds = selectedPages.map((page) => page.id);
+
+      content = selectedPages
         .map((page) => {
           const pageContent = page.chunks
             .map((chunk) => chunk.content)
@@ -345,21 +438,19 @@ export class ArtifactService {
         })
         .join("\n\n");
 
-      const pageInfo = `Pages ${start + 1}-${end + 1} of ${totalPages}`;
+      pageInfo = `Pages ${start + 1}-${end + 1} of ${totalPages}`;
       console.log(
         `✅ [ArtifactService] Returned ${selectedPages.length} pages (${content.length} chars)`
       );
-
-      return { content, totalPages, totalChunks, pageInfo };
     }
-
     // Handle chunk-based pagination (for non-PDF files or when chunk range is specified)
-    if (startChunk !== undefined || endChunk !== undefined) {
+    else if (startChunk !== undefined || endChunk !== undefined) {
       console.log(`🧩 [ArtifactService] Using chunk-based pagination`);
       const allChunks = pages.flatMap((page) =>
         page.chunks.map((chunk) => ({
           ...chunk,
           pageNumber: page.pageNumber,
+          pageId: page.id,
         }))
       );
 
@@ -374,7 +465,11 @@ export class ArtifactService {
       );
 
       const selectedChunks = allChunks.slice(start, end + 1);
-      const content = selectedChunks
+      selectedPageIds = [
+        ...new Set(selectedChunks.map((chunk) => chunk.pageId)),
+      ];
+
+      content = selectedChunks
         .map((chunk, index) => {
           const chunkNum = start + index + 1;
           console.log(
@@ -384,55 +479,66 @@ export class ArtifactService {
         })
         .join("\n\n");
 
-      const pageInfo = `Chunks ${start + 1}-${end + 1} of ${totalChunks}`;
+      pageInfo = `Chunks ${start + 1}-${end + 1} of ${totalChunks}`;
       console.log(
         `✅ [ArtifactService] Returned ${selectedChunks.length} chunks (${content.length} chars)`
       );
-
-      return { content, totalPages, totalChunks, pageInfo };
     }
-
     // Default: return first page or first few chunks
-    if (file.mimeType === "application/pdf") {
+    else if (file.mimeType === "application/pdf") {
       console.log(
         `📖 [ArtifactService] Using default PDF mode - returning first page`
       );
       const firstPage = pages[0];
-      const content = `=== Page 1 ===\n${firstPage.chunks.map((chunk) => chunk.content).join("\n")}`;
-      const pageInfo = `Page 1 of ${totalPages}`;
+      selectedPageIds = [firstPage.id];
+      content = `=== Page 1 ===\n${firstPage.chunks.map((chunk) => chunk.content).join("\n")}`;
+      pageInfo = `Page 1 of ${totalPages}`;
       console.log(
         `✅ [ArtifactService] Returned page 1 (${content.length} chars)`
       );
-      return { content, totalPages, totalChunks, pageInfo };
     } else {
       console.log(
         `🧩 [ArtifactService] Using default non-PDF mode - returning first 3 chunks`
       );
-      const allChunks = pages.flatMap((page) => page.chunks);
+      const allChunks = pages.flatMap((page) =>
+        page.chunks.map((chunk) => ({ ...chunk, pageId: page.id }))
+      );
       const firstFewChunks = allChunks.slice(0, 3); // Show first 3 chunks by default
-      const content = firstFewChunks
+      selectedPageIds = [
+        ...new Set(firstFewChunks.map((chunk) => chunk.pageId)),
+      ];
+
+      content = firstFewChunks
         .map((chunk, index) => {
           return `=== Chunk ${index + 1} ===\n${chunk.content}`;
         })
         .join("\n\n");
-      const pageInfo = `Chunks 1-${firstFewChunks.length} of ${totalChunks}`;
+      pageInfo = `Chunks 1-${firstFewChunks.length} of ${totalChunks}`;
       console.log(
         `✅ [ArtifactService] Returned ${firstFewChunks.length} chunks (${content.length} chars)`
       );
-      return { content, totalPages, totalChunks, pageInfo };
     }
+
+    // Load images for the selected pages if requested
+    let images: PageImage[] = [];
+    if (includeImages && selectedPageIds.length > 0) {
+      images = await this.loadImagesForPages(selectedPageIds);
+    }
+
+    return { content, totalPages, totalChunks, pageInfo, images };
   }
 
   /**
-   * Search through file content and return relevant chunks
+   * Search through file content and return relevant chunks with images
    */
   private async searchFileContent(
     file: any,
     query: string,
-    limit: number = 5
-  ): Promise<{ content: string; matches: number }> {
+    limit: number = 5,
+    includeImages: boolean = true
+  ): Promise<SearchResult> {
     console.log(
-      `🔍 [ArtifactService] Searching file "${file.name}" for: "${query}" (limit: ${limit})`
+      `🔍 [ArtifactService] Searching file "${file.name}" for: "${query}" (limit: ${limit}, includeImages: ${includeImages})`
     );
 
     // Get all chunks for this file
@@ -450,7 +556,11 @@ export class ArtifactService {
       console.log(
         `⚠️ [ArtifactService] No content found for search in file "${file.name}"`
       );
-      return { content: "No content found for this file.", matches: 0 };
+      return {
+        content: "No content found for this file.",
+        matches: 0,
+        images: [],
+      };
     }
 
     // Flatten all chunks and prepare for reranking
@@ -458,6 +568,7 @@ export class ArtifactService {
       page.chunks.map((chunk) => ({
         ...chunk,
         pageNumber: page.pageNumber,
+        pageId: page.id,
       }))
     );
 
@@ -467,7 +578,11 @@ export class ArtifactService {
 
     if (allChunks.length === 0) {
       console.log(`⚠️ [ArtifactService] No chunks found for reranking`);
-      return { content: `No content found matching "${query}".`, matches: 0 };
+      return {
+        content: `No content found matching "${query}".`,
+        matches: 0,
+        images: [],
+      };
     }
 
     // Prepare chunks for reranking
@@ -477,6 +592,9 @@ export class ArtifactService {
     console.log(
       `🤖 [ArtifactService] Using Jina AI reranker with topN: ${maxLimit}`
     );
+
+    let rankedChunks: any[] = [];
+    let selectedPageIds: string[] = [];
 
     try {
       // Use Jina AI reranker for semantic search
@@ -489,7 +607,11 @@ export class ArtifactService {
         console.log(
           `❌ [ArtifactService] No matches found by reranker for query "${query}"`
         );
-        return { content: `No content found matching "${query}".`, matches: 0 };
+        return {
+          content: `No content found matching "${query}".`,
+          matches: 0,
+          images: [],
+        };
       }
 
       console.log(
@@ -497,7 +619,7 @@ export class ArtifactService {
       );
 
       // Map reranker results back to original chunks with metadata
-      const rankedChunks = rerankedResults.results
+      rankedChunks = rerankedResults.results
         .map((result, index) => {
           // Find the original chunk by matching content
           const originalChunk = allChunks.find(
@@ -526,23 +648,14 @@ export class ArtifactService {
         console.log(
           `❌ [ArtifactService] No valid chunks after mapping reranker results`
         );
-        return { content: `No content found matching "${query}".`, matches: 0 };
+        return {
+          content: `No content found matching "${query}".`,
+          matches: 0,
+          images: [],
+        };
       }
 
-      console.log(
-        `✅ [ArtifactService] Returning top ${rankedChunks.length} semantically ranked matches:`
-      );
-
-      const content = rankedChunks
-        .map((chunk, index) => {
-          return `=== Match ${index + 1} (Page ${chunk.pageNumber}, Relevance: ${chunk.score.toFixed(3)}) ===\n${chunk.content}`;
-        })
-        .join("\n\n");
-
-      console.log(
-        `📄 [ArtifactService] Total response length: ${content.length} characters`
-      );
-      return { content, matches: rankedChunks.length };
+      selectedPageIds = [...new Set(rankedChunks.map((chunk) => chunk.pageId))];
     } catch (error) {
       console.error(`❌ [ArtifactService] Reranker error:`, error);
       console.log(`🔄 [ArtifactService] Falling back to simple text search`);
@@ -578,35 +691,47 @@ export class ArtifactService {
         .filter((chunk) => chunk.score > 0);
 
       // Sort by relevance and take top results
-      const topChunks = scoredChunks
+      rankedChunks = scoredChunks
         .sort((a, b) => b.score - a.score)
         .slice(0, limit);
 
-      if (topChunks.length === 0) {
+      if (rankedChunks.length === 0) {
         console.log(
           `❌ [ArtifactService] No matches found with fallback search for query "${query}"`
         );
-        return { content: `No content found matching "${query}".`, matches: 0 };
+        return {
+          content: `No content found matching "${query}".`,
+          matches: 0,
+          images: [],
+        };
       }
 
-      console.log(
-        `✅ [ArtifactService] Fallback search returned ${topChunks.length} matches`
-      );
-
-      const content = topChunks
-        .map((chunk, index) => {
-          return `=== Match ${index + 1} (Page ${chunk.pageNumber}, Score: ${chunk.score}) ===\n${chunk.content}`;
-        })
-        .join("\n\n");
-
-      return { content, matches: topChunks.length };
+      selectedPageIds = [...new Set(rankedChunks.map((chunk) => chunk.pageId))];
     }
+
+    console.log(
+      `✅ [ArtifactService] Search returned ${rankedChunks.length} matches`
+    );
+
+    const content = rankedChunks
+      .map((chunk, index) => {
+        return `=== Match ${index + 1} (Page ${chunk.pageNumber}, Score: ${chunk.score.toFixed(3)}) ===\n${chunk.content}`;
+      })
+      .join("\n\n");
+
+    // Load images for the matching pages if requested
+    let images: PageImage[] = [];
+    if (includeImages && selectedPageIds.length > 0) {
+      images = await this.loadImagesForPages(selectedPageIds);
+    }
+
+    return { content, matches: rankedChunks.length, images };
   }
 
   private loadArtifactTool(): Tool {
     return tool({
       description:
-        "Loads content from a file attachment with pagination support. This tool allows you to access processed file content in manageable chunks. For PDF files, you can specify page ranges. For other files, you can specify chunk ranges. Use this to read through large documents systematically.",
+        "Loads content from a file attachment with pagination support. This tool allows you to access processed file content in manageable chunks. For PDF files, you can specify page ranges. For other files, you can specify chunk ranges. Use this to read through large documents systematically. Can also return images of the pages when available.",
       parameters: z.object({
         fileName: z
           .string()
@@ -635,6 +760,13 @@ export class ArtifactService {
           .describe(
             "For non-PDF files or specific chunk access: ending chunk number (1-based)."
           ),
+        includeImages: z
+          .boolean()
+          .optional()
+          .default(true)
+          .describe(
+            "Whether to include page images in the response when available (useful for visual documents)."
+          ),
       }),
       execute: async ({
         fileName,
@@ -642,6 +774,7 @@ export class ArtifactService {
         endPage,
         startChunk,
         endChunk,
+        includeImages = true,
       }) => {
         console.log(`🚀 [ArtifactService] load_file_content tool called`);
         console.log(`📋 [ArtifactService] Parameters:`, {
@@ -650,6 +783,7 @@ export class ArtifactService {
           endPage,
           startChunk,
           endChunk,
+          includeImages,
         });
 
         try {
@@ -667,7 +801,8 @@ export class ArtifactService {
             startPage,
             endPage,
             startChunk,
-            endChunk
+            endChunk,
+            includeImages
           );
 
           console.log(
@@ -678,17 +813,19 @@ export class ArtifactService {
             totalChunks: result.totalChunks,
             pageInfo: result.pageInfo,
             contentLength: result.content.length,
+            imagesCount: result.images?.length || 0,
           });
 
           return {
             success: true,
-            message: `Successfully loaded content from '${fileName}' (${result.pageInfo}).`,
+            message: `Successfully loaded content from '${fileName}' (${result.pageInfo})${result.images?.length ? ` with ${result.images.length} images` : ""}.`,
             fileName: file.name,
             mimeType: file.mimeType,
             content: result.content,
             totalPages: result.totalPages,
             totalChunks: result.totalChunks,
             pageInfo: result.pageInfo,
+            images: result.images,
           };
         } catch (error) {
           console.error(`❌ [ArtifactService] Tool error:`, error);
@@ -697,6 +834,36 @@ export class ArtifactService {
             message: `Error loading file content: ${error instanceof Error ? error.message : "Unknown error"}`,
           };
         }
+      },
+      // Multi-modal support for Anthropic models
+      experimental_toToolResultContent(result) {
+        if (typeof result === "string") {
+          return [{ type: "text", text: result }];
+        }
+
+        const content: any[] = [];
+
+        // Add text content
+        if (result.content) {
+          content.push({ type: "text", text: result.content });
+        }
+
+        // Add images if available and model supports it
+        if (result.images && Array.isArray(result.images)) {
+          for (const image of result.images) {
+            if (image.base64Data) {
+              content.push({
+                type: "image",
+                data: image.base64Data,
+                mimeType: image.mimeType,
+              });
+            }
+          }
+        }
+
+        return content.length > 0
+          ? content
+          : [{ type: "text", text: JSON.stringify(result) }];
       },
     });
   }
@@ -743,7 +910,7 @@ export class ArtifactService {
   private searchFileContentTool(): Tool {
     return tool({
       description:
-        "Searches through the content of a file attachment to find relevant information. This tool performs text-based search through the processed content and returns the most relevant chunks. Use this when you need to find specific information within a large document.",
+        "Searches through the content of a file attachment to find relevant information. This tool performs semantic search through the processed content and returns the most relevant chunks with their associated images when available. Use this when you need to find specific information within a large document.",
       parameters: z.object({
         fileName: z
           .string()
@@ -759,13 +926,21 @@ export class ArtifactService {
           .describe(
             "Maximum number of relevant chunks to return (default: 5, max: 10)."
           ),
+        includeImages: z
+          .boolean()
+          .optional()
+          .default(true)
+          .describe(
+            "Whether to include page images in the response when available (useful for visual context)."
+          ),
       }),
-      execute: async ({ fileName, query, limit = 5 }) => {
+      execute: async ({ fileName, query, limit = 5, includeImages = true }) => {
         console.log(`🚀 [ArtifactService] search_file_content tool called`);
         console.log(`📋 [ArtifactService] Parameters:`, {
           fileName,
           query,
           limit,
+          includeImages,
         });
 
         try {
@@ -781,7 +956,12 @@ export class ArtifactService {
           const maxLimit = Math.min(limit, 10); // Cap at 10 results
           console.log(`🔢 [ArtifactService] Using search limit: ${maxLimit}`);
 
-          const result = await this.searchFileContent(file, query, maxLimit);
+          const result = await this.searchFileContent(
+            file,
+            query,
+            maxLimit,
+            includeImages
+          );
 
           if (result.matches === 0) {
             console.log(`❌ [ArtifactService] Tool result: No matches found`);
@@ -791,6 +971,7 @@ export class ArtifactService {
               fileName: file.name,
               query: query,
               matches: 0,
+              images: [],
             };
           }
 
@@ -800,17 +981,19 @@ export class ArtifactService {
           console.log(`📊 [ArtifactService] Search result stats:`, {
             matches: result.matches,
             contentLength: result.content.length,
+            imagesCount: result.images?.length || 0,
             query: query,
           });
 
           return {
             success: true,
-            message: `Found ${result.matches} relevant chunks matching "${query}" in '${fileName}'.`,
+            message: `Found ${result.matches} relevant chunks matching "${query}" in '${fileName}'${result.images?.length ? ` with ${result.images.length} images` : ""}.`,
             fileName: file.name,
             mimeType: file.mimeType,
             query: query,
             matches: result.matches,
             content: result.content,
+            images: result.images,
           };
         } catch (error) {
           console.error(`❌ [ArtifactService] Tool error:`, error);
@@ -819,6 +1002,36 @@ export class ArtifactService {
             message: `Error searching file content: ${error instanceof Error ? error.message : "Unknown error"}`,
           };
         }
+      },
+      // Multi-modal support for Anthropic models
+      experimental_toToolResultContent(result) {
+        if (typeof result === "string") {
+          return [{ type: "text", text: result }];
+        }
+
+        const content: any[] = [];
+
+        // Add text content
+        if (result.content) {
+          content.push({ type: "text", text: result.content });
+        }
+
+        // Add images if available and model supports it
+        if (result.images && Array.isArray(result.images)) {
+          for (const image of result.images) {
+            if (image.base64Data) {
+              content.push({
+                type: "image",
+                data: image.base64Data,
+                mimeType: image.mimeType,
+              });
+            }
+          }
+        }
+
+        return content.length > 0
+          ? content
+          : [{ type: "text", text: JSON.stringify(result) }];
       },
     });
   }

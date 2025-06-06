@@ -114,14 +114,52 @@ const threadsOps = {
       for (const attachment of message.experimental_attachments) {
         try {
           console.log(
-            `📎 [ThreadsOps] Processing attachment: ${attachment.name || attachment.file_key}`
+            `📂 [ThreadsOps] Processing attachment: ${attachment.file_key}`
           );
 
           // Download the file from S3
+          console.log(
+            `⬇️ [ThreadsOps] Downloading file from S3: ${attachment.file_key}`
+          );
+
+          // Check if file exists first
+          try {
+            const fileExists = await s3.file(attachment.file_key).exists();
+            if (!fileExists) {
+              throw new Error(
+                `File does not exist in S3: ${attachment.file_key}`
+              );
+            }
+            console.log(
+              `✓ [ThreadsOps] File exists in S3: ${attachment.file_key}`
+            );
+          } catch (existsError) {
+            console.error(
+              `❌ [ThreadsOps] Error checking if file exists: ${existsError}`
+            );
+            throw new Error(
+              `Failed to verify file existence in S3: ${attachment.file_key}`
+            );
+          }
+
           const attachmentBuffer = await s3
             .file(attachment.file_key)
             .arrayBuffer();
+
+          console.log(
+            `📊 [ThreadsOps] Downloaded buffer size: ${attachmentBuffer.byteLength} bytes`
+          );
+
+          if (attachmentBuffer.byteLength === 0) {
+            throw new Error(
+              `Downloaded file is empty (0 bytes): ${attachment.file_key}`
+            );
+          }
+
           const buffer = Buffer.from(attachmentBuffer);
+          console.log(
+            `✅ [ThreadsOps] Buffer created successfully: ${buffer.length} bytes`
+          );
 
           // Calculate file hash for deduplication
           const fileHash = crypto

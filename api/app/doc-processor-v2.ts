@@ -37,10 +37,34 @@ export async function processFile(
   fileName: string,
   mimeType: string
 ): Promise<FilePage[]> {
+  // Add validation for fileContent
+  console.log(`📄 [ProcessFile] Processing file: ${fileName} (${mimeType})`);
+  console.log(`📊 [ProcessFile] File size: ${fileContent?.length || 0} bytes`);
+
+  if (!fileContent || fileContent.length === 0) {
+    throw new Error(`File buffer is empty or null for file: ${fileName}`);
+  }
+
   if (mimeType === "application/pdf") {
-    const [firstPage] = await convertPdfToImages(fileContent, {
+    console.log(
+      `🔍 [ProcessFile] Processing PDF with ${fileContent.length} bytes`
+    );
+
+    const images = await convertPdfToImages(fileContent, {
       firstPageOnly: true,
     });
+
+    // Validate that we got at least one image
+    if (!images || images.length === 0) {
+      throw new Error(
+        "Failed to convert PDF to images - no images returned from ConvertAPI"
+      );
+    }
+
+    const firstPage = images[0];
+    if (!firstPage || !firstPage.base64) {
+      throw new Error("First page conversion failed - missing base64 data");
+    }
 
     const firstPageBuffer = Buffer.from(firstPage.base64, "base64");
     const firstPageBase64 = firstPageBuffer.toString("base64");

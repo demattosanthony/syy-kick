@@ -134,7 +134,11 @@ const AssistantMessage: React.FC<{
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      {showEye && <MessageAvatar src={logo} alt="AI" fallback="AI" />}
+      {showEye ? (
+        <MessageAvatar src={logo} alt="AI" fallback="AI" />
+      ) : (
+        <div className="size-8" />
+      )}
       <div className="flex w-full flex-col gap-2">
         <div className="bg-transparent p-0">
           <MessageContentComponent message={message} messages={messages} />
