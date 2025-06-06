@@ -1,12 +1,12 @@
 import os from "os";
-import { mistralAi } from "./features/models";
+import { mistralAi } from "../models";
 import { CharacterTextSplitter } from "@langchain/textsplitters";
-import s3 from "./config/s3";
+import s3 from "../../config/s3";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
-import { convertPdfToImages } from "./utils";
-import { MARKITDOWN_MIME_TYPES } from "./config/constants";
+import { convertPdfToImages } from "../../utils";
+import { MARKITDOWN_MIME_TYPES } from "../../config/constants";
 
 export type FilePageImage = {
   name: string;

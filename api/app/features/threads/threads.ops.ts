@@ -28,7 +28,7 @@ import {
   processThreadMessages,
   createAndSaveThreadTitle,
 } from "./threads.utils";
-import { processFile } from "../../doc-processor-v2";
+import { processFile } from "../files/files.processor.";
 import s3 from "../../config/s3";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { MicrosoftAPI } from "../../config/microsoft";

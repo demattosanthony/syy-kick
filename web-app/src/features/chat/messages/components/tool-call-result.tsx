@@ -980,14 +980,14 @@ const LoadFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
           <span className="font-normal text-sm">
             {result.fileName || fileName}
           </span>
-          {result.pageInfo && (
+          {/* {result.pageInfo && (
             <>
               <span className="text-xs text-muted-foreground">•</span>
               <span className="text-xs text-muted-foreground">
                 {result.pageInfo}
               </span>
             </>
-          )}
+          )} */}
           {/* {result.content && (
             <>
               <span className="text-xs text-muted-foreground">•</span>

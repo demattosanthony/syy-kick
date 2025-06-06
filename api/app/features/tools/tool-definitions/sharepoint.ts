@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { FilePage, processFile } from "../../../doc-processor-v2";
+import { FilePage, processFile } from "../../files/files.processor.";
 
 import { eq } from "drizzle-orm";
 import {
