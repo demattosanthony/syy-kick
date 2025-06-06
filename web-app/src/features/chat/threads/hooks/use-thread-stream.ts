@@ -341,7 +341,7 @@ const handleMessageError = (
   data: any,
   { setChatStatus, onMessagesUpdate }: EventHandlers
 ) => {
-  console.error("Message error event from server:", data.error);
+  //   console.error("Message error event from server:", data.error);
   toast.error(data.error || "Error processing message on server.");
 
   if (data.message?.id) {
@@ -404,8 +404,8 @@ const eventHandlers = {
     setChatStatus("ready"),
   "inference-stopped": (_data: any, { setChatStatus }: EventHandlers) =>
     setChatStatus("ready"),
-  connected: () => console.log("Connected to message stream"),
-  source: (data: any) => console.log("Source data received:", data.source),
+  connected: () => {},
+  source: () => {},
   heartbeat: () => {}, // Keep-alive
 };
 
@@ -447,7 +447,7 @@ export function useThreadStream({
     const handlers: EventHandlers = { setChatStatus, onMessagesUpdate };
 
     eventSource.onopen = () => {
-      console.log("EventSource connection opened for thread:", threadId);
+      //   console.log("EventSource connection opened for thread:", threadId);
       isConnectingRef.current = false;
     };
 
@@ -467,7 +467,7 @@ export function useThreadStream({
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
-      console.log("Disconnected from message stream for thread:", threadId);
+      //   console.log("Disconnected from message stream for thread:", threadId);
     }
     isConnectingRef.current = false;
   }, [threadId]);

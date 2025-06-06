@@ -1,7 +1,12 @@
 import { useCallback, useRef } from "react";
 import { useAtom } from "jotai";
 import { ChatMessage, MessageRole } from "@/types/chat";
-import { chatStatusAtom, modelAtom, instructionsAtom } from "@/atoms/chat";
+import {
+  chatStatusAtom,
+  modelAtom,
+  instructionsAtom,
+  thinkingAtom,
+} from "@/atoms/chat";
 import api from "@/lib/api";
 import { useAttachmentProcessing } from "./use-attachment-processing";
 
@@ -19,6 +24,7 @@ export function useMessageSubmission({
   const [chatStatus, setChatStatus] = useAtom(chatStatusAtom);
   const [model] = useAtom(modelAtom);
   const [instructions] = useAtom(instructionsAtom);
+  const [thinking] = useAtom(thinkingAtom);
   const { processAttachments, clearAttachments } = useAttachmentProcessing();
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -79,6 +85,7 @@ export function useMessageSubmission({
           model: model.name,
           maxTokens: undefined,
           instructions: instructions || undefined,
+          thinking: model.name?.toLowerCase() === "auto" ? thinking : false,
         });
 
         clearAttachments();
@@ -98,6 +105,7 @@ export function useMessageSubmission({
       onMessageAdd,
       model.name,
       instructions,
+      thinking,
       clearAttachments,
       onError,
       setChatStatus,

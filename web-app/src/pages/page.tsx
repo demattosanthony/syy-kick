@@ -11,6 +11,7 @@ import {
   modelAtom,
   chatStatusAtom,
   instructionsAtom,
+  thinkingAtom,
   pendingThreadAtom,
   isPendingThreadAtom,
   PendingThread,
@@ -51,24 +52,25 @@ export function HomePage() {
   const { data: user, isFetched: userFetched } = useMeQuery();
 
   const navigate = useNavigate();
-  const [initalInput, setInitalInput] = useAtom(initalInputAtom);
+  const [input, setInput] = useAtom(initalInputAtom);
   const [, setShowPricingDialog] = useAtom(pricingPlanDialogOpenAtom);
   const chatInputRef = useRef<ChatInputFormRef>(null);
   const [uploads, setUploads] = useAtom(uploadsAtom);
   const [selectedModel] = useAtom(modelAtom);
   const [, setChatStatus] = useAtom(chatStatusAtom);
   const [instructions] = useAtom(instructionsAtom);
+  const [thinking] = useAtom(thinkingAtom);
   const [isDownloadingSPFile, setIsDownloadingSPFile] = useState(false);
   const { processAttachments, clearAttachments } = useAttachmentProcessing();
   const [, setPendingThread] = useAtom(pendingThreadAtom);
   const [, setIsPendingThread] = useAtom(isPendingThreadAtom);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInitalInput(e.target.value);
+    setInput(e.target.value);
   };
 
   const handleSubmit = async () => {
-    if (initalInput.trim() === "" && uploads.length === 0) return;
+    if (input.trim() === "" && uploads.length === 0) return;
 
     // Require login
     if (!user) {
@@ -84,10 +86,11 @@ export function HomePage() {
     // Create pending thread state
     const pendingThread: PendingThread = {
       tempId,
-      initialMessage: initalInput.trim(),
+      initialMessage: input.trim(),
       uploads: [...uploads],
       model: selectedModel.name,
       instructions: instructions || undefined,
+      thinking: selectedModel.name?.toLowerCase() === "auto" ? thinking : false,
       status: "processing",
     };
 
@@ -97,7 +100,7 @@ export function HomePage() {
     setChatStatus("submitted");
 
     // Clear input and attachments immediately for better UX
-    setInitalInput("");
+    setInput("");
     setUploads([]);
 
     // Navigate to pending thread
@@ -119,6 +122,8 @@ export function HomePage() {
         },
         model: selectedModel.name,
         instructions: instructions || undefined,
+        thinking:
+          selectedModel.name?.toLowerCase() === "auto" ? thinking : false,
       });
 
       // Update pending thread with actual thread ID
@@ -163,7 +168,7 @@ export function HomePage() {
               setPendingThread(null);
               setIsPendingThread(false);
               navigate("/");
-              setInitalInput(pendingThread.initialMessage);
+              setInput(pendingThread.initialMessage);
               setUploads(pendingThread.uploads);
             },
           },
@@ -245,8 +250,8 @@ export function HomePage() {
 
         <div className="flex flex-col w-full">
           <ChatInputForm
-            input={initalInput}
-            setInput={setInitalInput}
+            input={input}
+            setInput={setInput}
             handleInputChange={handleInputChange}
             ref={chatInputRef}
             onSubmit={handleSubmit}

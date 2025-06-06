@@ -122,7 +122,7 @@ export function ContextSelector({
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
-            className="text-xs px-2 font-normal  hover:bg-transparent hover:text-accent-foreground h-6 "
+            className="text-xs px-2 font-normal  hover:bg-transparent hover:text-accent-foreground h-6 border-none "
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

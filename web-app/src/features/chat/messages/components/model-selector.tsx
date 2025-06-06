@@ -65,10 +65,10 @@ const ModelSelector: React.FC = () => {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
+          variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="h-8 justify-between gap-0 p-2"
+          className="h-8 justify-between gap-0 p-2 px-3"
         >
           <div className="flex items-center">
             {/* {selectedModel.provider === "Auto" ? (
@@ -76,7 +76,7 @@ const ModelSelector: React.FC = () => {
             ) : (
               getModelImage(selectedModel.provider)
             )} */}
-            <div className="hidden md:flex truncate text-xs">
+            <div className="hidden md:flex truncate">
               {selectedModel.name || "Select model..."}
             </div>
           </div>

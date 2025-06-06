@@ -24,6 +24,7 @@ const inferenceSchema = z.object({
   temperature: z.number().optional(),
   instructions: z.string().optional(),
   workflowId: z.string().optional(),
+  thinking: z.boolean().optional(),
   // We'll also allow message data in here
   message: z.object({
     id: z.string().optional(),

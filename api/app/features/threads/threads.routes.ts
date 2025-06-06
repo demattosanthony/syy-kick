@@ -80,9 +80,8 @@ router.get(
 router.post(
   "/:threadId/messages",
   handle(async (req) => {
-    const { message, model, maxTokens, instructions } = inferenceSchema.parse(
-      req.body
-    );
+    const { message, model, maxTokens, instructions, thinking } =
+      inferenceSchema.parse(req.body);
     const { threadId } = req.params;
 
     // Store the user message and start inference asynchronously
@@ -93,7 +92,8 @@ router.post(
       model,
       maxTokens,
       instructions,
-      req.workspace
+      req.workspace,
+      thinking
     );
 
     return { success: true, message: "Message posted and inference started" };

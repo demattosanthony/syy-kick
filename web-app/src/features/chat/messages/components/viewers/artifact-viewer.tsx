@@ -531,7 +531,7 @@ const ArtifactViewer: React.FC<{
                               animate={{ opacity: [0.7, 1, 0.7] }}
                               transition={{ duration: 2, repeat: Infinity }}
                             >
-                              Generating document...
+                              Generating file...
                             </motion.div>
 
                             {/* Simulated Writing Lines */}

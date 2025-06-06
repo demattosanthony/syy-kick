@@ -136,10 +136,11 @@ function ChatInputForm(
       <Card
         ref={cardRef}
         className={cn(
-          "relative flex flex-col h-auto min-h-[115px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-3xl border shadow-sm",
+          "relative flex flex-col h-auto min-h-[130px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-3xl border shadow-sm",
           focused && !isMobile && "border-border border-[1.5px]",
           isDragging && "border-border border-[1.5px]",
-          hasThread && "min-h-[130px]"
+          hasThread && "min-h-[130px]",
+          !!hasThread && "min-h-[145px]"
         )}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -158,10 +159,10 @@ function ChatInputForm(
           <div className="flex flex-col flex-1 relative">
             {/* Drag message section above the input */}
             {isDragging && (
-              <div className="mb-2 w-full max-w-[640px] flex items-center justify-center border-2 border-dashed border-border rounded-lg py-2 bg-accent transition-all duration-200">
+              <div className="mb-2 w-full max-w-[640px] flex items-center justify-center border-2 border-dashed border-border rounded-lg py-4 bg-accent transition-all duration-200">
                 <span className="text-sm text-muted-foreground flex items-center gap-2">
                   <svg
-                    className="w-5 h-5 text-muted-foreground"
+                    className="w-5 h-8 text-muted-foreground"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

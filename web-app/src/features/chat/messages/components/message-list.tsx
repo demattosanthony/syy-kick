@@ -101,7 +101,6 @@ import {
   AssistantSkeletonMessage,
   UserSkeletonMessage,
 } from "./message-skeletons";
-import { Loader } from "@/components/ui/loader";
 import { ChatContainer } from "@/components/ui/chat-container";
 import { ScrollButton } from "@/components/ui/scroll-button";
 import logo from "@/assets/logo192.png";
@@ -110,10 +109,13 @@ const LoadingMessage = React.memo(() => (
   <div className="mb-4 mt flex flex-col justify-start">
     <div className="flex items-center">
       <div className="w-[22px] h-[22px] mr-2">
-        <img src={logo} width={22} height={22} alt="" />
-      </div>
-      <div className="flex h-full items-start justify-center">
-        <Loader variant="text-shimmer" text={"Thinking..."} size="lg" />
+        <img
+          src={logo}
+          width={22}
+          height={22}
+          alt=""
+          className="animate-spin"
+        />
       </div>
     </div>
   </div>

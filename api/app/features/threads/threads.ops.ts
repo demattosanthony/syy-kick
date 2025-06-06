@@ -32,6 +32,7 @@ import { createSharepointToolSet } from "../tools/tool-definitions";
 import { MARKITDOWN_MIME_TYPES } from "../../config/constants";
 import { Workspace } from "../auth/auth.types";
 import { ArtifactService } from "../workflows/artifact-service";
+import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
 
 const eventEmitter = new EventEmitter();
 
@@ -351,7 +352,8 @@ const threadsOps = {
     model: string,
     maxTokens?: number,
     instructions?: string,
-    workspace?: Workspace
+    workspace?: Workspace,
+    thinking?: boolean
   ) {
     // 1) Store the user message
     if (message) {
@@ -371,7 +373,8 @@ const threadsOps = {
           model,
           maxTokens,
           instructions,
-          workspace
+          workspace,
+          thinking
         );
       } catch (error) {
         console.error("Error during background inference:", error);
@@ -406,7 +409,8 @@ const threadsOps = {
     model: string,
     maxTokens?: number,
     instructions?: string,
-    workspace?: Workspace
+    workspace?: Workspace,
+    thinking?: boolean
   ) {
     const controller = new AbortController();
     let inferenceCompleteEmitted = false;
@@ -509,14 +513,33 @@ const threadsOps = {
             store: false,
             reasoningSummary: "auto",
           },
-          ...(modelConfig.provider === "anthropic" &&
-          (modelConfig.model.modelId.includes("claude-3-7") ||
-            modelConfig.model.modelId.includes("claude-4"))
-            ? {
-                anthropic: {
-                  thinking: { type: "enabled", budgetTokens: 24_000 },
-                },
-              }
+          ...(modelConfig.provider === "anthropic"
+            ? (() => {
+                // If model is "Auto" and thinking is true, enable thinking with budget 35_000
+                if (model.toLowerCase() === "auto" && thinking) {
+                  return {
+                    anthropic: {
+                      thinking: { type: "enabled", budgetTokens: 35_000 },
+                    } satisfies AnthropicProviderOptions,
+                  };
+                }
+                // If it's not auto model, thinking is always false, but still set thinking enabled
+                else if (model.toLowerCase() !== "auto") {
+                  return {
+                    anthropic: {
+                      thinking: { type: "enabled", budgetTokens: 24_000 },
+                    } satisfies AnthropicProviderOptions,
+                  };
+                }
+                // For auto model with thinking false, disable thinking
+                else {
+                  return {
+                    anthropic: {
+                      thinking: { type: "disabled", budgetTokens: 0 },
+                    } satisfies AnthropicProviderOptions,
+                  };
+                }
+              })()
             : {}),
           google: {
             thinkingConfig: {

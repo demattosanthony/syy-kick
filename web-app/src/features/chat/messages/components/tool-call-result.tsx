@@ -197,7 +197,7 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
   const [open, setOpen] = React.useState(false);
   const hasResults = tool.state === "result" && tool.result;
   const toolResponse = hasResults ? tool.result : undefined;
-  const sources: Array<string | { url?: string; title?: string }> =
+  const sources: Array<{ url?: string; title?: string; snippet?: string }> =
     toolResponse?.sources || [];
   const resultCount = sources.length;
   const queries: string[] = toolResponse?.queries || [];
@@ -211,37 +211,32 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
   const formatUrl = (url: string) => {
     try {
       const urlObj = new URL(url);
-      return urlObj.origin.replace(/^https?:\/\//, "").replace(/^www\./, "");
+      return urlObj.hostname.replace(/^www\./, "");
     } catch (e) {
       return url;
     }
   };
 
-  const getSourceUrl = (source: any): string =>
-    typeof source === "string" ? source : source?.url || "";
+  const getSourceUrl = (source: any): string => source?.url || "";
 
   const getSourceTitle = (source: any): string => {
-    if (typeof source === "string") return formatUrl(source);
-    if (source?.title) return source.title;
-    if (source?.url) return formatUrl(source.url);
+    if (
+      source?.title &&
+      source.title !== `Source ${sources.indexOf(source) + 1}`
+    ) {
+      return source.title;
+    }
+    if (source?.url) {
+      return formatUrl(source.url);
+    }
     return "Unknown source";
   };
 
   const getFaviconUrl = (source: any) => {
     try {
-      if (source.title?.includes(".")) {
-        return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(
-          source.title
-        )}&sz=32`;
-      }
       const url = getSourceUrl(source);
+      if (!url) return null;
       const urlObj = new URL(url);
-      if (
-        urlObj.hostname.includes("vertexaisearch.cloud.google.com") ||
-        urlObj.pathname.includes("grounding-api-redirect")
-      ) {
-        return null;
-      }
       return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(
         urlObj.hostname
       )}&sz=32`;
@@ -250,19 +245,11 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
     }
   };
 
-  // Clean text content by removing the "Sources" section if it exists
-  const cleanTextContent = (text: string): string => {
-    // Regular expression to match the "Sources" section at the end of the text
-    const sourcesRegex = /\n+## Sources\n([\s\S]*?)$/;
-    return text.replace(sourcesRegex, "");
-  };
-
   // Process inline citations to make them clickable
   const processCitations = (text: string): string => {
     if (!text || !sources.length) return text;
 
     // Regular expression to find citation patterns like [1], [2], etc.
-    // Using a regex with lookahead and lookbehind to avoid replacing citations inside markdown links
     const citationRegex = /(?<!\]\()(\[\d+\])(?!\))/g;
 
     return text.replace(citationRegex, (match) => {
@@ -328,7 +315,16 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
       </SheetTrigger>
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>Search Results</SheetTitle>
+          <SheetTitle>Web Search Results</SheetTitle>
+          <SheetDescription>
+            Results for "{tool.args?.query}"
+            {tool.args?.specific_domain && (
+              <span className="text-muted-foreground">
+                {" "}
+                from {tool.args.specific_domain}
+              </span>
+            )}
+          </SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-4 h-[calc(100vh-100px)] overflow-hidden mt-4">
           <div className="flex-1 overflow-y-auto pr-2">
@@ -337,7 +333,7 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                 {queries?.length > 0 && (
                   <div className="border-b border-border pb-3 mb-3">
                     <h4 className="text-xs uppercase font-medium text-muted-foreground mb-2">
-                      Search Queries
+                      Search Query
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {queries.map((query, idx) => (
@@ -353,9 +349,7 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                 )}
                 <div className="text-sm prose prose-sm max-w-none">
                   <MarkdownViewer
-                    content={processCitations(
-                      cleanTextContent(toolResponse.text)
-                    )}
+                    content={processCitations(toolResponse.text)}
                   />
                 </div>
                 {sources.length > 0 && (
@@ -367,6 +361,8 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                       {sources.map((source, idx) => {
                         const url = getSourceUrl(source);
                         const title = getSourceTitle(source);
+                        if (!url) return null;
+
                         return (
                           <a
                             href={url}
@@ -399,6 +395,11 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                               <div className="text-xs text-muted-foreground truncate">
                                 {formatUrl(url)}
                               </div>
+                              {source.snippet && (
+                                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                  {source.snippet}
+                                </div>
+                              )}
                             </div>
                           </a>
                         );
@@ -763,14 +764,14 @@ const SharepointListTool = ({ tool }: { tool: ToolInvocation }) => {
                           </div>
                           <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
                             <span className="capitalize">{item.type}</span>
-                            {item.size && (
+                            {/* {item.size && (
                               <>
                                 <span>•</span>
                                 <span>
                                   {(item.size / 1024 / 1024).toFixed(1)}MB
                                 </span>
                               </>
-                            )}
+                            )} */}
                             {item.lastModified && (
                               <>
                                 <span>•</span>

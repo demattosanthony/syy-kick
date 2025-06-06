@@ -2,7 +2,7 @@ import { IntegrationButton } from "@/features/integrations/components/integratio
 import { useGetIntegrationsQuery } from "@/features/integrations/api/get-integrations";
 import { useState } from "react";
 import api from "@/lib/api";
-import microsoft365Logo from "@/assets/logos/microsoft-365.svg";
+import sharepointLogo from "@/assets/logos/sharepoint.svg";
 
 export function IntegrationsPage() {
   const { data: integrations, isLoading, refetch } = useGetIntegrationsQuery();
@@ -53,9 +53,9 @@ export function IntegrationsPage() {
   // This could be fetched from an API in the future
   const availableIntegrations = [
     {
-      name: "Microsoft 365",
-      description: "Connect to Microsoft 365 to access your files.",
-      logo: microsoft365Logo,
+      name: "SharePoint",
+      description: "Connect to SharePoint to access your files.",
+      logo: sharepointLogo,
       provider: "microsoft",
     },
   ];
