@@ -13,7 +13,7 @@ export default function ChatAttachment({
 }) {
   return useMemo(() => {
     const contentType = attachment.contentType || "";
-    const index = Math.random();
+    const stableKey = `${attachment.name}-${attachment.url}`;
 
     switch (true) {
       case contentType.startsWith("image"):
@@ -22,11 +22,10 @@ export default function ChatAttachment({
             <Dialog>
               <DialogTrigger asChild>
                 <div
-                  key={`img-${attachment.name}-${index}`}
+                  key={`img-${stableKey}`}
                   className="cursor-pointer bg-[#242628] dark:bg-input p-2 rounded-lg"
                 >
                   <img
-                    key={index}
                     src={attachment.url}
                     alt="user attachment"
                     className="overflow-hidden rounded-lg h-52 max-w-[400px] object-contain"
@@ -37,7 +36,6 @@ export default function ChatAttachment({
                 <DialogTitle className="hidden" />
                 <div className="relative w-full h-full overflow-auto">
                   <img
-                    key={index}
                     src={attachment.url}
                     alt="user attachment"
                     className="w-full object-contain"
@@ -51,7 +49,7 @@ export default function ChatAttachment({
       case contentType === "application/pdf":
         return (
           <div
-            key={`pdf-${attachment.name}-${index}`}
+            key={`pdf-${stableKey}`}
             className="bg-[#242628] dark:bg-input p-2 rounded-lg"
           >
             <PdfThumbnail url={attachment.url || ""} />
@@ -59,8 +57,8 @@ export default function ChatAttachment({
         );
       default:
         return (
-          <div key={`file-${attachment.name}-${index}`}>
-            <Link key={index} to={attachment.url || ""} target="_blank">
+          <div key={`file-${stableKey}`}>
+            <Link to={attachment.url || ""} target="_blank">
               <div className="flex flex-col bg-[#242628] dark:bg-input  text-white rounded-2xl p-3 hover:opacity-90 transition-opacity">
                 <div className="flex items-center gap-2 ">
                   <File className="w-4 h-4" />

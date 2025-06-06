@@ -7,10 +7,14 @@ import { EventEmitter } from "events";
 // Internal configuration
 import db from "../../config/db";
 import {
-  messageAttachments,
   messages,
   threads,
   toolCalls as toolCallsTable,
+  files,
+  messagesFiles,
+  filePages as filePagesTable,
+  filePageChunks,
+  filePageImages,
 } from "../../config/schema";
 
 // Internal features
@@ -24,7 +28,7 @@ import {
   processAttachments,
   createAndSaveThreadTitle,
 } from "./threads.utils";
-import { FilePage, markitdown } from "../../doc-processor-v2";
+import { processFile } from "../../doc-processor-v2";
 import s3 from "../../config/s3";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { MicrosoftAPI } from "../../config/microsoft";
@@ -70,7 +74,7 @@ const threadsOps = {
     return { id };
   },
 
-  /** Creates a new message in DB with optional embedding and attachments. */
+  /** Creates a new message in DB with optional embedding and file attachments. */
   async createMessage(
     userId: string,
     threadId: string,
@@ -101,39 +105,121 @@ const threadsOps = {
       createdAt: new Date(),
     });
 
-    // Insert attachments if any
+    // Process file attachments if any
     if (message.experimental_attachments?.length) {
+      const artifactService = new ArtifactService(threadId);
+
       for (const attachment of message.experimental_attachments) {
-        // convert attachment to markdown
-        let filePage: FilePage | null = null;
-        if (MARKITDOWN_MIME_TYPES.includes(attachment.contentType!)) {
+        try {
+          // Download the file from S3
           const attachmentBuffer = await s3
             .file(attachment.file_key)
             .arrayBuffer();
-          filePage = await markitdown(
-            Buffer.from(attachmentBuffer),
-            attachment.name || ""
+          const buffer = Buffer.from(attachmentBuffer);
+
+          // Determine the file path for storage
+          const fileName =
+            attachment.name ||
+            attachment.file_key.split("/").pop() ||
+            "unknown";
+          const mimeType = attachment.contentType || "application/octet-stream";
+
+          // Insert into files table
+          const [insertedFile] = await db
+            .insert(files)
+            .values({
+              name: fileName,
+              mimeType,
+              size: buffer.length,
+              type: "file",
+              syyclops_path: attachment.file_key,
+              file_origin_type: "syyclops",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .returning();
+
+          // Link file to message
+          await db.insert(messagesFiles).values({
+            messageId,
+            fileId: insertedFile.id,
+          });
+
+          // Process file with document pipeline
+          try {
+            const processedFilePages = await processFile(
+              buffer,
+              fileName,
+              mimeType
+            );
+
+            // Store processed file pages in database
+            for (const pageData of processedFilePages) {
+              const [insertedPage] = await db
+                .insert(filePagesTable)
+                .values({
+                  fileId: insertedFile.id,
+                  pageNumber: pageData.pageNumber,
+                })
+                .returning();
+
+              // Store chunks for this page
+              if (pageData.chunks && pageData.chunks.length > 0) {
+                const chunkValues = pageData.chunks.map((chunk) => ({
+                  filePageId: insertedPage.id,
+                  content: chunk.content,
+                  position: chunk.position,
+                }));
+                await db.insert(filePageChunks).values(chunkValues);
+              }
+
+              // Store images for this page
+              if (pageData.images && pageData.images.length > 0) {
+                const imageValues = pageData.images.map((image) => ({
+                  filePageId: insertedPage.id,
+                  name: image.name,
+                  imagePath: image.path,
+                }));
+                await db.insert(filePageImages).values(imageValues);
+              }
+            }
+
+            // For large documents (PDFs, documents), add to artifact service
+            // and don't include directly in inference
+            const isLargeDocument =
+              mimeType === "application/pdf" ||
+              MARKITDOWN_MIME_TYPES.includes(mimeType);
+
+            if (isLargeDocument && processedFilePages.length > 0) {
+              // Add to artifact service for agent access
+              const content = processedFilePages
+                .map((page) =>
+                  page.chunks.map((chunk) => chunk.content).join("\n")
+                )
+                .join("\n\n");
+
+              await artifactService.saveArtifact(fileName, {
+                data: new TextEncoder().encode(content),
+                mimeType: "text/markdown",
+              });
+            }
+          } catch (processingError) {
+            console.error(
+              `Error processing file ${fileName}:`,
+              processingError
+            );
+            // Continue even if processing fails - the file is still stored
+          }
+        } catch (error) {
+          console.error(
+            `Error handling attachment ${attachment.file_key}:`,
+            error
           );
+          // Continue processing other attachments
         }
-
-        const markdownContent = filePage?.chunks
-          .map((chunk) => chunk.content)
-          .join("\n");
-
-        await db.insert(messageAttachments).values({
-          messageId,
-          fileName: attachment.name,
-          mimeType: attachment.contentType,
-          fileKey: attachment.file_key,
-          type: attachment.contentType?.includes("image")
-            ? "image"
-            : attachment.contentType?.includes("markdown")
-              ? "markdown"
-              : "file",
-          markdown: markdownContent,
-        });
       }
     }
+
     return { message: "Message created successfully" };
   },
 
@@ -154,26 +240,46 @@ const threadsOps = {
       where: eq(messages.threadId, threadId),
       orderBy: messages.createdAt,
       with: {
-        attachments: true,
         toolCalls: true,
       },
     });
 
-    // Process attachments for each message to add URLs
+    // Get file attachments for each message separately since relations aren't set up yet
     const processedMessages = [];
     for (const msg of threadMessages) {
-      // Map database attachments to MessageAttachment type
-      const mappedAttachments = msg.attachments.map((att) => ({
-        ...att,
-        fileName: att.fileName || undefined,
-        mimeType: att.mimeType || undefined,
-        size: att.size || undefined,
-      }));
+      // Get files for this message
+      const messageFiles = await db.query.messagesFiles.findMany({
+        where: eq(messagesFiles.messageId, msg.id),
+      });
 
-      const processedAttachments = await processAttachments(mappedAttachments);
+      // Get the actual file records
+      const attachments = [];
+      for (const msgFile of messageFiles) {
+        const file = await db.query.files.findFirst({
+          where: eq(files.id, msgFile.fileId),
+        });
+
+        if (file) {
+          attachments.push({
+            id: msgFile.id,
+            messageId: msg.id,
+            type: file.mimeType?.includes("image") ? "image" : "file",
+            fileKey: file.syyclops_path || "",
+            fileName: file.name,
+            mimeType: file.mimeType,
+            size: file.size,
+            url: file.syyclops_path
+              ? s3.file(file.syyclops_path).presign({ expiresIn: 3600 })
+              : undefined,
+            createdAt: file.createdAt,
+            updatedAt: file.updatedAt,
+          });
+        }
+      }
+
       processedMessages.push({
         ...msg,
-        attachments: processedAttachments,
+        attachments,
       });
     }
 
@@ -339,7 +445,19 @@ const threadsOps = {
   async postMessageAndStartInference(
     userId: string,
     threadId: string,
-    message: any,
+    message: {
+      id?: string | undefined;
+      role?: "system" | "user" | "assistant" | "tool" | undefined;
+      content?: string | undefined;
+      experimental_attachments?:
+        | {
+            file_key: string;
+            name?: string | undefined;
+            url?: any;
+            contentType?: string | undefined;
+          }[]
+        | undefined;
+    },
     model: string,
     maxTokens?: number,
     instructions?: string,
@@ -442,7 +560,6 @@ const threadsOps = {
           organization: true,
           messages: {
             with: {
-              attachments: true,
               toolCalls: true,
             },
             orderBy: messages.createdAt,
@@ -464,6 +581,8 @@ const threadsOps = {
         { id: userId } as any,
         instructions && instructions.length > 0 ? instructions : undefined
       );
+
+      console.log("inferenceMsgs", inferenceMsgs);
 
       if (!thread.title) {
         createAndSaveThreadTitle(threadId, inferenceMsgs);
@@ -771,7 +890,7 @@ const threadsOps = {
             // Emit message complete event for this step
             const finalStepMessage = await db.query.messages.findFirst({
               where: eq(messages.id, currentMsgId),
-              with: { attachments: true, toolCalls: true },
+              with: { toolCalls: true },
             });
             eventEmitter.emit(`thread-${threadId}-message`, {
               type: "message-complete",
@@ -907,7 +1026,7 @@ const threadsOps = {
     const originalMessages = await db.query.messages.findMany({
       where: eq(messages.threadId, threadId),
       orderBy: messages.createdAt,
-      with: { attachments: true, toolCalls: true },
+      with: { toolCalls: true },
     });
 
     // Clone all messages with embeddings
@@ -937,23 +1056,21 @@ const threadsOps = {
       insertedMessages.push(insertedMsg);
     }
 
-    // Now handle attachments and tool calls for each message
+    // Now handle files and tool calls for each message
     for (let i = 0; i < originalMessages.length; i++) {
       const sourceMsg = originalMessages[i];
       const newMsg = insertedMessages[i];
 
-      // Clone attachments
-      if (sourceMsg.attachments && sourceMsg.attachments.length > 0) {
-        for (const att of sourceMsg.attachments) {
-          await db.insert(messageAttachments).values({
-            messageId: newMsg.id,
-            fileName: att.fileName || null,
-            mimeType: att.mimeType || null,
-            fileKey: att.fileKey,
-            type: att.type || null,
-            size: att.size || null,
-          });
-        }
+      // Clone file relationships by querying messagesFiles directly
+      const messageFiles = await db.query.messagesFiles.findMany({
+        where: eq(messagesFiles.messageId, sourceMsg.id),
+      });
+
+      for (const msgFile of messageFiles) {
+        await db.insert(messagesFiles).values({
+          messageId: newMsg.id,
+          fileId: msgFile.fileId,
+        });
       }
 
       // Clone tool calls

@@ -55,41 +55,77 @@ const MessageBubble = ({
 
 import ChatAttachment from "./chat-attachment";
 
-const UserMessage = React.memo(({ message }: { message: Message }) => {
-  const [copied, setCopied] = React.useState<boolean>(false);
+const UserMessage = React.memo(
+  ({ message }: { message: Message }) => {
+    const [copied, setCopied] = React.useState<boolean>(false);
 
-  const handleCopy = () => {
-    if (message.content) {
-      navigator.clipboard.writeText(message.content).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      });
-    }
-  };
+    const handleCopy = () => {
+      if (message.content) {
+        navigator.clipboard.writeText(message.content).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        });
+      }
+    };
 
-  return (
-    <div className="mb-2">
-      {message.experimental_attachments &&
-        message.experimental_attachments.length > 0 && (
-          <div className="flex justify-end mb-2">
-            <div className="flex flex-col gap-2 items-end">
-              {message.experimental_attachments.map((attachment, idx) => (
-                <ChatAttachment key={idx} attachment={attachment} />
-              ))}
+    return (
+      <div className="mb-2">
+        {message.experimental_attachments &&
+          message.experimental_attachments.length > 0 && (
+            <div className="flex justify-end mb-2">
+              <div className="flex flex-col gap-2 items-end">
+                {message.experimental_attachments.map((attachment, idx) => (
+                  <ChatAttachment
+                    key={`${attachment.name}-${attachment.url}-${idx}`}
+                    attachment={attachment}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+        {message.content && (
+          <MessageBubble
+            content={message.content || ""}
+            isUser={true}
+            onCopy={handleCopy}
+            copied={copied}
+          />
         )}
-      {message.content && (
-        <MessageBubble
-          content={message.content || ""}
-          isUser={true}
-          onCopy={handleCopy}
-          copied={copied}
-        />
-      )}
-    </div>
-  );
-});
+      </div>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison function to prevent unnecessary re-renders
+    const prevMessage = prevProps.message;
+    const nextMessage = nextProps.message;
+
+    // Compare message content
+    if (prevMessage.content !== nextMessage.content) {
+      return false;
+    }
+
+    // Compare attachments
+    const prevAttachments = prevMessage.experimental_attachments || [];
+    const nextAttachments = nextMessage.experimental_attachments || [];
+
+    if (prevAttachments.length !== nextAttachments.length) {
+      return false;
+    }
+
+    // Deep compare attachments
+    for (let i = 0; i < prevAttachments.length; i++) {
+      if (
+        prevAttachments[i].name !== nextAttachments[i].name ||
+        prevAttachments[i].url !== nextAttachments[i].url ||
+        prevAttachments[i].contentType !== nextAttachments[i].contentType
+      ) {
+        return false;
+      }
+    }
+
+    return true; // Props are equal, skip re-render
+  }
+);
 
 UserMessage.displayName = "UserMessage";
 

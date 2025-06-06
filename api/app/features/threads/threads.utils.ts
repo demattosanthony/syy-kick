@@ -17,6 +17,10 @@ import {
   threads,
   toolCalls,
   User,
+  files,
+  messagesFiles,
+  filePages,
+  filePageChunks,
 } from "../../config/schema";
 
 // Internal utilities
@@ -503,9 +507,11 @@ function parseSearchResults(markdown: string): Array<{
 
 async function processThreadMessages(thread: ThreadWithMessages | null) {
   if (!thread) return null;
-  for (const msg of thread.messages) {
-    msg.attachments = await processAttachments(msg.attachments);
 
+  // Messages should already have attachments processed from getThreadMessages
+  // Since getThreadMessages now handles file attachments, we don't need to process them again
+  for (const msg of thread.messages) {
+    // Just ensure tool calls are mapped correctly
     msg.toolCalls = msg.toolCalls?.map((call) => call);
   }
 
@@ -720,13 +726,12 @@ You understand the critical relationships between design decisions and long-term
 
 /**
  * Directly transforms database messages into inference messages format
- * in a single function, handling attachments, tool calls, and content formatting.
+ * in a single function, handling file attachments, tool calls, and content formatting.
  */
 async function dbMessagesToInferenceMessages(
   dbMsgs: Array<
     typeof messages.$inferSelect & {
       toolCalls: Array<typeof toolCalls.$inferSelect>;
-      attachments: Array<typeof messageAttachments.$inferSelect>;
     }
   >,
   modelConfig: {
@@ -754,17 +759,27 @@ async function dbMessagesToInferenceMessages(
   for (let i = 0; i < dbMsgs.length; i++) {
     const msg = dbMsgs[i];
 
-    // Skip messages with unsupported attachments
-    if (
-      !isAttachmentSupported(msg.attachments, modelConfig.supportedMimeTypes)
-    ) {
-      continue;
+    // Get file attachments for this message
+    const messageFileRecs = await db.query.messagesFiles.findMany({
+      where: eq(messagesFiles.messageId, msg.id),
+    });
+
+    const messageFiles = [];
+    for (const msgFile of messageFileRecs) {
+      const file = await db.query.files.findFirst({
+        where: eq(files.id, msgFile.fileId),
+      });
+      if (file) {
+        messageFiles.push(file);
+      }
     }
 
     // Handle assistant messages with tool calls
     if (msg.role === "assistant" && msg.toolCalls.length > 0) {
       // Add assistant message with tool calls
-      inferenceMessages.push(await createAssistantMessage(msg, modelConfig));
+      inferenceMessages.push(
+        await createAssistantMessageWithFiles(msg, messageFiles, modelConfig)
+      );
 
       // Add tool response message if there are completed calls
       const toolMessage = await createToolMessage(msg, modelConfig);
@@ -773,7 +788,9 @@ async function dbMessagesToInferenceMessages(
       }
     } else {
       // Process regular message
-      inferenceMessages.push(await createRegularMessage(msg, modelConfig));
+      inferenceMessages.push(
+        await createRegularMessageWithFiles(msg, messageFiles, modelConfig)
+      );
     }
   }
 
@@ -781,28 +798,13 @@ async function dbMessagesToInferenceMessages(
 }
 
 /**
- * Determines if all attachments in a message are supported by the model
+ * Creates an assistant message with tool calls and files
  */
-function isAttachmentSupported(
-  attachments: Array<typeof messageAttachments.$inferSelect>,
-  supportedMimeTypes?: string[]
-): boolean {
-  if (!attachments.length) return true; // No attachments, so supported
-
-  // Check if all attachments are supported
-  return attachments.every((attachment) =>
-    supportedMimeTypes?.includes(attachment.mimeType || "")
-  );
-}
-
-/**
- * Creates an assistant message with tool calls
- */
-async function createAssistantMessage(
+async function createAssistantMessageWithFiles(
   msg: typeof messages.$inferSelect & {
     toolCalls: Array<typeof toolCalls.$inferSelect>;
-    attachments: Array<typeof messageAttachments.$inferSelect>;
   },
+  messageFiles: Array<typeof files.$inferSelect>,
   modelConfig: any
 ): Promise<CoreMessage> {
   const chunks = [];
@@ -822,9 +824,12 @@ async function createAssistantMessage(
     });
   }
 
-  // Process attachments
-  const attachmentChunks = await createAttachmentMessages(msg.attachments);
-  chunks.push(...attachmentChunks);
+  // Process file attachments
+  const fileChunks = await createFileAttachmentMessages(
+    messageFiles,
+    modelConfig
+  );
+  chunks.push(...fileChunks);
 
   return {
     role: "assistant",
@@ -838,7 +843,6 @@ async function createAssistantMessage(
 async function createToolMessage(
   msg: typeof messages.$inferSelect & {
     toolCalls: Array<typeof toolCalls.$inferSelect>;
-    attachments: Array<typeof messageAttachments.$inferSelect>;
   },
   modelConfig: {
     model: {
@@ -873,13 +877,11 @@ async function createToolMessage(
 }
 
 /**
- * Creates a regular message (not an assistant with tool calls)
+ * Creates a regular message (not an assistant with tool calls) with files
  */
-async function createRegularMessage(
-  msg: typeof messages.$inferSelect & {
-    toolCalls: Array<typeof toolCalls.$inferSelect>;
-    attachments: Array<typeof messageAttachments.$inferSelect>;
-  },
+async function createRegularMessageWithFiles(
+  msg: typeof messages.$inferSelect,
+  messageFiles: Array<typeof files.$inferSelect>,
   modelConfig: any
 ): Promise<CoreMessage> {
   const chunks = [];
@@ -889,9 +891,12 @@ async function createRegularMessage(
     chunks.push({ type: "text", text: msg.text });
   }
 
-  // Process attachments
-  const attachmentChunks = await createAttachmentMessages(msg.attachments);
-  chunks.push(...attachmentChunks);
+  // Process file attachments
+  const fileChunks = await createFileAttachmentMessages(
+    messageFiles,
+    modelConfig
+  );
+  chunks.push(...fileChunks);
 
   return {
     id: msg.id,
@@ -901,41 +906,80 @@ async function createRegularMessage(
 }
 
 /**
- * Process attachments into appropriate chunks
+ * Process file attachments into appropriate chunks
+ * Implements smart logic for direct inclusion vs artifact service
  */
-async function createAttachmentMessages(
-  attachments: Array<typeof messageAttachments.$inferSelect>
+async function createFileAttachmentMessages(
+  messageFiles: Array<typeof files.$inferSelect>,
+  modelConfig: any
 ): Promise<any[]> {
   const chunks = [];
+  const artifactFiles = [];
 
-  for (const att of attachments) {
-    const data = await generateAttachmentData(att.fileKey, att.mimeType!, true);
+  for (const file of messageFiles) {
+    const isImage = file.mimeType?.includes("image");
+    const isPdf = file.mimeType === "application/pdf";
+    const isDocument = MARKITDOWN_MIME_TYPES.includes(file.mimeType || "");
 
-    if (MARKITDOWN_MIME_TYPES.includes(att.mimeType!)) {
-      chunks.push({
-        type: "text",
-        text: `<file_attachment>
-    <file_name>
-        ${att.fileName}
-    </file_name>
-    <markdown>
-        ${att.markdown}
-    </markdown>
-</file_attachment>`,
-      });
-    } else if (att.mimeType?.includes("image")) {
-      chunks.push({
-        type: "image",
-        image: data,
-        mimeType: att.mimeType,
-      });
-    } else {
-      chunks.push({
-        type: "file",
-        data,
-        mimeType: att.mimeType,
-      });
+    // Direct inclusion for images (if supported by model)
+    if (
+      isImage &&
+      modelConfig.supportedMimeTypes?.includes(file.mimeType || "")
+    ) {
+      try {
+        const data = await generateAttachmentData(
+          file.syyclops_path || "",
+          file.mimeType || "",
+          true
+        );
+        chunks.push({
+          type: "image",
+          image: data,
+          mimeType: file.mimeType,
+        });
+      } catch (error) {
+        console.error(`Error loading image file ${file.name}:`, error);
+      }
     }
+    // Large documents go to artifact service
+    else if (isPdf || isDocument) {
+      artifactFiles.push(file);
+    }
+    // Other files - include basic info
+    else {
+      try {
+        const data = await generateAttachmentData(
+          file.syyclops_path || "",
+          file.mimeType || "",
+          true
+        );
+        chunks.push({
+          type: "file",
+          data,
+          mimeType: file.mimeType,
+        });
+      } catch (error) {
+        console.error(`Error loading file ${file.name}:`, error);
+      }
+    }
+  }
+
+  // Add artifact service prompting for large documents
+  if (artifactFiles.length > 0) {
+    const fileList = artifactFiles
+      .map((f) => `- ${f.name} (${f.mimeType})`)
+      .join("\n");
+
+    chunks.push({
+      type: "text",
+      text: `<file_attachments_notice>
+The following file attachments have been processed and are available through the artifact service:
+
+${fileList}
+
+These files have been processed and their content extracted. You can access their content using the create_artifact tool or by asking me to search through them. The files contain text, images, and structured data that I can analyze and work with.
+</file_attachments_notice>`,
+    });
   }
 
   return chunks;

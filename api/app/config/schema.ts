@@ -524,8 +524,19 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     fields: [messages.userId],
     references: [users.id],
   }),
-  attachments: many(messageAttachments),
+  files: many(messagesFiles),
   toolCalls: many(toolCalls),
+}));
+
+export const messagesFilesRelations = relations(messagesFiles, ({ one }) => ({
+  message: one(messages, {
+    fields: [messagesFiles.messageId],
+    references: [messages.id],
+  }),
+  file: one(files, {
+    fields: [messagesFiles.fileId],
+    references: [files.id],
+  }),
 }));
 
 export const messageAttachmentsRelations = relations(
