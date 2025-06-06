@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 interface ThinkingDropdownProps {
   children: React.ReactNode;
   autoClose?: boolean;
+  reasoningDurationSeconds?: number;
 }
 
 const ThinkingDropdown = ({
   children,
   autoClose = false,
+  reasoningDurationSeconds,
 }: ThinkingDropdownProps) => {
   const [isOpen, setIsOpen] = React.useState(true);
 
@@ -19,6 +21,15 @@ const ThinkingDropdown = ({
       setIsOpen(false);
     }
   }, [autoClose]);
+
+  const getDisplayText = () => {
+    if (reasoningDurationSeconds) {
+      return isOpen
+        ? "Hide thoughts"
+        : `Thought for ${reasoningDurationSeconds}s`;
+    }
+    return isOpen ? "Hide thoughts" : "Show thoughts";
+  };
 
   return (
     <div className="w-fit rounded-lg">
@@ -30,9 +41,7 @@ const ThinkingDropdown = ({
       >
         <div className="flex items-center gap-2">
           {/* <Lightbulb className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors duration-200" /> */}
-          <span className="font-bold">
-            {isOpen ? "Hide thoughts" : "Show thoughts"}
-          </span>
+          <span className="font-bold">{getDisplayText()}</span>
         </div>
         {isOpen ? (
           <ChevronDown className="h-3 w-3 transition-transform duration-200" />

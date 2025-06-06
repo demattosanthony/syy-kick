@@ -68,6 +68,7 @@ export function convertChatMessagesToMessages(
           contentType: att.mimeType,
           url: att.url,
         })) || [],
+      reasoningDurationSeconds: msg.reasoningDurationSeconds,
     } as Message;
   });
 }

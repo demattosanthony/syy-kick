@@ -358,6 +358,27 @@ const handleMessageError = (
   setChatStatus("ready");
 };
 
+const handleReasoningDuration = (
+  data: any,
+  { onMessagesUpdate }: EventHandlers
+) => {
+  onMessagesUpdate((prev) =>
+    addOrUpdateMessage(
+      prev,
+      data.messageId,
+      (msg) => ({ ...msg, reasoningDurationSeconds: data.durationSeconds }),
+      () =>
+        createMessage(
+          data.messageId,
+          MessageRole.assistant,
+          "",
+          undefined,
+          undefined
+        )
+    )
+  );
+};
+
 const handleToolCallDelta = (
   data: any,
   { setChatStatus, onMessagesUpdate }: EventHandlers
@@ -395,6 +416,7 @@ const eventHandlers = {
   "message-complete": handleMessageComplete,
   "tool-call": handleToolCall,
   "reasoning-delta": handleReasoningDelta,
+  "reasoning-duration": handleReasoningDuration,
   "tool-call-chunk": handleToolCallChunk,
   "tool-call-streaming-start": handleToolCallStreamingStart,
   "tool-call-delta": handleToolCallDelta,

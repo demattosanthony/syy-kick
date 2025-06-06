@@ -49,6 +49,7 @@ interface ActiveStreamData {
   role: "assistant"; // Typically always assistant for this cache
   model?: string;
   provider?: string;
+  reasoningStartTime?: Date;
 }
 const activeStreamCache = new Map<string, ActiveStreamData>();
 
@@ -805,6 +806,12 @@ const threadsOps = {
             // Ensure we have a message for reasoning content
             await ensureAssistantMessage();
 
+            // Track reasoning start time if this is the first reasoning chunk
+            if (!currentStepState.reasoningStartTime) {
+              currentStepState.reasoningStartTime = new Date();
+              activeStreamCache.set(threadId, currentStepState);
+            }
+
             // Handle reasoning chunks (for models that support thinking)
             eventEmitter.emit(`thread-${threadId}-message`, {
               type: "reasoning-delta",
@@ -914,14 +921,35 @@ const threadsOps = {
             const fullAccumulatedText =
               currentStepState.accumulatedResponseText;
 
+            // Calculate reasoning duration if we have reasoning start time
+            let reasoningDurationSeconds: number | null = null;
+            if (currentStepState.reasoningStartTime && reasoning) {
+              const reasoningEndTime = new Date();
+              reasoningDurationSeconds = Math.round(
+                (reasoningEndTime.getTime() -
+                  currentStepState.reasoningStartTime.getTime()) /
+                  1000
+              );
+            }
+
             // Persist the final accumulated text and reasoning to DB
             await db
               .update(messages)
               .set({
                 text: fullAccumulatedText,
                 reasoning,
+                reasoningDurationSeconds,
               })
               .where(eq(messages.id, currentMsgId));
+
+            // Emit reasoning duration if we have it
+            if (reasoningDurationSeconds !== null) {
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "reasoning-duration",
+                messageId: currentMsgId,
+                durationSeconds: reasoningDurationSeconds,
+              });
+            }
 
             // Handle tool calls for this step
             if (toolCalls && toolCalls.length > 0) {
@@ -1001,6 +1029,7 @@ const threadsOps = {
               role: "assistant",
               model: model,
               provider: modelConfig.provider,
+              reasoningStartTime: undefined,
             };
             activeStreamCache.set(threadId, currentStepState);
           } else if (finishReason === "stop" || finishReason === "length") {

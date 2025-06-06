@@ -55,6 +55,9 @@ const MessageContentComponent: React.FC<{
               <ThinkingDropdown
                 key={`reasoning-${index}`}
                 autoClose={shouldAutoCloseThinking}
+                reasoningDurationSeconds={
+                  (message as any).reasoningDurationSeconds
+                }
               >
                 <MarkdownViewer content={part.reasoning} />
               </ThinkingDropdown>

@@ -55,6 +55,7 @@ export type ChatMessage = {
   model?: string;
   provider?: string;
   reasoning?: string;
+  reasoningDurationSeconds?: number;
 };
 
 export type FileUploadMimeType = "image" | "pdf" | "other";

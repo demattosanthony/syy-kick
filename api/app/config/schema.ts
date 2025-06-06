@@ -337,6 +337,7 @@ export const messages = pgTable(
     role: text("role", { enum: MESSAGE_ROLES }).notNull(),
     text: text("text"),
     reasoning: text("reasoning"),
+    reasoningDurationSeconds: integer("reasoning_duration_seconds"),
     model: text("model"),
     provider: text("provider"),
     embedding: vector("embedding", { dimensions: 1536 }),
