@@ -212,6 +212,7 @@ export const files = pgTable("files", {
   mimeType: text("mime_type").notNull(),
   size: integer("size"),
   type: text("type", { enum: ["file", "folder"] }).notNull(),
+  fileHash: varchar("file_hash", { length: 255 }),
   syyclops_path: text("syyclops_path"),
   sharepoint_path: text("sharepoint_path"),
   google_drive_path: text("google_drive_path"),

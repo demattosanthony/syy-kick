@@ -3,6 +3,7 @@ import { streamText } from "ai";
 import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { Request, Response } from "express";
 import { EventEmitter } from "events";
+import crypto from "crypto";
 
 // Internal configuration
 import db from "../../config/db";
@@ -111,11 +112,22 @@ const threadsOps = {
 
       for (const attachment of message.experimental_attachments) {
         try {
+          console.log(
+            `📎 [ThreadsOps] Processing attachment: ${attachment.name || attachment.file_key}`
+          );
+
           // Download the file from S3
           const attachmentBuffer = await s3
             .file(attachment.file_key)
             .arrayBuffer();
           const buffer = Buffer.from(attachmentBuffer);
+
+          // Calculate file hash for deduplication
+          const fileHash = crypto
+            .createHash("sha256")
+            .update(buffer)
+            .digest("hex");
+          console.log(`🔑 [ThreadsOps] File hash: ${fileHash}`);
 
           // Determine the file path for storage
           const fileName =
@@ -124,95 +136,175 @@ const threadsOps = {
             "unknown";
           const mimeType = attachment.contentType || "application/octet-stream";
 
-          // Insert into files table
-          const [insertedFile] = await db
-            .insert(files)
-            .values({
-              name: fileName,
-              mimeType,
-              size: buffer.length,
-              type: "file",
-              syyclops_path: attachment.file_key,
-              file_origin_type: "syyclops",
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .returning();
-
-          // Link file to message
-          await db.insert(messagesFiles).values({
-            messageId,
-            fileId: insertedFile.id,
+          // Check if file with same hash already exists
+          const existingFile = await db.query.files.findFirst({
+            where: eq(files.fileHash, fileHash),
           });
 
-          // Process file with document pipeline
-          try {
-            const processedFilePages = await processFile(
-              buffer,
-              fileName,
-              mimeType
+          let fileToLink;
+
+          if (existingFile) {
+            console.log(
+              `♻️ [ThreadsOps] File already exists (ID: ${existingFile.id}), reusing existing file`
             );
+            fileToLink = existingFile;
 
-            // Store processed file pages in database
-            for (const pageData of processedFilePages) {
-              const [insertedPage] = await db
-                .insert(filePagesTable)
-                .values({
-                  fileId: insertedFile.id,
-                  pageNumber: pageData.pageNumber,
-                })
-                .returning();
-
-              // Store chunks for this page
-              if (pageData.chunks && pageData.chunks.length > 0) {
-                const chunkValues = pageData.chunks.map((chunk) => ({
-                  filePageId: insertedPage.id,
-                  content: chunk.content,
-                  position: chunk.position,
-                }));
-                await db.insert(filePageChunks).values(chunkValues);
-              }
-
-              // Store images for this page
-              if (pageData.images && pageData.images.length > 0) {
-                const imageValues = pageData.images.map((image) => ({
-                  filePageId: insertedPage.id,
-                  name: image.name,
-                  imagePath: image.path,
-                }));
-                await db.insert(filePageImages).values(imageValues);
-              }
-            }
-
-            // For large documents (PDFs, documents), add to artifact service
-            // and don't include directly in inference
+            // Check if we need to add to artifact service for this thread
             const isLargeDocument =
               mimeType === "application/pdf" ||
               MARKITDOWN_MIME_TYPES.includes(mimeType);
 
-            if (isLargeDocument && processedFilePages.length > 0) {
-              // Add to artifact service for agent access
-              const content = processedFilePages
-                .map((page) =>
-                  page.chunks.map((chunk) => chunk.content).join("\n")
-                )
-                .join("\n\n");
+            if (isLargeDocument) {
+              // Check if already exists in artifact service for this thread
+              const existingArtifact =
+                await artifactService.loadArtifact(fileName);
 
-              await artifactService.saveArtifact(fileName, {
-                data: new TextEncoder().encode(content),
-                mimeType: "text/markdown",
-              });
+              if (!existingArtifact) {
+                console.log(
+                  `📄 [ThreadsOps] Adding existing file to artifact service for thread ${threadId}`
+                );
+
+                // Get content from existing file pages
+                const pages = await db.query.filePages.findMany({
+                  where: eq(filePagesTable.fileId, existingFile.id),
+                  with: {
+                    chunks: {
+                      orderBy: (chunks, { asc }) => [asc(chunks.position)],
+                    },
+                  },
+                  orderBy: (pages, { asc }) => [asc(pages.pageNumber)],
+                });
+
+                if (pages.length > 0) {
+                  const content = pages
+                    .map((page) =>
+                      page.chunks.map((chunk) => chunk.content).join("\n")
+                    )
+                    .join("\n\n");
+
+                  await artifactService.saveArtifact(fileName, {
+                    data: new TextEncoder().encode(content),
+                    mimeType: "text/markdown",
+                  });
+                }
+              } else {
+                console.log(
+                  `✅ [ThreadsOps] File already exists in artifact service for this thread`
+                );
+              }
             }
-          } catch (processingError) {
-            console.error(
-              `Error processing file ${fileName}:`,
-              processingError
+          } else {
+            console.log(
+              `🆕 [ThreadsOps] New file detected, storing and processing`
             );
-            // Continue even if processing fails - the file is still stored
+
+            // Insert new file into files table
+            const [insertedFile] = await db
+              .insert(files)
+              .values({
+                name: fileName,
+                mimeType,
+                size: buffer.length,
+                type: "file",
+                fileHash: fileHash,
+                syyclops_path: attachment.file_key,
+                file_origin_type: "syyclops",
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .returning();
+
+            fileToLink = insertedFile;
+
+            // Process file with document pipeline
+            try {
+              console.log(
+                `⚙️ [ThreadsOps] Processing file content for: ${fileName}`
+              );
+              const processedFilePages = await processFile(
+                buffer,
+                fileName,
+                mimeType
+              );
+
+              // Store processed file pages in database
+              for (const pageData of processedFilePages) {
+                const [insertedPage] = await db
+                  .insert(filePagesTable)
+                  .values({
+                    fileId: insertedFile.id,
+                    pageNumber: pageData.pageNumber,
+                  })
+                  .returning();
+
+                // Store chunks for this page
+                if (pageData.chunks && pageData.chunks.length > 0) {
+                  const chunkValues = pageData.chunks.map((chunk) => ({
+                    filePageId: insertedPage.id,
+                    content: chunk.content,
+                    position: chunk.position,
+                  }));
+                  await db.insert(filePageChunks).values(chunkValues);
+                }
+
+                // Store images for this page
+                if (pageData.images && pageData.images.length > 0) {
+                  const imageValues = pageData.images.map((image) => ({
+                    filePageId: insertedPage.id,
+                    name: image.name,
+                    imagePath: image.path,
+                  }));
+                  await db.insert(filePageImages).values(imageValues);
+                }
+              }
+
+              console.log(
+                `✅ [ThreadsOps] File processing completed: ${processedFilePages.length} pages processed`
+              );
+
+              // For large documents (PDFs, documents), add to artifact service
+              const isLargeDocument =
+                mimeType === "application/pdf" ||
+                MARKITDOWN_MIME_TYPES.includes(mimeType);
+
+              if (isLargeDocument && processedFilePages.length > 0) {
+                console.log(
+                  `📄 [ThreadsOps] Adding large document to artifact service: ${fileName}`
+                );
+
+                // Add to artifact service for agent access
+                const content = processedFilePages
+                  .map((page) =>
+                    page.chunks.map((chunk) => chunk.content).join("\n")
+                  )
+                  .join("\n\n");
+
+                await artifactService.saveArtifact(fileName, {
+                  data: new TextEncoder().encode(content),
+                  mimeType: "text/markdown",
+                });
+              }
+            } catch (processingError) {
+              console.error(
+                `❌ [ThreadsOps] Error processing file ${fileName}:`,
+                processingError
+              );
+              // Continue even if processing fails - the file is still stored
+            }
           }
+
+          // Link file to message (always create this relationship)
+          await db.insert(messagesFiles).values({
+            messageId,
+            fileId: fileToLink.id,
+          });
+
+          console.log(
+            `🔗 [ThreadsOps] File linked to message: ${fileName} -> Message ${messageId}`
+          );
         } catch (error) {
           console.error(
-            `Error handling attachment ${attachment.file_key}:`,
+            `❌ [ThreadsOps] Error handling attachment ${attachment.file_key}:`,
             error
           );
           // Continue processing other attachments
