@@ -37,6 +37,8 @@ import {
   House,
   LucideIcon,
   ChevronRight,
+  FileIcon,
+  FolderIcon,
 } from "lucide-react";
 import { Link, useLocation } from "react-router";
 import { NewThreadButton } from "./new-thread-button";
@@ -142,6 +144,15 @@ export function AppSidebar({
                   />
                 )}
               </SidebarMenuItem> */}
+
+              <SidebarMenuItem>
+                <SidebarButton
+                  href="/files"
+                  label="Files"
+                  icon={FolderIcon}
+                  hoverIcon={FolderIcon}
+                />
+              </SidebarMenuItem>
 
               <SidebarMenuItem>
                 <SidebarButton

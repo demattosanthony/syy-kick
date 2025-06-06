@@ -24,6 +24,7 @@ import {
   ForbiddenPage,
   LandingPage,
   IntegrationsPage,
+  FilesPage,
 } from "./pages";
 import { Providers } from "./providers";
 import MainAppLayout from "./components/layouts/main-app-layout";
@@ -140,6 +141,7 @@ const router = createBrowserRouter([
           { path: "sites", element: <SitesPage /> },
           { path: "settings", element: <UserSettings /> },
           { path: "integrations", element: <IntegrationsPage /> },
+          { path: "files", element: <FilesPage /> },
         ],
       },
       {

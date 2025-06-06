@@ -19,6 +19,7 @@ import { Organization, User } from "@/types/user";
 import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
 import { Comment } from "@/features/workflows/features/runs/features/comments/types";
 import { AccessToken } from "@/features/integrations/types";
+import { SyyclopsFile } from "@/features/files/types/files";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
@@ -854,6 +855,50 @@ class IntegrationsApi extends ApiRequest {
   }
 }
 
+class FilesApi extends ApiRequest {
+  async getFiles(options?: {
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    files: SyyclopsFile[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+
+    if (options?.search) {
+      queryParams.append("search", options.search);
+    }
+
+    if (options?.page !== undefined) {
+      queryParams.append("page", options.page.toString());
+    }
+
+    if (options?.limit !== undefined) {
+      queryParams.append("limit", options.limit.toString());
+    }
+
+    return await this.request<{
+      files: SyyclopsFile[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+      };
+    }>(`/files?${queryParams.toString()}`);
+  }
+}
+
 /**
  *  Centralized ApiClient class that uses the modules
  */
@@ -869,6 +914,7 @@ class ApiClient {
   permissions: PermissionsApi;
   sites: SitesApi;
   integrations: IntegrationsApi;
+  files: FilesApi;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -882,6 +928,7 @@ class ApiClient {
     this.permissions = new PermissionsApi(baseUrl);
     this.sites = new SitesApi(baseUrl);
     this.integrations = new IntegrationsApi(baseUrl);
+    this.files = new FilesApi(baseUrl);
   }
 }
 

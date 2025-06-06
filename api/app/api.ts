@@ -19,6 +19,7 @@ import analyticsRoutes from "./features/analytics/analytics.routes";
 import sitesRoutes from "./features/sites/sites.routes";
 import toolsRoutes from "./features/tools/tools.routes";
 import integrationsRoutes from "./features/integrations/integrations.routes";
+import filesRoutes from "./features/files/files.routes";
 
 export default Router()
   .use("/auth", authRoutes)
@@ -87,6 +88,7 @@ export default Router()
   .use("/sites", auth, checkSub, sitesRoutes)
   .use("/workflows", auth, workflowRoutes)
   .use("/tools", auth, toolsRoutes)
+  .use("/files", auth, filesRoutes)
   .post(
     "/presigned-url",
     auth,
