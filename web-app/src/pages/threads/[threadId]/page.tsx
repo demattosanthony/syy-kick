@@ -32,7 +32,7 @@ export function ThreadPage() {
   // For regular threads, use existing queries
   const queryThreadId = isPendingThreadId ? "" : (threadId as string);
   const { data: thread } = useThreadQuery(queryThreadId, {
-    enabled: queryThreadId !== "",
+    enabled: !isPendingThreadId && !!threadId && queryThreadId !== "",
   });
 
   const {
@@ -40,7 +40,7 @@ export function ThreadPage() {
     isFetching,
     isRefetching,
   } = useThreadMessagesQuery(queryThreadId, {
-    enabled: queryThreadId !== "",
+    enabled: !isPendingThreadId && !!threadId && queryThreadId !== "",
   });
 
   const optimisticMessage = useMemo((): ChatMessage | null => {

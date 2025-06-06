@@ -38,10 +38,13 @@ export default function ThreadHeader() {
   const [shareLinkCopied, setShareLinkCopied] = React.useState(false);
 
   const threadId = params.threadId as string;
+  const isPendingThread = threadId?.startsWith("pending-");
 
   const [, setMessages] = useAtom(messagesAtom);
 
-  const { data: thread } = useThreadQuery(threadId);
+  const { data: thread } = useThreadQuery(threadId, {
+    enabled: !isPendingThread && !!threadId,
+  });
 
   const handleCopyShareLink = async () => {
     if (!thread) return;

@@ -162,7 +162,7 @@ function ChatInputForm(
               <div className="mb-2 w-full max-w-[640px] flex items-center justify-center border-2 border-dashed border-border rounded-lg py-4 bg-accent transition-all duration-200">
                 <span className="text-sm text-muted-foreground flex items-center gap-2">
                   <svg
-                    className="w-5 h-8 text-muted-foreground"
+                    className="w-5 h-5 text-muted-foreground"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -181,16 +181,18 @@ function ChatInputForm(
             )}
 
             <FileUploadSection uploads={uploads} removeUpload={removeUpload} />
-            <TextInputArea
-              input={input}
-              handleInputChange={handleInputChange}
-              handleKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              isGenerating={isGenerating}
-              textAreaRef={textAreaRef}
-              setFocused={setFocused}
-              processFiles={processFiles}
-            />
+            <div className="min-h-[65px]">
+              <TextInputArea
+                input={input}
+                handleInputChange={handleInputChange}
+                handleKeyDown={handleKeyDown}
+                placeholder={placeholder}
+                isGenerating={isGenerating}
+                textAreaRef={textAreaRef}
+                setFocused={setFocused}
+                processFiles={processFiles}
+              />
+            </div>
           </div>
           <ActionButtons
             isGenerating={isGenerating}
