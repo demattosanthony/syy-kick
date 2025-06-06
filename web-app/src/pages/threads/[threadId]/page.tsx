@@ -64,7 +64,9 @@ export function ThreadPage() {
             type: upload.type === "image" ? "image" : "file",
             fileKey: "pending", // Placeholder
             url: attachmentUrl,
+            name: upload.file.name,
             fileName: upload.file.name,
+            contentType: upload.file.type,
             mimeType: upload.file.type,
             size: upload.file.size,
             createdAt: new Date(),

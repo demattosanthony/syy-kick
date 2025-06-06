@@ -630,6 +630,31 @@ Your comprehensive knowledge encompasses:
 
 ---
 
+## File Attachment Understanding
+
+When users attach files, you'll encounter two distinct categories that require different handling approaches:
+
+### **Document Attachments**
+- **Content**: Text-based files including PDFs with primarily textual content, Word documents, Excel spreadsheets, PowerPoint presentations, and other office documents
+- **Processing**: Full text extraction and OCR processing, with content stored in searchable format
+- **Access Methods**: 
+  - Use \`search_file_content\` tool for finding specific information within the document
+  - Use \`load_file_content\` tool for reading specific pages or sections
+  - Content is available through the artifact service for analysis and reference
+
+### **Drawing Attachments** 
+- **Content**: Engineering drawings, architectural plans, schematics, diagrams, and other primarily visual/graphical documents
+- **Processing**: Converted to high-quality images with minimal text extraction (drawings are visual by nature)
+- **Access Methods**:
+  - **IMPORTANT**: \`search_file_content\` tool will NOT work effectively for drawings since they contain primarily visual information stored as images
+  - **Use \`load_file_content\` tool exclusively** for drawings to paginate through and view specific pages/sheets
+  - Each page is available as a high-resolution image for visual analysis
+  - Focus on visual interpretation of plans, details, schedules, and graphical information
+
+When working with drawing attachments, always use the \`load_file_content\` tool to navigate through the drawing set page by page. Use page ranges to efficiently review large drawing sets.
+
+---
+
 ## Project Lifecycle Integration
 
 You understand the critical relationships between design decisions and long-term operational outcomes:
@@ -661,7 +686,7 @@ You understand the critical relationships between design decisions and long-term
 2. **Use Tools Strategically**:
 
    * **Web Search & Citation**: For rapidly evolving topics (new protocols, cybersecurity advisories, product releases), proactively search the web. Use standard markdown citation format with links (e.g., "[Source Title](URL)") for factual claims pulled from search results. At least one citation per major statement; two or more for deep analyses.
-   * **Artifact Creation**: For deliverables like detailed project plans, technical specifications, or long-form documents (>15 lines), generate a Canvas artifact using **canmore.create\_textdoc**. Name artifacts descriptively (e.g., \`HVAC_Integration_Report.md\`).
+   * **Artifact Creation**: For deliverables like detailed project plans, technical specifications, or long-form documents (>15 lines), generate a Canvas artifact using **canmore.create_textdoc**. Name artifacts descriptively (e.g., \`HVAC_Integration_Report.md\`).
 
 3. **Memory & Personalization**:
 
@@ -915,11 +940,13 @@ async function createFileAttachmentMessages(
 ): Promise<any[]> {
   const chunks = [];
   const artifactFiles = [];
+  const drawingFiles = [];
 
   for (const file of messageFiles) {
     const isImage = file.mimeType?.includes("image");
     const isPdf = file.mimeType === "application/pdf";
     const isDocument = MARKITDOWN_MIME_TYPES.includes(file.mimeType || "");
+    const isDrawing = file.category === "drawing";
 
     // Direct inclusion for images (if supported by model)
     if (
@@ -940,6 +967,10 @@ async function createFileAttachmentMessages(
       } catch (error) {
         console.error(`Error loading image file ${file.name}:`, error);
       }
+    }
+    // Drawing files (PDFs categorized as drawings)
+    else if (isDrawing && isPdf) {
+      drawingFiles.push(file);
     }
     // Large documents go to artifact service
     else if (isPdf || isDocument) {
@@ -964,21 +995,50 @@ async function createFileAttachmentMessages(
     }
   }
 
-  // Add artifact service prompting for large documents
-  if (artifactFiles.length > 0) {
-    const fileList = artifactFiles
-      .map((f) => `- ${f.name} (${f.mimeType})`)
+  // Add notice for drawing files
+  if (drawingFiles.length > 0) {
+    const drawingList = drawingFiles
+      .map((f) => `- ${f.name} (Engineering Drawing - ${f.mimeType})`)
       .join("\n");
 
     chunks.push({
       type: "text",
-      text: `<file_attachments_notice>
-The following file attachments have been processed and are available through the artifact service:
+      text: `<drawing_attachments_notice>
+The following engineering drawing files have been processed and are available as high-resolution images:
+
+${drawingList}
+
+These are visual/graphical documents (architectural plans, engineering drawings, schematics, etc.) that have been converted to images for analysis. To access these drawings:
+
+- Use the \`load_file_content\` tool to navigate through the drawing pages
+- Specify page ranges to view specific sheets or details
+- Each page is available as a high-resolution image for visual interpretation
+- NOTE: \`search_file_content\` will NOT work effectively for these drawings since they contain primarily visual information
+
+Ask me to examine specific sheets, details, or areas of interest within these drawing sets.
+</drawing_attachments_notice>`,
+    });
+  }
+
+  // Add artifact service prompting for regular documents
+  if (artifactFiles.length > 0) {
+    const fileList = artifactFiles
+      .map((f) => `- ${f.name} (Document - ${f.mimeType})`)
+      .join("\n");
+
+    chunks.push({
+      type: "text",
+      text: `<document_attachments_notice>
+The following document files have been processed and are available through the artifact service:
 
 ${fileList}
 
-These files have been processed and their content extracted. You can access their content using the create_artifact tool or by asking me to search through them. The files contain text, images, and structured data that I can analyze and work with.
-</file_attachments_notice>`,
+These files have been processed with text extraction and OCR. You can access their content using:
+
+- \`search_file_content\` tool to find specific information within the documents
+- \`load_file_content\` tool to read specific pages or sections
+- Content is available for analysis, reference, and text-based operations
+</document_attachments_notice>`,
     });
   }
 

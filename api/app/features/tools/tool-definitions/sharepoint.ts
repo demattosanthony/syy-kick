@@ -1,7 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { Client } from "@microsoft/microsoft-graph-client";
 import { FilePage, processFile } from "../../../doc-processor-v2";
 
 import { eq } from "drizzle-orm";
@@ -184,7 +183,7 @@ const downloadAndProcessFile = async (
   const blob = await response.blob();
   const buffer = Buffer.from(await blob.arrayBuffer());
 
-  const filePages = await processFile(
+  const { pages: filePages } = await processFile(
     buffer,
     file.name,
     file.file?.mimeType || "application/octet-stream"

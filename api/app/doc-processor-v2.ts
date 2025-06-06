@@ -27,6 +27,11 @@ export type FilePage = {
   images?: FilePageImage[];
 };
 
+export type ProcessFileResult = {
+  pages: FilePage[];
+  category?: "drawing" | "document";
+};
+
 const textSplitter = new CharacterTextSplitter({
   chunkSize: 1024,
   chunkOverlap: 0,
@@ -36,7 +41,7 @@ export async function processFile(
   fileContent: Buffer,
   fileName: string,
   mimeType: string
-): Promise<FilePage[]> {
+): Promise<ProcessFileResult> {
   // Add validation for fileContent
   console.log(`📄 [ProcessFile] Processing file: ${fileName} (${mimeType})`);
   console.log(`📊 [ProcessFile] File size: ${fileContent?.length || 0} bytes`);
@@ -51,7 +56,7 @@ export async function processFile(
     );
 
     const images = await convertPdfToImages(fileContent, {
-      firstPageOnly: true,
+      pageRange: "1-2",
     });
 
     // Validate that we got at least one image
@@ -61,17 +66,27 @@ export async function processFile(
       );
     }
 
-    const firstPage = images[0];
-    if (!firstPage || !firstPage.base64) {
+    // Get first two pages (or just first page if only one exists)
+    const firstTwoPages = images.slice(0, 2);
+
+    if (!firstTwoPages[0] || !firstTwoPages[0].base64) {
       throw new Error("First page conversion failed - missing base64 data");
     }
 
-    const firstPageBuffer = Buffer.from(firstPage.base64, "base64");
-    const firstPageBase64 = firstPageBuffer.toString("base64");
-    const firstPageMimeType = "image/png";
-
-    // save locally for testing
-    // await Bun.write("./first-page.png", firstPageBuffer);
+    // Prepare images for classification
+    const imageContent = firstTwoPages
+      .map((page, index) => [
+        {
+          type: "text" as const,
+          text: `Here is page ${index + 1} of the pdf`,
+        },
+        {
+          type: "image" as const,
+          image: page.base64,
+          mimeType: "image/png" as const,
+        },
+      ])
+      .flat();
 
     const { object } = await generateObject({
       model: openai("gpt-4.1-mini"),
@@ -81,24 +96,14 @@ export async function processFile(
           content: `You are a helpful assistant that classifies pdfs into two categories: drawing and document.
 The purpose of this is to determine which extraction process to run based on if its an engineering drawing or a regular document.
 
-The first page of the pdf is provided to you.
+The first ${firstTwoPages.length} page${firstTwoPages.length > 1 ? "s" : ""} of the pdf ${firstTwoPages.length > 1 ? "are" : "is"} provided to you.
 
-If the first page is an engineering drawing, return "drawing".
-If the first page is a regular document, return "document".`,
+If the pdf contains engineering drawings, return "drawing".
+If the pdf is a regular document, return "document".`,
         },
         {
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Here is the first page of the pdf",
-            },
-            {
-              type: "image",
-              image: firstPageBase64,
-              mimeType: firstPageMimeType,
-            },
-          ],
+          content: imageContent,
         },
       ],
       schema: z.object({
@@ -106,7 +111,7 @@ If the first page is a regular document, return "document".`,
       }),
     });
 
-    console.log("object", object);
+    console.log("Classification result:", object);
 
     // If its an engineering drawing, we want to turn all the pages into images
     if (object.category === "drawing") {
@@ -136,22 +141,22 @@ If the first page is a regular document, return "document".`,
         });
       }
 
-      return filePages;
+      return { pages: filePages, category: "drawing" };
     }
 
     // If its a regular pdf doc we want to run OCR on it
     if (object.category === "document") {
       const filePages = await processPdf(fileContent, mimeType);
-      return filePages;
+      return { pages: filePages, category: "document" };
     }
   }
 
   if (MARKITDOWN_MIME_TYPES.includes(mimeType)) {
     const page = await markitdown(fileContent, fileName);
-    return [page];
+    return { pages: [page], category: "document" };
   }
 
-  return [];
+  return { pages: [], category: undefined };
 }
 
 export async function markitdown(
@@ -202,6 +207,14 @@ export async function processPdf(
   input: Buffer,
   mimeType: string
 ): Promise<FilePage[]> {
+  return processPdfWithOptions(input, mimeType, true);
+}
+
+export async function processPdfWithOptions(
+  input: Buffer,
+  mimeType: string,
+  includeImages: boolean = true
+): Promise<FilePage[]> {
   // Convert buffer to base64 string
   const base64String = Buffer.from(input).toString("base64");
 
@@ -211,7 +224,7 @@ export async function processPdf(
       documentUrl: `data:${mimeType};base64,${base64String}`,
       type: "document_url",
     },
-    includeImageBase64: true,
+    includeImageBase64: includeImages,
   });
 
   let filePages: FilePage[] = [];
@@ -234,53 +247,56 @@ export async function processPdf(
         position: index,
       };
 
-      // Find the images in the chunk
-      // If there is an image in the chunk, it will look like this:
-      // ![image_id.jpeg](image_id.jpeg)
-      // We need to extract the image_id and the path to the image
-      const imageRegex = /!\[(.*?)\]\((.*?)\)/g;
-      const imagesInChunk = chunk.match(imageRegex);
+      // Only process images if includeImages is true
+      if (includeImages) {
+        // Find the images in the chunk
+        // If there is an image in the chunk, it will look like this:
+        // ![image_id.jpeg](image_id.jpeg)
+        // We need to extract the image_id and the path to the image
+        const imageRegex = /!\[(.*?)\]\((.*?)\)/g;
+        const imagesInChunk = chunk.match(imageRegex);
 
-      if (imagesInChunk) {
-        for (const image of imagesInChunk) {
-          const imageId = image.split("(")[1].split(")")[0];
+        if (imagesInChunk) {
+          for (const image of imagesInChunk) {
+            const imageId = image.split("(")[1].split(")")[0];
 
-          // Try to find the image in the pageImages
-          const foundImage = pageImages.find((img) => img.id === imageId);
-          console.log("foundImage", foundImage?.id);
+            // Try to find the image in the pageImages
+            const foundImage = pageImages.find((img) => img.id === imageId);
+            console.log("foundImage", foundImage?.id);
 
-          if (foundImage && foundImage.imageBase64) {
-            try {
-              // Extract base64 data, removing any prefix if present
-              let imageBase64 = foundImage.imageBase64;
-              if (imageBase64.includes(",")) {
-                imageBase64 = imageBase64.split(",", 2)[1];
+            if (foundImage && foundImage.imageBase64) {
+              try {
+                // Extract base64 data, removing any prefix if present
+                let imageBase64 = foundImage.imageBase64;
+                if (imageBase64.includes(",")) {
+                  imageBase64 = imageBase64.split(",", 2)[1];
+                }
+                const imageBuffer = Buffer.from(imageBase64, "base64");
+                const uuid = crypto.randomUUID();
+                const fileKey = `files/images/${uuid.split("-")[0]}-${imageId}`;
+
+                const file = s3.file(fileKey);
+                await file.write(imageBuffer, {
+                  type: "image/jpeg",
+                });
+
+                const url = s3.presign(fileKey, { expiresIn: 60 * 60 * 24 });
+                console.log("url", url);
+
+                filePageChunk.images = [
+                  ...(filePageChunk.images || []),
+                  {
+                    name: foundImage.id,
+                    path: fileKey,
+                    size: imageBuffer.length,
+                  },
+                ];
+              } catch (error) {
+                console.error(
+                  `Failed to process or upload image ${foundImage.id}:`,
+                  error
+                );
               }
-              const imageBuffer = Buffer.from(imageBase64, "base64");
-              const uuid = crypto.randomUUID();
-              const fileKey = `files/images/${uuid.split("-")[0]}-${imageId}`;
-
-              const file = s3.file(fileKey);
-              await file.write(imageBuffer, {
-                type: "image/jpeg",
-              });
-
-              const url = s3.presign(fileKey, { expiresIn: 60 * 60 * 24 });
-              console.log("url", url);
-
-              filePageChunk.images = [
-                ...(filePageChunk.images || []),
-                {
-                  name: foundImage.id,
-                  path: fileKey,
-                  size: imageBuffer.length,
-                },
-              ];
-            } catch (error) {
-              console.error(
-                `Failed to process or upload image ${foundImage.id}:`,
-                error
-              );
             }
           }
         }

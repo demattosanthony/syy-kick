@@ -15,7 +15,8 @@ export default function ChatAttachment({
   const [pdfError, setPdfError] = useState(false);
 
   return useMemo(() => {
-    const contentType = attachment.contentType || "";
+    const contentType =
+      attachment.contentType || (attachment as any).mimeType || "";
     const stableKey = `${attachment.name}-${attachment.url}`;
     const isBlob = attachment.url?.startsWith("blob:");
 
@@ -82,9 +83,9 @@ export default function ChatAttachment({
                 className="flex items-center justify-center h-32 w-[200px] bg-muted rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => window.open(attachment.url, "_blank")}
               >
-                <div className="text-center text-muted-foreground">
+                <div className="text-center text-muted-foreground max-w-[195px]">
                   <File className="w-8 h-8 mx-auto mb-2" />
-                  <p className="text-sm">{attachment.name}</p>
+                  <p className="text-sm truncate">{attachment.name}</p>
                   <p className="text-xs">Click to open</p>
                 </div>
               </div>

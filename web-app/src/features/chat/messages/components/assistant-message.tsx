@@ -104,8 +104,9 @@ MessageContentComponent.displayName = "MessageContentComponent";
 const AssistantMessage: React.FC<{
   message: AIMessage;
   showEye: boolean;
+  showActions: boolean;
   messages: AIMessage[];
-}> = ({ message, showEye, messages }) => {
+}> = ({ message, showEye, showActions, messages }) => {
   const [copied, setCopied] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
 
@@ -144,26 +145,28 @@ const AssistantMessage: React.FC<{
           <MessageContentComponent message={message} messages={messages} />
         </div>
 
-        <MessageActions
-          className={`self-start transition-opacity duration-200 ${
-            isHovering ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <MessageAction tooltip={copied ? "Copied!" : "Copy to clipboard"}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full"
-              onClick={handleCopy}
-            >
-              {copied ? (
-                <Check className="size-4 text-green-500" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-            </Button>
-          </MessageAction>
-        </MessageActions>
+        {showActions && (
+          <MessageActions
+            className={`self-start transition-opacity duration-200 ${
+              isHovering ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <MessageAction tooltip={copied ? "Copied!" : "Copy to clipboard"}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full"
+                onClick={handleCopy}
+              >
+                {copied ? (
+                  <Check className="size-4 text-green-500" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
+              </Button>
+            </MessageAction>
+          </MessageActions>
+        )}
       </div>
     </Message>
   );

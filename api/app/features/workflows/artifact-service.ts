@@ -417,7 +417,9 @@ export class ArtifactService {
     ) {
       console.log(`🔖 [ArtifactService] Using PDF page-based pagination`);
       const start = Math.max((startPage || 1) - 1, 0); // Convert to 0-based
-      const end = Math.min((endPage || totalPages) - 1, totalPages - 1);
+      // If endPage is not provided, default to showing only the startPage
+      const defaultEndPage = startPage !== undefined ? startPage : totalPages;
+      const end = Math.min((endPage || defaultEndPage) - 1, totalPages - 1);
 
       console.log(
         `📖 [ArtifactService] Loading pages ${start + 1} to ${end + 1}`
@@ -731,7 +733,7 @@ export class ArtifactService {
   private loadArtifactTool(): Tool {
     return tool({
       description:
-        "Loads content from a file attachment with pagination support. This tool allows you to access processed file content in manageable chunks. For PDF files, you can specify page ranges. For other files, you can specify chunk ranges. Use this to read through large documents systematically. Can also return images of the pages when available.",
+        "Loads content from a file attachment with pagination support. This tool allows you to access processed file content in manageable chunks. For PDF files, you can specify page ranges. For other files, you can specify chunk ranges. Use this to read through large documents systematically. Can also return images of the pages when available. IMPORTANT: This is the PRIMARY tool to use for engineering drawings and files categorized as 'drawing' since they are stored as high-resolution images rather than searchable text. For drawing files, use page-based pagination to navigate through drawing sheets and examine specific details.",
       parameters: z.object({
         fileName: z
           .string()
@@ -740,13 +742,13 @@ export class ArtifactService {
           .number()
           .optional()
           .describe(
-            "For PDF files: starting page number (1-based). If not specified, shows first page."
+            "For PDF files and drawings: starting page number (1-based). If not specified, shows first page. Essential for navigating through drawing sets."
           ),
         endPage: z
           .number()
           .optional()
           .describe(
-            "For PDF files: ending page number (1-based). If not specified, shows only start page."
+            "For PDF files and drawings: ending page number (1-based). If not specified, shows only start page. Use for examining multiple drawing sheets at once."
           ),
         startChunk: z
           .number()
@@ -765,7 +767,7 @@ export class ArtifactService {
           .optional()
           .default(true)
           .describe(
-            "Whether to include page images in the response when available (useful for visual documents)."
+            "Whether to include page images in the response when available. Critical for drawing files where visual content is the primary information."
           ),
       }),
       execute: async ({
@@ -910,7 +912,7 @@ export class ArtifactService {
   private searchFileContentTool(): Tool {
     return tool({
       description:
-        "Searches through the content of a file attachment to find relevant information. This tool performs semantic search through the processed content and returns the most relevant chunks with their associated images when available. Use this when you need to find specific information within a large document.",
+        "Searches through the content of a file attachment to find relevant information. This tool performs semantic search through the processed content and returns the most relevant chunks with their associated images when available. Use this when you need to find specific information within a large document. NOTE: This tool is designed for text-based documents and will NOT work effectively for engineering drawings or files categorized as 'drawing' since they contain primarily visual/graphical information stored as images. For drawing files, use the load_file_content tool instead to paginate through and view specific pages.",
       parameters: z.object({
         fileName: z
           .string()

@@ -178,19 +178,35 @@ const ChatMessagesList = React.memo(
               // Show actual messages
               messages.map((message, index) => {
                 const nextMessage = messages[index + 1];
+                const prevMessage = messages[index - 1];
                 const showEye =
                   message.role !== MessageRole.user &&
                   (!nextMessage || nextMessage.role === MessageRole.user);
 
+                const showActions =
+                  message.role !== MessageRole.user &&
+                  (!nextMessage || nextMessage.role === MessageRole.user);
+
+                // Add spacing between consecutive assistant messages
+                const isConsecutiveAssistantMessage =
+                  message.role !== MessageRole.user &&
+                  prevMessage &&
+                  prevMessage.role !== MessageRole.user;
+
                 return message.role === MessageRole.user ? (
                   <UserMessage key={index} message={message} />
                 ) : (
-                  <AssistantMessage
+                  <div
                     key={index}
-                    message={message}
-                    showEye={showEye}
-                    messages={messages}
-                  />
+                    className={isConsecutiveAssistantMessage ? "mt-4" : ""}
+                  >
+                    <AssistantMessage
+                      message={message}
+                      showEye={showEye}
+                      showActions={showActions}
+                      messages={messages}
+                    />
+                  </div>
                 );
               })
             )}

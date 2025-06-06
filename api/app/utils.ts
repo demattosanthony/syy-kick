@@ -255,6 +255,8 @@ export interface PdfToImagesOptions {
   dpi?: number;
   /** When true, extract only page 1 */
   firstPageOnly?: boolean;
+  /** Page range to convert (e.g., "1-2", "1-5,8") */
+  pageRange?: string;
 }
 
 export interface PdfImageInfo {
@@ -271,6 +273,7 @@ export async function convertPdfToImages(
     maxDimension = 8000,
     dpi = 150,
     firstPageOnly = false,
+    pageRange,
   }: PdfToImagesOptions = {}
 ): Promise<PdfImageInfo[]> {
   try {
@@ -285,6 +288,7 @@ export async function convertPdfToImages(
       maxDimension,
       dpi,
       firstPageOnly,
+      pageRange,
       bufferSize: pdfData.length,
     });
 
@@ -299,6 +303,11 @@ export async function convertPdfToImages(
     // If only first page is requested, set page range
     if (firstPageOnly) {
       parameters.PageRange = "1-1";
+    }
+
+    // If page range is provided, set it
+    if (pageRange) {
+      parameters.PageRange = pageRange;
     }
 
     // Call ConvertAPI to convert PDF to PNG

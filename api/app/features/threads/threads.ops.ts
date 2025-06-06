@@ -26,7 +26,6 @@ import {
   dbMessagesToInferenceMessages,
   getModelConfig,
   processThreadMessages,
-  processAttachments,
   createAndSaveThreadTitle,
 } from "./threads.utils";
 import { processFile } from "../../doc-processor-v2";
@@ -260,11 +259,23 @@ const threadsOps = {
               console.log(
                 `⚙️ [ThreadsOps] Processing file content for: ${fileName}`
               );
-              const processedFilePages = await processFile(
+              const processedResult = await processFile(
                 buffer,
                 fileName,
                 mimeType
               );
+
+              const { pages: processedFilePages, category } = processedResult;
+
+              // Update the file record with the determined category
+              if (category) {
+                await db
+                  .update(files)
+                  .set({ category })
+                  .where(eq(files.id, insertedFile.id));
+
+                console.log(`📂 [ThreadsOps] File categorized as: ${category}`);
+              }
 
               // Store processed file pages in database
               for (const pageData of processedFilePages) {

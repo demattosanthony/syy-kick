@@ -38,7 +38,9 @@ export function useMessageSubmission({
       attachments: attachments.map((att) => ({
         id: crypto.randomUUID(),
         messageId: "",
+        name: att.name,
         fileName: att.name,
+        contentType: att.contentType,
         mimeType: att.contentType,
         fileKey: att.file_key,
         url: att.url,
