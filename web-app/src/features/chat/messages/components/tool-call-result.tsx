@@ -1027,26 +1027,32 @@ const LoadFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {result.images.map((image: any, idx: number) => (
-                  <div
-                    key={`image-${idx}`}
-                    className="border rounded-lg overflow-hidden"
+                  <a
+                    href={image.imageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    <img
-                      src={
-                        image.imageUrl ||
-                        `data:${image.mimeType || "image/png"};base64,${
-                          image.base64Data
-                        }`
-                      }
-                      alt={image.name || `Image ${idx + 1}`}
-                      className="w-full h-auto"
-                    />
-                    {image.name && (
-                      <div className="p-2 text-xs text-muted-foreground border-t">
-                        {image.name}
-                      </div>
-                    )}
-                  </div>
+                    <div
+                      key={`image-${idx}`}
+                      className="border rounded-lg overflow-hidden"
+                    >
+                      <img
+                        src={
+                          image.imageUrl ||
+                          `data:${image.mimeType || "image/png"};base64,${
+                            image.base64Data
+                          }`
+                        }
+                        alt={image.name || `Image ${idx + 1}`}
+                        className="w-full h-auto"
+                      />
+                      {image.name && (
+                        <div className="p-2 text-xs text-muted-foreground border-t">
+                          {image.name}
+                        </div>
+                      )}
+                    </div>
+                  </a>
                 ))}
               </div>
             </div>
