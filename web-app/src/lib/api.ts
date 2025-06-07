@@ -504,7 +504,15 @@ class ThreadApi extends ApiRequest {
     pageSize: number = 10,
     search: string = "",
     workflowId?: string
-  ): Promise<Thread[]> {
+  ): Promise<{
+    threads: Thread[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      hasMore: boolean;
+      total: number;
+    };
+  }> {
     const queryParams = new URLSearchParams({
       page: page.toString(),
       pageSize: pageSize.toString(),
@@ -514,9 +522,25 @@ class ThreadApi extends ApiRequest {
     const endpoint = `/threads?${queryParams.toString()}`;
 
     try {
-      return await this.request<Thread[]>(endpoint);
+      return await this.request<{
+        threads: Thread[];
+        pagination: {
+          page: number;
+          pageSize: number;
+          hasMore: boolean;
+          total: number;
+        };
+      }>(endpoint);
     } catch {
-      return []; // Return empty array for other errors as well, adjust as needed
+      return {
+        threads: [],
+        pagination: {
+          page: 1,
+          pageSize: pageSize,
+          hasMore: false,
+          total: 0,
+        },
+      }; // Return empty structure for errors
     }
   }
 

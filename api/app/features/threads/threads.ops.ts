@@ -355,9 +355,31 @@ const threadsOps = {
         .orderBy(desc(threads.createdAt));
     }
 
-    const matchingThreads = await baseQuery.limit(LIMIT).offset(offset);
+    // Get one extra record to check if there are more pages
+    const matchingThreads = await baseQuery.limit(LIMIT + 1).offset(offset);
 
-    // Retrieve the full objects
+    // Check if there are more pages
+    const hasMore = matchingThreads.length > LIMIT;
+
+    // Remove the extra record if it exists
+    const paginatedThreads = hasMore
+      ? matchingThreads.slice(0, LIMIT)
+      : matchingThreads;
+
+    // If no threads found, return empty result with pagination info
+    if (paginatedThreads.length === 0) {
+      return {
+        threads: [],
+        pagination: {
+          page,
+          pageSize: LIMIT,
+          hasMore: false,
+          total: 0,
+        },
+      };
+    }
+
+    // Retrieve the full objects while maintaining the original order
     const completeThreads = await db.query.threads.findMany({
       where: (tbl, { and, eq, inArray }) =>
         and(
@@ -367,10 +389,9 @@ const threadsOps = {
             : sql`${tbl.organizationId} IS NULL`,
           inArray(
             tbl.id,
-            matchingThreads.map((t) => t.id)
+            paginatedThreads.map((t) => t.id)
           )
         ),
-      orderBy: [desc(threads.createdAt)],
       with: {
         messages: {
           orderBy: messages.createdAt,
@@ -378,9 +399,18 @@ const threadsOps = {
       },
     });
 
+    // Restore the original order from the paginated query
+    const orderedThreads = paginatedThreads
+      .map((paginatedThread) =>
+        completeThreads.find((thread) => thread.id === paginatedThread.id)
+      )
+      .filter(
+        (thread): thread is NonNullable<typeof thread> => thread !== undefined
+      );
+
     // Process attachments for each thread
     const processed = [];
-    for (const t of completeThreads) {
+    for (const t of orderedThreads) {
       const withProcessed = await processThreadMessages({
         ...t,
         messages: t.messages.map((m) => ({
@@ -390,7 +420,16 @@ const threadsOps = {
       });
       processed.push(withProcessed);
     }
-    return processed;
+
+    return {
+      threads: processed,
+      pagination: {
+        page,
+        pageSize: LIMIT,
+        hasMore,
+        total: paginatedThreads.length,
+      },
+    };
   },
 
   async deleteThread(

@@ -33,7 +33,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
       : null
     : null;
   const { data, isLoading } = useThreadsQuery({ pageSize: 20 });
-  const threads = data?.pages[0]?.threads ?? [];
+  const threads = data?.pages?.flatMap((page) => page.threads) ?? [];
 
   const deleteThreadMutation = useDeleteThreadMutation();
 

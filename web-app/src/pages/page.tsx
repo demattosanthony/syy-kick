@@ -3,6 +3,7 @@ import api from "@/lib/api";
 // Hooks
 import { useAtom } from "jotai";
 import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 // State
 import {
@@ -51,6 +52,7 @@ type SharePointItem = Omit<GraphDriveItem, "folder" | "file"> & {
 
 export function HomePage() {
   const { data: user, isFetched: userFetched } = useMeQuery();
+  const queryClient = useQueryClient();
 
   const navigate = useNavigate();
   const [input, setInput] = useAtom(initalInputAtom);
@@ -131,6 +133,13 @@ export function HomePage() {
         thinking:
           selectedModel.name?.toLowerCase() === "auto" ? thinking : false,
       });
+
+      // Invalidate threads query to update sidebar with new thread
+      setTimeout(() => {
+        queryClient.invalidateQueries({
+          queryKey: ["threads"],
+        });
+      }, 4000);
 
       // Update pending thread with actual thread ID
       setPendingThread((prev) =>
