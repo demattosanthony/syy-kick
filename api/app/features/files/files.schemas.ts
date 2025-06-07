@@ -15,6 +15,7 @@ export const FileSchema = z.object({
   category: z.enum(["drawing", "document"]).nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
+  url: z.string().optional(), // Presigned URL for file access
 });
 
 // Query parameters for listing files

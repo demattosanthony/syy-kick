@@ -30,9 +30,10 @@ import { useNavigate } from "react-router";
 import { SharePointFileBrowser } from "@/features/integrations/microsoft/components/sharepoint-file-browser";
 import type { GraphDriveItem } from "@/features/integrations/microsoft/api/microsoft-graph";
 import { validateFile } from "@/lib/utils/file-validation";
-import { FileUploadMimeType, MessageRole } from "@/types/chat";
+import { MessageRole } from "@/types/chat";
 import ThreadsList from "@/features/chat/threads/components/threads-list";
 import { useAttachmentProcessing } from "@/features/chat/threads/hooks/use-attachment-processing";
+import { useFileUpload } from "@/hooks/use-file-upload";
 
 // Images
 import logo from "@/assets/logo192.png";
@@ -64,6 +65,11 @@ export function HomePage() {
   const { processAttachments, clearAttachments } = useAttachmentProcessing();
   const [, setPendingThread] = useAtom(pendingThreadAtom);
   const [, setIsPendingThread] = useAtom(isPendingThreadAtom);
+
+  // Get the file processing function from the file upload hook
+  const { processFileUpload } = useFileUpload(
+    selectedModel.supportedMimeTypes || []
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
@@ -212,18 +218,9 @@ export function HomePage() {
         return;
       }
 
-      let fileType: FileUploadMimeType = "pdf";
-      if (contentType.startsWith("image/")) {
-        fileType = "image";
-      }
+      // Process the file through the same pipeline as regular uploads
+      await processFileUpload(downloadedFile);
 
-      const fileUpload = {
-        file: downloadedFile,
-        preview:
-          fileType === "image" ? URL.createObjectURL(downloadedFile) : "",
-        type: fileType,
-      };
-      setUploads((prevUploads) => [...prevUploads, fileUpload]);
       toast.success(`Added ${file.name} to your message.`);
     } catch (error) {
       console.error("Error downloading SharePoint file from widget:", error);

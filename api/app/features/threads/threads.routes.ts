@@ -67,7 +67,6 @@ router.put(
 router.get(
   "/:threadId/messages",
   handle(async (req) => {
-    console.log("GETTING THREAD MESSAGES", req.params.threadId);
     return threadsOps.getThreadMessages(req.params.threadId);
   })
 );

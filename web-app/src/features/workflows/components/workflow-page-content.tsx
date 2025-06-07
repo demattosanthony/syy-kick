@@ -178,14 +178,13 @@ export default function WorkflowPageContent({
         if (!property) return;
 
         if (value instanceof File) {
-          const { url, file_metadata } = await api.uploads.getPresignedUrl(
+          const { fileKey, uploadUrl } = await api.files.getPresignedUrl(
             value.name,
             value.type,
-            value.size,
-            `uploads/${Date.now()}-${key}-${value.name}`
+            value.size
           );
 
-          await fetch(url, {
+          await fetch(uploadUrl, {
             method: "PUT",
             body: value,
             headers: { "Content-Type": value.type },
@@ -195,9 +194,9 @@ export default function WorkflowPageContent({
             type: property.properties.type.const,
             label: property.properties.label.const,
             value: {
-              fileKey: file_metadata.file_key,
-              mimeType: file_metadata.mime_type,
-              fileName: file_metadata.filename,
+              fileKey,
+              mimeType: value.type,
+              fileName: value.name,
             },
           };
         } else if (property.properties.type.const === "number") {

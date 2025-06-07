@@ -70,7 +70,7 @@ export const AUTO_MODEL_CONFIG = {
     "application/zip",
   ],
   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
-  maxFileSize: 50 * 1024 * 1024, // 50MB
+  maxFileSize: 1024 * 1024 * 1024, // 1GB
 };
 
 export const SONAR_PRO_CONFIG = {
@@ -80,7 +80,7 @@ export const SONAR_PRO_CONFIG = {
 
 // Persistent atoms
 export const modelAtom = atomWithStorage<Model>(
-  "selectedAiModel-v2.2",
+  "selectedAiModel-v3",
   AUTO_MODEL_CONFIG
 );
 export const temperatureAtom = atomWithStorage("chatTemp", 0.5);

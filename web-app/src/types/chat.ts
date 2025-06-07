@@ -65,6 +65,10 @@ export type FileUpload = {
   preview: string;
   type: FileUploadMimeType;
   inputId?: string;
+  status?: "uploading" | "processing" | "completed" | "error";
+  fileKey?: string;
+  url?: string;
+  error?: string;
 };
 
 export interface Thread {

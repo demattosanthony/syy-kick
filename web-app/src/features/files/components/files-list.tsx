@@ -54,12 +54,25 @@ export default function FilesList({ compact = false }: { compact?: boolean }) {
               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <p className="text-lg font-medium text-muted-foreground">
-            No files yet
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Upload files to get started
-          </p>
+          {search ? (
+            <>
+              <p className="text-lg font-medium text-muted-foreground">
+                No results were found
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Try adjusting your search terms
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-medium text-muted-foreground">
+                No files yet
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Upload files to get started
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <>
@@ -88,14 +101,8 @@ function getFileIcon(file: SyyclopsFile) {
   }
 
   if (file.type === "file") {
-    // Check if it's an image
-    if (
-      file.url &&
-      (file.url.includes(".jpg") ||
-        file.url.includes(".png") ||
-        file.url.includes(".gif") ||
-        file.url.includes(".webp"))
-    ) {
+    // Check if it's an image based on mimeType (more reliable than URL check)
+    if (file.mimeType && file.mimeType.startsWith("image/")) {
       return <ImageIcon className="w-5 h-5 text-green-500" />;
     }
   }

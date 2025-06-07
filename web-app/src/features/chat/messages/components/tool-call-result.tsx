@@ -922,7 +922,7 @@ const LoadFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
   const loading = tool.state === "partial-call" || tool.state === "call";
   const hasResult = tool.state === "result" && tool.result;
   const result = hasResult ? (tool.result as any) : null;
-  const fileName = tool.args?.fileName || "Unknown file";
+  const fileName = tool.args?.fileName || "";
 
   if (loading) {
     return (
@@ -1071,7 +1071,7 @@ const SearchFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
   const loading = tool.state === "partial-call" || tool.state === "call";
   const hasResult = tool.state === "result" && tool.result;
   const result = hasResult ? (tool.result as any) : null;
-  const fileName = tool.args?.fileName || "Unknown file";
+  const fileName = tool.args?.fileName || "";
   const query = tool.args?.query || "";
 
   if (loading) {

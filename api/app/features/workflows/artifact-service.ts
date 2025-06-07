@@ -914,27 +914,10 @@ export class ArtifactService {
       description:
         "Searches through the content of a file attachment to find relevant information. This tool performs semantic search through the processed content and returns the most relevant chunks with their associated images when available. Use this when you need to find specific information within a large document. NOTE: This tool is designed for text-based documents and will NOT work effectively for engineering drawings or files categorized as 'drawing' since they contain primarily visual/graphical information stored as images. For drawing files, use the load_file_content tool instead to paginate through and view specific pages.",
       parameters: z.object({
-        fileName: z
-          .string()
-          .describe("The file name of the attachment to search through."),
-        query: z
-          .string()
-          .describe(
-            "The search query or keywords to look for in the file content."
-          ),
-        limit: z
-          .number()
-          .optional()
-          .describe(
-            "Maximum number of relevant chunks to return (default: 5, max: 10)."
-          ),
-        includeImages: z
-          .boolean()
-          .optional()
-          .default(true)
-          .describe(
-            "Whether to include page images in the response when available (useful for visual context)."
-          ),
+        fileName: z.string(),
+        query: z.string(),
+        limit: z.number().nullable(),
+        includeImages: z.boolean().nullable(),
       }),
       execute: async ({ fileName, query, limit = 5, includeImages = true }) => {
         console.log(`🚀 [ArtifactService] search_file_content tool called`);
@@ -955,14 +938,14 @@ export class ArtifactService {
             };
           }
 
-          const maxLimit = Math.min(limit, 10); // Cap at 10 results
+          const maxLimit = Math.min(limit ?? 5, 10); // Cap at 10 results
           console.log(`🔢 [ArtifactService] Using search limit: ${maxLimit}`);
 
           const result = await this.searchFileContent(
             file,
             query,
             maxLimit,
-            includeImages
+            includeImages ?? true
           );
 
           if (result.matches === 0) {

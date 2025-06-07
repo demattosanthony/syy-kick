@@ -37,8 +37,10 @@ interface ActionButtonsProps {
   };
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  processFileUpload: (file: File) => Promise<void>;
   onFileUploadComplete?: () => void;
   showSharePointPopoverButton?: boolean;
+  isReadyToSubmit?: boolean;
 }
 
 export function ActionButtons({
@@ -49,10 +51,11 @@ export function ActionButtons({
   selectedModel,
   fileInputRef,
   handleFiles,
+  processFileUpload,
   onFileUploadComplete,
   showSharePointPopoverButton = true,
+  isReadyToSubmit = true,
 }: ActionButtonsProps) {
-  const [uploads, setUploads] = useAtom(uploadsAtom);
   const [thinking, setThinking] = useAtom(thinkingAtom);
   const [model] = useAtom(modelAtom);
   const [open, setOpen] = useState(false);
@@ -64,14 +67,12 @@ export function ActionButtons({
   } = useMicrosoftPicker({
     onFilesSelected: async (files: SharePointFile[]) => {
       const filesToUpload = await pickerSelectionsToFiles(files);
-      const fileUploads = filesToUpload.map((file) => ({
-        file: file,
-        preview: URL.createObjectURL(file),
-        type: file.type.startsWith("image/")
-          ? "image"
-          : ("pdf" as FileUploadMimeType),
-      }));
-      setUploads([...uploads, ...fileUploads]);
+
+      // Process each file through the same pipeline as regular uploads
+      for (const file of filesToUpload) {
+        await processFileUpload(file);
+      }
+
       setOpen(false);
       onFileUploadComplete?.();
     },
@@ -178,7 +179,7 @@ export function ActionButtons({
           )}
         <Button
           className="h-8 w-8 rounded-full"
-          disabled={!input && !isGenerating}
+          disabled={(!input && !isGenerating) || !isReadyToSubmit}
           variant={!input ? "secondary" : "default"}
           onClick={(e) => {
             e.preventDefault();

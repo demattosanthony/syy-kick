@@ -8,8 +8,6 @@ import { modelAtom, uploadsAtom } from "@/atoms/chat";
 import { FileUploadSection } from "./file-upload-section";
 import { TextInputArea } from "./chat-input-text-area";
 import { ActionButtons } from "./action-buttons";
-import { validateFile } from "@/lib/utils/file-validation";
-import { FileUploadMimeType } from "@/types/chat";
 import { ContextSelector } from "./context-selector";
 
 interface ChatInputFormProps {
@@ -48,9 +46,16 @@ function ChatInputForm(
   const [uploads, setUploads] = useAtom(uploadsAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const { handleFiles, removeUpload, handleDrop, processFiles } = useFileUpload(
-    selectedModel.supportedMimeTypes || []
-  );
+  const {
+    handleFiles,
+    removeUpload,
+    handleDrop,
+    processFiles,
+    processFileUpload,
+    isProcessing,
+    hasErrors,
+    isReadyToSubmit,
+  } = useFileUpload(selectedModel.supportedMimeTypes || []);
 
   React.useImperativeHandle(ref, () => ({
     triggerFileInput: () => fileInputRef.current?.click(),
@@ -79,6 +84,12 @@ function ChatInputForm(
       }, 0);
     } else if (event.key === "Enter") {
       event.preventDefault();
+
+      // Don't submit if files are still processing
+      if (isProcessing) {
+        return;
+      }
+
       onSubmit(event);
     }
   };
@@ -120,6 +131,18 @@ function ChatInputForm(
     handleDrop(e);
   };
 
+  // Handle form submission with file processing check
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Don't submit if files are still processing
+    if (isProcessing) {
+      return;
+    }
+
+    onSubmit(e);
+  };
+
   useEffect(() => {
     if (textAreaRef?.current) {
       textAreaRef.current.style.height = "24px";
@@ -150,7 +173,7 @@ function ChatInputForm(
       >
         <form
           className="relative flex flex-col flex-1 w-full justify-center p-2"
-          onSubmit={onSubmit}
+          onSubmit={handleFormSubmit}
         >
           <ContextSelector
             showContextSelector={!!hasThread}
@@ -181,6 +204,17 @@ function ChatInputForm(
             )}
 
             <FileUploadSection uploads={uploads} removeUpload={removeUpload} />
+
+            {/* Error status message */}
+            {hasErrors && (
+              <div className="px-2 pb-2">
+                <div className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1">
+                  Some files failed to process. Remove them or try uploading
+                  again.
+                </div>
+              </div>
+            )}
+
             <div className="min-h-[65px]">
               <TextInputArea
                 input={input}
@@ -198,12 +232,14 @@ function ChatInputForm(
             isGenerating={isGenerating}
             input={input}
             stop={stop}
-            onSubmit={onSubmit}
+            onSubmit={handleFormSubmit}
             selectedModel={selectedModel}
             fileInputRef={fileInputRef}
             handleFiles={handleFiles}
+            processFileUpload={processFileUpload}
             onFileUploadComplete={handleFileUploadComplete}
             showSharePointPopoverButton={false}
+            isReadyToSubmit={isReadyToSubmit}
           />
         </form>
       </Card>

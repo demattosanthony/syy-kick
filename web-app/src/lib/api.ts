@@ -478,38 +478,6 @@ class ModelApi extends ApiRequest {
 }
 
 /**
- * Upload API Module
- */
-class UploadApi extends ApiRequest {
-  async getPresignedUrl(
-    filename: string,
-    mime_type: string,
-    size: number,
-    file_key: string
-  ): Promise<{
-    url: string;
-    viewUrl: string;
-    file_metadata: {
-      filename: string;
-      mime_type: string;
-      file_key: string;
-      size: number;
-    };
-  }> {
-    return await this.request<{
-      url: string;
-      viewUrl: string;
-      file_metadata: {
-        filename: string;
-        mime_type: string;
-        file_key: string;
-        size: number;
-      };
-    }>(`/presigned-url`, "POST", { filename, mime_type, size, file_key });
-  }
-}
-
-/**
  * Thread API Module
  */
 class ThreadApi extends ApiRequest {
@@ -897,6 +865,66 @@ class FilesApi extends ApiRequest {
       };
     }>(`/files?${queryParams.toString()}`);
   }
+
+  async getPresignedUrl(
+    fileName: string,
+    mimeType: string,
+    size: number
+  ): Promise<{
+    fileKey: string;
+    uploadUrl: string;
+    viewUrl: string;
+  }> {
+    return await this.request<{
+      fileKey: string;
+      uploadUrl: string;
+      viewUrl: string;
+    }>("/files/presigned-url", "POST", { fileName, mimeType, size });
+  }
+
+  async createFileRecord(
+    fileName: string,
+    mimeType: string,
+    size: number,
+    fileKey: string
+  ): Promise<{
+    id: string;
+    name: string;
+    mimeType: string;
+    size: number;
+    fileKey: string;
+    url: string;
+    category?: "drawing" | "document";
+    isExisting: boolean;
+  }> {
+    return await this.request<{
+      id: string;
+      name: string;
+      mimeType: string;
+      size: number;
+      fileKey: string;
+      url: string;
+      category?: "drawing" | "document";
+      isExisting: boolean;
+    }>("/files/create", "POST", { fileName, mimeType, size, fileKey });
+  }
+
+  async uploadFile(file: File, presignedUrl: string): Promise<void> {
+    const response = await fetch(presignedUrl, {
+      method: "PUT",
+      body: file,
+      headers: {
+        "Content-Type": file.type,
+      },
+    });
+
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        `Failed to upload file: ${response.statusText}`
+      );
+    }
+  }
 }
 
 /**
@@ -908,7 +936,6 @@ class ApiClient {
   organizations: OrganizationApi;
   payments: PaymentApi;
   models: ModelApi;
-  uploads: UploadApi;
   threads: ThreadApi;
   workflows: WorkflowsApi;
   permissions: PermissionsApi;
@@ -922,7 +949,6 @@ class ApiClient {
     this.organizations = new OrganizationApi(baseUrl);
     this.payments = new PaymentApi(baseUrl);
     this.models = new ModelApi(baseUrl);
-    this.uploads = new UploadApi(baseUrl);
     this.threads = new ThreadApi(baseUrl);
     this.workflows = new WorkflowsApi(baseUrl);
     this.permissions = new PermissionsApi(baseUrl);
@@ -992,3 +1018,5 @@ const api = new ApiClient(import.meta.env.VITE_API_URL!);
 export const microsoftApi = new MicrosoftApi();
 
 export default api;
+
+export { MicrosoftApi };

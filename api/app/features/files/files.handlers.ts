@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import { GetFilesQuerySchema } from "./files.schemas";
-import { getFilesForUser } from "./files.ops";
+import {
+  getFilesForUser,
+  generatePresignedUrl,
+  createFileRecordAndProcess,
+} from "./files.ops";
 import logger from "../../config/logger";
 
 export async function getFilesHandler(
@@ -34,5 +38,93 @@ export async function getFilesHandler(
   } catch (error) {
     logger.error("Error fetching files", { error, userId: req.dbUser?.id });
     res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+export async function getPresignedUrlHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    // Get user ID from the authenticated request
+    const userId = req.dbUser?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { fileName, mimeType, size } = req.body;
+
+    // Validate required fields
+    if (!fileName || !mimeType || !size) {
+      res.status(400).json({
+        error: "Missing required fields: fileName, mimeType, size",
+      });
+      return;
+    }
+
+    // Generate presigned URL
+    const result = await generatePresignedUrl(fileName, mimeType, size);
+
+    res.json(result);
+  } catch (error) {
+    logger.error("Error generating presigned URL", {
+      error,
+      userId: req.dbUser?.id,
+    });
+    res.status(500).json({ error: "Failed to generate presigned URL" });
+  }
+}
+
+export async function createFileRecordHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    // Get user ID from the authenticated request
+    const userId = req.dbUser?.id;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { fileName, mimeType, size, fileKey } = req.body;
+
+    // Validate required fields
+    if (!fileName || !mimeType || !size || !fileKey) {
+      res.status(400).json({
+        error: "Missing required fields: fileName, mimeType, size, fileKey",
+      });
+      return;
+    }
+
+    // Create file record and start processing
+    const result = await createFileRecordAndProcess(userId, {
+      fileName,
+      mimeType,
+      size,
+      fileKey,
+    });
+
+    res.json(result);
+  } catch (error) {
+    logger.error("Error creating file record", {
+      error,
+      userId: req.dbUser?.id,
+    });
+
+    if (error instanceof Error) {
+      // Handle specific error types
+      if (error.message === "FILE_ALREADY_EXISTS") {
+        res.status(409).json({ error: "File already exists" });
+        return;
+      }
+      if (error.message.includes("File not found in S3")) {
+        res.status(404).json({ error: "File not found in S3" });
+        return;
+      }
+    }
+
+    res.status(500).json({ error: "Failed to create file record" });
   }
 }

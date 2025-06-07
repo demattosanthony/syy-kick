@@ -422,177 +422,177 @@ const ArtifactViewer: React.FC<{
       exit={{ opacity: 0, x: -50, scale: 0.95, transition: { duration: 0.2 } }}
     >
       <motion.div
-        className="flex-1 w-full h-full relative shadow-md"
+        className="flex-1 w-full h-full flex flex-col relative shadow-md"
         initial={{ boxShadow: "0 0 0 rgba(0,0,0,0)" }}
         animate={{
           boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
           transition: { delay: 0.1, duration: 0.3 },
         }}
       >
+        {/* Fixed Header */}
+        <div className="flex justify-between items-center px-4 py-3 bg-background border-b border-border/40 shrink-0">
+          <div className="flex items-center gap-2">
+            <Button onClick={handleClose} size="icon" variant="ghost">
+              <X className="min-w-[18px] min-h-[18px]" />
+            </Button>
+            <h3 className="text-lg font-medium truncate max-w-[400px]">
+              {title}
+            </h3>
+            {/* {!isStreaming && <Badge variant="secondary">v{version}</Badge>} */}
+          </div>
+          <div className="flex items-center gap-2">
+            {!isStreaming && (
+              <DownloadOptions
+                title={title}
+                content={content}
+                mimeType={mimeType}
+              />
+            )}
+            <Button
+              onClick={handleCopy}
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              disabled={!content || content.length === 0}
+            >
+              {copied ? (
+                <Check className="w-[18px] h-[18px] text-green-500" />
+              ) : (
+                <Copy className="w-[18px] h-[18px]" />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
         <div
           className={cn(
-            "absolute inset-0 overflow-y-auto",
+            "flex-1 overflow-y-auto",
             "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
           )}
         >
-          <div className="mx-auto h-[95%]">
-            <div className="flex justify-between items-center sticky top-0 z-10 px-4 py-3 bg-background/80 backdrop-blur-md">
-              <div className="flex items-center gap-2">
-                <Button onClick={handleClose} size="icon" variant="ghost">
-                  <X className="min-w-[18px] min-h-[18px]" />
-                </Button>
-                <h3 className="text-lg font-medium truncate max-w-[400px]">
-                  {title}
-                </h3>
-                {/* {!isStreaming && <Badge variant="secondary">v{version}</Badge>} */}
-              </div>
-              <div className="flex items-center gap-2">
-                {!isStreaming && (
-                  <DownloadOptions
-                    title={title}
-                    content={content}
-                    mimeType={mimeType}
-                  />
-                )}
-                <Button
-                  onClick={handleCopy}
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                  disabled={!content || content.length === 0}
-                >
-                  {copied ? (
-                    <Check className="w-[18px] h-[18px] text-green-500" />
-                  ) : (
-                    <Copy className="w-[18px] h-[18px]" />
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            <div className="p-4 px-6 flex justify-center h-full">
-              <div className="w-full flex justify-center flex-1 h-full relative">
-                {content && content.length > 0 ? (
-                  renderViewer()
-                ) : (
-                  <div className="flex items-center justify-center h-[85%] text-muted-foreground">
-                    <div className="text-center">
-                      {true ? (
+          <div className="p-4 px-6 flex justify-center min-h-full">
+            <div className="w-full flex justify-center flex-1 relative">
+              {content && content.length > 0 ? (
+                renderViewer()
+              ) : (
+                <div className="flex items-center justify-center flex-1 text-muted-foreground">
+                  <div className="text-center">
+                    {true ? (
+                      <motion.div
+                        className="flex flex-col items-center space-y-6"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        {/* Animated Document Icon */}
                         <motion.div
-                          className="flex flex-col items-center space-y-6"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.5 }}
+                          className="relative"
+                          animate={{
+                            scale: [1, 1.05, 1],
+                            rotate: [0, 1, -1, 0],
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          }}
                         >
-                          {/* Animated Document Icon */}
+                          <div className="text-6xl mb-2">📝</div>
                           <motion.div
-                            className="relative"
+                            className="absolute -top-2 -right-2 w-3 h-3 bg-blue-500 rounded-full"
                             animate={{
-                              scale: [1, 1.05, 1],
-                              rotate: [0, 1, -1, 0],
+                              scale: [0, 1.2, 0],
+                              opacity: [0, 1, 0],
                             }}
                             transition={{
-                              duration: 2,
+                              duration: 1.5,
                               repeat: Infinity,
-                              ease: "easeInOut",
+                              delay: 0.2,
                             }}
+                          />
+                          <motion.div
+                            className="absolute -bottom-1 -left-1 w-2 h-2 bg-green-500 rounded-full"
+                            animate={{
+                              scale: [0, 1, 0],
+                              opacity: [0, 0.8, 0],
+                            }}
+                            transition={{
+                              duration: 1.5,
+                              repeat: Infinity,
+                              delay: 0.8,
+                            }}
+                          />
+                        </motion.div>
+
+                        {/* Animated Text */}
+                        <div className="space-y-3">
+                          <motion.div
+                            className="text-xl font-semibold text-foreground"
+                            animate={{ opacity: [0.7, 1, 0.7] }}
+                            transition={{ duration: 2, repeat: Infinity }}
                           >
-                            <div className="text-6xl mb-2">📝</div>
-                            <motion.div
-                              className="absolute -top-2 -right-2 w-3 h-3 bg-blue-500 rounded-full"
-                              animate={{
-                                scale: [0, 1.2, 0],
-                                opacity: [0, 1, 0],
-                              }}
-                              transition={{
-                                duration: 1.5,
-                                repeat: Infinity,
-                                delay: 0.2,
-                              }}
-                            />
-                            <motion.div
-                              className="absolute -bottom-1 -left-1 w-2 h-2 bg-green-500 rounded-full"
-                              animate={{
-                                scale: [0, 1, 0],
-                                opacity: [0, 0.8, 0],
-                              }}
-                              transition={{
-                                duration: 1.5,
-                                repeat: Infinity,
-                                delay: 0.8,
-                              }}
-                            />
+                            Generating file...
                           </motion.div>
 
-                          {/* Animated Text */}
-                          <div className="space-y-3">
-                            <motion.div
-                              className="text-xl font-semibold text-foreground"
-                              animate={{ opacity: [0.7, 1, 0.7] }}
-                              transition={{ duration: 2, repeat: Infinity }}
-                            >
-                              Generating file...
-                            </motion.div>
-
-                            {/* Simulated Writing Lines */}
-                            <div className="space-y-2 w-80 max-w-full">
-                              {[1, 2, 3, 4].map((i) => (
-                                <motion.div
-                                  key={i}
-                                  className="flex space-x-1"
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: [0, 0.3, 0.6, 0.3, 0] }}
-                                  transition={{
-                                    duration: 3,
-                                    repeat: Infinity,
-                                    delay: i * 0.5,
-                                  }}
-                                >
-                                  <div className="h-2 bg-muted rounded-full flex-1" />
-                                  <div className="h-2 bg-muted rounded-full flex-1" />
-                                  <div className="h-2 bg-muted rounded-full w-16" />
-                                </motion.div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Subtle particles effect */}
-                          <div className="absolute inset-0 pointer-events-none">
-                            {[...Array(6)].map((_, i) => (
+                          {/* Simulated Writing Lines */}
+                          <div className="space-y-2 w-80 max-w-full">
+                            {[1, 2, 3, 4].map((i) => (
                               <motion.div
                                 key={i}
-                                className="absolute w-1 h-1 bg-primary/30 rounded-full"
-                                style={{
-                                  left: `${20 + i * 12}%`,
-                                  top: `${30 + (i % 2) * 20}%`,
-                                }}
-                                animate={{
-                                  y: [-10, -20, -10],
-                                  opacity: [0, 0.6, 0],
-                                  scale: [0.5, 1, 0.5],
-                                }}
+                                className="flex space-x-1"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: [0, 0.3, 0.6, 0.3, 0] }}
                                 transition={{
-                                  duration: 2.5,
+                                  duration: 3,
                                   repeat: Infinity,
-                                  delay: i * 0.4,
-                                  ease: "easeInOut",
+                                  delay: i * 0.5,
                                 }}
-                              />
+                              >
+                                <div className="h-2 bg-muted rounded-full flex-1" />
+                                <div className="h-2 bg-muted rounded-full flex-1" />
+                                <div className="h-2 bg-muted rounded-full w-16" />
+                              </motion.div>
                             ))}
                           </div>
-                        </motion.div>
-                      ) : (
-                        <div>
-                          <div className="text-4xl mb-4">📄</div>
-                          <div className="text-lg font-medium mb-2">
-                            No content yet
-                          </div>
                         </div>
-                      )}
-                    </div>
+
+                        {/* Subtle particles effect */}
+                        <div className="absolute inset-0 pointer-events-none">
+                          {[...Array(6)].map((_, i) => (
+                            <motion.div
+                              key={i}
+                              className="absolute w-1 h-1 bg-primary/30 rounded-full"
+                              style={{
+                                left: `${20 + i * 12}%`,
+                                top: `${30 + (i % 2) * 20}%`,
+                              }}
+                              animate={{
+                                y: [-10, -20, -10],
+                                opacity: [0, 0.6, 0],
+                                scale: [0.5, 1, 0.5],
+                              }}
+                              transition={{
+                                duration: 2.5,
+                                repeat: Infinity,
+                                delay: i * 0.4,
+                                ease: "easeInOut",
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <div>
+                        <div className="text-4xl mb-4">📄</div>
+                        <div className="text-lg font-medium mb-2">
+                          No content yet
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
