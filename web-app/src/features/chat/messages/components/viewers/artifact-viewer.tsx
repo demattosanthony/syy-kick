@@ -360,7 +360,6 @@ const ArtifactViewer: React.FC<{
   const [, setArtifactSelectionMode] = useAtom(artifactSelectionModeAtom);
   const content = artifact.content;
   const title = artifact.title;
-  const version = artifact.version;
 
   const mimeType = artifact.type || "text/markdown";
   const isStreaming = !artifact.isComplete;

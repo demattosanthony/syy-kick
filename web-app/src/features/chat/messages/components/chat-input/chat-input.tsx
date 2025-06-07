@@ -43,7 +43,7 @@ function ChatInputForm(
   const [focused, setFocused] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedModel] = useAtom(modelAtom);
-  const [uploads, setUploads] = useAtom(uploadsAtom);
+  const [uploads] = useAtom(uploadsAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const {

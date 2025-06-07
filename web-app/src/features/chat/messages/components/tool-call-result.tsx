@@ -370,42 +370,35 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
 };
 
 const SharepointSearchTool = ({ tool }: { tool: ToolInvocation }) => {
+  const [open, setOpen] = React.useState(false);
   const loading = tool.state === "partial-call" || tool.state === "call";
   const hasResults = tool.state === "result" && tool.result?.files;
   const resultCount = hasResults ? tool.result.files.length : 0;
-  //   const files = hasResults ? tool.result.files : [];
 
   if (loading) {
     return (
-      <div className="w-fit max-w-3xl">
-        <div className="flex items-center justify-between py-2 px-3 bg-white border border-slate-200 rounded-lg animate-pulse">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="flex-shrink-0">
-              <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center">
-                <img
-                  src="/src/assets/logos/sharepoint.svg"
-                  alt="SharePoint"
-                  className="w-4 h-4 opacity-60"
-                />
-              </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-600">
-                  Searching SharePoint for "{tool.args?.query}"
-                </span>
-                <div className="flex space-x-1 p-2">
-                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="">
+        <Loader
+          variant="text-shimmer"
+          text={`Searching SharePoint for "${tool.args?.query}"`}
+          size="lg"
+        />
       </div>
     );
   }
+
+  // SharePoint logo component
+  const SharePointIcon = ({
+    className = "w-5 h-5",
+  }: {
+    className?: string;
+  }) => (
+    <img
+      src="/src/assets/logos/sharepoint.svg"
+      alt="SharePoint"
+      className={className}
+    />
+  );
 
   // Helper function to get file icon based on type
   const getFileIcon = (fileName: string, type: string) => {
@@ -433,177 +426,133 @@ const SharepointSearchTool = ({ tool }: { tool: ToolInvocation }) => {
     }
   };
 
-  // SharePoint logo component using the actual SVG
-  const SharePointIcon = ({
-    className = "w-6 h-6",
-  }: {
-    className?: string;
-  }) => (
-    <img
-      src="/src/assets/logos/sharepoint.svg"
-      alt="SharePoint"
-      className={className}
-    />
-  );
-
-  // Don't show accordion if no results
-  if (!hasResults || resultCount === 0) {
-    return (
-      <div className="w-full max-w-3xl">
-        <div className="flex items-center justify-between py-3 px-4 bg-white border border-slate-200 rounded-lg">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="flex-shrink-0">
-              <SharePointIcon className="w-6 h-6" />
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <div
+          className={cn(
+            "w-fit rounded-3xl border border-border p-2 cursor-pointer hover:bg-secondary/30 transition-colors duration-200 h-[34px] flex items-center"
+          )}
+        >
+          {hasResults && resultCount > 0 ? (
+            <div className="flex items-center gap-2">
+              <div className="flex -space-x-1">
+                {tool.result.files.slice(0, 3).map((_: any, idx: number) => (
+                  <div
+                    key={`file-icon-${idx}`}
+                    className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"
+                  >
+                    <SharePointIcon className="w-3 h-3" />
+                  </div>
+                ))}
+              </div>
+              <span className="font-normal text-sm">
+                {resultCount} SharePoint{" "}
+                {resultCount === 1 ? "result" : "results"}
+              </span>
             </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium text-slate-900">
+          ) : hasResults ? (
+            <div className="flex items-center gap-2">
+              <Search className="w-3 h-3 text-muted-foreground" />
+              <span className="font-normal text-sm text-muted-foreground">
+                No SharePoint results found
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs">
+              <SharePointIcon className="w-3.5 h-3.5" />
+              <span className="text-muted-foreground">
+                Searching SharePoint for:
+              </span>
+              <span className="font-medium max-w-[300px] truncate">
                 {tool.args?.query}
               </span>
             </div>
-          </div>
-          <div className="flex-shrink-0">
-            <span className="text-sm text-slate-500">No results</span>
-          </div>
+          )}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full max-w-3xl">
-      <Accordion type="single" collapsible className="w-full">
-        <AccordionItem
-          value="sharepoint-search"
-          className="overflow-hidden border-0"
-        >
-          <AccordionTrigger className="py-2 px-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:no-underline transition-colors duration-200 [&[data-state=open]]:rounded-b-none [&[data-state=open]]:border-b-0">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="flex-shrink-0">
-                <SharePointIcon className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <span className="text-sm font-medium text-slate-900">
-                  Searched: {tool.args?.query}
-                </span>
-              </div>
-              <div className="flex-shrink-0">
-                <span className="text-xs text-slate-600">
-                  {resultCount} {resultCount === 1 ? "result" : "results"}
-                </span>
-              </div>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="px-0 pb-0 overflow-hidden">
-            <div className="border-x border-b border-slate-200 rounded-b-lg bg-white">
-              <div className="p-4">
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {tool.result?.files?.map(
-                    (item: SharePointItem, idx: number) => (
-                      <a
-                        key={`result-${idx}`}
-                        href={item.webUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 group overflow-hidden"
-                      >
-                        <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-white flex items-center justify-center text-sm">
-                          {getFileIcon(item.name, item.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-slate-900 truncate group-hover:text-blue-600">
-                            {item.name}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                            <span className="capitalize">{item.type}</span>
-                            {/* {item.size && (
-                              <>
-                                <span>•</span>
-                                <span>
-                                  {(item.size / 1024 / 1024).toFixed(1)}MB
-                                </span>
-                              </>
-                            )} */}
-                            {item.lastModified && (
-                              <>
-                                <span>•</span>
-                                <span>
-                                  {new Date(
-                                    item.lastModified
-                                  ).toLocaleDateString()}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-slate-400 group-hover:text-blue-600 transition-colors flex-shrink-0">
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                            />
-                          </svg>
-                        </div>
-                      </a>
-                    )
-                  )}
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>SharePoint Search Results</SheetTitle>
+          <SheetDescription>Results for "{tool.args?.query}"</SheetDescription>
+        </SheetHeader>
+        <div className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto mt-4">
+          {tool.result?.files?.map((item: SharePointItem, idx: number) => (
+            <div
+              key={`result-${idx}`}
+              className="flex flex-col gap-3 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
+              onClick={() =>
+                window.open(item.webUrl, "_blank", "noopener,noreferrer")
+              }
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 flex-shrink-0">
+                  <Avatar className="w-full h-full">
+                    <AvatarFallback>
+                      {getFileIcon(item.name, item.type)}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">
+                    {item.name}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <span className="capitalize">{item.type}</span>
+                    {item.lastModified && (
+                      <>
+                        <span>•</span>
+                        <span>
+                          {new Date(item.lastModified).toLocaleDateString()}
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </div>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };
 
 const SharepointListTool = ({ tool }: { tool: ToolInvocation }) => {
+  const [open, setOpen] = React.useState(false);
   const loading = tool.state === "partial-call" || tool.state === "call";
   const hasResults = tool.state === "result" && tool.result?.files;
   const resultCount = hasResults ? tool.result.files.length : 0;
-  //   const files = hasResults ? tool.result.files : [];
   const path = tool.args?.path || "root";
 
   if (loading) {
     return (
-      <div className="w-fit max-w-3xl">
-        <div className="flex items-center justify-between py-2 px-3 bg-white border border-slate-200 rounded-lg animate-pulse">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="flex-shrink-0">
-              <div className="w-5 h-5 bg-blue-100 rounded flex items-center justify-center">
-                <img
-                  src="/src/assets/logos/sharepoint.svg"
-                  alt="SharePoint"
-                  className="w-4 h-4 opacity-60"
-                />
-              </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-600">
-                  Opening{" "}
-                  {path === "root"
-                    ? "SharePoint root directory"
-                    : `folder: ${path}`}
-                </span>
-                <div className="flex space-x-1">
-                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="">
+        <Loader
+          variant="text-shimmer"
+          text={
+            path === "root"
+              ? "Opening SharePoint root directory..."
+              : `Opening SharePoint folder: ${path}...`
+          }
+          size="lg"
+        />
       </div>
     );
   }
+
+  // SharePoint logo component
+  const SharePointIcon = ({
+    className = "w-5 h-5",
+  }: {
+    className?: string;
+  }) => (
+    <img
+      src="/src/assets/logos/sharepoint.svg"
+      alt="SharePoint"
+      className={className}
+    />
+  );
 
   // Helper function to get file icon based on type
   const getFileIcon = (fileName: string, type: string) => {
@@ -631,137 +580,99 @@ const SharepointListTool = ({ tool }: { tool: ToolInvocation }) => {
     }
   };
 
-  // SharePoint logo component
-  const SharePointIcon = ({
-    className = "w-6 h-6",
-  }: {
-    className?: string;
-  }) => (
-    <img
-      src="/src/assets/logos/sharepoint.svg"
-      alt="SharePoint"
-      className={className}
-    />
-  );
-
-  // Don't show accordion if no results
-  if (!hasResults || resultCount === 0) {
-    return (
-      <div className="w-fit max-w-3xl">
-        <div className="flex items-center justify-between py-3 px-4 bg-white border border-slate-200 rounded-lg">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="flex-shrink-0">
-              <SharePointIcon className="w-6 h-6" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium text-slate-900">
-                {path === "root"
-                  ? "SharePoint Root Directory"
-                  : `SharePoint: ${path}`}
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <div
+          className={cn(
+            "w-fit rounded-3xl border border-border p-2 cursor-pointer hover:bg-secondary/30 transition-colors duration-200 h-[34px] flex items-center"
+          )}
+        >
+          {hasResults && resultCount > 0 ? (
+            <div className="flex items-center gap-2">
+              <div className="flex -space-x-1">
+                {tool.result.files.slice(0, 3).map((_: any, idx: number) => (
+                  <div
+                    key={`file-icon-${idx}`}
+                    className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center border border-border overflow-hidden"
+                  >
+                    <SharePointIcon className="w-3 h-3" />
+                  </div>
+                ))}
+              </div>
+              <span className="font-normal text-sm">
+                {resultCount} {resultCount === 1 ? "item" : "items"}
               </span>
             </div>
-          </div>
-          <div className="flex-shrink-0">
-            <span className="text-sm text-slate-500">Empty folder</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-fit max-w-3xl">
-      <Accordion type="single" collapsible className="">
-        <AccordionItem
-          value="sharepoint-folder"
-          className="overflow-hidden border-0"
-        >
-          <AccordionTrigger className="py-2 px-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:no-underline transition-colors duration-200 [&[data-state=open]]:rounded-b-none [&[data-state=open]]:border-b-0">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="flex-shrink-0">
-                <SharePointIcon className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <span className="text-sm font-medium text-slate-900">
-                  {path === "root"
-                    ? "SharePoint Root Directory"
-                    : `SharePoint: ${path}`}
-                </span>
-              </div>
-              <div className="flex-shrink-0">
-                <span className="text-xs text-slate-600">
-                  {resultCount} {resultCount === 1 ? "item" : "items"}
-                </span>
-              </div>
+          ) : hasResults ? (
+            <div className="flex items-center gap-2">
+              <SharePointIcon className="w-3 h-3 text-muted-foreground" />
+              <span className="font-normal text-sm text-muted-foreground">
+                Empty folder
+              </span>
             </div>
-          </AccordionTrigger>
-          <AccordionContent className="px-0 pb-0 overflow-hidden">
-            <div className="border-x border-b border-slate-200 rounded-b-lg ">
-              <div className="p-4">
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {tool.result?.files?.map(
-                    (item: SharePointItem, idx: number) => (
-                      <a
-                        key={`result-${idx}`}
-                        href={item.webUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 group overflow-hidden"
-                      >
-                        <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-white flex items-center justify-center text-sm">
-                          {getFileIcon(item.name, item.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-slate-900 truncate group-hover:text-blue-600">
-                            {item.name}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-                            <span className="capitalize">{item.type}</span>
-                            {/* {item.size && (
-                              <>
-                                <span>•</span>
-                                <span>
-                                  {(item.size / 1024 / 1024).toFixed(1)}MB
-                                </span>
-                              </>
-                            )} */}
-                            {item.lastModified && (
-                              <>
-                                <span>•</span>
-                                <span>
-                                  {new Date(
-                                    item.lastModified
-                                  ).toLocaleDateString()}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-slate-400 group-hover:text-blue-600 transition-colors flex-shrink-0">
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                            />
-                          </svg>
-                        </div>
-                      </a>
-                    )
-                  )}
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs">
+              <SharePointIcon className="w-3.5 h-3.5" />
+              <span className="text-muted-foreground">Opening:</span>
+              <span className="font-medium max-w-[300px] truncate">
+                {path === "root" ? "SharePoint Root" : path}
+              </span>
+            </div>
+          )}
+        </div>
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>
+            {path === "root"
+              ? "SharePoint Root Directory"
+              : `SharePoint: ${path}`}
+          </SheetTitle>
+          <SheetDescription>
+            {resultCount} {resultCount === 1 ? "item" : "items"} in this
+            directory
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex flex-col gap-6 max-h-[85vh] overflow-y-auto mt-4">
+          {tool.result?.files?.map((item: SharePointItem, idx: number) => (
+            <div
+              key={`result-${idx}`}
+              className="flex flex-col gap-3 cursor-pointer hover:bg-secondary p-3 rounded-lg transition-colors duration-200"
+              onClick={() =>
+                window.open(item.webUrl, "_blank", "noopener,noreferrer")
+              }
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 flex-shrink-0">
+                  <Avatar className="w-full h-full">
+                    <AvatarFallback>
+                      {getFileIcon(item.name, item.type)}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">
+                    {item.name}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <span className="capitalize">{item.type}</span>
+                    {item.lastModified && (
+                      <>
+                        <span>•</span>
+                        <span>
+                          {new Date(item.lastModified).toLocaleDateString()}
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </div>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };
 
@@ -779,28 +690,21 @@ const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
 
   if (loading) {
     return (
-      <div className="w-fit rounded-3xl border border-slate-200 bg-white p-2 cursor-default min-h-[34px] h-auto flex items-center gap-2 animate-pulse">
-        <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center">
-          <img
-            src="/src/assets/logos/sharepoint.svg"
-            alt="SharePoint"
-            className="w-3 h-3 opacity-60"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-600">
-            Reading{" "}
-            {fileName.length > 20 ? fileName.substring(0, 20) : fileName}
-          </span>
-          <div className="flex space-x-1 pt-2">
-            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
-          </div>
-        </div>
+      <div className="">
+        <Loader
+          variant="text-shimmer"
+          text={`Reading ${fileName}...`}
+          size="lg"
+        />
       </div>
     );
   }
+
+  const formatContentSize = (length: number) => {
+    if (length < 1000) return `${length} chars`;
+    if (length < 1000000) return `${(length / 1000).toFixed(1)}K chars`;
+    return `${(length / 1000000).toFixed(1)}M chars`;
+  };
 
   // Helper function to get file icon based on name
   const getFileIcon = (fileName: string) => {
@@ -827,18 +731,12 @@ const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
     }
   };
 
-  const formatContentSize = (length: number) => {
-    if (length < 1000) return `${length} chars`;
-    if (length < 1000000) return `${(length / 1000).toFixed(1)}K chars`;
-    return `${(length / 1000000).toFixed(1)}M chars`;
-  };
-
   if (tool.state === "result" && (tool.result as any)?.error) {
     return (
-      <div className="w-fit rounded-3xl border border-red-200 bg-red-50 p-2 cursor-default min-h-[34px] h-auto flex items-center gap-2">
-        <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center">
+      <div className="w-fit rounded-3xl border border-destructive/20 bg-destructive/10 p-2 cursor-default min-h-[34px] h-auto flex items-center gap-2">
+        <div className="w-5 h-5 rounded-full bg-destructive/20 flex items-center justify-center">
           <svg
-            className="w-3.5 h-3.5 text-red-500"
+            className="w-3.5 h-3.5 text-destructive"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -851,7 +749,7 @@ const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
             />
           </svg>
         </div>
-        <span className="text-sm text-red-700">
+        <span className="text-sm text-destructive">
           SharePoint Error: {(tool.result as any).error}
         </span>
       </div>
@@ -861,10 +759,10 @@ const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
   if (!webUrl) {
     return (
       <div className="w-fit rounded-3xl border border-border p-2 cursor-default hover:bg-secondary/30 transition-colors duration-200 min-h-[34px] h-auto flex items-center gap-2">
-        <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-xs">
+        <div className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-xs">
           {getFileIcon(fileName)}
         </div>
-        <span className="text-sm text-muted-foreground">{fileName}</span>
+        <span className="text-sm text-foreground">{fileName}</span>
         {contentLength > 0 && (
           <>
             <span className="text-xs text-muted-foreground">•</span>
@@ -885,9 +783,9 @@ const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
       className="w-fit rounded-3xl border border-border p-2 cursor-pointer hover:bg-secondary/30 hover:border-primary/20 transition-all duration-200 min-h-[34px] h-auto flex items-center gap-1 group"
     >
       <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs transition-colors">
-        <FileIcon className="w-4 h-4 " />
+        <FileIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
       </div>
-      <span className="text-sm font-medium text-slate-900 group-hover:text-primary transition-colors">
+      <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
         {fileName}
       </span>
       {contentLength > 0 && (
@@ -898,7 +796,7 @@ const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
           </span>
         </>
       )}
-      <div className="text-slate-400 group-hover:text-primary transition-colors">
+      <div className="text-muted-foreground group-hover:text-primary transition-colors">
         <svg
           className="w-4 h-4"
           fill="none"
