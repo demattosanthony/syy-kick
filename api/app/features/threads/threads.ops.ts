@@ -27,6 +27,7 @@ import {
   getModelConfig,
   processThreadMessages,
   createAndSaveThreadTitle,
+  stripBase64FromToolResult,
 } from "./threads.utils";
 import { processFile } from "../files/files.processor.";
 import s3 from "../../config/s3";
@@ -893,11 +894,16 @@ const threadsOps = {
                   (r) => r.toolCallId === toolCall.toolCallId
                 );
                 if (result) {
+                  // Strip base64Data from images before storing to prevent large data in DB
+                  const strippedResult = stripBase64FromToolResult(
+                    result.result
+                  );
+
                   await db
                     .update(toolCallsTable)
                     .set({
                       status: "completed",
-                      result: result.result,
+                      result: strippedResult,
                       updatedAt: now,
                     })
                     .where(eq(toolCallsTable.id, toolCallDbId));
@@ -1120,6 +1126,11 @@ const threadsOps = {
       // Clone tool calls
       if (sourceMsg.toolCalls && sourceMsg.toolCalls.length > 0) {
         for (const call of sourceMsg.toolCalls) {
+          // Strip base64Data from cloned tool call results to prevent large data in DB
+          const strippedResult = call.result
+            ? stripBase64FromToolResult(call.result)
+            : call.result;
+
           await db.insert(toolCallsTable).values({
             id: crypto.randomUUID(), // Generate new ID for tool call
             messageId: newMsg.id,
@@ -1127,7 +1138,7 @@ const threadsOps = {
             toolCallId: call.toolCallId,
             args: call.args,
             status: call.status as any,
-            result: call.result,
+            result: strippedResult,
             createdAt: new Date(),
             updatedAt: new Date(),
           });

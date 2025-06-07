@@ -1032,9 +1032,12 @@ const LoadFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
                     className="border rounded-lg overflow-hidden"
                   >
                     <img
-                      src={`data:${image.mimeType || "image/png"};base64,${
-                        image.base64Data
-                      }`}
+                      src={
+                        image.imageUrl ||
+                        `data:${image.mimeType || "image/png"};base64,${
+                          image.base64Data
+                        }`
+                      }
                       alt={image.name || `Image ${idx + 1}`}
                       className="w-full h-auto"
                     />
@@ -1165,9 +1168,12 @@ const SearchFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
                     className="border rounded-lg overflow-hidden"
                   >
                     <img
-                      src={`data:${image.mimeType || "image/png"};base64,${
-                        image.base64Data
-                      }`}
+                      src={
+                        image.imageUrl ||
+                        `data:${image.mimeType || "image/png"};base64,${
+                          image.base64Data
+                        }`
+                      }
                       alt={image.name || `Image ${idx + 1}`}
                       className="w-full h-auto"
                     />

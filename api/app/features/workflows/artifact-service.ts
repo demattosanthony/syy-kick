@@ -31,6 +31,7 @@ export type PageImage = {
   imagePath: string;
   base64Data?: string;
   mimeType: string;
+  imageUrl?: string; // URL for frontend to fetch image
 };
 
 export type FileContentResult = {
@@ -57,10 +58,11 @@ export class ArtifactService {
   }
 
   /**
-   * Load images for given page IDs
+   * Load images for given page IDs - for frontend display (URLs only)
    */
   private async loadImagesForPages(
-    pageIds: (string | null)[]
+    pageIds: (string | null)[],
+    loadBase64Data: boolean = false
   ): Promise<PageImage[]> {
     // Filter out null values and ensure we have valid page IDs
     const validPageIds = pageIds.filter((id): id is string => id !== null);
@@ -83,46 +85,73 @@ export class ArtifactService {
     }
 
     console.log(
-      `🖼️ [ArtifactService] Found ${images.length} images, loading from S3...`
+      `🖼️ [ArtifactService] Found ${images.length} images${loadBase64Data ? ", loading from S3..." : ", generating URLs..."}`
     );
 
     const imageResults: PageImage[] = [];
 
     for (const image of images) {
       try {
-        // Load image data from S3
-        const file = s3.file(image.imagePath);
-        if (await file.exists()) {
-          const imageBuffer = await file.arrayBuffer();
-          const base64Data = Buffer.from(imageBuffer).toString("base64");
+        if (loadBase64Data) {
+          // Load image data from S3 for inference
+          const file = s3.file(image.imagePath);
+          if (await file.exists()) {
+            const imageBuffer = await file.arrayBuffer();
+            const base64Data = Buffer.from(imageBuffer).toString("base64");
+
+            imageResults.push({
+              name: image.name ?? "image",
+              imagePath: image.imagePath,
+              base64Data: base64Data,
+              mimeType: "image/png", // Most PDF conversions are PNG
+            });
+
+            console.log(
+              `✅ [ArtifactService] Loaded image: ${image.name} (${imageBuffer.byteLength} bytes)`
+            );
+          } else {
+            console.warn(
+              `⚠️ [ArtifactService] Image not found in S3: ${image.imagePath}`
+            );
+          }
+        } else {
+          // Generate presigned URL for frontend display
+          const imageUrl = s3
+            .file(image.imagePath)
+            .presign({ expiresIn: 3600 });
 
           imageResults.push({
             name: image.name ?? "image",
             imagePath: image.imagePath,
-            base64Data: base64Data,
+            imageUrl: imageUrl,
             mimeType: "image/png", // Most PDF conversions are PNG
           });
 
           console.log(
-            `✅ [ArtifactService] Loaded image: ${image.name} (${imageBuffer.byteLength} bytes)`
-          );
-        } else {
-          console.warn(
-            `⚠️ [ArtifactService] Image not found in S3: ${image.imagePath}`
+            `✅ [ArtifactService] Generated URL for image: ${image.name}`
           );
         }
       } catch (error) {
         console.error(
-          `❌ [ArtifactService] Error loading image ${image.name}:`,
+          `❌ [ArtifactService] Error processing image ${image.name}:`,
           error
         );
       }
     }
 
     console.log(
-      `🖼️ [ArtifactService] Successfully loaded ${imageResults.length}/${images.length} images`
+      `🖼️ [ArtifactService] Successfully processed ${imageResults.length}/${images.length} images`
     );
     return imageResults;
+  }
+
+  /**
+   * Load images with base64Data for inference use
+   */
+  private async loadImagesForInference(
+    pageIds: (string | null)[]
+  ): Promise<PageImage[]> {
+    return this.loadImagesForPages(pageIds, true);
   }
 
   /**
@@ -524,7 +553,7 @@ export class ArtifactService {
     // Load images for the selected pages if requested
     let images: PageImage[] = [];
     if (includeImages && selectedPageIds.length > 0) {
-      images = await this.loadImagesForPages(selectedPageIds);
+      images = await this.loadImagesForPages(selectedPageIds, false); // Use URLs for frontend
     }
 
     return { content, totalPages, totalChunks, pageInfo, images };
@@ -724,7 +753,7 @@ export class ArtifactService {
     // Load images for the matching pages if requested
     let images: PageImage[] = [];
     if (includeImages && selectedPageIds.length > 0) {
-      images = await this.loadImagesForPages(selectedPageIds);
+      images = await this.loadImagesForPages(selectedPageIds, false);
     }
 
     return { content, matches: rankedChunks.length, images };

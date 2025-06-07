@@ -171,14 +171,16 @@ export default function ChatAttachment({
                         className="object-contain"
                       />
                     ) : (
-                      <File className="w-6 h-6 text-muted-foreground" />
+                      <File className="w-6 h-6" />
                     )}
                   </div>
                   <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-sm font-medium truncate">
                       {attachment.name}
                     </span>
-                    <span className="text-xs text-muted">{fileTypeLabel}</span>
+                    <span className="text-xs text-muted dark:text-muted-foreground">
+                      {fileTypeLabel}
+                    </span>
                   </div>
                   <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     <ExternalLink className="w-4 h-4 text-muted-foreground" />

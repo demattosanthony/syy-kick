@@ -98,8 +98,6 @@ export async function getFilesForUser(
     })
   );
 
-  console.log("filesWithUrls", filesWithUrls);
-
   return {
     files: filesWithUrls as File[],
     pagination: {
