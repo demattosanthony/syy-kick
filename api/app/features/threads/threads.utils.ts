@@ -5,7 +5,11 @@ import { z } from "zod";
 import { CharacterTextSplitter } from "@langchain/textsplitters";
 
 // Internal configuration
-import { CONFIG, MARKITDOWN_MIME_TYPES } from "../../config/constants";
+import {
+  CONFIG,
+  MARKITDOWN_MIME_TYPES,
+  PROGRAMMING_FILE_MIME_TYPES,
+} from "../../config/constants";
 import db from "../../config/db";
 import reranker from "../../config/reranker";
 import s3 from "../../config/s3";
@@ -1301,6 +1305,10 @@ async function createFileAttachmentMessages(
     const isPdf = file.mimeType === "application/pdf";
     const isDocument = MARKITDOWN_MIME_TYPES.includes(file.mimeType || "");
     const isDrawing = file.category === "drawing";
+    const isPlainText = file.mimeType === "text/plain";
+    const isProgrammingFile = PROGRAMMING_FILE_MIME_TYPES.includes(
+      file.mimeType || ""
+    );
 
     // Direct inclusion for images (if supported by model)
     if (
@@ -1326,8 +1334,8 @@ async function createFileAttachmentMessages(
     else if (isDrawing && isPdf) {
       drawingFiles.push(file);
     }
-    // Large documents go to artifact service
-    else if (isPdf || isDocument) {
+    // Large documents, plain text, and programming files go to artifact service
+    else if (isPdf || isDocument || isPlainText || isProgrammingFile) {
       artifactFiles.push(file);
     }
     // Other files - include basic info
@@ -1405,7 +1413,15 @@ Ask me to examine specific sheets, details, or areas of interest within these dr
           pages.reduce((sum, page) => sum + page.chunks.length, 0)
         );
 
-      return `- ${f.name} (Document - ${f.mimeType}) - ${pageCount} pages, ${chunkCount} chunks`;
+      // Determine file type description
+      let fileTypeDesc = "Document";
+      if (f.mimeType === "text/plain") {
+        fileTypeDesc = "Plain Text";
+      } else if (PROGRAMMING_FILE_MIME_TYPES.includes(f.mimeType || "")) {
+        fileTypeDesc = "Code File";
+      }
+
+      return `- ${f.name} (${fileTypeDesc} - ${f.mimeType}) - ${pageCount} pages, ${chunkCount} chunks`;
     });
 
     const fileList = (await Promise.all(fileListPromises)).join("\n");

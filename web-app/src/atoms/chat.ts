@@ -22,52 +22,173 @@ export const AUTO_MODEL_CONFIG = {
   name: "Auto",
   provider: "Auto",
   supportedMimeTypes: [
+    // Images
     "image/jpeg",
     "image/png",
     "image/webp",
     "image/gif",
     "image/heic",
     "image/heif",
+
+    // Documents
     "application/pdf",
-    "application/x-javascript",
-    "text/javascript",
-    "application/x-python",
-    "text/python",
-    "text/x-python",
-    "text/x-script.python",
-    "application/x-python-code",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.ms-powerpoint",
+    "application/zip",
+
+    // Basic text types
     "text/plain",
     "text/html",
-    "text/md",
+    "text/css",
     "text/csv",
     "text/xml",
     "text/rtf",
+    "application/json",
+
+    // Markdown and documentation
     "text/markdown",
     "text/x-markdown",
+    "text/md",
     "text/org",
     "text/asciidoc",
     "text/restructuredtext",
     "text/textile",
     "text/wiki",
+    "text/x-tex",
+    "text/x-bibtex",
+    "text/x-readme",
+
+    // Configuration files
     "text/yaml",
+    "text/x-yaml",
+    "application/x-yaml",
     "text/toml",
     "text/ini",
     "text/properties",
     "text/conf",
+    "text/x-config",
+    "text/x-env",
+    "text/x-gitignore",
+    "text/x-editorconfig",
+
+    // JavaScript ecosystem
+    "application/javascript",
+    "application/x-javascript",
+    "text/javascript",
+    "text/x-javascript",
+    "application/typescript",
+    "text/typescript",
+    "text/x-typescript",
+    "text/jsx",
+    "text/x-jsx",
+    "text/tsx",
+    "text/x-tsx",
+    "text/x-vue",
+    "application/node",
+
+    // Python
+    "application/x-python",
+    "text/python",
+    "text/x-python",
+    "text/x-python-script",
+    "text/x-script.python",
+    "application/x-python-code",
+
+    // Java ecosystem
+    "text/x-java-source",
+    "text/x-java",
+    "text/x-kotlin",
+    "text/x-scala",
+
+    // C/C++
+    "text/x-c",
+    "text/x-c++",
+    "text/x-cpp",
+    "text/x-chdr",
+    "text/x-csrc",
+
+    // C# and .NET
+    "text/x-csharp",
+    "text/x-fsharp",
+
+    // Other compiled languages
+    "text/x-go",
+    "text/x-rust",
+    "text/x-swift",
+
+    // Web languages
+    "text/x-php",
+    "application/x-httpd-php",
+    "text/x-ruby",
+    "text/x-scss",
+    "text/x-sass",
+    "text/x-less",
+
+    // Functional languages
+    "text/x-haskell",
+    "text/x-ocaml",
+    "text/x-erlang",
+    "text/x-elixir",
+    "text/x-clojure",
+    "text/x-lisp",
+    "text/x-scheme",
+
+    // Data science and analytics
+    "text/x-r",
+    "text/x-matlab",
+    "text/x-octave",
+    "text/x-julia",
+
+    // Scripting languages
+    "text/x-perl",
+    "text/x-lua",
+    "text/x-tcl",
+    "text/x-awk",
+
+    // Shell and system
+    "text/x-shellscript",
+    "application/x-sh",
+    "text/x-bash",
+    "text/x-zsh",
+    "text/x-fish",
+    "text/x-powershell",
+    "text/x-batch",
+    "application/x-bat",
+    "text/x-dockerfile",
+    "text/x-makefile",
+
+    // Database
+    "text/x-sql",
+    "application/sql",
+    "text/x-mysql",
+    "text/x-postgresql",
+
+    // Hardware description
+    "text/x-vhdl",
+    "text/x-verilog",
+    "text/x-systemverilog",
+
+    // Assembly and low-level
+    "text/x-asm",
+    "text/x-nasm",
+
+    // Logs and diffs
     "text/log",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/msword",
-    "text/plain",
-    "text/markdown",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    "application/vnd.ms-powerpoint",
-    "text/html",
-    "text/csv",
-    "application/json",
-    "text/xml",
-    "application/zip",
+    "text/x-log",
+    "text/x-diff",
+    "text/x-patch",
+
+    // Misc formats
+    "text/x-json",
+    "application/x-ndjson",
+    "text/x-jsonc",
+    "text/x-graphql",
+    "text/x-proto",
+    "text/x-thrift",
   ],
   maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
   maxFileSize: 1024 * 1024 * 1024, // 1GB

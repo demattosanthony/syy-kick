@@ -6,7 +6,10 @@ import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { convertPdfToImages } from "../../utils";
-import { MARKITDOWN_MIME_TYPES } from "../../config/constants";
+import {
+  MARKITDOWN_MIME_TYPES,
+  PROGRAMMING_FILE_MIME_TYPES,
+} from "../../config/constants";
 
 export type FilePageImage = {
   name: string;
@@ -151,6 +154,18 @@ If the pdf is a regular document, return "document".`,
     }
   }
 
+  // Handle plain text files directly
+  if (mimeType === "text/plain") {
+    const page = await processPlainText(fileContent, fileName);
+    return { pages: [page], category: "document" };
+  }
+
+  // Handle programming files directly (all text-based files)
+  if (PROGRAMMING_FILE_MIME_TYPES.includes(mimeType)) {
+    const page = await processPlainText(fileContent, fileName);
+    return { pages: [page], category: "document" };
+  }
+
   if (MARKITDOWN_MIME_TYPES.includes(mimeType)) {
     const page = await markitdown(fileContent, fileName);
     return { pages: [page], category: "document" };
@@ -202,6 +217,27 @@ export async function markitdown(
       await Bun.file(tempFile).delete();
     }
   }
+}
+
+export async function processPlainText(
+  fileContent: Buffer,
+  fileName: string
+): Promise<FilePage> {
+  const textContent = fileContent.toString("utf-8");
+  const chunkedContent = await textSplitter.splitText(textContent);
+
+  const page: FilePage = {
+    pageNumber: 1,
+    chunks: [],
+  };
+
+  for (const chunk of chunkedContent) {
+    page.chunks.push({
+      content: chunk,
+    });
+  }
+
+  return page;
 }
 
 export async function processPdf(
