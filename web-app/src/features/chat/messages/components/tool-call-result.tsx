@@ -862,11 +862,52 @@ const LoadFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
     return null;
   }
 
-  //   const formatContentSize = (length: number) => {
-  //     if (length < 1000) return `${length} chars`;
-  //     if (length < 1000000) return `${(length / 1000).toFixed(1)}K chars`;
-  //     return `${(length / 1000000).toFixed(1)}M chars`;
-  //   };
+  // Determine if this is a drawing file based on mimeType and tool args
+  const isDrawingFile =
+    result.mimeType === "application/pdf" &&
+    (tool.args?.startPage ||
+      tool.args?.endPage ||
+      (result.pageInfo && result.pageInfo.toLowerCase().includes("page")));
+
+  // Get display info based on file type
+  const getDisplayInfo = () => {
+    if (isDrawingFile) {
+      // For drawing files, show page information
+      if (
+        tool.args?.startPage &&
+        tool.args?.endPage &&
+        tool.args.startPage !== tool.args.endPage
+      ) {
+        return `Pages ${tool.args.startPage}-${tool.args.endPage}`;
+      } else if (tool.args?.startPage) {
+        return `Page ${tool.args.startPage}`;
+      } else if (result.pageInfo) {
+        return result.pageInfo;
+      } else {
+        return "Page 1";
+      }
+    } else {
+      // For regular documents, show chunk information
+      if (
+        tool.args?.startChunk &&
+        tool.args?.endChunk &&
+        tool.args.startChunk !== tool.args.endChunk
+      ) {
+        return `Chunks ${tool.args.startChunk}-${tool.args.endChunk}`;
+      } else if (tool.args?.startChunk) {
+        return `Chunk ${tool.args.startChunk}`;
+      } else if (
+        result.pageInfo &&
+        result.pageInfo.toLowerCase().includes("chunk")
+      ) {
+        return result.pageInfo;
+      } else {
+        return "First 10 chunks";
+      }
+    }
+  };
+
+  const displayInfo = getDisplayInfo();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -878,31 +919,8 @@ const LoadFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
           <span className="font-normal text-sm">
             {result.fileName || fileName}
           </span>
-          {/* {result.pageInfo && (
-            <>
-              <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground">
-                {result.pageInfo}
-              </span>
-            </>
-          )} */}
-          {/* {result.content && (
-            <>
-              <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground">
-                {formatContentSize(result.content.length)}
-              </span>
-            </>
-          )}
-          {result.images && result.images.length > 0 && (
-            <>
-              <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground">
-                {result.images.length}{" "}
-                {result.images.length === 1 ? "image" : "images"}
-              </span>
-            </>
-          )} */}
+          <span className="text-xs text-muted-foreground">•</span>
+          <span className="text-xs text-muted-foreground">{displayInfo}</span>
         </div>
       </SheetTrigger>
       <SheetContent className="w-full max-w-4xl">
@@ -910,7 +928,7 @@ const LoadFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
           <SheetTitle>File Content: {result.fileName || fileName}</SheetTitle>
           <SheetDescription>
             {result.mimeType && `${result.mimeType} • `}
-            {result.pageInfo}
+            {displayInfo}
             {result.images &&
               result.images.length > 0 &&
               ` • ${result.images.length} images`}

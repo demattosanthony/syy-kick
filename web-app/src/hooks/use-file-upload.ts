@@ -82,11 +82,11 @@ export function useFileUpload(acceptedTypes: string[]) {
         )
       );
 
-      if (result.isExisting) {
-        toast.info(`File "${file.name}" was already processed.`);
-      } else {
-        toast.success(`File "${file.name}" processed successfully.`);
-      }
+      //   if (result.isExisting) {
+      //     toast.info(`File "${file.name}" was already processed.`);
+      //   } else {
+      //     toast.success(`File "${file.name}" processed successfully.`);
+      //   }
     } catch (error) {
       console.error("Error processing file upload:", error);
 

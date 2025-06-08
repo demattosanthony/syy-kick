@@ -34,7 +34,9 @@ const UserMessage = React.memo(
                 {message.experimental_attachments.map(
                   (attachment: any, idx: number) => (
                     <ChatAttachment
-                      key={`${attachment.name}-${attachment.url}-${idx}`}
+                      key={`${attachment.name}-${
+                        attachment.contentType || attachment.mimeType || ""
+                      }-${idx}`}
                       attachment={attachment}
                     />
                   )
@@ -99,12 +101,16 @@ const UserMessage = React.memo(
       return false;
     }
 
-    // Deep compare attachments
+    // Compare attachments by name and content type only, ignore URL changes
+    // This prevents re-renders when URL changes from blob to server URL
     for (let i = 0; i < prevAttachments.length; i++) {
+      const prev = prevAttachments[i] as any;
+      const next = nextAttachments[i] as any;
+
       if (
-        prevAttachments[i].name !== nextAttachments[i].name ||
-        prevAttachments[i].url !== nextAttachments[i].url ||
-        prevAttachments[i].contentType !== nextAttachments[i].contentType
+        prev.name !== next.name ||
+        (prev.contentType || prev.mimeType) !==
+          (next.contentType || next.mimeType)
       ) {
         return false;
       }

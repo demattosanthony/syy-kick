@@ -401,7 +401,7 @@ const ArtifactViewer: React.FC<{
     }
 
     return (
-      <div className="max-w-[750px] w-full">
+      <div className="px-12 w-full">
         <MarkdownViewer content={content} />
       </div>
     );

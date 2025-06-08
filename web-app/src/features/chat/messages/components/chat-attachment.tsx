@@ -21,7 +21,7 @@ export default function ChatAttachment({
   return useMemo(() => {
     const contentType =
       attachment.contentType || (attachment as any).mimeType || "";
-    const stableKey = `${attachment.name}-${attachment.url}`;
+    const stableKey = `${attachment.name}-${contentType}`;
     const isBlob = attachment.url?.startsWith("blob:");
 
     switch (true) {
@@ -80,7 +80,7 @@ export default function ChatAttachment({
         return (
           <div
             key={`pdf-${stableKey}`}
-            className="bg-[#242628] dark:bg-input p-2 rounded-lg"
+            className="bg-[#242628] dark:bg-input p-2 rounded-lg w-[216px]"
           >
             {pdfError ? (
               <div
@@ -94,11 +94,14 @@ export default function ChatAttachment({
                 </div>
               </div>
             ) : (
-              <PdfThumbnail
-                url={attachment.url || ""}
-                onError={() => setPdfError(true)}
-                key={`pdf-thumb-${stableKey}-${isBlob ? "blob" : "url"}`}
-              />
+              <div className="w-[200px] h-32 rounded-lg overflow-hidden">
+                <PdfThumbnail
+                  url={attachment.url || ""}
+                  width={200}
+                  onError={() => setPdfError(true)}
+                  key={`pdf-thumb-${stableKey}`}
+                />
+              </div>
             )}
           </div>
         );
@@ -191,5 +194,11 @@ export default function ChatAttachment({
           </div>
         );
     }
-  }, [attachment, imageError, pdfError]); // Include error states in dependencies
+  }, [
+    attachment.name,
+    attachment.contentType,
+    attachment.url,
+    imageError,
+    pdfError,
+  ]);
 }

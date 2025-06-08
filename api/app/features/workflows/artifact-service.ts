@@ -529,12 +529,12 @@ export class ArtifactService {
       );
     } else {
       console.log(
-        `🧩 [ArtifactService] Using default non-PDF mode - returning first 3 chunks`
+        `🧩 [ArtifactService] Using default non-PDF mode - returning first 10 chunks for better pagination`
       );
       const allChunks = pages.flatMap((page) =>
         page.chunks.map((chunk) => ({ ...chunk, pageId: page.id }))
       );
-      const firstFewChunks = allChunks.slice(0, 3); // Show first 3 chunks by default
+      const firstFewChunks = allChunks.slice(0, 10); // Show first 10 chunks by default for regular documents (~10k tokens)
       selectedPageIds = [
         ...new Set(firstFewChunks.map((chunk) => chunk.pageId)),
       ];

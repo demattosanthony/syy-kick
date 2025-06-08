@@ -423,8 +423,8 @@ The tool can operate in two modes:
 - Ideal for extracting content from known documentation pages, articles, or technical resources`,
     parameters: z.object({
       query: z.string(),
-      url: z.string().nullable(),
-      limit: z.number().nullable(),
+      url: z.string().optional(),
+      limit: z.number().optional(),
     }),
     execute: async ({ query, url, limit }) => {
       console.log("Executing web search tool with query:", query);
@@ -1349,11 +1349,20 @@ async function createFileAttachmentMessages(
     }
   }
 
-  // Add notice for drawing files
+  // Add notice for drawing files with page count
   if (drawingFiles.length > 0) {
-    const drawingList = drawingFiles
-      .map((f) => `- ${f.name} (Engineering Drawing - ${f.mimeType})`)
-      .join("\n");
+    const drawingListPromises = drawingFiles.map(async (f) => {
+      // Get page count for drawing file
+      const pageCount = await db.query.filePages
+        .findMany({
+          where: eq(filePages.fileId, f.id),
+        })
+        .then((pages) => pages.length);
+
+      return `- ${f.name} (Engineering Drawing - ${f.mimeType}) - ${pageCount} pages`;
+    });
+
+    const drawingList = (await Promise.all(drawingListPromises)).join("\n");
 
     chunks.push({
       type: "text",
@@ -1374,11 +1383,32 @@ Ask me to examine specific sheets, details, or areas of interest within these dr
     });
   }
 
-  // Add artifact service prompting for regular documents
+  // Add artifact service prompting for regular documents with page count
   if (artifactFiles.length > 0) {
-    const fileList = artifactFiles
-      .map((f) => `- ${f.name} (Document - ${f.mimeType})`)
-      .join("\n");
+    const fileListPromises = artifactFiles.map(async (f) => {
+      // Get page count for document file
+      const pageCount = await db.query.filePages
+        .findMany({
+          where: eq(filePages.fileId, f.id),
+        })
+        .then((pages) => pages.length);
+
+      // Get chunk count for document file
+      const chunkCount = await db.query.filePages
+        .findMany({
+          where: eq(filePages.fileId, f.id),
+          with: {
+            chunks: true,
+          },
+        })
+        .then((pages) =>
+          pages.reduce((sum, page) => sum + page.chunks.length, 0)
+        );
+
+      return `- ${f.name} (Document - ${f.mimeType}) - ${pageCount} pages, ${chunkCount} chunks`;
+    });
+
+    const fileList = (await Promise.all(fileListPromises)).join("\n");
 
     chunks.push({
       type: "text",
@@ -1390,7 +1420,7 @@ ${fileList}
 These files have been processed with text extraction and OCR. You can access their content using:
 
 - \`search_file_content\` tool to find specific information within the documents
-- \`load_file_content\` tool to read specific pages or sections
+- \`load_file_content\` tool to read specific pages or sections (default: first 10 chunks for regular documents)
 - Content is available for analysis, reference, and text-based operations
 </document_attachments_notice>`,
     });

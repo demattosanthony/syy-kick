@@ -123,7 +123,7 @@ export async function generatePresignedUrl(
   // Generate unique file key for S3
   const fileExtension = fileName.split(".").pop();
   const uniqueFileName = `${crypto.randomUUID()}-${Date.now()}.${fileExtension}`;
-  const fileKey = `user-attachments/${uniqueFileName}`;
+  const fileKey = `files/${uniqueFileName}`;
 
   console.log(
     `🔗 [GeneratePresignedUrl] Generating presigned URL for: ${fileName} -> ${fileKey}`

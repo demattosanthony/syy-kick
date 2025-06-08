@@ -229,8 +229,6 @@ export function HomePage() {
 
       // Process the file through the same pipeline as regular uploads
       await processFileUpload(downloadedFile);
-
-      toast.success(`Added ${file.name} to your message.`);
     } catch (error) {
       console.error("Error downloading SharePoint file from widget:", error);
       toast.error("Failed to add SharePoint file. Please try again.");

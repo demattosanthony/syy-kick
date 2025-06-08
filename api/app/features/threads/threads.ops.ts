@@ -560,16 +560,6 @@ const threadsOps = {
       activeStreamCache.delete(threadId);
     };
 
-    // Track the current step's message state
-    let currentStepState: ActiveStreamData = {
-      currentAssistantMessageId: null,
-      accumulatedResponseText: "",
-      assistantMessageCreatedAt: null,
-      role: "assistant",
-      model: model,
-      provider: undefined,
-    };
-
     try {
       const thread = await db.query.threads.findFirst({
         where: eq(threads.id, threadId),
@@ -584,7 +574,6 @@ const threadsOps = {
         },
       });
       const modelConfig = getModelConfig(model);
-      currentStepState.provider = modelConfig.provider;
 
       if (!thread) {
         console.error(`Thread not found: ${threadId}`);
@@ -622,356 +611,20 @@ const threadsOps = {
         tools = { ...tools, ...artifactTools };
       }
 
-      const result = streamText({
-        model: modelConfig.model,
-        messages: inferenceMsgs,
-        temperature: 0.45,
-        ...(tools && {
-          tools: tools,
-          maxSteps: 25,
-          toolChoice: "auto",
-          toolCallStreaming: true,
-        }),
-        maxTokens: maxTokens,
-        abortSignal: controller.signal,
-        providerOptions: {
-          openai: {
-            store: false,
-            reasoningSummary: "auto",
-          },
-          ...(modelConfig.provider === "anthropic"
-            ? (() => {
-                // If model is "Auto" and thinking is true, enable thinking with budget 35_000
-                if (model.toLowerCase() === "auto" && thinking) {
-                  return {
-                    anthropic: {
-                      thinking: { type: "enabled", budgetTokens: 35_000 },
-                    } satisfies AnthropicProviderOptions,
-                  };
-                }
-                // If it's not auto model, thinking is always false, but still set thinking enabled
-                else if (model.toLowerCase() !== "auto") {
-                  return {
-                    anthropic: {
-                      thinking: { type: "enabled", budgetTokens: 24_000 },
-                    } satisfies AnthropicProviderOptions,
-                  };
-                }
-                // For auto model with thinking false, disable thinking
-                else {
-                  return {
-                    anthropic: {
-                      thinking: { type: "disabled", budgetTokens: 0 },
-                    } satisfies AnthropicProviderOptions,
-                  };
-                }
-              })()
-            : {}),
-          google: {
-            thinkingConfig: {
-              includeThoughts: true,
-              thinkingBudget: 24_000,
-            },
-          } satisfies GoogleGenerativeAIProviderOptions,
-        },
-        onChunk: async ({ chunk }) => {
-          //   console.log("onChunk", chunk);
-          // Helper function to ensure we have a message for this step
-          const ensureAssistantMessage = async () => {
-            if (!currentStepState.currentAssistantMessageId) {
-              currentStepState.assistantMessageCreatedAt = new Date();
-              const [insertedMessage] = await db
-                .insert(messages)
-                .values({
-                  userId: userId,
-                  id: crypto.randomUUID(),
-                  threadId,
-                  role: "assistant",
-                  text: "",
-                  createdAt: currentStepState.assistantMessageCreatedAt,
-                  model: currentStepState.model,
-                  provider: currentStepState.provider,
-                })
-                .returning();
-              currentStepState.currentAssistantMessageId = insertedMessage.id;
-              currentStepState.accumulatedResponseText = "";
-
-              // Update cache and emit initial event
-              activeStreamCache.set(threadId, currentStepState);
-              eventEmitter.emit(`thread-${threadId}-message`, {
-                type: "text-delta",
-                messageId: currentStepState.currentAssistantMessageId,
-                content: "",
-                role: "assistant",
-                createdAt:
-                  currentStepState.assistantMessageCreatedAt.toISOString(),
-                isInitialChunk: true,
-              });
-            }
-          };
-
-          if (chunk.type === "text-delta") {
-            // Ensure we have a message for this step
-            await ensureAssistantMessage();
-
-            // Accumulate the text delta
-            currentStepState.accumulatedResponseText += chunk.textDelta;
-
-            // Emit the delta event
-            eventEmitter.emit(`thread-${threadId}-message`, {
-              type: "text-delta",
-              messageId: currentStepState.currentAssistantMessageId,
-              content: chunk.textDelta,
-            });
-
-            // Update cache with the latest accumulated text
-            activeStreamCache.set(threadId, currentStepState);
-          } else if (chunk.type === "reasoning") {
-            // Ensure we have a message for reasoning content
-            await ensureAssistantMessage();
-
-            // Track reasoning start time if this is the first reasoning chunk
-            if (!currentStepState.reasoningStartTime) {
-              currentStepState.reasoningStartTime = new Date();
-              activeStreamCache.set(threadId, currentStepState);
-            }
-
-            // Handle reasoning chunks (for models that support thinking)
-            eventEmitter.emit(`thread-${threadId}-message`, {
-              type: "reasoning-delta",
-              messageId: currentStepState.currentAssistantMessageId,
-              content: chunk.textDelta,
-            });
-          } else if (chunk.type === "source") {
-            // Handle source chunks
-            if (currentStepState.currentAssistantMessageId) {
-              eventEmitter.emit(`thread-${threadId}-message`, {
-                type: "source",
-                messageId: currentStepState.currentAssistantMessageId,
-                source: chunk.source,
-              });
-            }
-          } else if (chunk.type === "tool-call") {
-            // For tool calls, we need a message to associate them with
-            await ensureAssistantMessage();
-
-            // Simply emit the tool call chunk - no simulation needed since native streaming works
-            eventEmitter.emit(`thread-${threadId}-message`, {
-              type: "tool-call-chunk",
-              messageId: currentStepState.currentAssistantMessageId,
-              toolCallId: chunk.toolCallId,
-              toolName: chunk.toolName,
-              args: chunk.args,
-            });
-          } else if (chunk.type === "tool-call-streaming-start") {
-            // Handle start of streaming tool call
-            await ensureAssistantMessage();
-
-            eventEmitter.emit(`thread-${threadId}-message`, {
-              type: "tool-call-streaming-start",
-              messageId: currentStepState.currentAssistantMessageId,
-              toolCallId: chunk.toolCallId,
-              toolName: chunk.toolName,
-            });
-          } else if (chunk.type === "tool-call-delta") {
-            // Handle streaming tool call argument deltas (if available)
-            await ensureAssistantMessage();
-
-            eventEmitter.emit(`thread-${threadId}-message`, {
-              type: "tool-call-delta",
-              messageId: currentStepState.currentAssistantMessageId,
-              toolCallId: chunk.toolCallId,
-              toolName: chunk.toolName,
-              argsTextDelta: chunk.argsTextDelta,
-            });
-          } else if (chunk.type === "tool-result") {
-            // Handle tool execution results
-            await ensureAssistantMessage();
-
-            eventEmitter.emit(`thread-${threadId}-message`, {
-              type: "tool-result",
-              messageId: currentStepState.currentAssistantMessageId,
-              toolCallId: chunk.toolCallId,
-              toolName: chunk.toolName,
-              args: chunk.args,
-              result: chunk.result,
-            });
-          }
-        },
-        onError: (error) => {
-          console.error(
-            `Error running inference for thread ${threadId}:`,
-            error
-          );
-
-          // Check if this was an abort
-          if (
-            error.error instanceof Error &&
-            error.error.name === "AbortError"
-          ) {
-            console.log(`Inference aborted for thread ${threadId}`);
-            // Save accumulated text if we have any
-            if (
-              currentStepState.currentAssistantMessageId &&
-              currentStepState.accumulatedResponseText
-            ) {
-              db.update(messages)
-                .set({ text: currentStepState.accumulatedResponseText })
-                .where(
-                  eq(messages.id, currentStepState.currentAssistantMessageId)
-                )
-                .catch((err) =>
-                  console.error("Error saving aborted message:", err)
-                );
-            }
-          }
-
-          cleanup();
-          // Emit inference complete event on error so frontend doesn't get stuck
-          emitInferenceComplete();
-        },
-        onStepFinish: async ({
-          toolCalls,
-          toolResults,
-          text,
-          finishReason,
-          reasoning,
-        }) => {
-          const now = new Date();
-
-          // If we have a current message from this step, finalize it
-          if (currentStepState.currentAssistantMessageId) {
-            const currentMsgId = currentStepState.currentAssistantMessageId;
-            const fullAccumulatedText =
-              currentStepState.accumulatedResponseText;
-
-            // Calculate reasoning duration if we have reasoning start time
-            let reasoningDurationSeconds: number | null = null;
-            if (currentStepState.reasoningStartTime && reasoning) {
-              const reasoningEndTime = new Date();
-              reasoningDurationSeconds = Math.round(
-                (reasoningEndTime.getTime() -
-                  currentStepState.reasoningStartTime.getTime()) /
-                  1000
-              );
-            }
-
-            // Persist the final accumulated text and reasoning to DB
-            await db
-              .update(messages)
-              .set({
-                text: fullAccumulatedText,
-                reasoning,
-                reasoningDurationSeconds,
-              })
-              .where(eq(messages.id, currentMsgId));
-
-            // Emit reasoning duration if we have it
-            if (reasoningDurationSeconds !== null) {
-              eventEmitter.emit(`thread-${threadId}-message`, {
-                type: "reasoning-duration",
-                messageId: currentMsgId,
-                durationSeconds: reasoningDurationSeconds,
-              });
-            }
-
-            // Handle tool calls for this step
-            if (toolCalls && toolCalls.length > 0) {
-              for (const toolCall of toolCalls) {
-                if (!toolCall) continue;
-                const toolCallDbId = crypto.randomUUID();
-                await db.insert(toolCallsTable).values({
-                  id: toolCallDbId,
-                  messageId: currentMsgId,
-                  toolName: toolCall.toolName,
-                  toolCallId: toolCall.toolCallId,
-                  args: toolCall.args,
-                  status: "pending",
-                  createdAt: now,
-                  updatedAt: now,
-                });
-                const result = toolResults.find(
-                  (r) => r.toolCallId === toolCall.toolCallId
-                );
-                if (result) {
-                  // Strip base64Data from images before storing to prevent large data in DB
-                  const strippedResult = stripBase64FromToolResult(
-                    result.result
-                  );
-
-                  await db
-                    .update(toolCallsTable)
-                    .set({
-                      status: "completed",
-                      result: strippedResult,
-                      updatedAt: now,
-                    })
-                    .where(eq(toolCallsTable.id, toolCallDbId));
-                }
-              }
-
-              const assistantMessageWithTools =
-                await db.query.messages.findFirst({
-                  where: eq(messages.id, currentMsgId),
-                  with: { toolCalls: true },
-                });
-              eventEmitter.emit(`thread-${threadId}-message`, {
-                type: "tool-call",
-                message: assistantMessageWithTools,
-              });
-            }
-
-            // Handle embeddings for text content
-            if (fullAccumulatedText && fullAccumulatedText.length > 0) {
-              try {
-                const embeddingResult = await embeddingModel.doEmbed({
-                  values: [fullAccumulatedText],
-                });
-                await db
-                  .update(messages)
-                  .set({ embedding: embeddingResult.embeddings[0] })
-                  .where(eq(messages.id, currentMsgId));
-              } catch (error) {
-                console.error("Error embedding step message", error);
-              }
-            }
-
-            // Emit message complete event for this step
-            const finalStepMessage = await db.query.messages.findFirst({
-              where: eq(messages.id, currentMsgId),
-              with: { toolCalls: true },
-            });
-            eventEmitter.emit(`thread-${threadId}-message`, {
-              type: "message-complete",
-              message: finalStepMessage,
-            });
-          }
-
-          // Reset state for the next step (if there is one)
-          // If this is the final step (stop/length), we'll clean up in the next condition
-          if (finishReason === "tool-calls") {
-            // Reset for the next step that will come after tool execution
-            currentStepState = {
-              currentAssistantMessageId: null,
-              accumulatedResponseText: "",
-              assistantMessageCreatedAt: null,
-              role: "assistant",
-              model: model,
-              provider: modelConfig.provider,
-              reasoningStartTime: undefined,
-            };
-            activeStreamCache.set(threadId, currentStepState);
-          } else if (finishReason === "stop" || finishReason === "length") {
-            // This is the final step, clean up
-            cleanup();
-            // Emit inference complete event so frontend knows the entire run is done
-            emitInferenceComplete();
-          }
-        },
-      });
-
-      for await (const _ of result.textStream) {
-      }
+      // Manual tool calling flow
+      await this.manualToolCallingFlow(
+        modelConfig,
+        inferenceMsgs,
+        tools,
+        maxTokens,
+        controller,
+        userId,
+        threadId,
+        model,
+        thinking,
+        cleanup,
+        emitInferenceComplete
+      );
     } catch (error: any) {
       console.error(
         `Unhandled error in runInferenceForThread for ${threadId}:`,
@@ -981,22 +634,6 @@ const threadsOps = {
       // Check if this was an abort
       if (error instanceof Error && error.name === "AbortError") {
         console.log(`Inference aborted for thread ${threadId}`);
-        // Save accumulated text if we have any
-        if (
-          currentStepState.currentAssistantMessageId &&
-          currentStepState.accumulatedResponseText
-        ) {
-          try {
-            await db
-              .update(messages)
-              .set({ text: currentStepState.accumulatedResponseText })
-              .where(
-                eq(messages.id, currentStepState.currentAssistantMessageId)
-              );
-          } catch (err) {
-            console.error("Error saving aborted message:", err);
-          }
-        }
       }
 
       cleanup();
@@ -1008,6 +645,575 @@ const threadsOps = {
       // Emit inference complete as a final safety net
       emitInferenceComplete();
     }
+  },
+
+  async manualToolCallingFlow(
+    modelConfig: any,
+    initialMessages: any[],
+    tools: Record<string, any> | undefined,
+    maxTokens: number | undefined,
+    controller: AbortController,
+    userId: string,
+    threadId: string,
+    model: string,
+    thinking: boolean | undefined,
+    cleanup: () => void,
+    emitInferenceComplete: () => void
+  ) {
+    let currentMessages = [...initialMessages];
+    let iteration = 0;
+    const maxIterations = 25; // equivalent to previous maxSteps
+
+    while (iteration < maxIterations) {
+      console.log(`=== Manual Tool Calling Iteration ${iteration + 1} ===`);
+      console.log(`Current messages count: ${currentMessages.length}`);
+
+      // Check if aborted before starting new iteration
+      if (controller.signal.aborted) {
+        console.log(`Inference aborted during iteration ${iteration + 1}`);
+        break;
+      }
+
+      // Track the current step's message state
+      let currentStepState: ActiveStreamData = {
+        currentAssistantMessageId: null,
+        accumulatedResponseText: "",
+        assistantMessageCreatedAt: null,
+        role: "assistant",
+        model: model,
+        provider: modelConfig.provider,
+      };
+
+      try {
+        // Call streamText without maxSteps - we control the flow manually
+        const result = streamText({
+          model: modelConfig.model,
+          messages: currentMessages,
+          temperature: 0.45,
+          ...(tools && {
+            tools: tools,
+            toolChoice: "auto",
+            toolCallStreaming: true,
+          }),
+          maxTokens: maxTokens,
+          abortSignal: controller.signal,
+          providerOptions: {
+            openai: {
+              store: false,
+              reasoningSummary: "auto",
+            },
+            ...(modelConfig.provider === "anthropic"
+              ? (() => {
+                  // Only enable thinking for the first iteration to avoid Anthropic API issues
+                  // with subsequent assistant messages not having thinking content
+                  const enableThinking = iteration === 0 && thinking;
+
+                  if (model.toLowerCase() === "auto" && enableThinking) {
+                    return {
+                      anthropic: {
+                        thinking: { type: "enabled", budgetTokens: 35_000 },
+                      } satisfies AnthropicProviderOptions,
+                    };
+                  }
+                  // If it's not auto model, only enable thinking on first iteration
+                  else if (model.toLowerCase() !== "auto" && iteration === 0) {
+                    return {
+                      anthropic: {
+                        thinking: { type: "enabled", budgetTokens: 24_000 },
+                      } satisfies AnthropicProviderOptions,
+                    };
+                  }
+                  // For subsequent iterations or when thinking is disabled, disable thinking
+                  else {
+                    return {
+                      anthropic: {
+                        thinking: { type: "disabled", budgetTokens: 0 },
+                      } satisfies AnthropicProviderOptions,
+                    };
+                  }
+                })()
+              : {}),
+            google: {
+              thinkingConfig: {
+                includeThoughts: true,
+                thinkingBudget: 24_000,
+              },
+            } satisfies GoogleGenerativeAIProviderOptions,
+          },
+        });
+
+        // Process the fullStream manually
+        const { fullStream } = result;
+
+        let hasToolCalls = false;
+        let accumulatedText = "";
+        let reasoning = "";
+        const toolCalls: any[] = [];
+        const toolResults: any[] = [];
+        let finishReason: string | undefined;
+
+        // Helper function to ensure we have a message for this step
+        const ensureAssistantMessage = async () => {
+          if (!currentStepState.currentAssistantMessageId) {
+            currentStepState.assistantMessageCreatedAt = new Date();
+            const [insertedMessage] = await db
+              .insert(messages)
+              .values({
+                userId: userId,
+                id: crypto.randomUUID(),
+                threadId,
+                role: "assistant",
+                text: "",
+                createdAt: currentStepState.assistantMessageCreatedAt,
+                model: currentStepState.model,
+                provider: currentStepState.provider,
+              })
+              .returning();
+            currentStepState.currentAssistantMessageId = insertedMessage.id;
+            currentStepState.accumulatedResponseText = "";
+
+            // Update cache and emit initial event
+            activeStreamCache.set(threadId, currentStepState);
+            eventEmitter.emit(`thread-${threadId}-message`, {
+              type: "text-delta",
+              messageId: currentStepState.currentAssistantMessageId,
+              content: "",
+              role: "assistant",
+              createdAt:
+                currentStepState.assistantMessageCreatedAt.toISOString(),
+              isInitialChunk: true,
+            });
+          }
+        };
+
+        // Process each chunk in the stream
+        for await (const chunk of fullStream) {
+          // Check for abort signal during streaming
+          if (controller.signal.aborted) {
+            console.log(`Stream aborted during chunk processing`);
+            break;
+          }
+
+          switch (chunk.type) {
+            case "text-delta":
+              // Ensure we have a message for this step
+              await ensureAssistantMessage();
+
+              // Accumulate the text delta
+              accumulatedText += chunk.textDelta;
+              currentStepState.accumulatedResponseText += chunk.textDelta;
+
+              // Emit the delta event
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "text-delta",
+                messageId: currentStepState.currentAssistantMessageId,
+                content: chunk.textDelta,
+              });
+
+              // Update cache with the latest accumulated text
+              activeStreamCache.set(threadId, currentStepState);
+              break;
+
+            case "reasoning":
+              // Ensure we have a message for reasoning content
+              await ensureAssistantMessage();
+
+              // Track reasoning start time if this is the first reasoning chunk
+              if (!currentStepState.reasoningStartTime) {
+                currentStepState.reasoningStartTime = new Date();
+                activeStreamCache.set(threadId, currentStepState);
+              }
+
+              // Accumulate reasoning text
+              reasoning += chunk.textDelta;
+
+              // Handle reasoning chunks (for models that support thinking)
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "reasoning-delta",
+                messageId: currentStepState.currentAssistantMessageId,
+                content: chunk.textDelta,
+              });
+              break;
+
+            case "source":
+              // Handle source chunks
+              if (currentStepState.currentAssistantMessageId) {
+                eventEmitter.emit(`thread-${threadId}-message`, {
+                  type: "source",
+                  messageId: currentStepState.currentAssistantMessageId,
+                  source: chunk.source,
+                });
+              }
+              break;
+
+            case "tool-call":
+              hasToolCalls = true;
+              // For tool calls, we need a message to associate them with
+              await ensureAssistantMessage();
+
+              toolCalls.push({
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+                args: chunk.args,
+              });
+
+              // Simply emit the tool call chunk - no simulation needed since native streaming works
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "tool-call-chunk",
+                messageId: currentStepState.currentAssistantMessageId,
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+                args: chunk.args,
+              });
+              break;
+
+            case "tool-call-streaming-start":
+              // Handle start of streaming tool call
+              await ensureAssistantMessage();
+
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "tool-call-streaming-start",
+                messageId: currentStepState.currentAssistantMessageId,
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+              });
+              break;
+
+            case "tool-call-delta":
+              // Handle streaming tool call argument deltas (if available)
+              await ensureAssistantMessage();
+
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "tool-call-delta",
+                messageId: currentStepState.currentAssistantMessageId,
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+                argsTextDelta: chunk.argsTextDelta,
+              });
+              break;
+
+            case "tool-result":
+              // Handle tool execution results
+              await ensureAssistantMessage();
+
+              toolResults.push({
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+                args: chunk.args,
+                result: chunk.result,
+              });
+
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "tool-result",
+                messageId: currentStepState.currentAssistantMessageId,
+                toolCallId: chunk.toolCallId,
+                toolName: chunk.toolName,
+                args: chunk.args,
+                result: chunk.result,
+              });
+              break;
+
+            case "finish":
+              finishReason = chunk.finishReason;
+              console.log(
+                `Finished iteration ${iteration + 1} with reason: ${finishReason}`
+              );
+              break;
+
+            case "step-start":
+              // Handle step start - just log for now
+              console.log(`Step started in iteration ${iteration + 1}`);
+              break;
+
+            case "step-finish":
+              // Handle step finish - this indicates a step completed
+              console.log(`Step finished in iteration ${iteration + 1}`);
+              break;
+
+            case "reasoning-signature":
+              // Handle reasoning signature - part of reasoning process
+              if (currentStepState.currentAssistantMessageId) {
+                console.log(
+                  `Reasoning signature received in iteration ${iteration + 1}`
+                );
+              }
+              break;
+
+            case "error":
+              // Handle error chunks
+              console.error(
+                `Error chunk received in iteration ${iteration + 1}:`,
+                chunk.error
+              );
+
+              // If it's a serious error, we should stop the iteration
+              if (
+                chunk.error &&
+                typeof chunk.error === "object" &&
+                "message" in chunk.error
+              ) {
+                console.error(`API Error: ${(chunk.error as any).message}`);
+                // Set finishReason to stop the iteration
+                finishReason = "error";
+              }
+              break;
+
+            default:
+              // Handle any other chunk types
+              console.log(`Unhandled chunk type: ${chunk.type}`);
+              break;
+          }
+        }
+
+        // Step finished - handle the completion
+        await this.handleStepCompletion(
+          currentStepState,
+          accumulatedText,
+          reasoning,
+          toolCalls,
+          toolResults,
+          threadId,
+          userId
+        );
+
+        // Add assistant message to current messages for next iteration
+        if (accumulatedText.trim() || toolCalls.length > 0) {
+          const contentChunks: any[] = [];
+
+          // Add text content if present
+          if (accumulatedText.trim()) {
+            contentChunks.push({ type: "text", text: accumulatedText.trim() });
+          }
+
+          // Add tool calls in AI SDK format (matching createAssistantMessageWithFiles)
+          for (const call of toolCalls) {
+            contentChunks.push({
+              type: "tool-call",
+              toolCallId: call.toolCallId,
+              toolName: call.toolName,
+              args: call.args,
+            });
+          }
+
+          const assistantMessage = {
+            role: "assistant",
+            content: contentChunks,
+          };
+
+          currentMessages.push(assistantMessage);
+          console.log(
+            `Added assistant message with ${toolCalls.length} tool calls`
+          );
+        }
+
+        // Add tool result messages in the correct format (matching dbMessagesToInferenceMessages)
+        if (toolResults.length > 0) {
+          // Create tool results in the same format as createToolMessages in threads.utils.ts
+          const processedResults = toolResults.map((result) => ({
+            type: "tool-result",
+            toolCallId: result.toolCallId,
+            toolName: result.toolName,
+            result: result.result,
+          }));
+
+          // Create tool message with the same structure as dbMessagesToInferenceMessages
+          const toolMessage = {
+            role: "tool",
+            content: processedResults,
+          } as any; // Use 'as any' to bypass TypeScript checking like threads.utils.ts does
+
+          currentMessages.push(toolMessage);
+          console.log(
+            `Added tool result message with ${toolResults.length} results`
+          );
+        }
+
+        // Check if we should continue iterating
+        if (
+          !hasToolCalls ||
+          finishReason === "stop" ||
+          finishReason === "length" ||
+          finishReason === "error"
+        ) {
+          console.log(
+            `Stopping iteration: hasToolCalls=${hasToolCalls}, finishReason=${finishReason}`
+          );
+          break;
+        }
+
+        // Custom stop condition check
+        if (this.shouldStopIteration(toolResults, iteration)) {
+          console.log("Custom stop condition met - stopping iteration");
+          break;
+        }
+
+        iteration++;
+      } catch (stepError: any) {
+        console.error(`Error in iteration ${iteration + 1}:`, stepError);
+
+        // Check if this was an abort
+        if (stepError instanceof Error && stepError.name === "AbortError") {
+          console.log(`Iteration ${iteration + 1} aborted`);
+          // Save accumulated text if we have any
+          if (
+            currentStepState.currentAssistantMessageId &&
+            currentStepState.accumulatedResponseText
+          ) {
+            try {
+              await db
+                .update(messages)
+                .set({ text: currentStepState.accumulatedResponseText })
+                .where(
+                  eq(messages.id, currentStepState.currentAssistantMessageId)
+                );
+            } catch (err) {
+              console.error("Error saving aborted message:", err);
+            }
+          }
+          break;
+        }
+
+        // For other errors, stop the iteration
+        break;
+      }
+    }
+
+    console.log(
+      `Manual tool calling completed after ${iteration + 1} iterations`
+    );
+
+    // Cleanup and emit completion
+    cleanup();
+    emitInferenceComplete();
+  },
+
+  async handleStepCompletion(
+    currentStepState: ActiveStreamData,
+    text: string,
+    reasoning: string,
+    toolCalls: any[],
+    toolResults: any[],
+    threadId: string,
+    userId: string
+  ) {
+    const now = new Date();
+
+    // If we have a current message from this step, finalize it
+    if (currentStepState.currentAssistantMessageId) {
+      const currentMsgId = currentStepState.currentAssistantMessageId;
+      const fullAccumulatedText = currentStepState.accumulatedResponseText;
+
+      // Calculate reasoning duration if we have reasoning start time
+      let reasoningDurationSeconds: number | null = null;
+      if (currentStepState.reasoningStartTime && reasoning) {
+        const reasoningEndTime = new Date();
+        reasoningDurationSeconds = Math.round(
+          (reasoningEndTime.getTime() -
+            currentStepState.reasoningStartTime.getTime()) /
+            1000
+        );
+      }
+
+      // Persist the final accumulated text and reasoning to DB
+      await db
+        .update(messages)
+        .set({
+          text: fullAccumulatedText,
+          reasoning,
+          reasoningDurationSeconds,
+        })
+        .where(eq(messages.id, currentMsgId));
+
+      // Emit reasoning duration if we have it
+      if (reasoningDurationSeconds !== null) {
+        eventEmitter.emit(`thread-${threadId}-message`, {
+          type: "reasoning-duration",
+          messageId: currentMsgId,
+          durationSeconds: reasoningDurationSeconds,
+        });
+      }
+
+      // Handle tool calls for this step
+      if (toolCalls && toolCalls.length > 0) {
+        for (const toolCall of toolCalls) {
+          if (!toolCall) continue;
+          const toolCallDbId = crypto.randomUUID();
+          await db.insert(toolCallsTable).values({
+            id: toolCallDbId,
+            messageId: currentMsgId,
+            toolName: toolCall.toolName,
+            toolCallId: toolCall.toolCallId,
+            args: toolCall.args,
+            status: "pending",
+            createdAt: now,
+            updatedAt: now,
+          });
+          const result = toolResults.find(
+            (r) => r.toolCallId === toolCall.toolCallId
+          );
+          if (result) {
+            // Strip base64Data from images before storing to prevent large data in DB
+            const strippedResult = stripBase64FromToolResult(result.result);
+
+            await db
+              .update(toolCallsTable)
+              .set({
+                status: "completed",
+                result: strippedResult,
+                updatedAt: now,
+              })
+              .where(eq(toolCallsTable.id, toolCallDbId));
+          }
+        }
+
+        const assistantMessageWithTools = await db.query.messages.findFirst({
+          where: eq(messages.id, currentMsgId),
+          with: { toolCalls: true },
+        });
+        eventEmitter.emit(`thread-${threadId}-message`, {
+          type: "tool-call",
+          message: assistantMessageWithTools,
+        });
+      }
+
+      // Handle embeddings for text content
+      if (fullAccumulatedText && fullAccumulatedText.length > 0) {
+        try {
+          const embeddingResult = await embeddingModel.doEmbed({
+            values: [fullAccumulatedText],
+          });
+          await db
+            .update(messages)
+            .set({ embedding: embeddingResult.embeddings[0] })
+            .where(eq(messages.id, currentMsgId));
+        } catch (error) {
+          console.error("Error embedding step message", error);
+        }
+      }
+
+      // Emit message complete event for this step
+      const finalStepMessage = await db.query.messages.findFirst({
+        where: eq(messages.id, currentMsgId),
+        with: { toolCalls: true },
+      });
+      eventEmitter.emit(`thread-${threadId}-message`, {
+        type: "message-complete",
+        message: finalStepMessage,
+      });
+    }
+  },
+
+  // Custom logic to decide when to stop iterating
+  shouldStopIteration(toolResults: any[], iteration: number): boolean {
+    // Stop if iteration count reaches a threshold
+    if (iteration >= 24) return true; // 25 iterations max (0-24)
+
+    // Could add custom business logic here:
+    // - Stop if we've used a specific tool
+    // - Stop if certain conditions are met
+    // - Stop based on tool results content
+
+    return false;
   },
 
   async streamMessages(req: Request, res: Response) {

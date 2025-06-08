@@ -117,11 +117,24 @@ const PdfThumbnail = ({
 
   return (
     <div
-      className="thumbnail-container cursor-pointer transition-all rounded overflow-hidden"
+      className="thumbnail-container cursor-pointer transition-all rounded overflow-hidden relative"
       onClick={() => window.open(url, "_blank")}
+      style={{ width: `${width}px`, minHeight: "128px" }}
     >
-      {loading && <Skeleton className="w-full h-32" />}
-      <canvas ref={canvasRef} style={{ display: loading ? "none" : "block" }} />
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/10 rounded">
+          <Skeleton className="w-full h-32 rounded" />
+        </div>
+      )}
+      <canvas
+        ref={canvasRef}
+        style={{
+          display: loading ? "none" : "block",
+          width: "100%",
+          height: "auto",
+        }}
+        className="rounded"
+      />
     </div>
   );
 };

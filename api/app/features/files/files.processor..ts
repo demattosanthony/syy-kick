@@ -180,6 +180,7 @@ export async function markitdown(
   try {
     const proc = Bun.spawn(["markitdown", expandedPath]);
     const output = await new Response(proc.stdout).text();
+    proc.kill();
 
     const chunkedOutput = await textSplitter.splitText(output);
 
