@@ -226,6 +226,17 @@ export const files = pgTable("files", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const userFiles = pgTable("user_files", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  fileId: uuid("file_id")
+    .notNull()
+    .references(() => files.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const filePages = pgTable("file_pages", {
   id: uuid("id").primaryKey().defaultRandom(),
   fileId: uuid("file_id")
@@ -491,6 +502,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
   organizationMembers: many(organizationMembers),
   accessTokens: many(accessTokens),
+  userFiles: many(userFiles),
 }));
 
 export const threadsRelations = relations(threads, ({ one, many }) => ({
@@ -680,6 +692,7 @@ export const accessTokensRelations = relations(accessTokens, ({ one }) => ({
 export const filesRelations = relations(files, ({ one, many }) => ({
   pages: many(filePages),
   messages: many(messagesFiles),
+  users: many(userFiles),
 }));
 
 export const filePagesRelations = relations(filePages, ({ one, many }) => ({
@@ -710,6 +723,17 @@ export const filePageImagesRelations = relations(filePageImages, ({ one }) => ({
   chunk: one(filePageChunks, {
     fields: [filePageImages.chunkId],
     references: [filePageChunks.id],
+  }),
+}));
+
+export const userFilesRelations = relations(userFiles, ({ one }) => ({
+  user: one(users, {
+    fields: [userFiles.userId],
+    references: [users.id],
+  }),
+  file: one(files, {
+    fields: [userFiles.fileId],
+    references: [files.id],
   }),
 }));
 

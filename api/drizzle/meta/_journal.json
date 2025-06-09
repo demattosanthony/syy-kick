@@ -498,6 +498,13 @@
       "when": 1749234826302,
       "tag": "0070_tranquil_impossible_man",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1749482207616,
+      "tag": "0071_conscious_gladiator",
+      "breakpoints": true
     }
   ]
 }

@@ -4,12 +4,12 @@ import {
   Message as UIMessage,
   MessageAction,
   MessageActions,
-  MessageContent,
   MessageAvatar,
 } from "@/components/ui/message";
 import { Button } from "@/components/ui/button";
 
 import ChatAttachment from "./chat-attachment";
+import TruncatedText from "./truncated-text";
 
 const UserMessage = React.memo(
   ({ message }: { message: Message }) => {
@@ -51,9 +51,9 @@ const UserMessage = React.memo(
             onMouseLeave={() => setIsHovering(false)}
           >
             <div className="flex w-full flex-col gap-2 items-end">
-              <MessageContent className="bg-[#242628] dark:bg-input text-white dark:text-white max-w-[515px] whitespace-pre-wrap">
-                {message.content}
-              </MessageContent>
+              <div className="bg-[#242628] dark:bg-input text-white dark:text-white max-w-[515px] rounded-lg p-2">
+                <TruncatedText content={message.content} maxLength={1500} />
+              </div>
 
               <MessageActions
                 className={`self-end transition-opacity duration-200 ${

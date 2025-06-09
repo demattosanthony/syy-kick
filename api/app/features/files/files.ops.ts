@@ -1,14 +1,13 @@
-import { desc, eq, and, count, or, ilike, sql } from "drizzle-orm";
+import { desc, eq, and, ilike, sql } from "drizzle-orm";
 import db from "../../config/db";
 import s3 from "../../config/s3";
 import crypto from "crypto";
 import {
   files,
-  messagesFiles,
-  messages,
   filePages,
   filePageChunks,
   filePageImages,
+  userFiles,
 } from "../../config/schema";
 import type { GetFilesQuery, PaginatedFiles, File } from "./files.schemas";
 import { processFile } from "./files.processor.";
@@ -21,7 +20,7 @@ export async function getFilesForUser(
   const offset = (page - 1) * limit;
 
   // Build the base where conditions
-  const baseConditions = [eq(messages.userId, userId)];
+  const baseConditions = [eq(userFiles.userId, userId)];
   if (type) {
     baseConditions.push(eq(files.type, type));
   }
@@ -35,7 +34,7 @@ export async function getFilesForUser(
     baseConditions.push(ilike(files.name, `%${search}%`));
   }
 
-  // Simplified query - no complex joins, just search by file name
+  // Query files for the user
   const filesQuery = db
     .selectDistinct({
       id: files.id,
@@ -53,19 +52,17 @@ export async function getFilesForUser(
       updatedAt: files.updatedAt,
     })
     .from(files)
-    .innerJoin(messagesFiles, eq(files.id, messagesFiles.fileId))
-    .innerJoin(messages, eq(messagesFiles.messageId, messages.id))
+    .innerJoin(userFiles, eq(files.id, userFiles.fileId))
     .where(and(...baseConditions))
     .orderBy(desc(files.createdAt))
     .limit(limit)
     .offset(offset);
 
-  // Get total count of distinct files
+  // Get total count of distinct files for the user
   const totalQuery = db
     .select({ count: sql<number>`count(distinct ${files.id})` })
     .from(files)
-    .innerJoin(messagesFiles, eq(files.id, messagesFiles.fileId))
-    .innerJoin(messages, eq(messagesFiles.messageId, messages.id))
+    .innerJoin(userFiles, eq(files.id, userFiles.fileId))
     .where(and(...baseConditions));
 
   const [filesResult, totalResult] = await Promise.all([
@@ -206,14 +203,31 @@ export async function createFileRecordAndProcess(
   const fileHash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
   console.log(`🔑 [CreateFileRecord] File hash: ${fileHash}`);
 
-  // Check if file with same hash already exists
-  const existingFile = await db.query.files.findFirst({
-    where: eq(files.fileHash, fileHash),
-  });
+  // Check if file with same hash already exists for this user
+  const existingFile = await db
+    .select({
+      id: files.id,
+      name: files.name,
+      mimeType: files.mimeType,
+      size: files.size,
+      fileHash: files.fileHash,
+      syyclops_path: files.syyclops_path,
+      sharepoint_path: files.sharepoint_path,
+      google_drive_path: files.google_drive_path,
+      file_origin_type: files.file_origin_type,
+      category: files.category,
+      createdAt: files.createdAt,
+      updatedAt: files.updatedAt,
+    })
+    .from(files)
+    .innerJoin(userFiles, eq(files.id, userFiles.fileId))
+    .where(and(eq(userFiles.userId, userId), eq(files.fileHash, fileHash)))
+    .limit(1)
+    .then((rows) => rows[0] || null);
 
   if (existingFile) {
     console.log(
-      `♻️ [CreateFileRecord] File already exists (ID: ${existingFile.id}), returning existing file`
+      `♻️ [CreateFileRecord] File already exists for user (ID: ${existingFile.id}), returning existing file`
     );
 
     // Generate presigned URL for existing file
@@ -254,6 +268,63 @@ export async function createFileRecordAndProcess(
     };
   }
 
+  // Check if the file hash exists globally and create a new user association
+  const globalExistingFile = await db.query.files.findFirst({
+    where: eq(files.fileHash, fileHash),
+  });
+
+  if (globalExistingFile) {
+    console.log(
+      `🔗 [CreateFileRecord] File hash exists globally (ID: ${globalExistingFile.id}), creating user association`
+    );
+
+    // Create user-file association
+    await db.insert(userFiles).values({
+      userId,
+      fileId: globalExistingFile.id,
+    });
+
+    // Generate presigned URL for existing file
+    let url = "";
+    if (globalExistingFile.syyclops_path) {
+      try {
+        url = s3.file(globalExistingFile.syyclops_path).presign({
+          expiresIn: 3600,
+          method: "GET",
+        });
+      } catch (error) {
+        console.error(
+          "Error generating presigned URL for existing file:",
+          error
+        );
+      }
+    }
+
+    // Clean up the duplicate file we just uploaded
+    try {
+      await s3.file(fileKey).delete();
+      console.log(
+        `🗑️ [CreateFileRecord] Cleaned up duplicate file: ${fileKey}`
+      );
+    } catch (error) {
+      console.error("Error cleaning up duplicate file:", error);
+    }
+
+    return {
+      id: globalExistingFile.id,
+      name: globalExistingFile.name,
+      mimeType: globalExistingFile.mimeType || mimeType,
+      size: globalExistingFile.size || 0,
+      fileKey: globalExistingFile.syyclops_path || "",
+      url,
+      category: globalExistingFile.category as
+        | "drawing"
+        | "document"
+        | undefined,
+      isExisting: true,
+    };
+  }
+
   // Insert new file into files table
   const [insertedFile] = await db
     .insert(files)
@@ -272,6 +343,16 @@ export async function createFileRecordAndProcess(
 
   console.log(
     `✅ [CreateFileRecord] File inserted into database: ${insertedFile.id}`
+  );
+
+  // Create user-file association
+  await db.insert(userFiles).values({
+    userId,
+    fileId: insertedFile.id,
+  });
+
+  console.log(
+    `🔗 [CreateFileRecord] User-file association created for user: ${userId}`
   );
 
   // Process file content

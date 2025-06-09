@@ -35,6 +35,58 @@ import { CsvViewer } from "./csv-viewer";
 import { CodeViewer } from "./code-viewer";
 import { SvgViewer } from "./svg-viewer";
 
+const HtmlViewer: React.FC<{ content: string }> = ({ content }) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    if (!iframeRef.current) return;
+
+    const iframe = iframeRef.current;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+
+    if (doc) {
+      doc.open();
+      doc.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 20px;
+                background: white;
+              }
+              * {
+                box-sizing: border-box;
+              }
+            </style>
+          </head>
+          <body>
+            ${content}
+          </body>
+        </html>
+      `);
+      doc.close();
+    }
+  }, [content]);
+
+  return (
+    <div className="w-full h-full bg-white rounded-lg overflow-hidden">
+      <iframe
+        ref={iframeRef}
+        className="w-full h-full border-0"
+        sandbox="allow-scripts allow-same-origin"
+        title="HTML Content"
+      />
+    </div>
+  );
+};
+
 const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
   const mermaidRef = useRef<HTMLDivElement>(null);
   const diagramRef = useRef<HTMLDivElement>(null);
@@ -213,6 +265,12 @@ const DownloadOptions: React.FC<{
         name: "Mermaid",
       },
       "image/svg+xml": { ext: ".svg", type: "image/svg+xml", name: "SVG" },
+      "text/html": { ext: ".html", type: "text/html", name: "HTML" },
+      "application/vnd.ant.html": {
+        ext: ".html",
+        type: "text/html",
+        name: "HTML",
+      },
       default: { ext: ".txt", type: "text/plain", name: "Text" },
     } as const;
 
@@ -385,12 +443,18 @@ const ArtifactViewer: React.FC<{
       return <SvgViewer content={content} />;
     }
 
+    if (mimeType === "text/html" || mimeType === "application/vnd.ant.html") {
+      return <HtmlViewer content={content} />;
+    }
+
     if (mimeType === "text/csv") {
       return <CsvViewer content={content} />;
     }
 
     if (
-      (mimeType.startsWith("text/") && mimeType !== "text/markdown") ||
+      (mimeType.startsWith("text/") &&
+        mimeType !== "text/markdown" &&
+        mimeType !== "text/html") ||
       mimeType.startsWith("application/json") ||
       mimeType.startsWith("application/xml") ||
       mimeType.includes("javascript") ||

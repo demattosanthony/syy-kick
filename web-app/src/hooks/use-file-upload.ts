@@ -9,10 +9,10 @@ export function useFileUpload(acceptedTypes: string[]) {
   const [uploads, setUploads] = useAtom(uploadsAtom);
   const [model] = useAtom(modelAtom);
 
-  const processFileUpload = async (file: File): Promise<void> => {
-    // Create initial upload record
-    const uploadIndex = uploads.length;
-
+  const processFileUpload = async (
+    file: File,
+    uploadIndex: number
+  ): Promise<void> => {
     let fileType: FileUploadMimeType = "other";
     if (file.type.startsWith("image/")) {
       fileType = "image";
@@ -120,18 +120,24 @@ export function useFileUpload(acceptedTypes: string[]) {
 
   const processFileList = async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
+    const validFiles: File[] = [];
 
+    // First, validate all files and collect valid ones
     for (const file of fileArray) {
       if (
-        !validateFile(file, acceptedTypes, {
+        validateFile(file, acceptedTypes, {
           maxFileSize: model.maxFileSize,
           maxImageSize: model.maxImageSize,
         })
       ) {
-        continue; // validateFile already shows toast messages
+        validFiles.push(file);
       }
+    }
 
-      await processFileUpload(file);
+    // Process valid files with correct indexing
+    const startIndex = uploads.length;
+    for (let i = 0; i < validFiles.length; i++) {
+      await processFileUpload(validFiles[i], startIndex + i);
     }
   };
 
@@ -155,6 +161,21 @@ export function useFileUpload(acceptedTypes: string[]) {
     processFileList(files);
   };
 
+  // Wrapper for single file upload to maintain backward compatibility
+  const processSingleFile = async (file: File): Promise<void> => {
+    if (
+      !validateFile(file, acceptedTypes, {
+        maxFileSize: model.maxFileSize,
+        maxImageSize: model.maxImageSize,
+      })
+    ) {
+      return; // validateFile already shows toast messages
+    }
+
+    const uploadIndex = uploads.length;
+    await processFileUpload(file, uploadIndex);
+  };
+
   // Check if any files are still processing
   const isProcessing = uploads.some(
     (upload) => upload.status === "uploading" || upload.status === "processing"
@@ -172,7 +193,7 @@ export function useFileUpload(acceptedTypes: string[]) {
     removeUpload,
     handleDrop,
     processFiles,
-    processFileUpload,
+    processFileUpload: processSingleFile,
     isProcessing,
     hasErrors,
     isReadyToSubmit,

@@ -2,13 +2,8 @@ import { Tool, tool } from "ai";
 import { z } from "zod";
 import s3 from "../../config/s3";
 import db from "../../config/db";
-import { eq, and, like, or } from "drizzle-orm";
-import {
-  files as filesTable,
-  filePages,
-  filePageChunks,
-  filePageImages,
-} from "../../config/schema";
+import { eq } from "drizzle-orm";
+import { files as filesTable, filePages } from "../../config/schema";
 import reranker from "../../config/reranker";
 
 export type ArtifactData = {
@@ -143,15 +138,6 @@ export class ArtifactService {
       `🖼️ [ArtifactService] Successfully processed ${imageResults.length}/${images.length} images`
     );
     return imageResults;
-  }
-
-  /**
-   * Load images with base64Data for inference use
-   */
-  private async loadImagesForInference(
-    pageIds: (string | null)[]
-  ): Promise<PageImage[]> {
-    return this.loadImagesForPages(pageIds, true);
   }
 
   /**
@@ -500,19 +486,19 @@ export class ArtifactService {
         ...new Set(selectedChunks.map((chunk) => chunk.pageId)),
       ];
 
+      // Combine chunks cleanly without separators
       content = selectedChunks
-        .map((chunk, index) => {
-          const chunkNum = start + index + 1;
+        .map((chunk) => {
           console.log(
-            `🧩 [ArtifactService] Chunk ${chunkNum} (Page ${chunk.pageNumber}): ${chunk.content.length} chars`
+            `🧩 [ArtifactService] Including chunk from Page ${chunk.pageNumber}: ${chunk.content.length} chars`
           );
-          return `=== Chunk ${chunkNum} (Page ${chunk.pageNumber}) ===\n${chunk.content}`;
+          return chunk.content;
         })
-        .join("\n\n");
+        .join("\n");
 
       pageInfo = `Chunks ${start + 1}-${end + 1} of ${totalChunks}`;
       console.log(
-        `✅ [ArtifactService] Returned ${selectedChunks.length} chunks (${content.length} chars)`
+        `✅ [ArtifactService] Returned ${selectedChunks.length} chunks combined cleanly (${content.length} chars)`
       );
     }
     // Default: return first page or first few chunks
@@ -529,7 +515,7 @@ export class ArtifactService {
       );
     } else {
       console.log(
-        `🧩 [ArtifactService] Using default non-PDF mode - returning first 10 chunks for better pagination`
+        `🧩 [ArtifactService] Using default non-PDF mode - returning first 10 chunks combined cleanly`
       );
       const allChunks = pages.flatMap((page) =>
         page.chunks.map((chunk) => ({ ...chunk, pageId: page.id }))
@@ -539,14 +525,12 @@ export class ArtifactService {
         ...new Set(firstFewChunks.map((chunk) => chunk.pageId)),
       ];
 
-      content = firstFewChunks
-        .map((chunk, index) => {
-          return `=== Chunk ${index + 1} ===\n${chunk.content}`;
-        })
-        .join("\n\n");
+      // Combine chunks cleanly without separators
+      content = firstFewChunks.map((chunk) => chunk.content).join("\n");
+
       pageInfo = `Chunks 1-${firstFewChunks.length} of ${totalChunks}`;
       console.log(
-        `✅ [ArtifactService] Returned ${firstFewChunks.length} chunks (${content.length} chars)`
+        `✅ [ArtifactService] Returned ${firstFewChunks.length} chunks combined cleanly (${content.length} chars)`
       );
     }
 
@@ -762,39 +746,38 @@ export class ArtifactService {
   private loadArtifactTool(): Tool {
     return tool({
       description:
-        "Loads content from a file attachment with pagination support. This tool allows you to access processed file content in manageable chunks. For PDF files, you can specify page ranges. For other files, you can specify chunk ranges. Use this to read through large documents systematically. Can also return images of the pages when available. IMPORTANT: This is the PRIMARY tool to use for engineering drawings and files categorized as 'drawing' since they are stored as high-resolution images rather than searchable text. For drawing files, use page-based pagination to navigate through drawing sheets and examine specific details.",
+        "Loads content from a file attachment with pagination support. This tool allows you to access processed file content in manageable chunks. For PDF files, you can specify page ranges. For other files, you can specify chunk ranges. Use this to read through large documents systematically. Can also return images of the pages when available. IMPORTANT: This is the PRIMARY tool to use for engineering drawings and files categorized as 'drawing' since they are stored as high-resolution images rather than searchable text. For drawing files, use page-based pagination to navigate through drawing sheets and examine specific details. Provide all parameters in the tool call, even if they should be null.",
       parameters: z.object({
         fileName: z
           .string()
           .describe("The file name of the attachment to load."),
         startPage: z
           .number()
-          .optional()
+          .nullable()
           .describe(
             "For PDF files and drawings: starting page number (1-based). If not specified, shows first page. Essential for navigating through drawing sets."
           ),
         endPage: z
           .number()
-          .optional()
+          .nullable()
           .describe(
             "For PDF files and drawings: ending page number (1-based). If not specified, shows only start page. Use for examining multiple drawing sheets at once."
           ),
         startChunk: z
           .number()
-          .optional()
+          .nullable()
           .describe(
             "For non-PDF files or specific chunk access: starting chunk number (1-based)."
           ),
         endChunk: z
           .number()
-          .optional()
+          .nullable()
           .describe(
             "For non-PDF files or specific chunk access: ending chunk number (1-based)."
           ),
         includeImages: z
           .boolean()
-          .optional()
-          .default(true)
+          .nullable()
           .describe(
             "Whether to include page images in the response when available. Critical for drawing files where visual content is the primary information."
           ),
@@ -829,11 +812,11 @@ export class ArtifactService {
 
           const result = await this.getFileContent(
             file,
-            startPage,
-            endPage,
-            startChunk,
-            endChunk,
-            includeImages
+            startPage ?? undefined,
+            endPage ?? undefined,
+            startChunk ?? undefined,
+            endChunk ?? undefined,
+            includeImages ?? true
           );
 
           console.log(

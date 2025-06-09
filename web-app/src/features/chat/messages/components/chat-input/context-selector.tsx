@@ -68,7 +68,6 @@ export function ContextSelector({
 
       await processFileUpload(downloadedFile);
 
-      toast.success(`Added ${file.name} to your message.`);
       setShowFileExplorer(false);
     } catch (error) {
       console.error("Error processing SharePoint file:", error);

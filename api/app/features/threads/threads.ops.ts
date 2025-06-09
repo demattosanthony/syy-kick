@@ -14,8 +14,7 @@ import {
   files,
   messagesFiles,
   filePages as filePagesTable,
-  filePageChunks,
-  filePageImages,
+  userFiles,
 } from "../../config/schema";
 
 // Internal features
@@ -29,7 +28,6 @@ import {
   createAndSaveThreadTitle,
   stripBase64FromToolResult,
 } from "./threads.utils";
-import { processFile } from "../files/files.processor.";
 import s3 from "../../config/s3";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { MicrosoftAPI } from "../../config/microsoft";
@@ -130,6 +128,28 @@ const threadsOps = {
               messageId,
               fileId: existingFile.id,
             });
+
+            // Ensure user-file association exists
+            const existingUserFile = await db.query.userFiles.findFirst({
+              where: and(
+                eq(userFiles.userId, userId),
+                eq(userFiles.fileId, existingFile.id)
+              ),
+            });
+
+            if (!existingUserFile) {
+              console.log(
+                `🔗 [ThreadsOps] Creating user-file association for user ${userId} and file ${existingFile.id}`
+              );
+              await db.insert(userFiles).values({
+                userId,
+                fileId: existingFile.id,
+              });
+            } else {
+              console.log(
+                `✅ [ThreadsOps] User-file association already exists`
+              );
+            }
 
             // For large documents (PDFs, documents), add to artifact service for this thread
             const isLargeDocument =
@@ -595,6 +615,7 @@ const threadsOps = {
       }
 
       let tools: Record<string, any> | undefined = undefined;
+      let artifactService: ArtifactService | undefined = undefined;
       if (modelConfig.supportsToolUse) {
         tools = { web_search: createWebSearchTool() };
 
@@ -606,7 +627,7 @@ const threadsOps = {
           tools = { ...tools, ...sharepointTools };
         }
 
-        const artifactService = new ArtifactService(threadId);
+        artifactService = new ArtifactService(threadId);
         const artifactTools = artifactService.getTools();
         tools = { ...tools, ...artifactTools };
       }
@@ -623,7 +644,8 @@ const threadsOps = {
         model,
         thinking,
         cleanup,
-        emitInferenceComplete
+        emitInferenceComplete,
+        artifactService
       );
     } catch (error: any) {
       console.error(
@@ -658,7 +680,8 @@ const threadsOps = {
     model: string,
     thinking: boolean | undefined,
     cleanup: () => void,
-    emitInferenceComplete: () => void
+    emitInferenceComplete: () => void,
+    artifactService?: ArtifactService
   ) {
     let currentMessages = [...initialMessages];
     let iteration = 0;
@@ -973,7 +996,8 @@ const threadsOps = {
           toolCalls,
           toolResults,
           threadId,
-          userId
+          userId,
+          artifactService
         );
 
         // Add assistant message to current messages for next iteration

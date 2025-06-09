@@ -77,7 +77,7 @@ export default function ThreadHeader() {
   return (
     <header
       className={cn(
-        "absolute inset-x-0 top-0 z-[5] flex h-14 items-center bg-background md:bg-background/50 px-4 md:backdrop-blur-xl transition-all"
+        "absolute inset-x-0 top-0 z-[5] flex h-12 items-center bg-background md:bg-background/50 px-4 md:backdrop-blur-xl transition-all"
       )}
     >
       <div className="flex w-full items-center justify-between">

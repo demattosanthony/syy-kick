@@ -271,7 +271,7 @@ export async function convertPdfToImages(
   pdfData: Buffer,
   {
     maxDimension = 8000,
-    dpi = 150,
+    dpi = 300,
     firstPageOnly = false,
     pageRange,
   }: PdfToImagesOptions = {}

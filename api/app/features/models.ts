@@ -235,7 +235,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
 
   return {
     "gemini-2.5-pro-preview": {
-      model: google("gemini-2.5-pro-preview-06-05"),
+      model: google("gemini-2.5-pro-preview-05-06"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "google",
@@ -278,6 +278,15 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
 export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
+  const supportedMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    ...MARKITDOWN_MIME_TYPES,
+  ];
+
   return {
     "grok-3-beta": {
       model: xai("grok-3-beta"),
@@ -285,7 +294,7 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: [...MARKITDOWN_MIME_TYPES],
+      supportedMimeTypes,
       description:
         "xAI's flagship model that excels at enterprise use cases like data extraction, coding, and text summarization. Possesses deep domain knowledge in finance, healthcare, law, and science.",
     },
@@ -295,7 +304,7 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: [...MARKITDOWN_MIME_TYPES],
+      supportedMimeTypes,
       maxImageSize: 10 * 1024 * 1024, // 10MB
       description:
         "xAI's lightweight model that thinks before responding. Great for simple or logic-based tasks that do not require deep domain knowledge. The raw thinking traces are accessible.",
@@ -308,7 +317,14 @@ export const togetherAiModels = (
 ): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
-  const supportedMimeTypes = [...MARKITDOWN_MIME_TYPES];
+  const supportedMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    ...MARKITDOWN_MIME_TYPES,
+  ];
 
   return {
     "deepseek-r1": {

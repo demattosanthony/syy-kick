@@ -682,8 +682,8 @@ const SharepointOpenFileTool = ({ tool }: { tool: ToolInvocation }) => {
     tool.state === "result" && tool.result && !(tool.result as any)?.error;
   const fileName =
     tool.state === "result"
-      ? (tool.result as any)?.fileName || "Unknown file"
-      : tool.args?.fileName || "Unknown file";
+      ? (tool.result as any)?.fileName || ""
+      : tool.args?.fileName || "";
   const fileContent = hasContent ? (tool.result as any)?.content || "" : "";
   const webUrl = hasContent ? (tool.result as any)?.webUrl : undefined;
   const contentLength = fileContent.length;
