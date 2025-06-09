@@ -22,7 +22,7 @@ export default function ChatAttachment({
     const contentType =
       attachment.contentType || (attachment as any).mimeType || "";
     const stableKey = `${attachment.name}-${contentType}`;
-    const isBlob = attachment.url?.startsWith("blob:");
+    // const isBlob = attachment.url?.startsWith("blob:");
 
     switch (true) {
       case contentType.startsWith("image"):

@@ -5,10 +5,7 @@ import {
   Loader2,
   Paperclip,
   Square,
-  Brain,
-  BrainCircuit,
   Lightbulb,
-  LightbulbOff,
 } from "lucide-react";
 import ModelSelector from "../model-selector";
 import {
@@ -19,8 +16,7 @@ import {
 import { useState } from "react";
 import { useMicrosoftPicker } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
 import { SharePointFile } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
-import { uploadsAtom, thinkingAtom, modelAtom } from "@/atoms/chat";
-import { FileUploadMimeType } from "@/types/chat";
+import { thinkingAtom, modelAtom } from "@/atoms/chat";
 import { useAtom } from "jotai";
 import sharepointLogo from "@/assets/logos/sharepoint.svg";
 import { cn } from "@/lib/utils";
@@ -53,7 +49,7 @@ export function ActionButtons({
   handleFiles,
   processFileUpload,
   onFileUploadComplete,
-  showSharePointPopoverButton = true,
+  //   showSharePointPopoverButton = true,
   isReadyToSubmit = true,
 }: ActionButtonsProps) {
   const [thinking, setThinking] = useAtom(thinkingAtom);

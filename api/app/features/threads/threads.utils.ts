@@ -85,69 +85,84 @@ function stripBase64FromToolResult(toolResult: any): any {
 }
 
 /**
- * Regenerates base64Data for images in tool results from their imagePath (S3 key).
+ * Loads images from artifact service tool results (load_file_content or search_file_content)
+ * Returns images with base64Data loaded from S3
  */
-async function regenerateBase64InToolResult(toolResult: any): Promise<any> {
-  if (!toolResult || typeof toolResult !== "object") {
-    return toolResult;
+async function loadImagesFromArtifactToolResult(toolResult: any): Promise<
+  Array<{
+    name: string;
+    imagePath: string;
+    base64Data: string;
+    mimeType: string;
+  }>
+> {
+  if (
+    !toolResult ||
+    typeof toolResult !== "object" ||
+    !toolResult.images ||
+    !Array.isArray(toolResult.images) ||
+    toolResult.images.length === 0
+  ) {
+    return [];
   }
 
-  // Handle arrays
-  if (Array.isArray(toolResult)) {
-    const processed = await Promise.all(
-      toolResult.map(regenerateBase64InToolResult)
-    );
-    return processed;
-  }
+  console.log(
+    `🖼️ [ThreadsUtils] Loading ${toolResult.images.length} images from tool result`
+  );
 
-  // Handle objects
-  const result = { ...toolResult };
-
-  // If this object has images array, regenerate base64Data for each image
-  if (result.images && Array.isArray(result.images)) {
-    const processedImages = await Promise.all(
-      result.images.map(async (image: any) => {
-        if (
-          image &&
-          typeof image === "object" &&
-          image.imagePath &&
-          !image.base64Data
-        ) {
-          try {
+  try {
+    // Load base64Data for all images
+    const imagesWithBase64 = await Promise.all(
+      toolResult.images.map(async (image: any) => {
+        try {
+          if (image.imagePath) {
             const file = s3.file(image.imagePath);
             if (await file.exists()) {
               const imageBuffer = await file.arrayBuffer();
               const base64Data = Buffer.from(imageBuffer).toString("base64");
+
+              console.log(
+                `✅ [ThreadsUtils] Loaded image: ${image.name} (${imageBuffer.byteLength} bytes)`
+              );
+
               return {
-                ...image,
-                base64Data,
+                name: image.name || "image",
+                imagePath: image.imagePath,
+                base64Data: base64Data,
+                mimeType: image.mimeType || "image/png",
               };
+            } else {
+              console.warn(
+                `⚠️ [ThreadsUtils] Image not found in S3: ${image.imagePath}`
+              );
+              return null;
             }
-          } catch (error) {
-            console.error(
-              `❌ [ThreadsUtils] Error regenerating base64 for image ${image.imagePath}:`,
-              error
-            );
           }
+          return null;
+        } catch (error) {
+          console.error(
+            `❌ [ThreadsUtils] Error loading image ${image.name}:`,
+            error
+          );
+          return null;
         }
-        return image;
       })
     );
-    result.images = processedImages;
-  }
 
-  // Recursively process nested objects (avoiding images array we just processed)
-  for (const key in result) {
-    if (
-      key !== "images" &&
-      typeof result[key] === "object" &&
-      result[key] !== null
-    ) {
-      result[key] = await regenerateBase64InToolResult(result[key]);
-    }
-  }
+    // Filter out failed image loads
+    const validImages = imagesWithBase64.filter((img) => img !== null);
+    console.log(
+      `✅ [ThreadsUtils] Successfully loaded ${validImages.length}/${toolResult.images.length} images`
+    );
 
-  return result;
+    return validImages;
+  } catch (error) {
+    console.error(
+      `❌ [ThreadsUtils] Error processing images from tool result:`,
+      error
+    );
+    return [];
+  }
 }
 
 /** Retrieve the model config. */
@@ -1069,7 +1084,7 @@ async function createAssistantMessageWithFiles(
 
 /**
  * Creates tool messages with results from completed tool calls
- * Creates separate user message for images and tool message for results
+ * For historical messages, properly loads and includes images from artifact service tools
  */
 async function createToolMessages(
   msg: typeof messages.$inferSelect & {
@@ -1091,52 +1106,45 @@ async function createToolMessages(
 
   const messages: CoreMessage[] = [];
 
-  // Check if we have any tool calls with images
-  let hasImages = false;
-  const allImages: { image: string; mimeType: string }[] = [];
+  // Check for artifact service tools with images and load them
+  const allImages: Array<{
+    name: string;
+    imagePath: string;
+    base64Data: string;
+    mimeType: string;
+  }> = [];
 
   for (const call of completedCalls) {
-    // Check if this tool result has images
     if (
-      call.result &&
-      typeof call.result === "object" &&
-      (call.result as any).images &&
-      Array.isArray((call.result as any).images)
+      (call.toolName === "load_file_content" ||
+        call.toolName === "search_file_content") &&
+      call.result
     ) {
-      hasImages = true;
-      // Regenerate base64Data for images from stored imagePath
-      const processedResult = await regenerateBase64InToolResult(call.result);
-      const extractedImages = extractImagesFromToolResult(processedResult);
-
-      // Collect images for user message
-      for (const image of extractedImages) {
-        if (image.base64Data) {
-          allImages.push({
-            image: image.base64Data,
-            mimeType: image.mimeType || "image/png",
-          });
-        }
-      }
+      console.log(
+        `🔍 [ThreadsUtils] Checking historical ${call.toolName} for images`
+      );
+      const images = await loadImagesFromArtifactToolResult(call.result);
+      allImages.push(...images);
     }
   }
 
   // Create user message with images if we have any
-  if (hasImages && allImages.length > 0) {
+  if (allImages.length > 0) {
+    console.log(
+      `📸 [ThreadsUtils] Creating historical user message with ${allImages.length} images`
+    );
+
     const userContent: any[] = [
       {
         type: "text",
         text: `Here are the images from the file content that was loaded:`,
       },
-    ];
-
-    // Add images to user message
-    for (const img of allImages) {
-      userContent.push({
+      ...allImages.map((img) => ({
         type: "image",
-        image: img.image,
+        image: img.base64Data,
         mimeType: img.mimeType,
-      });
-    }
+      })),
+    ];
 
     messages.push({
       id: `${msg.id}_user_images`,
@@ -1145,19 +1153,27 @@ async function createToolMessages(
     } as any);
   }
 
-  // Create tool results with text references only
+  // Create tool results with text-only content (images handled separately above)
   const processedResults = completedCalls.map((call) => {
-    // Create tool result with XML references to images (no base64Data)
-    const toolResultWithReferences = createToolResultWithImageReferences(
-      call.result,
-      extractImageReferencesFromToolResult(call.result)
-    );
+    // For artifact service tools, remove images from stored results since they're handled separately
+    let toolResult = call.result;
+    if (
+      (call.toolName === "load_file_content" ||
+        call.toolName === "search_file_content") &&
+      toolResult &&
+      typeof toolResult === "object" &&
+      "images" in toolResult
+    ) {
+      // Create a copy without images for the tool result
+      const { images, ...resultWithoutImages } = toolResult as any;
+      toolResult = resultWithoutImages;
+    }
 
     return {
       type: "tool-result",
       toolCallId: call.toolCallId,
       toolName: call.toolName,
-      result: toolResultWithReferences,
+      result: toolResult,
     };
   });
 
@@ -1169,184 +1185,6 @@ async function createToolMessages(
   } as any);
 
   return messages;
-}
-
-/**
- * Extracts images from tool result and returns them as separate image objects
- */
-function extractImagesFromToolResult(toolResult: any): Array<{
-  name: string;
-  imagePath: string;
-  base64Data?: string;
-  mimeType: string;
-  index: number;
-}> {
-  const images: Array<{
-    name: string;
-    imagePath: string;
-    base64Data?: string;
-    mimeType: string;
-    index: number;
-  }> = [];
-
-  if (!toolResult || typeof toolResult !== "object") {
-    return images;
-  }
-
-  // Handle arrays
-  if (Array.isArray(toolResult)) {
-    toolResult.forEach((item, arrayIndex) => {
-      const subImages = extractImagesFromToolResult(item);
-      images.push(
-        ...subImages.map((img) => ({
-          ...img,
-          index: img.index + arrayIndex * 1000,
-        }))
-      );
-    });
-    return images;
-  }
-
-  // Handle objects with images array
-  if (toolResult.images && Array.isArray(toolResult.images)) {
-    toolResult.images.forEach((image: any, index: number) => {
-      if (image && typeof image === "object") {
-        images.push({
-          name: image.name || `image_${index}`,
-          imagePath: image.imagePath || "",
-          base64Data: image.base64Data,
-          mimeType: image.mimeType || "image/png",
-          index,
-        });
-      }
-    });
-  }
-
-  // Recursively check nested objects
-  for (const key in toolResult) {
-    if (
-      key !== "images" &&
-      typeof toolResult[key] === "object" &&
-      toolResult[key] !== null
-    ) {
-      const subImages = extractImagesFromToolResult(toolResult[key]);
-      images.push(...subImages);
-    }
-  }
-
-  return images;
-}
-
-/**
- * Extracts image references from tool result without loading actual base64Data
- */
-function extractImageReferencesFromToolResult(
-  toolResult: any
-): Array<{ name: string; index: number }> {
-  const imageRefs: Array<{ name: string; index: number }> = [];
-
-  if (!toolResult || typeof toolResult !== "object") {
-    return imageRefs;
-  }
-
-  // Handle arrays
-  if (Array.isArray(toolResult)) {
-    toolResult.forEach((item, arrayIndex) => {
-      const subRefs = extractImageReferencesFromToolResult(item);
-      imageRefs.push(
-        ...subRefs.map((ref) => ({
-          ...ref,
-          index: ref.index + arrayIndex * 1000,
-        }))
-      );
-    });
-    return imageRefs;
-  }
-
-  // Handle objects with images array
-  if (toolResult.images && Array.isArray(toolResult.images)) {
-    toolResult.images.forEach((image: any, index: number) => {
-      if (image && typeof image === "object") {
-        imageRefs.push({
-          name: image.name || `image_${index}`,
-          index,
-        });
-      }
-    });
-  }
-
-  // Recursively check nested objects
-  for (const key in toolResult) {
-    if (
-      key !== "images" &&
-      typeof toolResult[key] === "object" &&
-      toolResult[key] !== null
-    ) {
-      const subRefs = extractImageReferencesFromToolResult(toolResult[key]);
-      imageRefs.push(...subRefs);
-    }
-  }
-
-  return imageRefs;
-}
-
-/**
- * Creates a tool result with XML references to images instead of base64Data
- */
-function createToolResultWithImageReferences(
-  toolResult: any,
-  extractedImages: Array<{ name: string; index: number }>
-): any {
-  if (!toolResult || typeof toolResult !== "object") {
-    return toolResult;
-  }
-
-  // Handle arrays
-  if (Array.isArray(toolResult)) {
-    return toolResult.map((item) =>
-      createToolResultWithImageReferences(item, extractedImages)
-    );
-  }
-
-  // Handle objects
-  const result = { ...toolResult };
-
-  // Replace images array with XML references
-  if (
-    result.images &&
-    Array.isArray(result.images) &&
-    extractedImages.length > 0
-  ) {
-    const imageReferences = extractedImages
-      .map(
-        (img, index) =>
-          `<image_reference name="${img.name}" index="${index}" />`
-      )
-      .join("\n");
-
-    // Replace images with XML references
-    result.images = `<images_referenced>
-${imageReferences}
-</images_referenced>
-
-The images referenced above are included in the previous user message. They show the visual content from the file pages that were loaded.`;
-  }
-
-  // Recursively process nested objects (avoiding images array we just processed)
-  for (const key in result) {
-    if (
-      key !== "images" &&
-      typeof result[key] === "object" &&
-      result[key] !== null
-    ) {
-      result[key] = createToolResultWithImageReferences(
-        result[key],
-        extractedImages
-      );
-    }
-  }
-
-  return result;
 }
 
 /**
@@ -1566,4 +1404,5 @@ export {
   dbMessagesToInferenceMessages,
   createAndSaveThreadTitle,
   stripBase64FromToolResult,
+  loadImagesFromArtifactToolResult,
 };

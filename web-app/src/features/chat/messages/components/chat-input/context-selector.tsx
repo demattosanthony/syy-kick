@@ -15,7 +15,6 @@ import { useFileUpload } from "@/hooks/use-file-upload";
 
 interface ContextSelectorProps {
   showContextSelector: boolean;
-  projectId?: string;
   selectedModel: {
     supportedMimeTypes?: string[];
     maxFileSize?: number;
@@ -25,7 +24,6 @@ interface ContextSelectorProps {
 
 export function ContextSelector({
   showContextSelector,
-  projectId,
   selectedModel,
 }: ContextSelectorProps) {
   const [showFileExplorer, setShowFileExplorer] = useState(false);

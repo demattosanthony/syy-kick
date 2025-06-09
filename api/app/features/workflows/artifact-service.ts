@@ -3,8 +3,15 @@ import { z } from "zod";
 import s3 from "../../config/s3";
 import db from "../../config/db";
 import { eq } from "drizzle-orm";
-import { files as filesTable, filePages } from "../../config/schema";
+import { files as filesTable, filePages, threads } from "../../config/schema";
 import reranker from "../../config/reranker";
+import { MicrosoftAPI } from "../../config/microsoft";
+import { processFile } from "../files/files.processor.";
+import {
+  filePageChunks,
+  filePageImages,
+  filePages as filePagesTable,
+} from "../../config/schema";
 
 export type ArtifactData = {
   data: Uint8Array;
@@ -44,7 +51,10 @@ export type SearchResult = {
 };
 
 export class ArtifactService {
-  constructor(private threadId: string) {}
+  constructor(
+    private threadId: string,
+    private userId?: string
+  ) {}
 
   private normalizeFilename(filename: string): string {
     // Replace various whitespace characters (including narrow no-break space \u202f,
@@ -534,10 +544,10 @@ export class ArtifactService {
       );
     }
 
-    // Load images for the selected pages if requested
+    // Load image metadata (without base64Data) for the selected pages if requested
     let images: PageImage[] = [];
     if (includeImages && selectedPageIds.length > 0) {
-      images = await this.loadImagesForPages(selectedPageIds, false); // Use URLs for frontend
+      images = await this.loadImagesForPages(selectedPageIds, false); // Don't load base64Data - just metadata
     }
 
     return { content, totalPages, totalChunks, pageInfo, images };
@@ -743,14 +753,147 @@ export class ArtifactService {
     return { content, matches: rankedChunks.length, images };
   }
 
+  /**
+   * Find a SharePoint file by ID and handle downloading/processing if needed
+   */
+  private async handleSharePointFile(sharePointFileId: string, userId: string) {
+    console.log(
+      `🔍 [ArtifactService] Loading SharePoint file: ${sharePointFileId}`
+    );
+
+    // Get SharePoint file metadata
+    const microsoftGraph = new MicrosoftAPI({ userId });
+    const accessToken = await microsoftGraph.getAccessToken("graph");
+
+    if (!accessToken) {
+      throw new Error("No Microsoft Graph access token available");
+    }
+
+    const graphClient = await microsoftGraph.getGraphClient("graph");
+    if (!graphClient) {
+      throw new Error("Failed to get Microsoft Graph client");
+    }
+
+    // Get drive ID
+    const drive = await graphClient.api("/me/drive").get();
+    const driveId = drive?.id;
+    if (!driveId) {
+      throw new Error("Failed to get drive ID");
+    }
+
+    // Get file metadata
+    const fileMetadata = await graphClient
+      .api(`/drives/${driveId}/items/${sharePointFileId}`)
+      .get();
+
+    if (!fileMetadata["@microsoft.graph.downloadUrl"]) {
+      throw new Error("No download URL available for this SharePoint file.");
+    }
+
+    const filePath = fileMetadata.parentReference?.path
+      ? fileMetadata.parentReference.path + "/" + fileMetadata.name
+      : fileMetadata.name;
+
+    // Check if file is already indexed
+    const existingFile = await db.query.files.findFirst({
+      where: eq(filesTable.sharepoint_path, filePath),
+    });
+
+    if (existingFile) {
+      console.log(
+        `✅ [ArtifactService] SharePoint file already indexed: ${existingFile.name}`
+      );
+      return existingFile;
+    }
+
+    console.log(
+      `📥 [ArtifactService] Downloading and processing SharePoint file: ${fileMetadata.name}`
+    );
+
+    // Download and process the file
+    const response = await fetch(fileMetadata["@microsoft.graph.downloadUrl"]);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download SharePoint file: ${response.statusText}`
+      );
+    }
+    const blob = await response.blob();
+    const buffer = Buffer.from(await blob.arrayBuffer());
+
+    const { pages: filePages } = await processFile(
+      buffer,
+      fileMetadata.name,
+      fileMetadata.file?.mimeType || "application/octet-stream"
+    );
+
+    // Store file in database
+    const [insertedFile] = await db
+      .insert(filesTable)
+      .values({
+        name: fileMetadata.name,
+        mimeType: fileMetadata.file?.mimeType || "application/octet-stream",
+        size: fileMetadata.size,
+        type: "file",
+        sharepoint_path: filePath,
+        file_origin_type: "sharepoint",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    // Store pages, chunks, and images
+    for (const pageData of filePages) {
+      const [dbPage] = await db
+        .insert(filePagesTable)
+        .values({
+          fileId: insertedFile.id,
+          pageNumber: pageData.pageNumber,
+        })
+        .returning({ id: filePagesTable.id });
+
+      if (pageData.chunks && pageData.chunks.length > 0) {
+        const chunkValues = pageData.chunks.map((chunk) => ({
+          filePageId: dbPage.id,
+          content: chunk.content,
+          position: chunk.position,
+        }));
+        await db.insert(filePageChunks).values(chunkValues);
+      }
+
+      if (pageData.images && pageData.images.length > 0) {
+        const imageValues = pageData.images.map((image) => ({
+          filePageId: dbPage.id,
+          name: image.name,
+          imagePath: image.path,
+          size: image.size,
+        }));
+        await db.insert(filePageImages).values(imageValues);
+      }
+    }
+
+    console.log(
+      `✅ [ArtifactService] SharePoint file processed and stored: ${insertedFile.name}`
+    );
+    return insertedFile;
+  }
+
   private loadArtifactTool(): Tool {
     return tool({
       description:
-        "Loads content from a file attachment with pagination support. This tool allows you to access processed file content in manageable chunks. For PDF files, you can specify page ranges. For other files, you can specify chunk ranges. Use this to read through large documents systematically. Can also return images of the pages when available. IMPORTANT: This is the PRIMARY tool to use for engineering drawings and files categorized as 'drawing' since they are stored as high-resolution images rather than searchable text. For drawing files, use page-based pagination to navigate through drawing sheets and examine specific details. Provide all parameters in the tool call, even if they should be null.",
+        "Loads content from a file attachment or SharePoint file with pagination support. This tool allows you to access processed file content in manageable chunks. For PDF files, you can specify page ranges. For other files, you can specify chunk ranges. Use this to read through large documents systematically. Can also return images of the pages when available. IMPORTANT: This is the PRIMARY tool to use for engineering drawings and files categorized as 'drawing' since they are stored as high-resolution images rather than searchable text. For drawing files, use page-based pagination to navigate through drawing sheets and examine specific details. Provide all parameters in the tool call, even if they should be null.",
       parameters: z.object({
         fileName: z
           .string()
-          .describe("The file name of the attachment to load."),
+          .nullable()
+          .describe(
+            "The file name of the attachment to load. Required unless sharePointFileId is provided."
+          ),
+        sharePointFileId: z
+          .string()
+          .nullable()
+          .describe(
+            "The SharePoint file ID to load. If provided, the file will be downloaded and processed from SharePoint if not already indexed."
+          ),
         startPage: z
           .number()
           .nullable()
@@ -784,6 +927,7 @@ export class ArtifactService {
       }),
       execute: async ({
         fileName,
+        sharePointFileId,
         startPage,
         endPage,
         startChunk,
@@ -793,6 +937,7 @@ export class ArtifactService {
         console.log(`🚀 [ArtifactService] load_file_content tool called`);
         console.log(`📋 [ArtifactService] Parameters:`, {
           fileName,
+          sharePointFileId,
           startPage,
           endPage,
           startChunk,
@@ -801,12 +946,50 @@ export class ArtifactService {
         });
 
         try {
-          const file = await this.findFileByName(fileName);
+          let file;
+
+          if (sharePointFileId) {
+            // Handle SharePoint file
+            console.log(
+              `📁 [ArtifactService] Loading SharePoint file: ${sharePointFileId}`
+            );
+
+            if (!this.userId) {
+              // Fallback to looking up userId from thread if not provided
+              const threadInfo = await db.query.threads.findFirst({
+                where: eq(threads.id, this.threadId),
+              });
+
+              if (!threadInfo) {
+                throw new Error("Thread not found - cannot access SharePoint");
+              }
+
+              file = await this.handleSharePointFile(
+                sharePointFileId,
+                threadInfo.userId
+              );
+            } else {
+              file = await this.handleSharePointFile(
+                sharePointFileId,
+                this.userId
+              );
+            }
+          } else if (fileName) {
+            // Handle regular file attachment
+            file = await this.findFileByName(fileName);
+          } else {
+            throw new Error(
+              "Either fileName or sharePointFileId must be provided"
+            );
+          }
+
           if (!file) {
             console.log(`❌ [ArtifactService] Tool result: File not found`);
             return {
               success: false,
-              message: `File '${fileName}' not found in this conversation.`,
+              message: sharePointFileId
+                ? `SharePoint file with ID '${sharePointFileId}' not found or could not be processed.`
+                : `File '${fileName}' not found in this conversation.`,
             };
           }
 
@@ -830,16 +1013,27 @@ export class ArtifactService {
             imagesCount: result.images?.length || 0,
           });
 
+          // Return JSON-only result without base64 image data
+          // Images will be handled separately by the inference engine
+          const images =
+            result.images?.map((image) => ({
+              name: image.name,
+              imagePath: image.imagePath,
+              mimeType: image.mimeType,
+              imageUrl: image.imageUrl,
+            })) || [];
+
           return {
             success: true,
-            message: `Successfully loaded content from '${fileName}' (${result.pageInfo})${result.images?.length ? ` with ${result.images.length} images` : ""}.`,
+            message: `Successfully loaded content from '${file.name}' (${result.pageInfo})${result.images?.length ? ` with ${result.images.length} images` : ""}.`,
             fileName: file.name,
             mimeType: file.mimeType,
             content: result.content,
             totalPages: result.totalPages,
             totalChunks: result.totalChunks,
             pageInfo: result.pageInfo,
-            images: result.images,
+            images: images,
+            fileSource: sharePointFileId ? "sharepoint" : "attachment",
           };
         } catch (error) {
           console.error(`❌ [ArtifactService] Tool error:`, error);
@@ -848,36 +1042,6 @@ export class ArtifactService {
             message: `Error loading file content: ${error instanceof Error ? error.message : "Unknown error"}`,
           };
         }
-      },
-      // Multi-modal support for Anthropic models
-      experimental_toToolResultContent(result) {
-        if (typeof result === "string") {
-          return [{ type: "text", text: result }];
-        }
-
-        const content: any[] = [];
-
-        // Add text content
-        if (result.content) {
-          content.push({ type: "text", text: result.content });
-        }
-
-        // Add images if available and model supports it
-        if (result.images && Array.isArray(result.images)) {
-          for (const image of result.images) {
-            if (image.base64Data) {
-              content.push({
-                type: "image",
-                data: image.base64Data,
-                mimeType: image.mimeType,
-              });
-            }
-          }
-        }
-
-        return content.length > 0
-          ? content
-          : [{ type: "text", text: JSON.stringify(result) }];
       },
     });
   }
@@ -982,6 +1146,16 @@ export class ArtifactService {
             query: query,
           });
 
+          // Return JSON-only result without base64 image data
+          // Images will be handled separately by the inference engine
+          const images =
+            result.images?.map((image) => ({
+              name: image.name,
+              imagePath: image.imagePath,
+              mimeType: image.mimeType,
+              imageUrl: image.imageUrl,
+            })) || [];
+
           return {
             success: true,
             message: `Found ${result.matches} relevant chunks matching "${query}" in '${fileName}'${result.images?.length ? ` with ${result.images.length} images` : ""}.`,
@@ -990,7 +1164,7 @@ export class ArtifactService {
             query: query,
             matches: result.matches,
             content: result.content,
-            images: result.images,
+            images: images,
           };
         } catch (error) {
           console.error(`❌ [ArtifactService] Tool error:`, error);
@@ -999,36 +1173,6 @@ export class ArtifactService {
             message: `Error searching file content: ${error instanceof Error ? error.message : "Unknown error"}`,
           };
         }
-      },
-      // Multi-modal support for Anthropic models
-      experimental_toToolResultContent(result) {
-        if (typeof result === "string") {
-          return [{ type: "text", text: result }];
-        }
-
-        const content: any[] = [];
-
-        // Add text content
-        if (result.content) {
-          content.push({ type: "text", text: result.content });
-        }
-
-        // Add images if available and model supports it
-        if (result.images && Array.isArray(result.images)) {
-          for (const image of result.images) {
-            if (image.base64Data) {
-              content.push({
-                type: "image",
-                data: image.base64Data,
-                mimeType: image.mimeType,
-              });
-            }
-          }
-        }
-
-        return content.length > 0
-          ? content
-          : [{ type: "text", text: JSON.stringify(result) }];
       },
     });
   }

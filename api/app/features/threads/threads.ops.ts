@@ -27,6 +27,7 @@ import {
   processThreadMessages,
   createAndSaveThreadTitle,
   stripBase64FromToolResult,
+  loadImagesFromArtifactToolResult,
 } from "./threads.utils";
 import s3 from "../../config/s3";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
@@ -157,7 +158,7 @@ const threadsOps = {
               MARKITDOWN_MIME_TYPES.includes(existingFile.mimeType || "");
 
             if (isLargeDocument) {
-              const artifactService = new ArtifactService(threadId);
+              const artifactService = new ArtifactService(threadId, userId);
               const fileName = attachment.name || existingFile.name;
               const existingArtifact =
                 await artifactService.loadArtifact(fileName);
@@ -655,7 +656,7 @@ const threadsOps = {
           tools = { ...tools, ...sharepointTools };
         }
 
-        artifactService = new ArtifactService(threadId);
+        artifactService = new ArtifactService(threadId, userId);
         const artifactTools = artifactService.getTools();
         tools = { ...tools, ...artifactTools };
       }
@@ -987,6 +988,61 @@ const threadsOps = {
                 args: chunk.args,
                 result: chunk.result,
               });
+
+              // Handle images from artifact service tools on the fly
+              if (
+                (chunk.toolName === "load_file_content" ||
+                  chunk.toolName === "search_file_content") &&
+                chunk.result &&
+                typeof chunk.result === "object" &&
+                chunk.result.images &&
+                Array.isArray(chunk.result.images) &&
+                chunk.result.images.length > 0
+              ) {
+                console.log(
+                  `🖼️ [ThreadsOps] Loading images on-the-fly for ${chunk.toolName} tool result`
+                );
+
+                try {
+                  // Use shared utility function to load images
+                  const validImages = await loadImagesFromArtifactToolResult(
+                    chunk.result
+                  );
+
+                  if (validImages.length > 0) {
+                    console.log(
+                      `📸 [ThreadsOps] Creating user message with ${validImages.length} images`
+                    );
+
+                    // Create user message with images immediately
+                    const userMessageWithImages = {
+                      role: "user",
+                      content: [
+                        {
+                          type: "text",
+                          text: `Here are the images from the file content that was loaded:`,
+                        },
+                        ...validImages.map((img) => ({
+                          type: "image",
+                          image: img.base64Data,
+                          mimeType: img.mimeType,
+                        })),
+                      ],
+                    };
+
+                    // Add to current messages immediately for next iteration
+                    currentMessages.push(userMessageWithImages);
+                    console.log(
+                      `✅ [ThreadsOps] Added user message with ${validImages.length} images to conversation`
+                    );
+                  }
+                } catch (error) {
+                  console.error(
+                    `❌ [ThreadsOps] Error processing images for tool result:`,
+                    error
+                  );
+                }
+              }
 
               eventEmitter.emit(`thread-${threadId}-message`, {
                 type: "tool-result",
