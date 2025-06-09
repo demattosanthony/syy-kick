@@ -69,6 +69,9 @@ export function convertChatMessagesToMessages(
           url: att.url,
         })) || [],
       reasoningDurationSeconds: msg.reasoningDurationSeconds,
-    } as Message;
+      // Add status and error fields for error handling
+      status: msg.status,
+      error: msg.error,
+    } as Message & { status?: string; error?: string };
   });
 }

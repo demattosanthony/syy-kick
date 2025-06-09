@@ -615,6 +615,28 @@ class ThreadApi extends ApiRequest {
       "POST"
     );
   }
+
+  async retryMessage(params: {
+    threadId: string;
+    messageId: string;
+    model: string;
+    maxTokens?: number;
+    instructions?: string;
+    thinking?: boolean;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    deletedMessageId: string;
+    lastUserMessageId: string;
+  }> {
+    const { threadId, messageId, ...body } = params;
+    return await this.request<{
+      success: boolean;
+      message: string;
+      deletedMessageId: string;
+      lastUserMessageId: string;
+    }>(`/threads/${threadId}/messages/${messageId}/retry`, "POST", body);
+  }
 }
 
 class PermissionsApi extends ApiRequest {

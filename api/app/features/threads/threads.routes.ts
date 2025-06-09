@@ -10,6 +10,7 @@ import {
   createThreadSchema,
   getThreadsSchema,
   inferenceSchema,
+  retryMessageSchema,
   updateThreadSchema,
 } from "./threads.schemas";
 
@@ -134,6 +135,27 @@ router.post(
   "/:threadId/stop",
   handle(async (req) => {
     return threadsOps.stopInference(req.params.threadId);
+  })
+);
+
+// Retry a failed message
+router.post(
+  "/:threadId/messages/:messageId/retry",
+  handle(async (req) => {
+    const { model, maxTokens, instructions, thinking } =
+      retryMessageSchema.parse(req.body);
+    const { threadId, messageId } = req.params;
+
+    return threadsOps.retryMessage(
+      req.dbUser!.id,
+      threadId,
+      messageId,
+      model,
+      maxTokens,
+      instructions,
+      req.workspace,
+      thinking
+    );
   })
 );
 

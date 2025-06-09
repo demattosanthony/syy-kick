@@ -41,9 +41,18 @@ const inferenceSchema = z.object({
   }),
 });
 
+const retryMessageSchema = z.object({
+  model: z.string(),
+  maxTokens: z.number().optional(),
+  temperature: z.number().optional(),
+  instructions: z.string().optional(),
+  thinking: z.boolean().optional(),
+});
+
 export {
   createThreadSchema,
   getThreadsSchema,
   inferenceSchema,
+  retryMessageSchema,
   updateThreadSchema,
 };

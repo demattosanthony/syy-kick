@@ -7,7 +7,7 @@ import {
   MessageAvatar,
 } from "@/components/ui/message";
 import { Button } from "@/components/ui/button";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, AlertCircle, RotateCcw } from "lucide-react";
 import MarkdownViewer from "./viewers/markdown-viewer";
 import ThinkingDropdown from "./thinking-dropdown";
 import ToolCallMessageContent from "./tool-call-result";
@@ -22,8 +22,34 @@ const TextContent: React.FC<{
   return text ? <MarkdownViewer key={`text-${index}`} content={text} /> : null;
 };
 
+const ErrorMessage: React.FC<{
+  error: string;
+  hasPartialContent: boolean;
+}> = ({ error, hasPartialContent }) => {
+  return (
+    <div className="border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 rounded-lg p-3 mt-2 w-fit">
+      <div className="flex items-start gap-2">
+        <AlertCircle className="size-4 text-red-500 mt-0.5 flex-shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-medium text-red-800 dark:text-red-200">
+            {hasPartialContent
+              ? "Message generation failed"
+              : "Failed to generate response"}
+          </p>
+          <p className="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
+          {hasPartialContent && (
+            <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+              Partial content shown above may be incomplete.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MessageContentComponent: React.FC<{
-  message: AIMessage;
+  message: AIMessage & { status?: string; error?: string };
   messages: AIMessage[];
 }> = React.memo(({ message, messages }) => {
   const shouldAutoCloseThinking = React.useMemo(() => {
@@ -46,69 +72,92 @@ const MessageContentComponent: React.FC<{
     return hasInParts || hasInToolInvocations;
   }, [message.parts, message.toolInvocations]);
 
-  if (message.parts?.length) {
-    return (
-      <div className="flex flex-col gap-2">
-        {message.parts.map((part, index) => {
-          if (part.type === "reasoning") {
-            return (
-              <ThinkingDropdown
-                key={`reasoning-${index}`}
-                autoClose={shouldAutoCloseThinking}
-                reasoningDurationSeconds={
-                  (message as any).reasoningDurationSeconds
-                }
-              >
-                <MarkdownViewer content={part.reasoning} />
-              </ThinkingDropdown>
-            );
-          }
-          if (part.type === "tool-invocation") {
-            return (
-              <ToolCallMessageContent
-                key={`tool-${index}`}
-                tool={part.toolInvocation}
-              />
-            );
-          }
-          if (part.type === "text") {
-            return (
-              <TextContent
-                key={`text-${index}`}
-                text={part.text}
-                messages={messages}
-                index={index}
-                hasArtifactTool={hasArtifactTool}
-              />
-            );
-          }
-          return null;
-        })}
-      </div>
-    );
-  }
+  const isFailedMessage = message.status === "failed";
+  const hasPartialContent = Boolean(
+    isFailedMessage &&
+      (message.content ||
+        message.parts?.some((part) => part.type === "text" && part.text))
+  );
 
-  return typeof message.content === "string" ? (
-    <TextContent
-      text={message.content}
-      messages={messages}
-      index={0}
-      hasArtifactTool={hasArtifactTool}
-    />
-  ) : (
-    <MarkdownViewer content={message.content} />
+  const renderContent = () => {
+    if (message.parts?.length) {
+      return (
+        <div className="flex flex-col gap-2">
+          {message.parts.map((part, index) => {
+            if (part.type === "reasoning") {
+              return (
+                <ThinkingDropdown
+                  key={`reasoning-${index}`}
+                  autoClose={shouldAutoCloseThinking}
+                  reasoningDurationSeconds={
+                    (message as any).reasoningDurationSeconds
+                  }
+                >
+                  <MarkdownViewer content={part.reasoning} />
+                </ThinkingDropdown>
+              );
+            }
+            if (part.type === "tool-invocation") {
+              return (
+                <ToolCallMessageContent
+                  key={`tool-${index}`}
+                  tool={part.toolInvocation}
+                />
+              );
+            }
+            if (part.type === "text") {
+              return (
+                <TextContent
+                  key={`text-${index}`}
+                  text={part.text}
+                  messages={messages}
+                  index={index}
+                  hasArtifactTool={hasArtifactTool}
+                />
+              );
+            }
+            return null;
+          })}
+        </div>
+      );
+    }
+
+    return typeof message.content === "string" ? (
+      <TextContent
+        text={message.content}
+        messages={messages}
+        index={0}
+        hasArtifactTool={hasArtifactTool}
+      />
+    ) : (
+      <MarkdownViewer content={message.content} />
+    );
+  };
+
+  return (
+    <div className="flex flex-col">
+      {renderContent()}
+      {isFailedMessage && message.error && (
+        <ErrorMessage
+          error={message.error}
+          hasPartialContent={hasPartialContent}
+        />
+      )}
+    </div>
   );
 });
 MessageContentComponent.displayName = "MessageContentComponent";
 
 const AssistantMessage: React.FC<{
-  message: AIMessage;
+  message: AIMessage & { status?: string; error?: string };
   showEye: boolean;
   showActions: boolean;
   messages: AIMessage[];
-}> = ({ message, showEye, showActions, messages }) => {
+  onRetry?: (messageId: string) => void;
+}> = ({ message, showEye, showActions, messages, onRetry }) => {
   const [copied, setCopied] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const getMessageText = () => {
     if (message.parts?.length) {
@@ -129,6 +178,21 @@ const AssistantMessage: React.FC<{
     }
   };
 
+  const handleRetry = async () => {
+    if (!onRetry || !message.id || isRetrying) return;
+
+    setIsRetrying(true);
+    try {
+      await onRetry(message.id);
+    } catch (error) {
+      console.error("Error retrying message:", error);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  //   const isFailedMessage = message.status === "failed";
+
   return (
     <Message
       className="justify-start group"
@@ -136,7 +200,7 @@ const AssistantMessage: React.FC<{
       onMouseLeave={() => setIsHovering(false)}
     >
       {showEye ? (
-        <MessageAvatar src={logo} alt="AI" fallback="AI" />
+        <MessageAvatar src={logo} alt="AI" fallback="AI" className="" />
       ) : (
         <div className="size-8" />
       )}
@@ -157,6 +221,7 @@ const AssistantMessage: React.FC<{
                 size="icon"
                 className="h-8 w-8 rounded-full"
                 onClick={handleCopy}
+                disabled={message.status === "failed" && !getMessageText()}
               >
                 {copied ? (
                   <Check className="size-4 text-green-500" />
@@ -165,6 +230,24 @@ const AssistantMessage: React.FC<{
                 )}
               </Button>
             </MessageAction>
+
+            {onRetry && (
+              <MessageAction
+                tooltip={isRetrying ? "Retrying..." : "Retry message"}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={handleRetry}
+                  disabled={isRetrying}
+                >
+                  <RotateCcw
+                    className={`size-4 ${isRetrying ? "animate-spin" : ""}`}
+                  />
+                </Button>
+              </MessageAction>
+            )}
           </MessageActions>
         )}
       </div>

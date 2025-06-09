@@ -352,6 +352,10 @@ export const messages = pgTable(
     model: text("model"),
     provider: text("provider"),
     embedding: vector("embedding", { dimensions: 1536 }),
+    status: text("status", {
+      enum: ["streaming", "completed", "failed", "cancelled"],
+    }).default("streaming"),
+    error: text("error"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [

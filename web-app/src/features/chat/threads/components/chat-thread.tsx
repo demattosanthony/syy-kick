@@ -20,11 +20,18 @@ import {
 } from "../hooks";
 import { useChatState } from "../hooks/use-chat-state";
 import { useAtom } from "jotai";
-import { pendingThreadAtom } from "@/atoms/chat";
+import {
+  instructionsAtom,
+  modelAtom,
+  pendingThreadAtom,
+  thinkingAtom,
+} from "@/atoms/chat";
 
 // Utils
 import { convertChatMessagesToMessages } from "../utils/message-conversion";
 import { Loader2 } from "lucide-react";
+import api from "@/lib/api";
+import { toast } from "sonner";
 
 export default function ThreadPage({
   initalMessages,
@@ -52,6 +59,9 @@ export default function ThreadPage({
   } = useChatState(initalMessages);
 
   const [pendingThread] = useAtom(pendingThreadAtom);
+  const [selectedModel] = useAtom(modelAtom);
+  const [thinking] = useAtom(thinkingAtom);
+  const [instructions] = useAtom(instructionsAtom);
 
   // Check if this is a pending thread
   const isPendingThread = threadId?.startsWith("pending-");
@@ -92,6 +102,33 @@ export default function ThreadPage({
   // Show processing indicator for pending threads
   const showProcessingIndicator = isProcessing && convertedMessages.length > 0;
 
+  const handleRetry = useCallback(
+    async (messageId: string) => {
+      if (!threadId) return;
+
+      try {
+        const response = await api.threads.retryMessage({
+          threadId,
+          messageId,
+          model: selectedModel.name,
+          instructions: instructions,
+          thinking: thinking,
+        });
+
+        if (response.success) {
+          // Remove the failed message from the UI
+          setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        }
+      } catch (error: any) {
+        console.error("Error retrying message:", error);
+        toast.error(
+          error.message || "Failed to retry message. Please try again."
+        );
+      }
+    },
+    [threadId, setMessages, selectedModel, instructions, thinking]
+  );
+
   return (
     <div id="chat-container" className="flex h-full w-full relative">
       {selectedArtifact && (
@@ -120,6 +157,7 @@ export default function ThreadPage({
             messages={convertedMessages}
             status={isProcessing ? "submitted" : chatStatus}
             showSkeletons={messagesAreBeingFetched && !isPendingThread}
+            onRetry={handleRetry}
           />
 
           {showProcessingIndicator && (

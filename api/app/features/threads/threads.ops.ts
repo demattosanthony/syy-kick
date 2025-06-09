@@ -580,6 +580,34 @@ const threadsOps = {
       activeStreamCache.delete(threadId);
     };
 
+    // Helper function to mark current message as failed
+    const markCurrentMessageAsFailed = async (error: string) => {
+      const currentStreamData = activeStreamCache.get(threadId);
+      if (currentStreamData?.currentAssistantMessageId) {
+        try {
+          await db
+            .update(messages)
+            .set({
+              status: "failed",
+              error: error,
+              text: currentStreamData.accumulatedResponseText || "",
+            })
+            .where(
+              eq(messages.id, currentStreamData.currentAssistantMessageId)
+            );
+
+          // Emit error event for this specific message
+          eventEmitter.emit(`thread-${threadId}-message`, {
+            type: "message-error",
+            messageId: currentStreamData.currentAssistantMessageId,
+            error: error,
+          });
+        } catch (dbError) {
+          console.error("Error updating message status to failed:", dbError);
+        }
+      }
+    };
+
     try {
       const thread = await db.query.threads.findFirst({
         where: eq(threads.id, threadId),
@@ -645,7 +673,8 @@ const threadsOps = {
         thinking,
         cleanup,
         emitInferenceComplete,
-        artifactService
+        artifactService,
+        markCurrentMessageAsFailed
       );
     } catch (error: any) {
       console.error(
@@ -653,9 +682,40 @@ const threadsOps = {
         error
       );
 
+      const errorMessage =
+        error?.message || "An unexpected error occurred during inference";
+
+      // Mark current message as failed if we have one
+      await markCurrentMessageAsFailed(errorMessage);
+
       // Check if this was an abort
       if (error instanceof Error && error.name === "AbortError") {
         console.log(`Inference aborted for thread ${threadId}`);
+        // Don't mark aborted messages as failed, they're cancelled
+        const currentStreamData = activeStreamCache.get(threadId);
+        if (currentStreamData?.currentAssistantMessageId) {
+          try {
+            await db
+              .update(messages)
+              .set({
+                status: "cancelled",
+                text: currentStreamData.accumulatedResponseText || "",
+              })
+              .where(
+                eq(messages.id, currentStreamData.currentAssistantMessageId)
+              );
+
+            eventEmitter.emit(`thread-${threadId}-message`, {
+              type: "message-cancelled",
+              messageId: currentStreamData.currentAssistantMessageId,
+            });
+          } catch (dbError) {
+            console.error(
+              "Error updating message status to cancelled:",
+              dbError
+            );
+          }
+        }
       }
 
       cleanup();
@@ -681,7 +741,8 @@ const threadsOps = {
     thinking: boolean | undefined,
     cleanup: () => void,
     emitInferenceComplete: () => void,
-    artifactService?: ArtifactService
+    artifactService?: ArtifactService,
+    markCurrentMessageAsFailed?: (error: string) => Promise<void>
   ) {
     let currentMessages = [...initialMessages];
     let iteration = 0;
@@ -787,6 +848,7 @@ const threadsOps = {
                 threadId,
                 role: "assistant",
                 text: "",
+                status: "streaming",
                 createdAt: currentStepState.assistantMessageCreatedAt,
                 model: currentStepState.model,
                 provider: currentStepState.provider,
@@ -969,16 +1031,20 @@ const threadsOps = {
                 chunk.error
               );
 
-              // If it's a serious error, we should stop the iteration
-              if (
+              // Mark current message as failed
+              const errorMessage =
                 chunk.error &&
                 typeof chunk.error === "object" &&
                 "message" in chunk.error
-              ) {
-                console.error(`API Error: ${(chunk.error as any).message}`);
-                // Set finishReason to stop the iteration
-                finishReason = "error";
+                  ? (chunk.error as any).message
+                  : "An error occurred during AI processing";
+
+              if (markCurrentMessageAsFailed) {
+                await markCurrentMessageAsFailed(errorMessage);
               }
+
+              // Set finishReason to stop the iteration
+              finishReason = "error";
               break;
 
             default:
@@ -997,7 +1063,8 @@ const threadsOps = {
           toolResults,
           threadId,
           userId,
-          artifactService
+          artifactService,
+          finishReason === "error"
         );
 
         // Add assistant message to current messages for next iteration
@@ -1086,10 +1153,18 @@ const threadsOps = {
             try {
               await db
                 .update(messages)
-                .set({ text: currentStepState.accumulatedResponseText })
+                .set({
+                  text: currentStepState.accumulatedResponseText,
+                  status: "cancelled",
+                })
                 .where(
                   eq(messages.id, currentStepState.currentAssistantMessageId)
                 );
+
+              eventEmitter.emit(`thread-${threadId}-message`, {
+                type: "message-cancelled",
+                messageId: currentStepState.currentAssistantMessageId,
+              });
             } catch (err) {
               console.error("Error saving aborted message:", err);
             }
@@ -1097,7 +1172,12 @@ const threadsOps = {
           break;
         }
 
-        // For other errors, stop the iteration
+        // For other errors, mark message as failed and stop the iteration
+        const errorMessage =
+          stepError?.message || "An unexpected error occurred";
+        if (markCurrentMessageAsFailed) {
+          await markCurrentMessageAsFailed(errorMessage);
+        }
         break;
       }
     }
@@ -1118,7 +1198,9 @@ const threadsOps = {
     toolCalls: any[],
     toolResults: any[],
     threadId: string,
-    userId: string
+    userId: string,
+    artifactService?: ArtifactService,
+    hasError: boolean = false
   ) {
     const now = new Date();
 
@@ -1138,13 +1220,23 @@ const threadsOps = {
         );
       }
 
-      // Persist the final accumulated text and reasoning to DB
+      // Determine final status - if there was an error, it should already be marked as failed
+      // Only update to completed if it's not already failed
+      const currentMessage = await db.query.messages.findFirst({
+        where: eq(messages.id, currentMsgId),
+      });
+
+      const finalStatus =
+        currentMessage?.status === "failed" ? "failed" : "completed";
+
+      // Persist the final accumulated text, reasoning, and status to DB
       await db
         .update(messages)
         .set({
           text: fullAccumulatedText,
           reasoning,
           reasoningDurationSeconds,
+          status: finalStatus,
         })
         .where(eq(messages.id, currentMsgId));
 
@@ -1200,8 +1292,12 @@ const threadsOps = {
         });
       }
 
-      // Handle embeddings for text content
-      if (fullAccumulatedText && fullAccumulatedText.length > 0) {
+      // Handle embeddings for text content (only if not failed)
+      if (
+        fullAccumulatedText &&
+        fullAccumulatedText.length > 0 &&
+        finalStatus !== "failed"
+      ) {
         try {
           const embeddingResult = await embeddingModel.doEmbed({
             values: [fullAccumulatedText],
@@ -1377,6 +1473,80 @@ const threadsOps = {
     }
 
     return { id: newThread.id };
+  },
+
+  async retryMessage(
+    userId: string,
+    threadId: string,
+    messageId: string,
+    model: string,
+    maxTokens?: number,
+    instructions?: string,
+    workspace?: Workspace,
+    thinking?: boolean
+  ) {
+    // First, verify the message exists and belongs to the user's thread
+    const messageToRetry = await db.query.messages.findFirst({
+      where: and(eq(messages.id, messageId), eq(messages.threadId, threadId)),
+      with: { toolCalls: true },
+    });
+
+    if (!messageToRetry) {
+      throw new Error("Message not found or access denied");
+    }
+
+    // Verify it's an assistant message that can be retried
+    if (messageToRetry.role !== "assistant") {
+      throw new Error("Only assistant messages can be retried");
+    }
+
+    // Delete the failed message and its associated data
+    await db
+      .delete(toolCallsTable)
+      .where(eq(toolCallsTable.messageId, messageId));
+    await db
+      .delete(messagesFiles)
+      .where(eq(messagesFiles.messageId, messageId));
+    await db.delete(messages).where(eq(messages.id, messageId));
+
+    // Verify that the last message is now a user message
+    const lastMessage = await db.query.messages.findFirst({
+      where: eq(messages.threadId, threadId),
+      orderBy: [desc(messages.createdAt)],
+    });
+
+    if (!lastMessage || lastMessage.role !== "user") {
+      throw new Error(
+        "Cannot retry: Last message in thread must be a user message"
+      );
+    }
+
+    // Start inference asynchronously (don't await)
+    setImmediate(async () => {
+      try {
+        await threadsOps.runInferenceForThread(
+          userId,
+          threadId,
+          model,
+          maxTokens,
+          instructions,
+          workspace,
+          thinking
+        );
+      } catch (error) {
+        console.error("Error during retry inference:", error);
+        // Clean up cache if retry inference setup fails
+        activeStreamCache.delete(threadId);
+        abortControllers.delete(threadId);
+      }
+    });
+
+    return {
+      success: true,
+      message: "Message retry initiated",
+      deletedMessageId: messageId,
+      lastUserMessageId: lastMessage.id,
+    };
   },
 };
 

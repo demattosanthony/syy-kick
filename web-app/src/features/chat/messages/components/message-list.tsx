@@ -148,10 +148,12 @@ const ChatMessagesList = React.memo(
     messages,
     status,
     showSkeletons = false,
+    onRetry,
   }: {
     messages: Message[];
     status: "error" | "submitted" | "streaming" | "ready";
     showSkeletons?: boolean;
+    onRetry?: (messageId: string) => void;
   }) => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -211,6 +213,7 @@ const ChatMessagesList = React.memo(
                       showEye={showEye}
                       showActions={showActions}
                       messages={messages}
+                      onRetry={onRetry}
                     />
                   </div>
                 );

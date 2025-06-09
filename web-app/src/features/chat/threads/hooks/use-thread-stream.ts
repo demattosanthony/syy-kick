@@ -1,6 +1,5 @@
 import { useCallback, useRef, useEffect } from "react";
 import { useAtom } from "jotai";
-import { toast } from "sonner";
 import { ChatMessage, MessageRole } from "@/types/chat";
 import { chatStatusAtom } from "@/atoms/chat";
 
@@ -31,6 +30,8 @@ const createMessage = (
   reasoning?: string
 ): ChatMessage => ({
   id,
+  threadId: "", // Default empty string - this gets updated properly by the backend data
+  userId: "", // Default empty string - this gets updated properly by the backend data
   role,
   text,
   reasoning,
@@ -341,17 +342,57 @@ const handleMessageError = (
   data: any,
   { setChatStatus, onMessagesUpdate }: EventHandlers
 ) => {
-  //   console.error("Message error event from server:", data.error);
-  toast.error(data.error || "Error processing message on server.");
+  console.error("Message error event from server:", data.error);
 
-  if (data.message?.id) {
-    const errorText = `\n[SERVER ERROR: ${data.error || "Unknown"}]`;
+  // Update the specific message to show failed status and error
+  if (data.messageId) {
     onMessagesUpdate((prev) =>
       addOrUpdateMessage(
         prev,
-        data.message.id,
-        (msg) => ({ ...msg, text: msg.text + errorText }),
-        () => ({ ...data.message, text: data.message.text + errorText })
+        data.messageId,
+        (msg) => ({
+          ...msg,
+          status: "failed",
+          error: data.error,
+        }),
+        () =>
+          createMessage(
+            data.messageId,
+            MessageRole.assistant,
+            "",
+            undefined,
+            undefined
+          )
+      )
+    );
+  }
+  setChatStatus("ready");
+};
+
+const handleMessageCancelled = (
+  data: any,
+  { setChatStatus, onMessagesUpdate }: EventHandlers
+) => {
+  console.log("Message cancelled event from server:", data.messageId);
+
+  // Update the specific message to show cancelled status
+  if (data.messageId) {
+    onMessagesUpdate((prev) =>
+      addOrUpdateMessage(
+        prev,
+        data.messageId,
+        (msg) => ({
+          ...msg,
+          status: "cancelled",
+        }),
+        () =>
+          createMessage(
+            data.messageId,
+            MessageRole.assistant,
+            "",
+            undefined,
+            undefined
+          )
       )
     );
   }
@@ -422,6 +463,7 @@ const eventHandlers = {
   "tool-call-delta": handleToolCallDelta,
   "tool-result": handleToolResult,
   "message-error": handleMessageError,
+  "message-cancelled": handleMessageCancelled,
   "inference-complete": (_data: any, { setChatStatus }: EventHandlers) =>
     setChatStatus("ready"),
   "inference-stopped": (_data: any, { setChatStatus }: EventHandlers) =>

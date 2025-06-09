@@ -45,18 +45,23 @@ export type ChatToolCall = {
   argsText?: string;
 };
 
-export type ChatMessage = {
+export interface ChatMessage {
   id: string;
-  role: MessageRole;
-  text: string;
+  threadId: string;
+  userId: string;
+  role: "system" | "user" | "assistant" | "tool";
+  text?: string | null;
+  reasoning?: string | null;
+  reasoningDurationSeconds?: number | null;
+  model?: string | null;
+  provider?: string | null;
+  status?: "streaming" | "completed" | "failed" | "cancelled";
+  error?: string | null;
+  embedding?: number[] | null;
   createdAt: string;
-  attachments?: MessageAttachment[];
   toolCalls?: ChatToolCall[];
-  model?: string;
-  provider?: string;
-  reasoning?: string;
-  reasoningDurationSeconds?: number;
-};
+  attachments?: MessageAttachment[];
+}
 
 export type FileUploadMimeType = "image" | "pdf" | "other";
 
