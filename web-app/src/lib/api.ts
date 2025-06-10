@@ -915,7 +915,8 @@ class FilesApi extends ApiRequest {
   async getPresignedUrl(
     fileName: string,
     mimeType: string,
-    size: number
+    size: number,
+    featureType: "threads" | "workflows"
   ): Promise<{
     fileKey: string;
     uploadUrl: string;
@@ -925,7 +926,12 @@ class FilesApi extends ApiRequest {
       fileKey: string;
       uploadUrl: string;
       viewUrl: string;
-    }>("/files/presigned-url", "POST", { fileName, mimeType, size });
+    }>("/files/presigned-url", "POST", {
+      fileName,
+      mimeType,
+      size,
+      featureType,
+    });
   }
 
   async createFileRecord(

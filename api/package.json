@@ -64,6 +64,7 @@
     "stripe": "^17.7.0",
     "tiktoken": "^1.0.21",
     "unstructured-client": "^0.20.0",
+    "uuid": "^11.1.0",
     "winston": "^3.17.0",
     "winston-transport": "^4.9.0"
   }

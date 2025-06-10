@@ -3,6 +3,9 @@ import { MODELS } from "./features/models";
 import { ApiResponse } from "./config/schema";
 import { Request, Response } from "express";
 import { Workspace } from "./middleware";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 
 export function getOrgIdOrUnedfined(workspace?: Workspace) {
   return workspace?.type === "organization" ? workspace.id : undefined;
@@ -43,13 +46,14 @@ export const slugify = (text: string) => {
     .replace(/\-\-+/g, "-"); // Replace multiple - with single -
 };
 
-export async function getFileHash(fileBuffer: Buffer): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer)); // Convert buffer to byte array
-  const hashHex = hashArray
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join(""); // Convert bytes to hex string
-  return hashHex;
+export const generateFileSlug = (fileName: string) => {
+  const ext = path.extname(fileName);
+  const baseName = slugify(path.basename(fileName, ext));
+  return `${baseName}-${uuidv4().split("-")[0]}${ext}`;
+};
+
+export function getFileHash(fileBuffer: Buffer): string {
+  return crypto.createHash("sha256").update(fileBuffer).digest("hex");
 }
 
 // ConvertAPI configuration

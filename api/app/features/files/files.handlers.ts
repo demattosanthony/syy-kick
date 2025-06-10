@@ -53,7 +53,7 @@ export async function getPresignedUrlHandler(
       return;
     }
 
-    const { fileName, mimeType, size } = req.body;
+    const { fileName, mimeType, size, featureType } = req.body;
 
     // Validate required fields
     if (!fileName || !mimeType || !size) {
@@ -64,7 +64,13 @@ export async function getPresignedUrlHandler(
     }
 
     // Generate presigned URL
-    const result = await generatePresignedUrl(fileName, mimeType, size);
+    const result = await generatePresignedUrl(
+      fileName,
+      mimeType,
+      size,
+      featureType,
+      userId
+    );
 
     res.json(result);
   } catch (error) {

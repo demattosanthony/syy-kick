@@ -292,7 +292,11 @@ const DownloadOptions: React.FC<{
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${title.replace(/\s+/g, "_")}${ext}`;
+
+    // Remove any existing extension from title to prevent double extensions
+    const cleanTitle = title.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_");
+    a.download = `${cleanTitle}${ext}`;
+
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

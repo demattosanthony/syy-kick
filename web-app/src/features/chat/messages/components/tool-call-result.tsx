@@ -821,7 +821,7 @@ const LoadFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
       <div className="">
         <Loader
           variant="text-shimmer"
-          text={`Loading content from ${fileName}...`}
+          text={`Reading ${fileName}...`}
           size="lg"
         />
       </div>
@@ -1226,6 +1226,7 @@ const ToolCallMessageContent = ({ tool }: { tool: ToolInvocation }) => {
     case "search_file_content":
       return <SearchFileContentTool tool={tool} />;
     case "create_artifact":
+    case "create_file":
       return <CreateArtifactTool tool={tool} />;
     default:
       return null;

@@ -1,8 +1,10 @@
+// Third-party dependencies
 import { desc, eq, and, ilike, sql, inArray } from "drizzle-orm";
+
+// Local config imports
 import db from "../../config/db";
 import s3 from "../../config/s3";
 import reranker from "../../config/reranker";
-import crypto from "crypto";
 import {
   files,
   filePages,
@@ -12,13 +14,18 @@ import {
   messages,
   messagesFiles,
 } from "../../config/schema";
+
+// Local type imports
 import type {
   GetFilesQuery,
   PaginatedFiles,
   File,
   GetFilesOptions,
 } from "./files.schemas";
+
+// Local feature imports
 import { processFile } from "./files.processor";
+import { generateFileSlug, getFileHash } from "../../utils";
 
 export async function getFiles({
   context,
@@ -252,16 +259,17 @@ export async function getFilesForThread(
 export async function generatePresignedUrl(
   fileName: string,
   mimeType: string,
-  size: number
+  size: number,
+  featureType: "threads" | "workflows",
+  userId: string
 ): Promise<{
   fileKey: string;
   uploadUrl: string;
   viewUrl: string;
 }> {
   // Generate unique file key for S3
-  const fileExtension = fileName.split(".").pop();
-  const uniqueFileName = `${crypto.randomUUID()}-${Date.now()}.${fileExtension}`;
-  const fileKey = `files/${uniqueFileName}`;
+  const fileSlug = generateFileSlug(fileName);
+  const fileKey = `users/${userId}/${featureType}/${fileSlug}`;
 
   console.log(
     `🔗 [GeneratePresignedUrl] Generating presigned URL for: ${fileName} -> ${fileKey}`
@@ -329,10 +337,7 @@ export async function processAndStoreFile(params: {
 
   if (deduplicationStrategy === "hash") {
     // Calculate file hash for deduplication
-    const fileHash = crypto
-      .createHash("sha256")
-      .update(fileBuffer)
-      .digest("hex");
+    const fileHash = getFileHash(fileBuffer);
     console.log(`🔑 [ProcessAndStoreFile] File hash: ${fileHash}`);
 
     // Check if file with same hash already exists for this user
@@ -448,7 +453,7 @@ export async function processAndStoreFile(params: {
   }
 
   // Calculate file hash if not already done
-  const fileHash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
+  const fileHash = getFileHash(fileBuffer);
 
   // Prepare file data for insertion
   const fileData: any = {

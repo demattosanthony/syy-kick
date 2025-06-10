@@ -3,7 +3,7 @@ import { streamText } from "ai";
 import { and, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { Request, Response } from "express";
 import { EventEmitter } from "events";
-import crypto from "crypto";
+import { v4 as uuidv4 } from "uuid";
 
 // Internal configuration
 import db from "../../config/db";
@@ -13,7 +13,6 @@ import {
   toolCalls as toolCallsTable,
   files,
   messagesFiles,
-  filePages as filePagesTable,
   userFiles,
 } from "../../config/schema";
 
@@ -34,7 +33,6 @@ import {
   createSharepointToolSet,
   createWebSearchTool,
 } from "../tools/tool-definitions";
-import { MARKITDOWN_MIME_TYPES } from "../../config/constants";
 import { Workspace } from "../auth/auth.types";
 import { ArtifactService } from "../tools/artifact-service";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
@@ -64,7 +62,7 @@ const threadsOps = {
     workflowId?: string
   ) {
     if (!userId) throw new Error("User ID is required");
-    const id = crypto.randomUUID();
+    const id = uuidv4();
     const now = new Date();
     await db.insert(threads).values({
       id,
@@ -84,7 +82,7 @@ const threadsOps = {
     role: "system" | "user" | "assistant" | "tool",
     message: MyMessage
   ) {
-    const messageId = crypto.randomUUID();
+    const messageId = uuidv4();
     let embedding = null;
 
     // Attempt to embed message content
@@ -152,52 +150,6 @@ const threadsOps = {
               console.log(
                 `✅ [ThreadsOps] User-file association already exists`
               );
-            }
-
-            // For large documents (PDFs, documents), add to artifact service for this thread
-            const isLargeDocument =
-              existingFile.mimeType === "application/pdf" ||
-              MARKITDOWN_MIME_TYPES.includes(existingFile.mimeType || "");
-
-            if (isLargeDocument) {
-              const artifactService = new ArtifactService(threadId, userId);
-              const fileName = attachment.name || existingFile.name;
-              const existingArtifact =
-                await artifactService.loadArtifact(fileName);
-
-              if (!existingArtifact) {
-                console.log(
-                  `📄 [ThreadsOps] Adding file to artifact service for thread ${threadId}`
-                );
-
-                // Get content from existing file pages
-                const pages = await db.query.filePages.findMany({
-                  where: eq(filePagesTable.fileId, existingFile.id),
-                  with: {
-                    chunks: {
-                      orderBy: (chunks, { asc }) => [asc(chunks.position)],
-                    },
-                  },
-                  orderBy: (pages, { asc }) => [asc(pages.pageNumber)],
-                });
-
-                if (pages.length > 0) {
-                  const content = pages
-                    .map((page) =>
-                      page.chunks.map((chunk) => chunk.content).join("\n")
-                    )
-                    .join("\n\n");
-
-                  await artifactService.saveArtifact(fileName, {
-                    data: new TextEncoder().encode(content),
-                    mimeType: "text/markdown",
-                  });
-                }
-              } else {
-                console.log(
-                  `✅ [ThreadsOps] File already exists in artifact service for this thread`
-                );
-              }
             }
 
             console.log(
@@ -852,7 +804,7 @@ const threadsOps = {
               .insert(messages)
               .values({
                 userId: userId,
-                id: crypto.randomUUID(),
+                id: uuidv4(),
                 threadId,
                 role: "assistant",
                 text: "",
@@ -1321,7 +1273,7 @@ const threadsOps = {
       if (toolCalls && toolCalls.length > 0) {
         for (const toolCall of toolCalls) {
           if (!toolCall) continue;
-          const toolCallDbId = crypto.randomUUID();
+          const toolCallDbId = uuidv4();
           await db.insert(toolCallsTable).values({
             id: toolCallDbId,
             messageId: currentMsgId,
@@ -1510,7 +1462,7 @@ const threadsOps = {
         .insert(messages)
         .values({
           ...msg,
-          id: crypto.randomUUID(),
+          id: uuidv4(),
         })
         .returning();
 
@@ -1538,7 +1490,7 @@ const threadsOps = {
       if (sourceMsg.toolCalls && sourceMsg.toolCalls.length > 0) {
         for (const call of sourceMsg.toolCalls) {
           await db.insert(toolCallsTable).values({
-            id: crypto.randomUUID(), // Generate new ID for tool call
+            id: uuidv4(), // Generate new ID for tool call
             messageId: newMsg.id,
             toolName: call.toolName,
             toolCallId: call.toolCallId,

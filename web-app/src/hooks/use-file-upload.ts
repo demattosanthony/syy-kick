@@ -38,7 +38,8 @@ export function useFileUpload(acceptedTypes: string[]) {
       const { fileKey, uploadUrl, viewUrl } = await api.files.getPresignedUrl(
         file.name,
         file.type,
-        file.size
+        file.size,
+        "threads"
       );
 
       // Update status to uploading
