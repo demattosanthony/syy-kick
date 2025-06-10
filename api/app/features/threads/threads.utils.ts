@@ -1,8 +1,6 @@
 // External dependencies
-import { CoreMessage, tool } from "ai";
-import { and, eq } from "drizzle-orm";
-import { z } from "zod";
-import { CharacterTextSplitter } from "@langchain/textsplitters";
+import { CoreMessage } from "ai";
+import { eq, inArray } from "drizzle-orm";
 
 // Internal configuration
 import {
@@ -11,12 +9,8 @@ import {
   PROGRAMMING_FILE_MIME_TYPES,
 } from "../../config/constants";
 import db from "../../config/db";
-import reranker from "../../config/reranker";
 import s3 from "../../config/s3";
 import {
-  documentThumbnails,
-  MessageAttachment,
-  messageAttachments,
   messages,
   threads,
   toolCalls,
@@ -24,145 +18,219 @@ import {
   files,
   messagesFiles,
   filePages,
-  filePageChunks,
+  filePageImages,
 } from "../../config/schema";
 
 // Internal utilities
-import { generateThreadTitle, getPdfPageAsImage } from "../../utils";
+import { generateThreadTitle } from "../../utils";
 
 // Feature imports
-import { ModelConfig, MODELS } from "../models";
-import {
-  DocumentSearchToolResult,
-  MyMessage,
-  ThreadWithMessages,
-} from "./threads.types";
+import { MODELS } from "../models";
+import { MyMessage } from "./threads.types";
 import { DbUser } from "../../createAuthToken";
 
-// Initialize text splitter for web content chunking
-const webContentSplitter = new CharacterTextSplitter({
-  chunkSize: 2000,
-  chunkOverlap: 120,
-  separator: "\n\n",
-});
-
-/**
- * Strips base64Data from images in tool results to prevent storing large strings in database.
- * Keeps imagePath for later regeneration.
- */
-function stripBase64FromToolResult(toolResult: any): any {
-  if (!toolResult || typeof toolResult !== "object") {
-    return toolResult;
-  }
-
-  // Handle arrays
-  if (Array.isArray(toolResult)) {
-    return toolResult.map(stripBase64FromToolResult);
-  }
-
-  // Handle objects
-  const result = { ...toolResult };
-
-  // If this object has images array, strip base64Data from each image
-  if (result.images && Array.isArray(result.images)) {
-    result.images = result.images.map((image: any) => {
-      if (image && typeof image === "object" && image.base64Data) {
-        const { base64Data, ...imageWithoutBase64 } = image;
-        return imageWithoutBase64;
-      }
-      return image;
-    });
-  }
-
-  // Recursively process nested objects
-  for (const key in result) {
-    if (typeof result[key] === "object" && result[key] !== null) {
-      result[key] = stripBase64FromToolResult(result[key]);
-    }
-  }
-
-  return result;
+export interface ImageData {
+  name: string;
+  imagePath: string;
+  mimeType: string;
+  imageUrl?: string;
+  base64Data?: string;
 }
 
 /**
- * Loads images from artifact service tool results (load_file_content or search_file_content)
- * Returns images with base64Data loaded from S3
+ * Loads images for given page IDs
+ * In production: returns presigned URLs
+ * In development: returns base64 data
  */
-async function loadImagesFromArtifactToolResult(toolResult: any): Promise<
-  Array<{
-    name: string;
-    imagePath: string;
-    base64Data: string;
-    mimeType: string;
-  }>
-> {
+export async function loadImagesForPages(
+  pageIds: string[],
+  forceBase64: boolean = false
+): Promise<ImageData[]> {
+  const validPageIds = pageIds.filter(Boolean);
+  if (validPageIds.length === 0) return [];
+
+  console.log(
+    `🖼️ [ImageUtils] Loading images for ${validPageIds.length} pages`
+  );
+
+  const images = await db.query.filePageImages.findMany({
+    where: inArray(filePageImages.filePageId, validPageIds),
+  });
+
+  if (images.length === 0) {
+    console.log(`📷 [ImageUtils] No images found for the selected pages`);
+    return [];
+  }
+
+  const useBase64 = forceBase64 || !CONFIG.__prod__;
+  console.log(
+    `🖼️ [ImageUtils] Found ${images.length} images, using ${
+      useBase64 ? "base64" : "URLs"
+    }`
+  );
+
+  const imageResults: ImageData[] = [];
+
+  for (const image of images) {
+    try {
+      const file = s3.file(image.imagePath);
+
+      if (!(await file.exists())) {
+        console.warn(
+          `⚠️ [ImageUtils] Image not found in S3: ${image.imagePath}`
+        );
+        continue;
+      }
+
+      const imageData: ImageData = {
+        name: image.name ?? "image",
+        imagePath: image.imagePath,
+        mimeType: "image/png",
+      };
+
+      if (useBase64) {
+        // Load base64 data for development or when forced
+        const imageBuffer = await file.arrayBuffer();
+        imageData.base64Data = Buffer.from(imageBuffer).toString("base64");
+        console.log(
+          `✅ [ImageUtils] Loaded base64 for: ${image.name} (${imageBuffer.byteLength} bytes)`
+        );
+      } else {
+        // Generate presigned URL for production
+        imageData.imageUrl = file.presign({ expiresIn: 3600 });
+        console.log(`✅ [ImageUtils] Generated URL for: ${image.name}`);
+      }
+
+      imageResults.push(imageData);
+    } catch (error) {
+      console.error(
+        `❌ [ImageUtils] Error processing image ${image.name}:`,
+        error
+      );
+    }
+  }
+
+  console.log(
+    `🖼️ [ImageUtils] Successfully processed ${imageResults.length}/${images.length} images`
+  );
+  return imageResults;
+}
+
+/**
+ * Loads images from tool results for AI inference
+ * In production: returns presigned URLs
+ * In development: returns base64 data
+ */
+export async function loadImagesFromToolResult(
+  toolResult: any,
+  forceBase64: boolean = false
+): Promise<ImageData[]> {
   if (
-    !toolResult ||
-    typeof toolResult !== "object" ||
-    !toolResult.images ||
+    !toolResult?.images ||
     !Array.isArray(toolResult.images) ||
     toolResult.images.length === 0
   ) {
     return [];
   }
 
+  const useBase64 = forceBase64 || !CONFIG.__prod__;
   console.log(
-    `🖼️ [ThreadsUtils] Loading ${toolResult.images.length} images from tool result`
+    `🖼️ [ImageUtils] Loading ${
+      toolResult.images.length
+    } images from tool result, using ${useBase64 ? "base64" : "URLs"}`
   );
 
-  try {
-    // Load base64Data for all images
-    const imagesWithBase64 = await Promise.all(
-      toolResult.images.map(async (image: any) => {
-        try {
-          if (image.imagePath) {
-            const file = s3.file(image.imagePath);
-            if (await file.exists()) {
-              const imageBuffer = await file.arrayBuffer();
-              const base64Data = Buffer.from(imageBuffer).toString("base64");
+  const imagesWithData = await Promise.all(
+    toolResult.images.map(async (image: any): Promise<ImageData | null> => {
+      try {
+        if (!image.imagePath) return null;
 
-              console.log(
-                `✅ [ThreadsUtils] Loaded image: ${image.name} (${imageBuffer.byteLength} bytes)`
-              );
-
-              return {
-                name: image.name || "image",
-                imagePath: image.imagePath,
-                base64Data: base64Data,
-                mimeType: image.mimeType || "image/png",
-              };
-            } else {
-              console.warn(
-                `⚠️ [ThreadsUtils] Image not found in S3: ${image.imagePath}`
-              );
-              return null;
-            }
-          }
-          return null;
-        } catch (error) {
-          console.error(
-            `❌ [ThreadsUtils] Error loading image ${image.name}:`,
-            error
+        const file = s3.file(image.imagePath);
+        if (!(await file.exists())) {
+          console.warn(
+            `⚠️ [ImageUtils] Image not found in S3: ${image.imagePath}`
           );
           return null;
         }
+
+        const imageData: ImageData = {
+          name: image.name || "image",
+          imagePath: image.imagePath,
+          mimeType: image.mimeType || "image/png",
+        };
+
+        if (useBase64) {
+          // Load base64 data for development or when forced
+          const imageBuffer = await file.arrayBuffer();
+          imageData.base64Data = Buffer.from(imageBuffer).toString("base64");
+          console.log(
+            `✅ [ImageUtils] Loaded base64 for: ${image.name} (${imageBuffer.byteLength} bytes)`
+          );
+        } else {
+          // Generate presigned URL for production
+          imageData.imageUrl = file.presign({ expiresIn: 3600 });
+          console.log(`✅ [ImageUtils] Generated URL for: ${image.name}`);
+        }
+
+        return imageData;
+      } catch (error) {
+        console.error(
+          `❌ [ImageUtils] Error loading image ${image.name}:`,
+          error
+        );
+        return null;
+      }
+    })
+  );
+
+  const validImages = imagesWithData.filter(
+    (img): img is ImageData => img !== null
+  );
+  console.log(
+    `✅ [ImageUtils] Successfully loaded ${validImages.length}/${toolResult.images.length} images`
+  );
+
+  return validImages;
+}
+
+// Helper function to presign image URLs in tool results
+async function presignToolResultImages(result: any): Promise<any> {
+  if (!result || typeof result !== "object") {
+    return result;
+  }
+
+  // Handle artifact service tool results that have images
+  if (result.images && Array.isArray(result.images)) {
+    const presignedImages = await Promise.all(
+      result.images.map(async (img: any) => {
+        if (img.imagePath) {
+          try {
+            const presignedUrl = s3
+              .file(img.imagePath)
+              .presign({ expiresIn: 3600 });
+            return {
+              ...img,
+              imageUrl: presignedUrl,
+            };
+          } catch (error) {
+            console.error(
+              `Error presigning image URL for ${img.imagePath}:`,
+              error
+            );
+            return img;
+          }
+        }
+        return img;
       })
     );
 
-    // Filter out failed image loads
-    const validImages = imagesWithBase64.filter((img) => img !== null);
-    console.log(
-      `✅ [ThreadsUtils] Successfully loaded ${validImages.length}/${toolResult.images.length} images`
-    );
-
-    return validImages;
-  } catch (error) {
-    console.error(
-      `❌ [ThreadsUtils] Error processing images from tool result:`,
-      error
-    );
-    return [];
+    return {
+      ...result,
+      images: presignedImages,
+    };
   }
+
+  return result;
 }
 
 /** Retrieve the model config. */
@@ -183,462 +251,6 @@ async function generateAttachmentData(
   }
   const buffer = Buffer.from(await s3.file(fileKey).arrayBuffer());
   return buffer.toString("base64");
-}
-
-/** Adds presigned URLs (or base64 data) to each attachment. */
-async function processAttachments(attachments: MessageAttachment[]) {
-  try {
-    const processed: MessageAttachment[] = [];
-    for (const att of attachments) {
-      const url = s3.file(att.fileKey).presign({ expiresIn: 3600 });
-      processed.push({ ...att, url });
-    }
-    return processed;
-  } catch (error) {
-    console.error("Error processing attachments:", error);
-    return attachments;
-  }
-}
-
-/** Processes a PDF document and returns its page as an image data URL */
-async function processPdfDocument(doc: DocumentSearchToolResult): Promise<{
-  fileKey: string;
-  imageData: string;
-  mimeType: string;
-} | null> {
-  try {
-    if (!doc.pageNumber || !doc.fileKey) {
-      return null;
-    }
-
-    // Check if thumbnail already exists
-    const existingThumbnail = await db.query.documentThumbnails.findFirst({
-      where: and(
-        eq(documentThumbnails.documentId, doc.documentId),
-        eq(documentThumbnails.pageNumber, doc.pageNumber)
-      ),
-    });
-
-    if (existingThumbnail) {
-      // Return existing thumbnail
-      return {
-        fileKey: existingThumbnail.fileKey,
-        imageData: await generateAttachmentData(existingThumbnail.fileKey),
-        mimeType: "image/png",
-      };
-    }
-
-    // Fetch and convert PDF page to image
-    const pdfBytes = await s3.file(doc.fileKey).bytes();
-    const base64Image = await getPdfPageAsImage(pdfBytes, doc.pageNumber);
-
-    // Store converted image
-    const imageKey = `document-thumbnails/${doc.documentId}_page${doc.pageNumber}.png`;
-    await s3
-      .file(imageKey)
-      .write(Buffer.from(base64Image, "base64"), { type: "image/png" });
-
-    // Save thumbnail reference in database
-    await db.insert(documentThumbnails).values({
-      documentId: doc.documentId,
-      pageNumber: doc.pageNumber,
-      fileKey: imageKey,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    return {
-      fileKey: imageKey,
-      imageData: base64Image,
-      mimeType: "image/png",
-    };
-  } catch (error) {
-    console.error("Error processing PDF document:", error);
-    return null;
-  }
-}
-
-/** Processes documents and returns image data URLs for supported types */
-async function processDocumentImages(docs: DocumentSearchToolResult[]): Promise<
-  {
-    fileKey: string;
-    imageData: string;
-    mimeType: string;
-  }[]
-> {
-  // Process all documents in parallel
-  const processingPromises = docs.map(async (doc) => {
-    try {
-      if (doc.mimeType === "application/pdf") {
-        return await processPdfDocument(doc);
-      } else if (
-        (doc.mimeType?.includes("image/png") ||
-          doc.mimeType?.includes("image/jpg") ||
-          doc.mimeType?.includes("image/jpeg")) &&
-        doc.fileKey
-      ) {
-        const imageData = await generateAttachmentData(doc.fileKey);
-        return {
-          fileKey: doc.fileKey,
-          imageData,
-          mimeType: doc.mimeType,
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error("Error processing document:", error);
-      return null;
-    }
-  });
-
-  // Wait for all processing to complete and filter out nulls
-  const results = (await Promise.all(processingPromises)).filter(
-    (result): result is NonNullable<typeof result> => result !== null
-  );
-
-  return results;
-}
-
-/** Chunks and reranks web content to extract the most relevant information */
-async function chunkAndRerankContent(
-  content: string,
-  query: string
-): Promise<{ chunks: string[]; scores: number[] }> {
-  try {
-    const chunks = await webContentSplitter.splitText(content);
-    if (chunks.length === 0) return { chunks: [], scores: [] };
-
-    const batchSize = 45;
-    const allRankedChunks: { chunk: string; score: number }[] = [];
-
-    // Process chunks in batches
-    for (let i = 0; i < chunks.length; i += batchSize) {
-      const batch = chunks.slice(i, i + batchSize);
-
-      try {
-        const rerankedResults = await reranker.rerank(query, batch, {
-          topN: Math.min(3, batch.length), // Reduced from 5 to 3
-          returnDocuments: true,
-        });
-
-        rerankedResults.results?.forEach((result) => {
-          // Only include chunks with decent relevance scores
-          if (result.relevance_score > 0.3) {
-            allRankedChunks.push({
-              chunk: result.document.text,
-              score: result.relevance_score,
-            });
-          }
-        });
-      } catch (error) {
-        console.error(`Error reranking batch starting at ${i}:`, error);
-        // Fallback: add first chunk with default score
-        if (batch[0]) {
-          allRankedChunks.push({ chunk: batch[0], score: 0.5 });
-        }
-      }
-    }
-
-    // Sort and return top chunks (reduced from 8 to 4)
-    allRankedChunks.sort((a, b) => b.score - a.score);
-    const topChunks = allRankedChunks.slice(0, 4);
-
-    return {
-      chunks: topChunks.map((item) => item.chunk),
-      scores: topChunks.map((item) => item.score),
-    };
-  } catch (error) {
-    console.error("Error in chunkAndRerankContent:", error);
-    // Fallback: return first part of content (reduced)
-    const fallbackChunks = content.substring(0, 2000).split("\n\n").slice(0, 2);
-    return {
-      chunks: fallbackChunks,
-      scores: fallbackChunks.map(() => 0.3),
-    };
-  }
-}
-
-/** Processes web content by fetching, chunking, and reranking */
-async function processWebContent(
-  url: string,
-  query: string
-): Promise<{
-  title: string;
-  content: string;
-  chunks: string[];
-  scores: number[];
-  chunksCount: number;
-} | null> {
-  try {
-    const response = await fetch(`https://r.jina.ai/${url}`, {
-      headers: {
-        Authorization: "Bearer " + process.env.JINA_API_KEY,
-        "X-Retain-Images": "none",
-        "X-Engine": "direct",
-      },
-    });
-
-    if (!response.ok) return null;
-
-    const content = await response.text();
-    const titleMatch = content.match(/^# (.+)$/m);
-    const title = titleMatch ? titleMatch[1] : url;
-
-    const { chunks, scores } = await chunkAndRerankContent(
-      content.trim(),
-      query
-    );
-
-    // Truncate chunks that are too long (keep first 800 chars of each chunk)
-    const truncatedChunks = chunks.map((chunk) =>
-      chunk.length > 800 ? chunk.substring(0, 800) + "..." : chunk
-    );
-
-    return {
-      title,
-      content: truncatedChunks.join("\n\n---\n\n"),
-      chunks: truncatedChunks,
-      scores,
-      chunksCount: truncatedChunks.length,
-    };
-  } catch (error) {
-    console.error(`Error processing content from ${url}:`, error);
-    return null;
-  }
-}
-
-const createWebSearchTool = () =>
-  tool({
-    description: `Web search and content scraping tool that provides access to real-time information from the internet.
-
-This tool performs comprehensive web searches and automatically scrapes content from the top results, giving you access to:
-- Current, up-to-date information beyond your training data
-- Real-time data from websites, news sources, and technical documentation
-- Live content from manufacturer websites, product specifications, and technical resources
-- Recent developments, code updates, and industry announcements
-
-The tool can operate in two modes:
-1. **Web Search Mode**: Searches the web, retrieves the most relevant results, and automatically fetches and processes the full content from each page
-2. **Direct URL Mode**: Directly extracts and processes content from a specific webpage URL
-
-## Parameters
-
-- **query**: The search query to perform OR a description of what you're looking for when using direct URL mode. Be specific and include relevant keywords for better results.
-- **url**: Optional direct URL to extract content from. When provided, skips web search and directly processes the specified webpage content.
-- **limit**: Optional number of pages to scrape and process (default: 3, max: 5). Only applies to web search mode. Higher limits provide more comprehensive information but take longer to process.
-
-## Usage Tips
-
-**For Web Search Mode:**
-- Use specific search terms including manufacturer names, model numbers, and version information
-- Add "pdf" when looking for technical documents, manuals, or specifications
-- Include year or "latest" for current information (e.g., "React 2024 best practices")
-- Use quotes for exact phrases when searching for specific error messages or configurations
-- Adjust limit based on need: use 1-2 for quick answers, 3-4 for comprehensive research
-
-**For Direct URL Mode:**
-- Provide the complete URL including protocol (https://)
-- Use query parameter to describe what specific information you're looking for from that page
-- Ideal for extracting content from known documentation pages, articles, or technical resources`,
-    parameters: z.object({
-      query: z.string(),
-      url: z.string().nullable(),
-      limit: z.number().nullable(),
-    }),
-    execute: async ({ query, url, limit }) => {
-      console.log("Executing web search tool with query:", query);
-
-      try {
-        // Direct URL mode
-        if (url) {
-          console.log("Using direct URL mode for:", url);
-          const processed = await processWebContent(url, query);
-
-          if (!processed) {
-            return {
-              text: `Error fetching content from URL ${url}`,
-              sources: [],
-              queries: [query],
-            };
-          }
-
-          return {
-            text: `# Content from: ${processed.title}\n\n**URL:** ${url}\n**Relevant Content:**\n${processed.content}`,
-            sources: [
-              {
-                title: processed.title,
-                url: url,
-                snippet: processed.chunks[0]?.substring(0, 150) + "..." || "",
-                chunksCount: processed.chunksCount,
-              },
-            ],
-            queries: [query],
-          };
-        }
-
-        // Web search mode
-        const response = await fetch(
-          `https://s.jina.ai/?q=${encodeURIComponent(query)}`,
-          {
-            headers: {
-              Authorization: "Bearer " + process.env.JINA_API_KEY,
-              "X-Respond-With": "no-content",
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const searchResults = await response.text();
-        const results = parseSearchResults(searchResults);
-        // Reduced default limit from 4 to 3, max 5
-        const topResults = results.slice(0, Math.min(limit || 3, 5));
-
-        // Process all URLs in parallel
-        const processedResults = await Promise.all(
-          topResults.map(async (result) => {
-            const processed = await processWebContent(result.url, query);
-            return processed
-              ? { ...result, ...processed }
-              : {
-                  ...result,
-                  content: "Content unavailable",
-                  chunks: [],
-                  scores: [],
-                  chunksCount: 0,
-                };
-          })
-        );
-
-        // Filter out results with no useful content
-        const validResults = processedResults.filter(
-          (result) => result.chunksCount > 0
-        );
-
-        // Format response - much more concise
-        let formattedText = `# Search Results for: ${query}\n\n`;
-        let totalLength = formattedText.length;
-        const maxLength = 8000; // Set maximum response length
-
-        validResults.forEach((result, index) => {
-          const resultText = `## ${result.title}\n**Source:** ${result.url}\n${result.content}\n\n---\n\n`;
-
-          // Only add if we haven't exceeded our length limit
-          if (totalLength + resultText.length < maxLength) {
-            formattedText += resultText;
-            totalLength += resultText.length;
-          }
-        });
-
-        // Truncate if still too long
-        if (formattedText.length > maxLength) {
-          formattedText =
-            formattedText.substring(0, maxLength - 50) +
-            "\n\n[Content truncated for length]";
-        }
-
-        return {
-          text: formattedText,
-          sources: validResults.map((result) => ({
-            title: result.title,
-            url: result.url,
-            snippet: result.chunks[0]?.substring(0, 100) + "..." || "",
-            chunksCount: result.chunksCount || 0,
-          })),
-          queries: [query],
-        };
-      } catch (error) {
-        console.error("Error with web search/content extraction:", error);
-        return {
-          text: `Error performing web search or content extraction: ${error instanceof Error ? error.message : "Unknown error"}`,
-          sources: [],
-          queries: [query],
-        };
-      }
-    },
-  });
-
-// Helper function to parse search results markdown into structured data
-function parseSearchResults(markdown: string): Array<{
-  title: string;
-  url: string;
-  description?: string;
-  date?: string;
-}> {
-  const results: Array<{
-    title: string;
-    url: string;
-    description?: string;
-    date?: string;
-  }> = [];
-
-  // Split by lines and process each result block
-  const lines = markdown.split("\n");
-  let currentResult: Partial<{
-    title: string;
-    url: string;
-    description: string;
-    date: string;
-  }> = {};
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
-    // Match title pattern: [1] Title: ...
-    const titleMatch = line.match(/^\[\d+\]\s*Title:\s*(.+)$/);
-    if (titleMatch) {
-      // If we have a previous result, save it
-      if (currentResult.title && currentResult.url) {
-        results.push(currentResult as any);
-      }
-      // Start new result
-      currentResult = { title: titleMatch[1] };
-      continue;
-    }
-
-    // Match URL pattern: [1] URL Source: ...
-    const urlMatch = line.match(/^\[\d+\]\s*URL Source:\s*(.+)$/);
-    if (urlMatch) {
-      currentResult.url = urlMatch[1];
-      continue;
-    }
-
-    // Match description pattern: [1] Description: ...
-    const descMatch = line.match(/^\[\d+\]\s*Description:\s*(.+)$/);
-    if (descMatch) {
-      currentResult.description = descMatch[1];
-      continue;
-    }
-
-    // Match date pattern: [1] Date: ...
-    const dateMatch = line.match(/^\[\d+\]\s*Date:\s*(.+)$/);
-    if (dateMatch) {
-      currentResult.date = dateMatch[1];
-      continue;
-    }
-  }
-
-  // Don't forget the last result
-  if (currentResult.title && currentResult.url) {
-    results.push(currentResult as any);
-  }
-
-  return results;
-}
-
-async function processThreadMessages(thread: ThreadWithMessages | null) {
-  if (!thread) return null;
-
-  // Messages should already have attachments processed from getThreadMessages
-  // Since getThreadMessages now handles file attachments, we don't need to process them again
-  for (const msg of thread.messages) {
-    // Just ensure tool calls are mapped correctly
-    msg.toolCalls = msg.toolCalls?.map((call) => call);
-  }
-
-  return thread;
 }
 
 /** Constructs a "system" style message, appending user instructions if they exist. */
@@ -871,6 +483,8 @@ This methodology ensures systematic problem-solving while maintaining flexibilit
      * **Content Standards**: Artifacts should be production-ready, professionally formatted, and immediately usable by the recipient.
      * **File Extensions**: Choose appropriate extensions (.html, .md, .csv, .py, .js, etc.) based on content type and intended use.
      * **No Self-Reference**: Never mention or link to artifacts in your response text - they appear automatically in the UI.
+    
+    *Note: *provide all parameters in the tool call, even if they should be null.*
 
 3. **Memory & Personalization**:
 
@@ -1110,8 +724,9 @@ async function createToolMessages(
   const allImages: Array<{
     name: string;
     imagePath: string;
-    base64Data: string;
     mimeType: string;
+    base64Data?: string;
+    imageUrl?: string;
   }> = [];
 
   for (const call of completedCalls) {
@@ -1123,8 +738,12 @@ async function createToolMessages(
       console.log(
         `🔍 [ThreadsUtils] Checking historical ${call.toolName} for images`
       );
-      const images = await loadImagesFromArtifactToolResult(call.result);
-      allImages.push(...images);
+      const images = await loadImagesFromToolResult(call.result);
+      // Add images that have either base64Data or imageUrl
+      const validImages = images.filter(
+        (img) => img.base64Data || img.imageUrl
+      );
+      allImages.push(...validImages);
     }
   }
 
@@ -1141,7 +760,7 @@ async function createToolMessages(
       },
       ...allImages.map((img) => ({
         type: "image",
-        image: img.base64Data,
+        image: img.base64Data || img.imageUrl, // Use base64 if available, otherwise URL
         mimeType: img.mimeType,
       })),
     ];
@@ -1153,29 +772,34 @@ async function createToolMessages(
     } as any);
   }
 
-  // Create tool results with text-only content (images handled separately above)
-  const processedResults = completedCalls.map((call) => {
-    // For artifact service tools, remove images from stored results since they're handled separately
-    let toolResult = call.result;
-    if (
-      (call.toolName === "load_file_content" ||
-        call.toolName === "search_file_content") &&
-      toolResult &&
-      typeof toolResult === "object" &&
-      "images" in toolResult
-    ) {
-      // Create a copy without images for the tool result
-      const { images, ...resultWithoutImages } = toolResult as any;
-      toolResult = resultWithoutImages;
-    }
+  // Create tool results with presigned URLs for client consumption
+  const processedResults = await Promise.all(
+    completedCalls.map(async (call) => {
+      // Presign URLs in the tool result before sending to client
+      const presignedResult = await presignToolResultImages(call.result);
 
-    return {
-      type: "tool-result",
-      toolCallId: call.toolCallId,
-      toolName: call.toolName,
-      result: toolResult,
-    };
-  });
+      // For artifact service tools, remove images from stored results since they're handled separately
+      let toolResult = presignedResult;
+      if (
+        (call.toolName === "load_file_content" ||
+          call.toolName === "search_file_content") &&
+        toolResult &&
+        typeof toolResult === "object" &&
+        "images" in toolResult
+      ) {
+        // Create a copy without images for the tool result
+        const { images, ...resultWithoutImages } = toolResult as any;
+        toolResult = resultWithoutImages;
+      }
+
+      return {
+        type: "tool-result",
+        toolCallId: call.toolCallId,
+        toolName: call.toolName,
+        result: toolResult,
+      };
+    })
+  );
 
   // Create tool message
   messages.push({
@@ -1295,7 +919,7 @@ async function createFileAttachmentMessages(
         })
         .then((pages) => pages.length);
 
-      return `- ${f.name} (Engineering Drawing - ${f.mimeType}) - ${pageCount} pages`;
+      return `- ${f.name} - ID: ${f.id} (Engineering Drawing - ${f.mimeType}) - ${pageCount} pages`;
     });
 
     const drawingList = (await Promise.all(drawingListPromises)).join("\n");
@@ -1313,8 +937,6 @@ These are visual/graphical documents (architectural plans, engineering drawings,
 - Specify page ranges to view specific sheets or details
 - Each page is available as a high-resolution image for visual interpretation
 - NOTE: \`search_file_content\` will NOT work effectively for these drawings since they contain primarily visual information
-
-Ask me to examine specific sheets, details, or areas of interest within these drawing sets.
 </drawing_attachments_notice>`,
     });
   }
@@ -1349,7 +971,7 @@ Ask me to examine specific sheets, details, or areas of interest within these dr
         fileTypeDesc = "Code File";
       }
 
-      return `- ${f.name} (${fileTypeDesc} - ${f.mimeType}) - ${pageCount} pages, ${chunkCount} chunks`;
+      return `- ${f.name} - ID: ${f.id} (${fileTypeDesc} - ${f.mimeType}) - ${pageCount} pages, ${chunkCount} chunks`;
     });
 
     const fileList = (await Promise.all(fileListPromises)).join("\n");
@@ -1397,12 +1019,7 @@ async function createAndSaveThreadTitle(
 export {
   getModelConfig,
   generateAttachmentData,
-  processAttachments,
-  processThreadMessages,
-  createWebSearchTool,
-  processDocumentImages,
   dbMessagesToInferenceMessages,
   createAndSaveThreadTitle,
-  stripBase64FromToolResult,
-  loadImagesFromArtifactToolResult,
+  presignToolResultImages,
 };

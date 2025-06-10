@@ -21,21 +21,22 @@ import {
 import { embeddingModel } from "../models";
 import { MyMessage } from "./threads.types";
 import {
-  createWebSearchTool,
   dbMessagesToInferenceMessages,
   getModelConfig,
-  processThreadMessages,
   createAndSaveThreadTitle,
-  stripBase64FromToolResult,
-  loadImagesFromArtifactToolResult,
+  presignToolResultImages,
+  loadImagesFromToolResult,
 } from "./threads.utils";
 import s3 from "../../config/s3";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { MicrosoftAPI } from "../../config/microsoft";
-import { createSharepointToolSet } from "../tools/tool-definitions";
+import {
+  createSharepointToolSet,
+  createWebSearchTool,
+} from "../tools/tool-definitions";
 import { MARKITDOWN_MIME_TYPES } from "../../config/constants";
 import { Workspace } from "../auth/auth.types";
-import { ArtifactService } from "../workflows/artifact-service";
+import { ArtifactService } from "../tools/artifact-service";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
 
 const eventEmitter = new EventEmitter();
@@ -158,7 +159,7 @@ const threadsOps = {
               MARKITDOWN_MIME_TYPES.includes(existingFile.mimeType || "");
 
             if (isLargeDocument) {
-              const artifactService = new ArtifactService(threadId, userId);
+              const artifactService = new ArtifactService(threadId);
               const fileName = attachment.name || existingFile.name;
               const existingArtifact =
                 await artifactService.loadArtifact(fileName);
@@ -433,14 +434,7 @@ const threadsOps = {
     // Process attachments for each thread
     const processed = [];
     for (const t of orderedThreads) {
-      const withProcessed = await processThreadMessages({
-        ...t,
-        messages: t.messages.map((m) => ({
-          ...m,
-          attachments: [],
-        })),
-      });
-      processed.push(withProcessed);
+      processed.push(t);
     }
 
     return {
@@ -656,7 +650,7 @@ const threadsOps = {
           tools = { ...tools, ...sharepointTools };
         }
 
-        artifactService = new ArtifactService(threadId, userId);
+        artifactService = new ArtifactService(threadId);
         const artifactTools = artifactService.getTools();
         tools = { ...tools, ...artifactTools };
       }
@@ -1005,7 +999,7 @@ const threadsOps = {
 
                 try {
                   // Use shared utility function to load images
-                  const validImages = await loadImagesFromArtifactToolResult(
+                  const validImages = await loadImagesFromToolResult(
                     chunk.result
                   );
 
@@ -1024,7 +1018,7 @@ const threadsOps = {
                         },
                         ...validImages.map((img) => ({
                           type: "image",
-                          image: img.base64Data,
+                          image: img.base64Data || img.imageUrl, // Use base64 if available, otherwise URL
                           mimeType: img.mimeType,
                         })),
                       ],
@@ -1044,13 +1038,18 @@ const threadsOps = {
                 }
               }
 
+              // Presign image URLs before emitting to client
+              const presignedResult = await presignToolResultImages(
+                chunk.result
+              );
+
               eventEmitter.emit(`thread-${threadId}-message`, {
                 type: "tool-result",
                 messageId: currentStepState.currentAssistantMessageId,
                 toolCallId: chunk.toolCallId,
                 toolName: chunk.toolName,
                 args: chunk.args,
-                result: chunk.result,
+                result: presignedResult,
               });
               break;
 
@@ -1324,14 +1323,11 @@ const threadsOps = {
             (r) => r.toolCallId === toolCall.toolCallId
           );
           if (result) {
-            // Strip base64Data from images before storing to prevent large data in DB
-            const strippedResult = stripBase64FromToolResult(result.result);
-
             await db
               .update(toolCallsTable)
               .set({
                 status: "completed",
-                result: strippedResult,
+                result: result.result,
                 updatedAt: now,
               })
               .where(eq(toolCallsTable.id, toolCallDbId));
@@ -1342,6 +1338,16 @@ const threadsOps = {
           where: eq(messages.id, currentMsgId),
           with: { toolCalls: true },
         });
+
+        // Presign URLs in tool call results before emitting
+        if (assistantMessageWithTools?.toolCalls) {
+          for (const toolCall of assistantMessageWithTools.toolCalls) {
+            if (toolCall.result) {
+              toolCall.result = await presignToolResultImages(toolCall.result);
+            }
+          }
+        }
+
         eventEmitter.emit(`thread-${threadId}-message`, {
           type: "tool-call",
           message: assistantMessageWithTools,
@@ -1372,6 +1378,16 @@ const threadsOps = {
         where: eq(messages.id, currentMsgId),
         with: { toolCalls: true },
       });
+
+      // Presign URLs in tool call results before emitting
+      if (finalStepMessage?.toolCalls) {
+        for (const toolCall of finalStepMessage.toolCalls) {
+          if (toolCall.result) {
+            toolCall.result = await presignToolResultImages(toolCall.result);
+          }
+        }
+      }
+
       eventEmitter.emit(`thread-${threadId}-message`, {
         type: "message-complete",
         message: finalStepMessage,
@@ -1508,11 +1524,6 @@ const threadsOps = {
       // Clone tool calls
       if (sourceMsg.toolCalls && sourceMsg.toolCalls.length > 0) {
         for (const call of sourceMsg.toolCalls) {
-          // Strip base64Data from cloned tool call results to prevent large data in DB
-          const strippedResult = call.result
-            ? stripBase64FromToolResult(call.result)
-            : call.result;
-
           await db.insert(toolCallsTable).values({
             id: crypto.randomUUID(), // Generate new ID for tool call
             messageId: newMsg.id,
@@ -1520,7 +1531,7 @@ const threadsOps = {
             toolCallId: call.toolCallId,
             args: call.args,
             status: call.status as any,
-            result: strippedResult,
+            result: call.result,
             createdAt: new Date(),
             updatedAt: new Date(),
           });

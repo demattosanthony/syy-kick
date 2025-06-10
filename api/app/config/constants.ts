@@ -38,12 +38,12 @@ export const MARKITDOWN_MIME_TYPES = [
   "application/vnd.ms-powerpoint",
   "text/html",
   "text/csv",
-  "application/json",
   "text/xml",
   "application/zip",
 ];
 
 export const PROGRAMMING_FILE_MIME_TYPES = [
+  "application/json",
   // JavaScript ecosystem
   "application/javascript",
   "application/x-javascript",

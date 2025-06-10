@@ -1,6 +1,6 @@
 import os from "os";
 import { mistralAi } from "../models";
-import { CharacterTextSplitter } from "@langchain/textsplitters";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import s3 from "../../config/s3";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
@@ -35,8 +35,8 @@ export type ProcessFileResult = {
   category?: "drawing" | "document";
 };
 
-const textSplitter = new CharacterTextSplitter({
-  chunkSize: 1024,
+const textSplitter = new RecursiveCharacterTextSplitter({
+  chunkSize: 2000,
   chunkOverlap: 0,
 });
 
@@ -186,6 +186,9 @@ export async function markitdown(
     tempFile = `/tmp/${Date.now()}-${fileName}`;
     await Bun.write(tempFile, input);
     filePath = tempFile;
+    console.log("filePath", filePath);
+    const contents = await Bun.file(filePath).text();
+    console.log("contents", contents);
   } else {
     filePath = input;
   }
@@ -198,6 +201,7 @@ export async function markitdown(
     proc.kill();
 
     const chunkedOutput = await textSplitter.splitText(output);
+    console.log("chunkedOutput", chunkedOutput.length);
 
     const page: FilePage = {
       pageNumber: 1,
@@ -224,7 +228,9 @@ export async function processPlainText(
   fileName: string
 ): Promise<FilePage> {
   const textContent = fileContent.toString("utf-8");
+  console.log("textContent", textContent);
   const chunkedContent = await textSplitter.splitText(textContent);
+  console.log("chunkedContent", chunkedContent.length);
 
   const page: FilePage = {
     pageNumber: 1,
@@ -299,7 +305,6 @@ export async function processPdfWithOptions(
 
             // Try to find the image in the pageImages
             const foundImage = pageImages.find((img) => img.id === imageId);
-            console.log("foundImage", foundImage?.id);
 
             if (foundImage && foundImage.imageBase64) {
               try {

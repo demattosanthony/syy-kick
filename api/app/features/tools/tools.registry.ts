@@ -1,4 +1,4 @@
-import { ArtifactService } from "../workflows/artifact-service";
+import { ArtifactService } from "./artifact-service";
 import {
   createDocOcrTool,
   createPdfPageExtractionTool,

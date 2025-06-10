@@ -46,3 +46,15 @@ export const PaginatedFilesSchema = z.object({
 export type File = z.infer<typeof FileSchema>;
 export type GetFilesQuery = z.infer<typeof GetFilesQuerySchema>;
 export type PaginatedFiles = z.infer<typeof PaginatedFilesSchema>;
+
+// Generic file operation types
+export type FileContext =
+  | { type: "user"; userId: string }
+  | { type: "thread"; threadId: string }
+  | { type: "fileIds"; fileIds: string[] };
+
+export type GetFilesOptions = {
+  context: FileContext;
+  query?: GetFilesQuery;
+  includePresignedUrls?: boolean;
+};

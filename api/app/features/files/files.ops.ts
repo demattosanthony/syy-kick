@@ -1,6 +1,7 @@
-import { desc, eq, and, ilike, sql } from "drizzle-orm";
+import { desc, eq, and, ilike, sql, inArray } from "drizzle-orm";
 import db from "../../config/db";
 import s3 from "../../config/s3";
+import reranker from "../../config/reranker";
 import crypto from "crypto";
 import {
   files,
@@ -8,62 +9,177 @@ import {
   filePageChunks,
   filePageImages,
   userFiles,
+  messages,
+  messagesFiles,
 } from "../../config/schema";
-import type { GetFilesQuery, PaginatedFiles, File } from "./files.schemas";
-import { processFile } from "./files.processor.";
+import type {
+  GetFilesQuery,
+  PaginatedFiles,
+  File,
+  GetFilesOptions,
+} from "./files.schemas";
+import { processFile } from "./files.processor";
 
-export async function getFilesForUser(
-  userId: string,
-  query: GetFilesQuery
-): Promise<PaginatedFiles> {
+export async function getFiles({
+  context,
+  query = { page: 1, limit: 20 },
+  includePresignedUrls = true,
+}: GetFilesOptions): Promise<PaginatedFiles> {
   const { page, limit, search, type, category, file_origin_type } = query;
   const offset = (page - 1) * limit;
 
-  // Build the base where conditions
-  const baseConditions = [eq(userFiles.userId, userId)];
+  // Build the base where conditions for files table
+  const fileConditions = [];
   if (type) {
-    baseConditions.push(eq(files.type, type));
+    fileConditions.push(eq(files.type, type));
   }
   if (category) {
-    baseConditions.push(eq(files.category, category));
+    fileConditions.push(eq(files.category, category));
   }
   if (file_origin_type) {
-    baseConditions.push(eq(files.file_origin_type, file_origin_type));
+    fileConditions.push(eq(files.file_origin_type, file_origin_type));
   }
   if (search) {
-    baseConditions.push(ilike(files.name, `%${search}%`));
+    fileConditions.push(ilike(files.name, `%${search}%`));
   }
 
-  // Query files for the user
-  const filesQuery = db
-    .selectDistinct({
-      id: files.id,
-      name: files.name,
-      mimeType: files.mimeType,
-      size: files.size,
-      type: files.type,
-      fileHash: files.fileHash,
-      syyclops_path: files.syyclops_path,
-      sharepoint_path: files.sharepoint_path,
-      google_drive_path: files.google_drive_path,
-      file_origin_type: files.file_origin_type,
-      category: files.category,
-      createdAt: files.createdAt,
-      updatedAt: files.updatedAt,
-    })
-    .from(files)
-    .innerJoin(userFiles, eq(files.id, userFiles.fileId))
-    .where(and(...baseConditions))
-    .orderBy(desc(files.createdAt))
-    .limit(limit)
-    .offset(offset);
+  let filesQuery;
+  let totalQuery;
 
-  // Get total count of distinct files for the user
-  const totalQuery = db
-    .select({ count: sql<number>`count(distinct ${files.id})` })
-    .from(files)
-    .innerJoin(userFiles, eq(files.id, userFiles.fileId))
-    .where(and(...baseConditions));
+  // Build queries based on context type
+  switch (context.type) {
+    case "user": {
+      const baseConditions = [
+        eq(userFiles.userId, context.userId),
+        ...fileConditions,
+      ];
+
+      filesQuery = db
+        .selectDistinct({
+          id: files.id,
+          name: files.name,
+          mimeType: files.mimeType,
+          size: files.size,
+          type: files.type,
+          fileHash: files.fileHash,
+          syyclops_path: files.syyclops_path,
+          sharepoint_path: files.sharepoint_path,
+          google_drive_path: files.google_drive_path,
+          file_origin_type: files.file_origin_type,
+          category: files.category,
+          createdAt: files.createdAt,
+          updatedAt: files.updatedAt,
+        })
+        .from(files)
+        .innerJoin(userFiles, eq(files.id, userFiles.fileId))
+        .where(and(...baseConditions))
+        .orderBy(desc(files.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      totalQuery = db
+        .select({ count: sql<number>`count(distinct ${files.id})` })
+        .from(files)
+        .innerJoin(userFiles, eq(files.id, userFiles.fileId))
+        .where(and(...baseConditions));
+      break;
+    }
+
+    case "thread": {
+      // Get all messages in the thread first
+      const threadMessages = await db.query.messages.findMany({
+        where: eq(messages.threadId, context.threadId),
+      });
+
+      if (threadMessages.length === 0) {
+        return {
+          files: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false,
+          },
+        };
+      }
+
+      const messageIds = threadMessages.map((msg) => msg.id);
+      const baseConditions = [
+        inArray(messagesFiles.messageId, messageIds),
+        ...fileConditions,
+      ];
+
+      filesQuery = db
+        .selectDistinct({
+          id: files.id,
+          name: files.name,
+          mimeType: files.mimeType,
+          size: files.size,
+          type: files.type,
+          fileHash: files.fileHash,
+          syyclops_path: files.syyclops_path,
+          sharepoint_path: files.sharepoint_path,
+          google_drive_path: files.google_drive_path,
+          file_origin_type: files.file_origin_type,
+          category: files.category,
+          createdAt: files.createdAt,
+          updatedAt: files.updatedAt,
+        })
+        .from(files)
+        .innerJoin(messagesFiles, eq(files.id, messagesFiles.fileId))
+        .where(and(...baseConditions))
+        .orderBy(desc(files.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      totalQuery = db
+        .select({ count: sql<number>`count(distinct ${files.id})` })
+        .from(files)
+        .innerJoin(messagesFiles, eq(files.id, messagesFiles.fileId))
+        .where(and(...baseConditions));
+      break;
+    }
+
+    case "fileIds": {
+      const baseConditions = [
+        inArray(files.id, context.fileIds),
+        ...fileConditions,
+      ];
+
+      filesQuery = db
+        .selectDistinct({
+          id: files.id,
+          name: files.name,
+          mimeType: files.mimeType,
+          size: files.size,
+          type: files.type,
+          fileHash: files.fileHash,
+          syyclops_path: files.syyclops_path,
+          sharepoint_path: files.sharepoint_path,
+          google_drive_path: files.google_drive_path,
+          file_origin_type: files.file_origin_type,
+          category: files.category,
+          createdAt: files.createdAt,
+          updatedAt: files.updatedAt,
+        })
+        .from(files)
+        .where(and(...baseConditions))
+        .orderBy(desc(files.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      totalQuery = db
+        .select({ count: sql<number>`count(distinct ${files.id})` })
+        .from(files)
+        .where(and(...baseConditions));
+      break;
+    }
+
+    default:
+      throw new Error(`Unsupported context type: ${(context as any).type}`);
+  }
 
   const [filesResult, totalResult] = await Promise.all([
     filesQuery,
@@ -73,27 +189,30 @@ export async function getFilesForUser(
   const total = totalResult[0]?.count || 0;
   const totalPages = Math.ceil(total / limit);
 
-  // Generate presigned URLs for Syyclops files
-  const filesWithUrls = await Promise.all(
-    filesResult.map(async (file) => {
-      if (file.file_origin_type === "syyclops" && file.syyclops_path) {
-        try {
-          const presignedUrl = s3.file(file.syyclops_path).presign({
-            expiresIn: 3600, // 1 hour expiration
-            method: "GET",
-          });
-          return { ...file, url: presignedUrl };
-        } catch (error) {
-          console.error(
-            `Failed to generate presigned URL for file ${file.id}:`,
-            error
-          );
-          return { ...file, url: undefined };
+  // Generate presigned URLs if requested
+  let filesWithUrls = filesResult;
+  if (includePresignedUrls) {
+    filesWithUrls = await Promise.all(
+      filesResult.map(async (file) => {
+        if (file.file_origin_type === "syyclops" && file.syyclops_path) {
+          try {
+            const presignedUrl = s3.file(file.syyclops_path).presign({
+              expiresIn: 3600, // 1 hour expiration
+              method: "GET",
+            });
+            return { ...file, url: presignedUrl };
+          } catch (error) {
+            console.error(
+              `Failed to generate presigned URL for file ${file.id}:`,
+              error
+            );
+            return { ...file, url: undefined };
+          }
         }
-      }
-      return { ...file, url: undefined };
-    })
-  );
+        return { ...file, url: undefined };
+      })
+    );
+  }
 
   return {
     files: filesWithUrls as File[],
@@ -106,6 +225,28 @@ export async function getFilesForUser(
       hasPrev: page > 1,
     },
   };
+}
+
+export async function getFilesForUser(
+  userId: string,
+  query: GetFilesQuery
+): Promise<PaginatedFiles> {
+  return getFiles({
+    context: { type: "user", userId },
+    query,
+    includePresignedUrls: true,
+  });
+}
+
+export async function getFilesForThread(
+  threadId: string,
+  query: GetFilesQuery = { page: 1, limit: 20 }
+): Promise<PaginatedFiles> {
+  return getFiles({
+    context: { type: "thread", threadId },
+    query,
+    includePresignedUrls: true,
+  });
 }
 
 export async function generatePresignedUrl(
@@ -394,7 +535,18 @@ export async function createFileRecordAndProcess(
           content: chunk.content,
           position: chunk.position,
         }));
-        await db.insert(filePageChunks).values(chunkValues);
+
+        // Batch insert chunks to avoid parameter limit issues
+        const BATCH_SIZE = 1000; // PostgreSQL can handle ~65k parameters, so 1000 * 3 = 3000 params per batch
+
+        for (let i = 0; i < chunkValues.length; i += BATCH_SIZE) {
+          const batch = chunkValues.slice(i, i + BATCH_SIZE);
+          await db.insert(filePageChunks).values(batch);
+        }
+
+        console.log(
+          `✅ [CreateFileRecord] Inserted ${chunkValues.length} chunks in batches of ${BATCH_SIZE}`
+        );
       }
 
       // Store images for this page
@@ -435,4 +587,242 @@ export async function createFileRecordAndProcess(
     category,
     isExisting: false,
   };
+}
+
+export async function getFileContent(
+  fileId: string,
+  options: {
+    startPage?: number;
+    endPage?: number;
+    startChunk?: number;
+    endChunk?: number;
+  } = {}
+): Promise<{
+  content: string;
+  totalPages: number;
+  totalChunks: number;
+  pageInfo?: string;
+  pageIds: string[];
+}> {
+  const { startPage, endPage, startChunk, endChunk } = options;
+
+  const pages = await db.query.filePages.findMany({
+    where: eq(filePages.fileId, fileId),
+    with: {
+      chunks: {
+        orderBy: (chunks, { asc }) => [asc(chunks.position)],
+      },
+    },
+    orderBy: (pages, { asc }) => [asc(pages.pageNumber)],
+  });
+
+  if (pages.length === 0) {
+    return {
+      content: "No content found for this file.",
+      totalPages: 0,
+      totalChunks: 0,
+      pageIds: [],
+    };
+  }
+
+  const totalPages = pages.length;
+  const totalChunks = pages.reduce((sum, page) => sum + page.chunks.length, 0);
+
+  // Get file info to determine if it's PDF
+  const file = await db.query.files.findFirst({
+    where: eq(files.id, fileId),
+  });
+
+  let selectedPages: typeof pages = [];
+  let pageInfo = "";
+
+  // Handle PDF pagination (by pages)
+  if (file?.mimeType === "application/pdf" && (startPage || endPage)) {
+    const start = Math.max((startPage || 1) - 1, 0);
+    const end = Math.min(
+      (endPage || startPage || totalPages) - 1,
+      totalPages - 1
+    );
+    selectedPages = pages.slice(start, end + 1);
+    pageInfo = `Pages ${start + 1}-${end + 1} of ${totalPages}`;
+  }
+  // Handle chunk pagination
+  else if (startChunk || endChunk) {
+    const allChunks = pages.flatMap((page) =>
+      page.chunks.map((chunk) => ({ ...chunk, pageId: page.id }))
+    );
+    const start = Math.max((startChunk || 1) - 1, 0);
+    const end = Math.min(
+      (endChunk || allChunks.length) - 1,
+      allChunks.length - 1
+    );
+    const selectedChunks = allChunks.slice(start, end + 1);
+    const pageIds = [...new Set(selectedChunks.map((chunk) => chunk.pageId))];
+    selectedPages = pages.filter((page) => pageIds.includes(page.id));
+    pageInfo = `Chunks ${start + 1}-${end + 1} of ${totalChunks}`;
+  }
+  // Default behavior
+  else {
+    if (file?.mimeType === "application/pdf") {
+      selectedPages = [pages[0]];
+      pageInfo = `Page 1 of ${totalPages}`;
+    } else {
+      const allChunks = pages.flatMap((page) =>
+        page.chunks.map((chunk) => ({ ...chunk, pageId: page.id }))
+      );
+      const firstChunks = allChunks.slice(0, 10);
+      const pageIds = [...new Set(firstChunks.map((chunk) => chunk.pageId))];
+      selectedPages = pages.filter((page) => pageIds.includes(page.id));
+      pageInfo = `Chunks 1-${firstChunks.length} of ${totalChunks}`;
+    }
+  }
+
+  const content = selectedPages
+    .map((page) => {
+      const pageContent = page.chunks.map((chunk) => chunk.content).join("\n");
+      return file?.mimeType === "application/pdf" && (startPage || endPage)
+        ? `=== Page ${page.pageNumber} ===\n${pageContent}`
+        : pageContent;
+    })
+    .join("\n\n");
+
+  return {
+    content,
+    totalPages,
+    totalChunks,
+    pageInfo,
+    pageIds: selectedPages.map((page) => page.id),
+  };
+}
+
+export async function searchFileContent(
+  fileId: string,
+  query: string,
+  limit: number = 5
+): Promise<{
+  content: string;
+  matches: number;
+  pageIds: string[];
+}> {
+  const pages = await db.query.filePages.findMany({
+    where: eq(filePages.fileId, fileId),
+    with: {
+      chunks: {
+        orderBy: (chunks, { asc }) => [asc(chunks.position)],
+      },
+    },
+    orderBy: (pages, { asc }) => [asc(pages.pageNumber)],
+  });
+
+  if (pages.length === 0) {
+    return {
+      content: "No content found for this file.",
+      matches: 0,
+      pageIds: [],
+    };
+  }
+
+  const allChunks = pages.flatMap((page) =>
+    page.chunks.map((chunk) => ({
+      ...chunk,
+      pageNumber: page.pageNumber,
+      pageId: page.id,
+    }))
+  );
+
+  if (allChunks.length === 0) {
+    return {
+      content: `No content found matching "${query}".`,
+      matches: 0,
+      pageIds: [],
+    };
+  }
+
+  try {
+    // Use reranker for semantic search
+    const chunkTexts = allChunks.map((chunk) => chunk.content);
+    const rerankedResults = await reranker.rerank(query, chunkTexts, {
+      topN: Math.min(limit, 10),
+      returnDocuments: true,
+    });
+
+    if (!rerankedResults.results?.length) {
+      return {
+        content: `No content found matching "${query}".`,
+        matches: 0,
+        pageIds: [],
+      };
+    }
+
+    const rankedChunks = rerankedResults.results
+      .map((result: any) => {
+        const originalChunk = allChunks.find(
+          (chunk) => chunk.content === result.document.text
+        );
+        return originalChunk
+          ? { ...originalChunk, score: result.relevance_score }
+          : null;
+      })
+      .filter((chunk): chunk is NonNullable<typeof chunk> => chunk !== null);
+
+    const content = rankedChunks
+      .map(
+        (chunk: any, index: number) =>
+          `=== Match ${index + 1} (Page ${chunk.pageNumber}, Score: ${chunk.score.toFixed(3)}) ===\n${chunk.content}`
+      )
+      .join("\n\n");
+
+    return {
+      content,
+      matches: rankedChunks.length,
+      pageIds: [
+        ...new Set(rankedChunks.map((chunk: any) => chunk.pageId)),
+      ] as string[],
+    };
+  } catch (error) {
+    console.error("Reranker error, falling back to text search:", error);
+
+    // Fallback to simple text search
+    const searchTerms = query
+      .toLowerCase()
+      .split(" ")
+      .filter((term) => term.length > 2);
+    const scoredChunks = allChunks
+      .map((chunk) => {
+        const chunkText = chunk.content.toLowerCase();
+        let score = 0;
+        searchTerms.forEach((term) => {
+          const matches = (chunkText.match(new RegExp(term, "g")) || []).length;
+          score += matches;
+        });
+        if (chunkText.includes(query.toLowerCase())) score += 10;
+        return { ...chunk, score };
+      })
+      .filter((chunk) => chunk.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+
+    if (scoredChunks.length === 0) {
+      return {
+        content: `No content found matching "${query}".`,
+        matches: 0,
+        pageIds: [],
+      };
+    }
+
+    const content = scoredChunks
+      .map(
+        (chunk: any, index: number) =>
+          `=== Match ${index + 1} (Page ${chunk.pageNumber}, Score: ${chunk.score.toFixed(3)}) ===\n${chunk.content}`
+      )
+      .join("\n\n");
+
+    return {
+      content,
+      matches: scoredChunks.length,
+      pageIds: [
+        ...new Set(scoredChunks.map((chunk: any) => chunk.pageId)),
+      ] as string[],
+    };
+  }
 }
