@@ -56,19 +56,13 @@ const activeStreamCache = new Map<string, ActiveStreamData>();
 const abortControllers = new Map<string, AbortController>();
 
 const threadsOps = {
-  async createThread(
-    userId: string,
-    organizationId?: string,
-    workflowId?: string
-  ) {
+  async createThread(userId: string) {
     if (!userId) throw new Error("User ID is required");
     const id = uuidv4();
     const now = new Date();
     await db.insert(threads).values({
       id,
       userId,
-      organizationId: organizationId || null,
-      workflowId: workflowId || null,
       createdAt: now,
       updatedAt: now,
     });
@@ -178,9 +172,6 @@ const threadsOps = {
   async getThread(threadId: string) {
     const thread = await db.query.threads.findFirst({
       where: eq(threads.id, threadId),
-      with: {
-        organization: true,
-      },
     });
     if (!thread) return null;
 
@@ -278,24 +269,11 @@ const threadsOps = {
     userId: string,
     page: number,
     pageSize: number,
-    search: string,
-    organizationId?: string,
-    workflowId?: string
+    search: string
   ) {
     const LIMIT = pageSize || 10;
     const offset = (page - 1) * LIMIT;
     const conditions = [eq(threads.userId, userId)];
-
-    if (organizationId) {
-      conditions.push(eq(threads.organizationId, organizationId));
-    } else {
-      // organizationId is null
-      conditions.push(sql`${threads.organizationId} IS NULL`);
-    }
-
-    if (workflowId) {
-      conditions.push(eq(threads.workflowId, workflowId));
-    }
 
     let baseQuery;
     if (search?.length > 0) {
@@ -371,9 +349,6 @@ const threadsOps = {
       where: (tbl, { and, eq, inArray }) =>
         and(
           eq(tbl.userId, userId),
-          organizationId
-            ? eq(tbl.organizationId, organizationId)
-            : sql`${tbl.organizationId} IS NULL`,
           inArray(
             tbl.id,
             paginatedThreads.map((t) => t.id)
@@ -412,11 +387,7 @@ const threadsOps = {
     };
   },
 
-  async deleteThread(
-    userId: string,
-    threadId: string,
-    organizationId?: string
-  ) {
+  async deleteThread(userId: string, threadId: string) {
     // First delete messages
     await db
       .delete(messages)
@@ -425,15 +396,7 @@ const threadsOps = {
     // Then delete the thread
     await db
       .delete(threads)
-      .where(
-        and(
-          eq(threads.id, threadId),
-          eq(threads.userId, userId),
-          organizationId
-            ? eq(threads.organizationId, organizationId)
-            : sql`${threads.organizationId} IS NULL`
-        )
-      );
+      .where(and(eq(threads.id, threadId), eq(threads.userId, userId)));
     return { success: true };
   },
 
@@ -571,7 +534,6 @@ const threadsOps = {
       const thread = await db.query.threads.findFirst({
         where: eq(threads.id, threadId),
         with: {
-          organization: true,
           messages: {
             with: {
               toolCalls: true,
@@ -1153,7 +1115,7 @@ const threadsOps = {
         }
 
         // Custom stop condition check
-        if (this.shouldStopIteration(toolResults, iteration)) {
+        if (this.shouldStopIteration(iteration)) {
           console.log("Custom stop condition met - stopping iteration");
           break;
         }
@@ -1361,14 +1323,9 @@ const threadsOps = {
   },
 
   // Custom logic to decide when to stop iterating
-  shouldStopIteration(toolResults: any[], iteration: number): boolean {
+  shouldStopIteration(iteration: number): boolean {
     // Stop if iteration count reaches a threshold
     if (iteration >= 24) return true; // 25 iterations max (0-24)
-
-    // Could add custom business logic here:
-    // - Stop if we've used a specific tool
-    // - Stop if certain conditions are met
-    // - Stop based on tool results content
 
     return false;
   },
@@ -1428,7 +1385,6 @@ const threadsOps = {
       .insert(threads)
       .values({
         userId,
-        organizationId: sourceThread.organizationId,
         isPublic: false, // Always set cloned threads to private initially
         createdAt: new Date(),
         updatedAt: new Date(),

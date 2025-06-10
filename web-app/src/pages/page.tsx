@@ -120,7 +120,7 @@ export function HomePage() {
       const attachments = await processAttachments();
 
       // Create thread
-      const { id: threadId } = await api.threads.createThread({});
+      const { id: threadId } = await api.threads.createThread();
       await api.threads.postMessage({
         threadId,
         message: {

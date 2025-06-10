@@ -307,10 +307,6 @@ export const threads = pgTable("threads", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   isPublic: boolean("is_public").default(false).notNull(),
-  organizationId: uuid("organization_id").references(() => organizations.id, {
-    onDelete: "cascade",
-  }),
-  workflowId: text("workflow_id"),
 });
 export type Thread = typeof threads.$inferSelect;
 export type ThreadWithRelations = Thread & {
@@ -513,10 +509,6 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
   user: one(users, {
     fields: [threads.userId],
     references: [users.id],
-  }),
-  organization: one(organizations, {
-    fields: [threads.organizationId],
-    references: [organizations.id],
   }),
   messages: many(messages),
 }));

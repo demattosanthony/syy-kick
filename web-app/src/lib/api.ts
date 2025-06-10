@@ -481,16 +481,9 @@ class ModelApi extends ApiRequest {
  * Thread API Module
  */
 class ThreadApi extends ApiRequest {
-  async createThread(params: {
-    organizationId?: string;
-    workflowId?: string;
-  }): Promise<{ id: string }> {
+  async createThread(): Promise<{ id: string }> {
     try {
-      const { organizationId, workflowId } = params;
-      return await this.request<{ id: string }>("/threads", "POST", {
-        organizationId,
-        workflowId,
-      });
+      return await this.request<{ id: string }>("/threads", "POST");
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 402) {
         throw new Error("subscription_required"); // Re-throw specific error for subscription
@@ -502,8 +495,7 @@ class ThreadApi extends ApiRequest {
   async getThreads(
     page: number = 1,
     pageSize: number = 10,
-    search: string = "",
-    workflowId?: string
+    search: string = ""
   ): Promise<{
     threads: Thread[];
     pagination: {
@@ -517,7 +509,6 @@ class ThreadApi extends ApiRequest {
       page: page.toString(),
       pageSize: pageSize.toString(),
       search: search,
-      ...(workflowId && { workflowId }),
     });
     const endpoint = `/threads?${queryParams.toString()}`;
 
@@ -589,15 +580,11 @@ class ThreadApi extends ApiRequest {
     );
   }
 
-  async deleteThread(
-    threadId: string,
-    organizationId?: string
-  ): Promise<{ success: boolean }> {
-    const queryParams = new URLSearchParams({
-      ...(organizationId && { organizationId }),
-    });
-    const endpoint = `/threads/${threadId}?${queryParams.toString()}`;
-    return await this.request<{ success: boolean }>(endpoint, "DELETE");
+  async deleteThread(threadId: string): Promise<{ success: boolean }> {
+    return await this.request<{ success: boolean }>(
+      `/threads/${threadId}`,
+      "DELETE"
+    );
   }
 
   async cloneThread(threadId: string): Promise<{ id: string }> {
