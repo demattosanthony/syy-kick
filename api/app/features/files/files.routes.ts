@@ -14,6 +14,6 @@ router.get("/", getFilesHandler);
 router.post("/presigned-url", getPresignedUrlHandler);
 
 // POST /files/create - Create file record and start processing after S3 upload
-router.post("/create", createFileRecordHandler);
+router.post("/", createFileRecordHandler);
 
 export default router;

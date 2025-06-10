@@ -8,6 +8,7 @@ import {
 } from "../files/files.ops";
 import { loadImagesForPages } from "../threads/threads.utils";
 import type { File } from "../files/files.schemas";
+import { processSharePointFile } from "./tool-definitions/sharepoint";
 
 export type ArtifactData = {
   data: Uint8Array;
@@ -22,7 +23,10 @@ export type ThreadFile = File;
  * Uses unique file IDs to avoid conflicts with duplicate file names.
  */
 export class ArtifactService {
-  constructor(private threadId: string) {}
+  constructor(
+    private threadId: string,
+    private userId: string
+  ) {}
 
   private normalizeFilename(filename: string): string {
     return filename.replace(/[\s\u202f]+/g, " ").trim();
@@ -186,7 +190,12 @@ export class ArtifactService {
       parameters: z.object({
         fileId: z
           .string()
+          .nullable()
           .describe("Unique ID of the file to load content from"),
+        sharePointFileId: z
+          .string()
+          .nullable()
+          .describe("Unique ID of the SharePoint file to load content from"),
         startPage: z
           .number()
           .nullable()
@@ -210,6 +219,7 @@ export class ArtifactService {
       }),
       execute: async ({
         fileId,
+        sharePointFileId,
         startPage,
         endPage,
         startChunk,
@@ -217,25 +227,50 @@ export class ArtifactService {
         includeImages = true,
       }) => {
         try {
-          if (!fileId) {
-            throw new Error("fileId is required");
+          if (!fileId && !sharePointFileId) {
+            throw new Error("fileId or sharepointFileId is required");
           }
 
-          // Verify file exists in thread context
-          const file = await this.findFileById(fileId);
+          let file;
+
+          if (sharePointFileId) {
+            // Handle SharePoint file
+            console.log(
+              `📁 [ArtifactService] Loading SharePoint file: ${sharePointFileId}`
+            );
+
+            file = await processSharePointFile(sharePointFileId, this.userId);
+          } else if (fileId) {
+            // Handle regular file attachment
+            file = await this.findFileById(fileId);
+          } else {
+            throw new Error(
+              "Either fileName or sharePointFileId must be provided"
+            );
+          }
+
+          console.log("file", file);
+
           if (!file) {
+            console.log(`❌ [ArtifactService] Tool result: File not found`);
             return {
               success: false,
-              message: `File with ID '${fileId}' not found in this conversation thread.`,
+              message: sharePointFileId
+                ? `SharePoint file with ID '${sharePointFileId}' not found or could not be processed.`
+                : `File '${fileId}' not found in this conversation.`,
             };
           }
 
-          const result = await getFileContent(fileId, {
+          console.log("getting file content");
+          const result = await getFileContent(file.id, {
             startPage: startPage ?? undefined,
             endPage: endPage ?? undefined,
             startChunk: startChunk ?? undefined,
             endChunk: endChunk ?? undefined,
           });
+
+          console.log("RESULT");
+          console.log("result", result);
 
           let images: any[] = [];
           if (includeImages && result.pageIds.length > 0) {

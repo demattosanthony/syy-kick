@@ -38,6 +38,7 @@ import { MARKITDOWN_MIME_TYPES } from "../../config/constants";
 import { Workspace } from "../auth/auth.types";
 import { ArtifactService } from "../tools/artifact-service";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
+import { OpenAIResponsesProviderOptions } from "@ai-sdk/openai";
 
 const eventEmitter = new EventEmitter();
 
@@ -159,7 +160,7 @@ const threadsOps = {
               MARKITDOWN_MIME_TYPES.includes(existingFile.mimeType || "");
 
             if (isLargeDocument) {
-              const artifactService = new ArtifactService(threadId);
+              const artifactService = new ArtifactService(threadId, userId);
               const fileName = attachment.name || existingFile.name;
               const existingArtifact =
                 await artifactService.loadArtifact(fileName);
@@ -280,6 +281,17 @@ const threadsOps = {
         ...msg,
         attachments,
       });
+    }
+
+    // Presign URLs in tool call results for all messages
+    for (const msg of processedMessages) {
+      if (msg.toolCalls && msg.toolCalls.length > 0) {
+        for (const toolCall of msg.toolCalls) {
+          if (toolCall.result) {
+            toolCall.result = await presignToolResultImages(toolCall.result);
+          }
+        }
+      }
     }
 
     return processedMessages;
@@ -650,7 +662,7 @@ const threadsOps = {
           tools = { ...tools, ...sharepointTools };
         }
 
-        artifactService = new ArtifactService(threadId);
+        artifactService = new ArtifactService(threadId, userId);
         const artifactTools = artifactService.getTools();
         tools = { ...tools, ...artifactTools };
       }
@@ -780,7 +792,8 @@ const threadsOps = {
             openai: {
               store: false,
               reasoningSummary: "auto",
-            },
+              parallelToolCalls: true,
+            } satisfies OpenAIResponsesProviderOptions,
             ...(modelConfig.provider === "anthropic"
               ? (() => {
                   // Only enable thinking for the first iteration to avoid Anthropic API issues

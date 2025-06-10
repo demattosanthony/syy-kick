@@ -11,6 +11,9 @@ import {
   PROGRAMMING_FILE_MIME_TYPES,
 } from "../../config/constants";
 
+const CHUNK_SIZE = 2000;
+const CHUNK_OVERLAP = 0;
+
 export type FilePageImage = {
   name: string;
   path: string;
@@ -36,16 +39,20 @@ export type ProcessFileResult = {
 };
 
 const textSplitter = new RecursiveCharacterTextSplitter({
-  chunkSize: 2000,
-  chunkOverlap: 0,
+  chunkSize: CHUNK_SIZE,
+  chunkOverlap: CHUNK_OVERLAP,
 });
 
+// File processing pipeline
+// 1. If the file is a pdf, we want to classify it as a drawing or a document
+// 2. If its a drawing, we want to turn all the pages into images
+// 3. If its a document, we want to run OCR on it
+// 4. If its a text file variant of a document, we use markitdown to convert it to markdown
 export async function processFile(
   fileContent: Buffer,
   fileName: string,
   mimeType: string
 ): Promise<ProcessFileResult> {
-  // Add validation for fileContent
   console.log(`📄 [ProcessFile] Processing file: ${fileName} (${mimeType})`);
   console.log(`📊 [ProcessFile] File size: ${fileContent?.length || 0} bytes`);
 
@@ -58,68 +65,11 @@ export async function processFile(
       `🔍 [ProcessFile] Processing PDF with ${fileContent.length} bytes`
     );
 
-    const images = await convertPdfToImages(fileContent, {
-      pageRange: "1-2",
-    });
-
-    // Validate that we got at least one image
-    if (!images || images.length === 0) {
-      throw new Error(
-        "Failed to convert PDF to images - no images returned from ConvertAPI"
-      );
-    }
-
-    // Get first two pages (or just first page if only one exists)
-    const firstTwoPages = images.slice(0, 2);
-
-    if (!firstTwoPages[0] || !firstTwoPages[0].base64) {
-      throw new Error("First page conversion failed - missing base64 data");
-    }
-
-    // Prepare images for classification
-    const imageContent = firstTwoPages
-      .map((page, index) => [
-        {
-          type: "text" as const,
-          text: `Here is page ${index + 1} of the pdf`,
-        },
-        {
-          type: "image" as const,
-          image: page.base64,
-          mimeType: "image/png" as const,
-        },
-      ])
-      .flat();
-
-    const { object } = await generateObject({
-      model: openai("gpt-4.1-mini"),
-      messages: [
-        {
-          role: "system",
-          content: `You are a helpful assistant that classifies pdfs into two categories: drawing and document.
-The purpose of this is to determine which extraction process to run based on if its an engineering drawing or a regular document.
-
-The first ${firstTwoPages.length} page${firstTwoPages.length > 1 ? "s" : ""} of the pdf ${firstTwoPages.length > 1 ? "are" : "is"} provided to you.
-
-If the pdf contains engineering drawings, return "drawing".
-If the pdf is a regular document, return "document".`,
-        },
-        {
-          role: "user",
-          content: imageContent,
-        },
-      ],
-      schema: z.object({
-        category: z.enum(["drawing", "document"]),
-      }),
-    });
-
-    console.log("Classification result:", object);
+    const category = await classifyPdf(fileContent);
 
     // If its an engineering drawing, we want to turn all the pages into images
-    if (object.category === "drawing") {
+    if (category === "drawing") {
       const images = await convertPdfToImages(fileContent);
-      console.log("images", images.length);
 
       const filePages: FilePage[] = [];
 
@@ -131,9 +81,6 @@ If the pdf is a regular document, return "document".`,
         await file.write(Buffer.from(image.base64, "base64"), {
           type: "image/png",
         });
-
-        const url = s3.presign(fileKey, { expiresIn: 60 * 60 * 24 });
-        console.log("url", url);
 
         filePages.push({
           pageNumber: image.page,
@@ -148,7 +95,7 @@ If the pdf is a regular document, return "document".`,
     }
 
     // If its a regular pdf doc we want to run OCR on it
-    if (object.category === "document") {
+    if (category === "document") {
       const filePages = await processPdf(fileContent, mimeType);
       return { pages: filePages, category: "document" };
     }
@@ -174,6 +121,70 @@ If the pdf is a regular document, return "document".`,
   return { pages: [], category: undefined };
 }
 
+// Determine if the PDF is a engineering drawing or a regular document
+// Use the first two pages to determine the category
+async function classifyPdf(
+  fileContent: Buffer
+): Promise<"drawing" | "document"> {
+  const images = await convertPdfToImages(fileContent, {
+    pageRange: "1-2",
+  });
+
+  // Validate that we got at least one image
+  if (!images || images.length === 0) {
+    throw new Error(
+      "Failed to convert PDF to images - no images returned from ConvertAPI"
+    );
+  }
+
+  // Get first two pages (or just first page if only one exists)
+  const firstTwoPages = images.slice(0, 2);
+
+  if (!firstTwoPages[0] || !firstTwoPages[0].base64) {
+    throw new Error("First page conversion failed - missing base64 data");
+  }
+
+  // Prepare images for classification
+  const imageContent = firstTwoPages
+    .map((page, index) => [
+      {
+        type: "text" as const,
+        text: `Here is page ${index + 1} of the pdf`,
+      },
+      {
+        type: "image" as const,
+        image: page.base64,
+        mimeType: "image/png" as const,
+      },
+    ])
+    .flat();
+
+  const { object } = await generateObject({
+    model: openai("gpt-4.1-mini"),
+    messages: [
+      {
+        role: "system",
+        content: `You are a helpful assistant that classifies pdfs into two categories: drawing and document.
+The purpose of this is to determine which extraction process to run based on if its an engineering drawing or a regular document.
+
+The first ${firstTwoPages.length} page${firstTwoPages.length > 1 ? "s" : ""} of the pdf ${firstTwoPages.length > 1 ? "are" : "is"} provided to you.
+
+If the pdf contains engineering drawings, return "drawing".
+If the pdf is a regular document, return "document".`,
+      },
+      {
+        role: "user",
+        content: imageContent,
+      },
+    ],
+    schema: z.object({
+      category: z.enum(["drawing", "document"]),
+    }),
+  });
+
+  return object.category;
+}
+
 export async function markitdown(
   input: string | Buffer,
   fileName: string
@@ -186,9 +197,6 @@ export async function markitdown(
     tempFile = `/tmp/${Date.now()}-${fileName}`;
     await Bun.write(tempFile, input);
     filePath = tempFile;
-    console.log("filePath", filePath);
-    const contents = await Bun.file(filePath).text();
-    console.log("contents", contents);
   } else {
     filePath = input;
   }
@@ -201,7 +209,6 @@ export async function markitdown(
     proc.kill();
 
     const chunkedOutput = await textSplitter.splitText(output);
-    console.log("chunkedOutput", chunkedOutput.length);
 
     const page: FilePage = {
       pageNumber: 1,
@@ -228,9 +235,7 @@ export async function processPlainText(
   fileName: string
 ): Promise<FilePage> {
   const textContent = fileContent.toString("utf-8");
-  console.log("textContent", textContent);
   const chunkedContent = await textSplitter.splitText(textContent);
-  console.log("chunkedContent", chunkedContent.length);
 
   const page: FilePage = {
     pageNumber: 1,
@@ -247,13 +252,6 @@ export async function processPlainText(
 }
 
 export async function processPdf(
-  input: Buffer,
-  mimeType: string
-): Promise<FilePage[]> {
-  return processPdfWithOptions(input, mimeType, true);
-}
-
-export async function processPdfWithOptions(
   input: Buffer,
   mimeType: string,
   includeImages: boolean = true
@@ -322,8 +320,8 @@ export async function processPdfWithOptions(
                   type: "image/jpeg",
                 });
 
-                const url = s3.presign(fileKey, { expiresIn: 60 * 60 * 24 });
-                console.log("url", url);
+                // const url = s3.presign(fileKey, { expiresIn: 60 * 60 * 24 });
+                // console.log("url", url);
 
                 filePageChunk.images = [
                   ...(filePageChunk.images || []),

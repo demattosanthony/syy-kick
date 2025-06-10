@@ -32,6 +32,26 @@ export const handle =
     }
   };
 
+export const slugify = (text: string) => {
+  return text
+    .toString() // Cast to string
+    .toLowerCase() // Convert the string to lowercase letters
+    .normalize("NFD") // The normalize() method returns the Unicode Normalization Form of a given string.
+    .trim() // Remove whitespace from both sides of a string
+    .replace(/\s+/g, "-") // Replace spaces with -
+    .replace(/[^\w\-]+/g, "") // Remove all non-word chars
+    .replace(/\-\-+/g, "-"); // Replace multiple - with single -
+};
+
+export async function getFileHash(fileBuffer: Buffer): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer)); // Convert buffer to byte array
+  const hashHex = hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join(""); // Convert bytes to hex string
+  return hashHex;
+}
+
 // ConvertAPI configuration
 const CONVERT_API_SECRET = process.env.CONVERT_API_SECRET || "";
 const CONVERT_API_URL = "https://v2.convertapi.com";
@@ -58,14 +78,6 @@ async function callConvertApi(
   const url = `${CONVERT_API_URL}/convert/${fromFormat}/to/${toFormat}?Secret=${CONVERT_API_SECRET}`;
 
   console.log(`🔗 [ConvertAPI] Calling: ${fromFormat} → ${toFormat}`);
-  console.log(
-    `📋 [ConvertAPI] Parameters:`,
-    Object.keys(parameters).map((key) =>
-      key === "File"
-        ? `${key}: [Buffer ${parameters[key]?.byteLength || parameters[key]?.length || 0} bytes]`
-        : `${key}: ${parameters[key]}`
-    )
-  );
 
   // Create FormData for multipart upload
   const formData = new FormData();
@@ -91,10 +103,6 @@ async function callConvertApi(
     }
   }
 
-  console.log(
-    `🔗 [ConvertAPI] Request URL: ${url.replace(CONVERT_API_SECRET, "[SECRET]")}`
-  );
-
   const response = await fetch(url, {
     method: "POST",
     body: formData, // Use FormData instead of JSON
@@ -113,139 +121,7 @@ async function callConvertApi(
     `✅ [ConvertAPI] Success: ${result.Files?.length || 0} files generated`
   );
 
-  // Add debugging for the response structure
-  console.log(
-    `🔍 [ConvertAPI] Full response:`,
-    JSON.stringify(result, null, 2)
-  );
-
   return result;
-}
-
-export async function getPdfPageAsImage(
-  pdfBytes: Uint8Array,
-  pageNumber: number,
-  options = { format: "png", dpi: 150, maxDimension: 2048 }
-): Promise<string> {
-  try {
-    console.log("Converting PDF page to image using ConvertAPI:", pageNumber);
-
-    // Convert Uint8Array to Buffer
-    const pdfBuffer = Buffer.from(pdfBytes);
-
-    // Call ConvertAPI to convert PDF to PNG
-    const result = await callConvertApi("pdf", "png", {
-      File: pdfBuffer, // Pass Buffer directly
-      PageRange: `${pageNumber}-${pageNumber}`, // Convert only the specified page
-      ImageResolution: options.dpi,
-      ImageMaxWidth: options.maxDimension,
-      ImageMaxHeight: options.maxDimension,
-    });
-
-    if (!result.Files || result.Files.length === 0) {
-      throw new Error("No files returned from ConvertAPI");
-    }
-
-    // Download the converted image
-    const imageUrl = result.Files[0].Url;
-    const imageResponse = await fetch(imageUrl);
-
-    if (!imageResponse.ok) {
-      throw new Error(
-        `Failed to download converted image: ${imageResponse.status}`
-      );
-    }
-
-    const imageBuffer = await imageResponse.arrayBuffer();
-    return Buffer.from(imageBuffer).toString("base64");
-  } catch (error: any) {
-    console.error("Error converting PDF page to image:", error);
-    throw new Error(`Failed to convert PDF page to image: ${error.message}`);
-  }
-}
-
-export const slugify = (text: string) => {
-  return text
-    .toString() // Cast to string
-    .toLowerCase() // Convert the string to lowercase letters
-    .normalize("NFD") // The normalize() method returns the Unicode Normalization Form of a given string.
-    .trim() // Remove whitespace from both sides of a string
-    .replace(/\s+/g, "-") // Replace spaces with -
-    .replace(/[^\w\-]+/g, "") // Remove all non-word chars
-    .replace(/\-\-+/g, "-"); // Replace multiple - with single -
-};
-
-export async function pdfToImages(
-  pdfData: Uint8Array,
-  options: { maxDimension?: number } = { maxDimension: 2048 }
-): Promise<
-  {
-    name: string;
-    path: string;
-    size: number;
-    page: number;
-    base64: string;
-  }[]
-> {
-  try {
-    console.log("Converting PDF to images using ConvertAPI");
-
-    // Convert Uint8Array to Buffer
-    const pdfBuffer = Buffer.from(pdfData);
-
-    // Call ConvertAPI to convert PDF to PNG (all pages)
-    const result = await callConvertApi("pdf", "png", {
-      File: pdfBuffer, // Pass Buffer directly
-      ImageResolution: 150,
-      ImageMaxWidth: options.maxDimension || 2048,
-      ImageMaxHeight: options.maxDimension || 2048,
-    });
-
-    if (!result.Files || result.Files.length === 0) {
-      throw new Error("No files returned from ConvertAPI");
-    }
-
-    const images = [];
-
-    for (let i = 0; i < result.Files.length; i++) {
-      const file = result.Files[i];
-
-      // Download the converted image
-      const imageResponse = await fetch(file.Url);
-
-      if (!imageResponse.ok) {
-        console.error(
-          `Failed to download image ${i + 1}: ${imageResponse.status}`
-        );
-        continue;
-      }
-
-      const imageBuffer = await imageResponse.arrayBuffer();
-      const base64 = Buffer.from(imageBuffer).toString("base64");
-
-      images.push({
-        name: file.FileName,
-        path: file.Url, // We could store the original URL or update this as needed
-        size: file.FileSize,
-        page: i + 1, // Page numbers start from 1
-        base64: base64,
-      });
-    }
-
-    return images;
-  } catch (error: any) {
-    console.error("Error converting PDF to images:", error);
-    throw new Error(`Failed to convert PDF to images: ${error.message}`);
-  }
-}
-
-export async function getFileHash(fileBuffer: Buffer): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest("SHA-256", fileBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer)); // Convert buffer to byte array
-  const hashHex = hashArray
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join(""); // Convert bytes to hex string
-  return hashHex;
 }
 
 export interface PdfToImagesOptions {

@@ -952,7 +952,7 @@ class FilesApi extends ApiRequest {
       url: string;
       category?: "drawing" | "document";
       isExisting: boolean;
-    }>("/files/create", "POST", { fileName, mimeType, size, fileKey });
+    }>("/files", "POST", { fileName, mimeType, size, fileKey });
   }
 
   async uploadFile(file: File, presignedUrl: string): Promise<void> {

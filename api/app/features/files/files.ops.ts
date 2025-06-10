@@ -288,202 +288,190 @@ export async function generatePresignedUrl(
   };
 }
 
-export async function createFileRecordAndProcess(
-  userId: string,
-  fileData: {
-    fileName: string;
-    mimeType: string;
-    size: number;
-    fileKey: string;
-  }
-): Promise<{
+export async function processAndStoreFile(params: {
+  userId: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  fileBuffer: Buffer;
+  fileOriginType: "syyclops" | "sharepoint" | "google_drive";
+  filePath?: string; // S3 key, SharePoint path, etc.
+  deduplicationStrategy?: "hash" | "path";
+  pathColumn?: "syyclops_path" | "sharepoint_path" | "google_drive_path";
+}): Promise<{
   id: string;
   name: string;
   mimeType: string;
   size: number;
-  fileKey: string;
-  url: string;
+  filePath?: string;
+  url?: string;
   category?: "drawing" | "document";
   isExisting: boolean;
 }> {
-  const { fileName, mimeType, size, fileKey } = fileData;
+  const {
+    userId,
+    fileName,
+    mimeType,
+    size,
+    fileBuffer,
+    fileOriginType,
+    filePath,
+    deduplicationStrategy = "hash",
+    pathColumn = "syyclops_path",
+  } = params;
 
   console.log(
-    `📄 [CreateFileRecord] Processing file: ${fileName} (${mimeType})`
+    `📄 [ProcessAndStoreFile] Processing file: ${fileName} (${mimeType}) from ${fileOriginType}`
   );
-  console.log(`📊 [CreateFileRecord] File size: ${size} bytes`);
 
-  // Download file from S3 to calculate hash and process content
-  let fileBuffer: Buffer;
-  try {
-    console.log(`⬇️ [CreateFileRecord] Downloading file from S3: ${fileKey}`);
+  // Handle deduplication based on strategy
+  let existingFile = null;
 
-    // Check if file exists first
-    const fileExists = await s3.file(fileKey).exists();
-    if (!fileExists) {
-      throw new Error(`File not found in S3: ${fileKey}`);
-    }
+  if (deduplicationStrategy === "hash") {
+    // Calculate file hash for deduplication
+    const fileHash = crypto
+      .createHash("sha256")
+      .update(fileBuffer)
+      .digest("hex");
+    console.log(`🔑 [ProcessAndStoreFile] File hash: ${fileHash}`);
 
-    const arrayBuffer = await s3.file(fileKey).arrayBuffer();
-    fileBuffer = Buffer.from(arrayBuffer);
+    // Check if file with same hash already exists for this user
+    existingFile = await db
+      .select({
+        id: files.id,
+        name: files.name,
+        mimeType: files.mimeType,
+        size: files.size,
+        fileHash: files.fileHash,
+        syyclops_path: files.syyclops_path,
+        sharepoint_path: files.sharepoint_path,
+        google_drive_path: files.google_drive_path,
+        file_origin_type: files.file_origin_type,
+        category: files.category,
+        createdAt: files.createdAt,
+        updatedAt: files.updatedAt,
+      })
+      .from(files)
+      .innerJoin(userFiles, eq(files.id, userFiles.fileId))
+      .where(and(eq(userFiles.userId, userId), eq(files.fileHash, fileHash)))
+      .limit(1)
+      .then((rows) => rows[0] || null);
 
-    if (fileBuffer.length === 0) {
-      throw new Error(`Downloaded file is empty: ${fileKey}`);
-    }
-
-    console.log(`✅ [CreateFileRecord] Downloaded ${fileBuffer.length} bytes`);
-  } catch (error) {
-    console.error(
-      `❌ [CreateFileRecord] Error downloading file from S3:`,
-      error
-    );
-    throw new Error(`File not found in S3: ${fileKey}`);
-  }
-
-  // Calculate file hash for deduplication
-  const fileHash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
-  console.log(`🔑 [CreateFileRecord] File hash: ${fileHash}`);
-
-  // Check if file with same hash already exists for this user
-  const existingFile = await db
-    .select({
-      id: files.id,
-      name: files.name,
-      mimeType: files.mimeType,
-      size: files.size,
-      fileHash: files.fileHash,
-      syyclops_path: files.syyclops_path,
-      sharepoint_path: files.sharepoint_path,
-      google_drive_path: files.google_drive_path,
-      file_origin_type: files.file_origin_type,
-      category: files.category,
-      createdAt: files.createdAt,
-      updatedAt: files.updatedAt,
-    })
-    .from(files)
-    .innerJoin(userFiles, eq(files.id, userFiles.fileId))
-    .where(and(eq(userFiles.userId, userId), eq(files.fileHash, fileHash)))
-    .limit(1)
-    .then((rows) => rows[0] || null);
-
-  if (existingFile) {
-    console.log(
-      `♻️ [CreateFileRecord] File already exists for user (ID: ${existingFile.id}), returning existing file`
-    );
-
-    // Generate presigned URL for existing file
-    let url = "";
-    if (existingFile.syyclops_path) {
-      try {
-        url = s3.file(existingFile.syyclops_path).presign({
-          expiresIn: 3600,
-          method: "GET",
-        });
-      } catch (error) {
-        console.error(
-          "Error generating presigned URL for existing file:",
-          error
-        );
-      }
-    }
-
-    // Clean up the duplicate file we just uploaded
-    try {
-      await s3.file(fileKey).delete();
+    if (existingFile) {
       console.log(
-        `🗑️ [CreateFileRecord] Cleaned up duplicate file: ${fileKey}`
+        `♻️ [ProcessAndStoreFile] File already exists for user (ID: ${existingFile.id}), returning existing file`
       );
-    } catch (error) {
-      console.error("Error cleaning up duplicate file:", error);
+      return {
+        id: existingFile.id,
+        name: existingFile.name,
+        mimeType: existingFile.mimeType || mimeType,
+        size: existingFile.size || 0,
+        filePath: existingFile[pathColumn] || "",
+        category: existingFile.category as "drawing" | "document" | undefined,
+        isExisting: true,
+      };
     }
 
-    return {
-      id: existingFile.id,
-      name: existingFile.name,
-      mimeType: existingFile.mimeType || mimeType,
-      size: existingFile.size || 0,
-      fileKey: existingFile.syyclops_path || "",
-      url,
-      category: existingFile.category as "drawing" | "document" | undefined,
-      isExisting: true,
-    };
-  }
-
-  // Check if the file hash exists globally and create a new user association
-  const globalExistingFile = await db.query.files.findFirst({
-    where: eq(files.fileHash, fileHash),
-  });
-
-  if (globalExistingFile) {
-    console.log(
-      `🔗 [CreateFileRecord] File hash exists globally (ID: ${globalExistingFile.id}), creating user association`
-    );
-
-    // Create user-file association
-    await db.insert(userFiles).values({
-      userId,
-      fileId: globalExistingFile.id,
+    // Check if the file hash exists globally and create a new user association
+    const globalExistingFile = await db.query.files.findFirst({
+      where: eq(files.fileHash, fileHash),
     });
 
-    // Generate presigned URL for existing file
-    let url = "";
-    if (globalExistingFile.syyclops_path) {
-      try {
-        url = s3.file(globalExistingFile.syyclops_path).presign({
-          expiresIn: 3600,
-          method: "GET",
-        });
-      } catch (error) {
-        console.error(
-          "Error generating presigned URL for existing file:",
-          error
-        );
-      }
-    }
-
-    // Clean up the duplicate file we just uploaded
-    try {
-      await s3.file(fileKey).delete();
+    if (globalExistingFile) {
       console.log(
-        `🗑️ [CreateFileRecord] Cleaned up duplicate file: ${fileKey}`
+        `🔗 [ProcessAndStoreFile] File hash exists globally (ID: ${globalExistingFile.id}), creating user association`
       );
-    } catch (error) {
-      console.error("Error cleaning up duplicate file:", error);
-    }
 
-    return {
-      id: globalExistingFile.id,
-      name: globalExistingFile.name,
-      mimeType: globalExistingFile.mimeType || mimeType,
-      size: globalExistingFile.size || 0,
-      fileKey: globalExistingFile.syyclops_path || "",
-      url,
-      category: globalExistingFile.category as
-        | "drawing"
-        | "document"
-        | undefined,
-      isExisting: true,
-    };
+      // Create user-file association
+      await db.insert(userFiles).values({
+        userId,
+        fileId: globalExistingFile.id,
+      });
+
+      return {
+        id: globalExistingFile.id,
+        name: globalExistingFile.name,
+        mimeType: globalExistingFile.mimeType || mimeType,
+        size: globalExistingFile.size || 0,
+        filePath: globalExistingFile[pathColumn] || "",
+        category: globalExistingFile.category as
+          | "drawing"
+          | "document"
+          | undefined,
+        isExisting: true,
+      };
+    }
+  } else if (deduplicationStrategy === "path" && filePath) {
+    // Check if file already exists by path
+    const pathCondition =
+      pathColumn === "sharepoint_path"
+        ? eq(files.sharepoint_path, filePath)
+        : pathColumn === "google_drive_path"
+          ? eq(files.google_drive_path, filePath)
+          : eq(files.syyclops_path, filePath);
+
+    existingFile = await db.query.files.findFirst({
+      where: pathCondition,
+    });
+
+    if (existingFile) {
+      console.log(
+        `✅ [ProcessAndStoreFile] File already indexed by path: ${existingFile.name}`
+      );
+
+      // Ensure user-file association exists
+      const existingUserFile = await db.query.userFiles.findFirst({
+        where: and(
+          eq(userFiles.userId, userId),
+          eq(userFiles.fileId, existingFile.id)
+        ),
+      });
+
+      if (!existingUserFile) {
+        await db.insert(userFiles).values({
+          userId,
+          fileId: existingFile.id,
+        });
+        console.log(`🔗 [ProcessAndStoreFile] Created user-file association`);
+      }
+
+      return {
+        id: existingFile.id,
+        name: existingFile.name,
+        mimeType: existingFile.mimeType || mimeType,
+        size: existingFile.size || 0,
+        filePath: existingFile[pathColumn] || "",
+        category: existingFile.category as "drawing" | "document" | undefined,
+        isExisting: true,
+      };
+    }
+  }
+
+  // Calculate file hash if not already done
+  const fileHash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
+
+  // Prepare file data for insertion
+  const fileData: any = {
+    name: fileName,
+    mimeType: mimeType,
+    size: size,
+    type: "file",
+    fileHash: fileHash,
+    file_origin_type: fileOriginType,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  // Set the appropriate path column
+  if (filePath) {
+    fileData[pathColumn] = filePath;
   }
 
   // Insert new file into files table
-  const [insertedFile] = await db
-    .insert(files)
-    .values({
-      name: fileName,
-      mimeType: mimeType,
-      size: size,
-      type: "file",
-      fileHash: fileHash,
-      syyclops_path: fileKey,
-      file_origin_type: "syyclops",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
+  const [insertedFile] = await db.insert(files).values(fileData).returning();
 
   console.log(
-    `✅ [CreateFileRecord] File inserted into database: ${insertedFile.id}`
+    `✅ [ProcessAndStoreFile] File inserted into database: ${insertedFile.id}`
   );
 
   // Create user-file association
@@ -493,14 +481,14 @@ export async function createFileRecordAndProcess(
   });
 
   console.log(
-    `🔗 [CreateFileRecord] User-file association created for user: ${userId}`
+    `🔗 [ProcessAndStoreFile] User-file association created for user: ${userId}`
   );
 
   // Process file content
   let category: "drawing" | "document" | undefined;
   try {
     console.log(
-      `⚙️ [CreateFileRecord] Processing file content for: ${fileName}`
+      `⚙️ [ProcessAndStoreFile] Processing file content for: ${fileName}`
     );
     const processedResult = await processFile(fileBuffer, fileName, mimeType);
 
@@ -515,7 +503,7 @@ export async function createFileRecordAndProcess(
         .set({ category })
         .where(eq(files.id, insertedFile.id));
 
-      console.log(`📂 [CreateFileRecord] File categorized as: ${category}`);
+      console.log(`📂 [ProcessAndStoreFile] File categorized as: ${category}`);
     }
 
     // Store processed file pages in database
@@ -537,15 +525,14 @@ export async function createFileRecordAndProcess(
         }));
 
         // Batch insert chunks to avoid parameter limit issues
-        const BATCH_SIZE = 1000; // PostgreSQL can handle ~65k parameters, so 1000 * 3 = 3000 params per batch
-
+        const BATCH_SIZE = 1000;
         for (let i = 0; i < chunkValues.length; i += BATCH_SIZE) {
           const batch = chunkValues.slice(i, i + BATCH_SIZE);
           await db.insert(filePageChunks).values(batch);
         }
 
         console.log(
-          `✅ [CreateFileRecord] Inserted ${chunkValues.length} chunks in batches of ${BATCH_SIZE}`
+          `✅ [ProcessAndStoreFile] Inserted ${chunkValues.length} chunks in batches of ${BATCH_SIZE}`
         );
       }
 
@@ -555,35 +542,29 @@ export async function createFileRecordAndProcess(
           filePageId: insertedPage.id,
           name: image.name,
           imagePath: image.path,
+          size: image.size,
         }));
         await db.insert(filePageImages).values(imageValues);
       }
     }
 
     console.log(
-      `✅ [CreateFileRecord] File processing completed: ${processedFilePages.length} pages processed`
+      `✅ [ProcessAndStoreFile] File processing completed: ${processedFilePages.length} pages processed`
     );
   } catch (processingError) {
     console.error(
-      `❌ [CreateFileRecord] Error processing file ${fileName}:`,
+      `❌ [ProcessAndStoreFile] Error processing file ${fileName}:`,
       processingError
     );
     // Continue even if processing fails - the file is still stored
   }
-
-  // Generate presigned URL for the uploaded file
-  const url = s3.file(fileKey).presign({
-    expiresIn: 3600,
-    method: "GET",
-  });
 
   return {
     id: insertedFile.id,
     name: insertedFile.name,
     mimeType: insertedFile.mimeType || mimeType,
     size: insertedFile.size || 0,
-    fileKey,
-    url,
+    filePath: insertedFile[pathColumn] || "",
     category,
     isExisting: false,
   };
@@ -825,4 +806,108 @@ export async function searchFileContent(
       ] as string[],
     };
   }
+}
+
+export async function createFileRecordAndProcess(
+  userId: string,
+  fileData: {
+    fileName: string;
+    mimeType: string;
+    size: number;
+    fileKey: string;
+  }
+): Promise<{
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  fileKey: string;
+  url: string;
+  category?: "drawing" | "document";
+  isExisting: boolean;
+}> {
+  const { fileName, mimeType, size, fileKey } = fileData;
+
+  console.log(
+    `📄 [CreateFileRecord] Processing file: ${fileName} (${mimeType})`
+  );
+  console.log(`📊 [CreateFileRecord] File size: ${size} bytes`);
+
+  // Download file from S3 to calculate hash and process content
+  let fileBuffer: Buffer;
+  try {
+    console.log(`⬇️ [CreateFileRecord] Downloading file from S3: ${fileKey}`);
+
+    // Check if file exists first
+    const fileExists = await s3.file(fileKey).exists();
+    if (!fileExists) {
+      throw new Error(`File not found in S3: ${fileKey}`);
+    }
+
+    const arrayBuffer = await s3.file(fileKey).arrayBuffer();
+    fileBuffer = Buffer.from(arrayBuffer);
+
+    if (fileBuffer.length === 0) {
+      throw new Error(`Downloaded file is empty: ${fileKey}`);
+    }
+
+    console.log(`✅ [CreateFileRecord] Downloaded ${fileBuffer.length} bytes`);
+  } catch (error) {
+    console.error(
+      `❌ [CreateFileRecord] Error downloading file from S3:`,
+      error
+    );
+    throw new Error(`File not found in S3: ${fileKey}`);
+  }
+
+  // Use the new generic function
+  const result = await processAndStoreFile({
+    userId,
+    fileName,
+    mimeType,
+    size,
+    fileBuffer,
+    fileOriginType: "syyclops",
+    filePath: fileKey,
+    deduplicationStrategy: "hash",
+    pathColumn: "syyclops_path",
+  });
+
+  // Handle cleanup for existing files
+  if (result.isExisting && result.filePath !== fileKey) {
+    // Clean up the duplicate file we just uploaded
+    try {
+      await s3.file(fileKey).delete();
+      console.log(
+        `🗑️ [CreateFileRecord] Cleaned up duplicate file: ${fileKey}`
+      );
+    } catch (error) {
+      console.error("Error cleaning up duplicate file:", error);
+    }
+  }
+
+  // Generate presigned URL for the file
+  let url = "";
+  const effectiveFileKey = result.filePath || fileKey;
+  if (effectiveFileKey) {
+    try {
+      url = s3.file(effectiveFileKey).presign({
+        expiresIn: 3600,
+        method: "GET",
+      });
+    } catch (error) {
+      console.error("Error generating presigned URL:", error);
+    }
+  }
+
+  return {
+    id: result.id,
+    name: result.name,
+    mimeType: result.mimeType,
+    size: result.size,
+    fileKey: effectiveFileKey,
+    url,
+    category: result.category,
+    isExisting: result.isExisting,
+  };
 }

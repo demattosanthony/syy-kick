@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { MicrosoftAPI } from "../../../config/microsoft";
+import { processAndStoreFile } from "../../files/files.ops";
 
 interface GraphDriveItem {
   id: string;
@@ -147,3 +148,94 @@ export const createSharepointToolSet = (
     // Removed sharepoint_open_file - consolidated into artifact service load_file_content tool
   };
 };
+
+/**
+ * Downloads and processes a SharePoint file, storing it in the database
+ * @param sharePointFileId - The SharePoint file ID
+ * @param userId - The user ID for Microsoft Graph authentication
+ * @returns The processed file record
+ */
+export async function processSharePointFile(
+  sharePointFileId: string,
+  userId: string
+): Promise<any> {
+  console.log(`🔍 [SharePoint] Loading SharePoint file: ${sharePointFileId}`);
+
+  // Get SharePoint file metadata
+  const microsoftGraph = new MicrosoftAPI({ userId });
+  const accessToken = await microsoftGraph.getAccessToken("graph");
+
+  if (!accessToken) {
+    throw new Error("No Microsoft Graph access token available");
+  }
+
+  const graphClient = await microsoftGraph.getGraphClient("graph");
+  if (!graphClient) {
+    throw new Error("Failed to get Microsoft Graph client");
+  }
+
+  // Get drive ID
+  const drive = await graphClient.api("/me/drive").get();
+  const driveId = drive?.id;
+  if (!driveId) {
+    throw new Error("Failed to get drive ID");
+  }
+
+  // Get file metadata
+  const fileMetadata = await graphClient
+    .api(`/drives/${driveId}/items/${sharePointFileId}`)
+    .get();
+
+  if (!fileMetadata["@microsoft.graph.downloadUrl"]) {
+    throw new Error("No download URL available for this SharePoint file.");
+  }
+
+  const filePath = fileMetadata.parentReference?.path
+    ? fileMetadata.parentReference.path + "/" + fileMetadata.name
+    : fileMetadata.name;
+
+  console.log(
+    `📥 [SharePoint] Downloading and processing SharePoint file: ${fileMetadata.name}`
+  );
+
+  // Download the file
+  const response = await fetch(fileMetadata["@microsoft.graph.downloadUrl"]);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to download SharePoint file: ${response.statusText}`
+    );
+  }
+  const blob = await response.blob();
+  const buffer = Buffer.from(await blob.arrayBuffer());
+
+  // Use the generic processing function
+  const result = await processAndStoreFile({
+    userId,
+    fileName: fileMetadata.name,
+    mimeType: fileMetadata.file?.mimeType || "application/octet-stream",
+    size: fileMetadata.size,
+    fileBuffer: buffer,
+    fileOriginType: "sharepoint",
+    filePath: filePath,
+    deduplicationStrategy: "path",
+    pathColumn: "sharepoint_path",
+  });
+
+  console.log(
+    `✅ [SharePoint] SharePoint file processed and stored: ${result.name}`
+  );
+
+  // Return in the same format as the original handleSharePointFile method
+  return {
+    id: result.id,
+    name: result.name,
+    mimeType: result.mimeType,
+    size: result.size,
+    type: "file",
+    sharepoint_path: filePath,
+    file_origin_type: "sharepoint",
+    category: result.category,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
