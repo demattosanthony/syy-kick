@@ -47,6 +47,8 @@ export function ThreadPage() {
     if (isPendingThreadId && pendingThread) {
       return {
         id: `${pendingThread.tempId}-user-message`,
+        threadId: pendingThread.tempId,
+        userId: "pending-user-id",
         role: MessageRole.user,
         text: pendingThread.initialMessage,
         createdAt: new Date().toISOString(),

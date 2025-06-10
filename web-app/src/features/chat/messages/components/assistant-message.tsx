@@ -25,7 +25,7 @@ const TextContent: React.FC<{
 const ErrorMessage: React.FC<{
   error: string;
   hasPartialContent: boolean;
-}> = ({ error, hasPartialContent }) => {
+}> = ({ hasPartialContent }) => {
   return (
     <div className="border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30 rounded-lg p-3 mt-2 w-fit">
       <div className="flex items-start gap-2">
@@ -36,7 +36,7 @@ const ErrorMessage: React.FC<{
               ? "Message generation failed"
               : "Failed to generate response"}
           </p>
-          <p className="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
+          {/* <p className="text-sm text-red-700 Adark:text-red-300 mt-1">{error}</p> */}
           {hasPartialContent && (
             <p className="text-xs text-red-600 dark:text-red-400 mt-2">
               Partial content shown above may be incomplete.

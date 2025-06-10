@@ -58,7 +58,7 @@ export function FileUploadSection({
                 }`}
               >
                 {extension === "pdf" && upload.preview ? (
-                  <PdfThumbnail url={upload.preview} width={96} />
+                  <PdfThumbnail url={upload.url || upload.preview} width={96} />
                 ) : customIconSrc ? (
                   <>
                     <img

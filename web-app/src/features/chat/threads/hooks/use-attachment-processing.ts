@@ -22,12 +22,6 @@ export function useAttachmentProcessing() {
   };
 
   const clearAttachments = () => {
-    // Clean up blob URLs for images
-    uploads.forEach((upload) => {
-      if (upload.preview && upload.preview.startsWith("blob:")) {
-        URL.revokeObjectURL(upload.preview);
-      }
-    });
     setUploads([]);
   };
 
