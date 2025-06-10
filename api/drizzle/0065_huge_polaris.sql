@@ -1,1 +1,0 @@
-ALTER TABLE "file_content_chunks" ADD COLUMN "position" integer;

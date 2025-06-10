@@ -69,7 +69,10 @@ export async function processFile(
 
     // If its an engineering drawing, we want to turn all the pages into images
     if (category === "drawing") {
-      const images = await convertPdfToImages(fileContent);
+      const images = await convertPdfToImages(fileContent, {
+        maxDimension: 7500,
+        dpi: 180,
+      });
 
       const filePages: FilePage[] = [];
 
@@ -128,6 +131,8 @@ async function classifyPdf(
 ): Promise<"drawing" | "document"> {
   const images = await convertPdfToImages(fileContent, {
     pageRange: "1-2",
+    maxDimension: 7500,
+    dpi: 180,
   });
 
   // Validate that we got at least one image

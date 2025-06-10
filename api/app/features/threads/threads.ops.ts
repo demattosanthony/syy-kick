@@ -1580,14 +1580,63 @@ const threadsOps = {
       throw new Error("Only assistant messages can be retried");
     }
 
-    // Delete the failed message and its associated data
-    await db
-      .delete(toolCallsTable)
-      .where(eq(toolCallsTable.messageId, messageId));
-    await db
-      .delete(messagesFiles)
-      .where(eq(messagesFiles.messageId, messageId));
-    await db.delete(messages).where(eq(messages.id, messageId));
+    // Get all messages in the thread ordered by creation time
+    const allMessages = await db.query.messages.findMany({
+      where: eq(messages.threadId, threadId),
+      orderBy: [messages.createdAt],
+    });
+
+    // Find the last user message
+    let lastUserMessageIndex = -1;
+    for (let i = allMessages.length - 1; i >= 0; i--) {
+      if (allMessages[i].role === "user") {
+        lastUserMessageIndex = i;
+        break;
+      }
+    }
+
+    if (lastUserMessageIndex === -1) {
+      throw new Error("No user message found in thread");
+    }
+
+    // Get all assistant messages after the last user message
+    const assistantMessagesToDelete = allMessages
+      .slice(lastUserMessageIndex + 1)
+      .filter((msg) => msg.role === "assistant");
+
+    if (assistantMessagesToDelete.length === 0) {
+      throw new Error("No assistant messages to retry");
+    }
+
+    // Verify that the message being retried is among the assistant messages to delete
+    const messageToRetryExists = assistantMessagesToDelete.some(
+      (msg) => msg.id === messageId
+    );
+    if (!messageToRetryExists) {
+      throw new Error(
+        "Message to retry is not in the sequence of assistant messages after the last user message"
+      );
+    }
+
+    // Delete all assistant messages and their associated data since the last user message
+    const assistantMessageIds = assistantMessagesToDelete.map((msg) => msg.id);
+
+    // Delete tool calls for all these messages
+    for (const msgId of assistantMessageIds) {
+      await db
+        .delete(toolCallsTable)
+        .where(eq(toolCallsTable.messageId, msgId));
+    }
+
+    // Delete message-file relationships for all these messages
+    for (const msgId of assistantMessageIds) {
+      await db.delete(messagesFiles).where(eq(messagesFiles.messageId, msgId));
+    }
+
+    // Delete all the assistant messages
+    for (const msgId of assistantMessageIds) {
+      await db.delete(messages).where(eq(messages.id, msgId));
+    }
 
     // Verify that the last message is now a user message
     const lastMessage = await db.query.messages.findFirst({
@@ -1624,7 +1673,8 @@ const threadsOps = {
     return {
       success: true,
       message: "Message retry initiated",
-      deletedMessageId: messageId,
+      deletedMessageIds: assistantMessageIds,
+      deletedMessageCount: assistantMessageIds.length,
       lastUserMessageId: lastMessage.id,
     };
   },

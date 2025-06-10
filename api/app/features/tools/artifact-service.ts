@@ -186,7 +186,7 @@ export class ArtifactService {
   private createLoadFileContentTool(): Tool {
     return tool({
       description:
-        "Loads content from a file attachment or SharePoint file with pagination support. This tool allows you to access processed file content in manageable chunks. For PDF files, you can specify page ranges. For other files, you can specify chunk ranges. Use this to read through large documents systematically. Can also return images of the pages when available. IMPORTANT: This is the PRIMARY tool to use for engineering drawings and files categorized as 'drawing' since they are stored as high-resolution images rather than searchable text. For drawing files, use page-based pagination to navigate through drawing sheets and examine specific details. Provide all parameters in the tool call, even if they should be null.",
+        "Loads content from a file attachment or SharePoint file with pagination support. This tool allows you to access processed file content in manageable chunks. For PDF files, you can specify page ranges. For other files, you can specify chunk ranges. Use this to read through large documents systematically. Can also return images of the pages when available. IMPORTANT: This is the PRIMARY tool to use for engineering drawings and files categorized as 'drawing' since they are stored as high-resolution images rather than searchable text. For drawing files, use page-based pagination to navigate through drawing sheets and examine specific details. MAKE SURE to provide all parameters in the tool call, even if they should be null.",
       parameters: z.object({
         fileId: z
           .string()

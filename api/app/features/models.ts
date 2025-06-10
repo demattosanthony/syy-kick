@@ -236,7 +236,7 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
   ];
 
   return {
-    "gemini-2.5-pro-preview": {
+    "gemini-2.5-pro": {
       model: google("gemini-2.5-pro-preview-05-06"),
       supportsToolUse: true,
       supportsStreaming: true,
@@ -248,28 +248,14 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "Gemini 2.5 Pro Experimental is Google's state-of-the-art thinking model, capable of reasoning over complex problems in code, math, and STEM, as well as analyzing large datasets, codebases, and documents using long context.",
     },
-    "gemini-2.5-flash-preview": {
-      model: google("gemini-2.5-flash-preview-04-17"),
+    "gemini-2.5-flash": {
+      model: google("gemini-2.5-flash-preview-05-20"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "google",
       supportsSystemMessages: true,
       supportedMimeTypes,
       maxImageSize: 2 * 1024 * 1024 * 1024,
-      maxFileSize: MAX_FILE_SIZE, // 1GB
-      description:
-        "Gemini 2.5 Flash is Google's first fully hybrid reasoning model, giving developers the ability to turn thinking on or off. The model also allows developers to set thinking budgets to find the right tradeoff between quality, cost, and latency.",
-    },
-    "gemini-2.5-flash-online": {
-      model: google("gemini-2.5-flash-preview-04-17", {
-        useSearchGrounding: true,
-      }),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
       maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Gemini 2.5 Flash is Google's first fully hybrid reasoning model, giving developers the ability to turn thinking on or off. The model also allows developers to set thinking budgets to find the right tradeoff between quality, cost, and latency.",

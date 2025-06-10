@@ -26,7 +26,7 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({
       className={cn(
         "group relative rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden w-full max-w-[480px] transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md",
         isStreaming
-          ? "border-blue-200/60 bg-blue-50/40 shadow-blue-100/20 hover:shadow-blue-200/30 hover:bg-blue-50/60"
+          ? "border-primary/30 bg-primary/5 shadow-primary/10 hover:shadow-primary/20 hover:bg-primary/10"
           : "hover:border-border hover:bg-card/80 hover:shadow-lg hover:-translate-y-0.5",
         className
       )}
@@ -41,7 +41,7 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({
           className={cn(
             "flex items-center justify-center w-10 h-10 rounded-lg shrink-0 text-xl font-medium shadow-sm ring-1 ring-inset transition-all duration-200",
             isStreaming
-              ? "bg-blue-100 text-blue-600 ring-blue-200/50 group-hover:bg-blue-200/80"
+              ? "bg-primary/20 text-primary ring-primary/30 group-hover:bg-primary/30"
               : "bg-muted/80 text-muted-foreground ring-border/20 group-hover:bg-muted group-hover:scale-105"
           )}
         >
@@ -55,7 +55,7 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({
               className={cn(
                 "text-sm font-semibold leading-tight truncate max-w-[250px]",
                 isStreaming
-                  ? "text-blue-900"
+                  ? "text-primary"
                   : "text-foreground group-hover:text-foreground"
               )}
             >
@@ -81,9 +81,9 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({
         {isStreaming && (
           <div className="flex items-center gap-1 shrink-0">
             <div className="flex space-x-1">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse [animation-delay:0ms]"></div>
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse [animation-delay:150ms]"></div>
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse [animation-delay:300ms]"></div>
+              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse [animation-delay:0ms]"></div>
+              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse [animation-delay:150ms]"></div>
+              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse [animation-delay:300ms]"></div>
             </div>
           </div>
         )}

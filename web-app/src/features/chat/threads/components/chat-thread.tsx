@@ -116,8 +116,20 @@ export default function ThreadPage({
         });
 
         if (response.success) {
-          // Remove the failed message from the UI
-          setMessages((prev) => prev.filter((m) => m.id !== messageId));
+          // Remove all assistant messages after the last user message
+          setMessages((prev) => {
+            // Find the last user message index
+            let lastUserMessageIndex = -1;
+            for (let i = prev.length - 1; i >= 0; i--) {
+              if (prev[i].role === "user") {
+                lastUserMessageIndex = i;
+                break;
+              }
+            }
+
+            // Keep only messages up to and including the last user message
+            return prev.slice(0, lastUserMessageIndex + 1);
+          });
         }
       } catch (error: any) {
         console.error("Error retrying message:", error);

@@ -151,10 +151,11 @@ MessageContentComponent.displayName = "MessageContentComponent";
 const AssistantMessage: React.FC<{
   message: AIMessage & { status?: string; error?: string };
   showEye: boolean;
+  animateEye: boolean;
   showActions: boolean;
   messages: AIMessage[];
   onRetry?: (messageId: string) => void;
-}> = ({ message, showEye, showActions, messages, onRetry }) => {
+}> = ({ message, showEye, animateEye, showActions, messages, onRetry }) => {
   const [copied, setCopied] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -200,7 +201,12 @@ const AssistantMessage: React.FC<{
       onMouseLeave={() => setIsHovering(false)}
     >
       {showEye ? (
-        <MessageAvatar src={logo} alt="AI" fallback="AI" className="" />
+        <MessageAvatar
+          src={logo}
+          alt="AI"
+          fallback="AI"
+          className={animateEye ? "animate-spin" : ""}
+        />
       ) : (
         <div className="size-8" />
       )}

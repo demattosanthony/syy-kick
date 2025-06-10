@@ -1,5 +1,5 @@
 {
-  "id": "a0beb876-7ac1-40ba-b400-e9c7f7f7cb86",
+  "id": "be5c4ab7-8f92-4120-9f45-8e99e4b0a374",
   "prevId": "36040f22-5247-4606-9dd1-3100d4557c2b",
   "version": "7",
   "dialect": "postgresql",
@@ -27,20 +27,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "document_id": {
           "name": "document_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "knowledge_base_id": {
-          "name": "knowledge_base_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -106,38 +94,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "access_logs_project_id_projects_id_fk": {
-          "name": "access_logs_project_id_projects_id_fk",
-          "tableFrom": "access_logs",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "access_logs_document_id_documents_id_fk": {
           "name": "access_logs_document_id_documents_id_fk",
           "tableFrom": "access_logs",
           "tableTo": "documents",
           "columnsFrom": [
             "document_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "access_logs_knowledge_base_id_knowledge_bases_id_fk": {
-          "name": "access_logs_knowledge_base_id_knowledge_bases_id_fk",
-          "tableFrom": "access_logs",
-          "tableTo": "knowledge_bases",
-          "columnsFrom": [
-            "knowledge_base_id"
           ],
           "columnsTo": [
             "id"
@@ -618,18 +580,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "knowledge_base_id": {
-          "name": "knowledge_base_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "size": {
           "name": "size",
           "type": "integer",
@@ -665,26 +615,75 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.file_page_chunks": {
+      "name": "file_page_chunks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
-        "documents_project_id_projects_id_fk": {
-          "name": "documents_project_id_projects_id_fk",
-          "tableFrom": "documents",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+        "file_page_id": {
+          "name": "file_page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
-        "documents_knowledge_base_id_knowledge_bases_id_fk": {
-          "name": "documents_knowledge_base_id_knowledge_bases_id_fk",
-          "tableFrom": "documents",
-          "tableTo": "knowledge_bases",
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "embeddings": {
+          "name": "embeddings",
+          "type": "vector(1024)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "file_page_chunk_embeddings_index": {
+          "name": "file_page_chunk_embeddings_index",
+          "columns": [
+            {
+              "expression": "embeddings",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "vector_cosine_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "hnsw",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "file_page_chunks_file_page_id_file_pages_id_fk": {
+          "name": "file_page_chunks_file_page_id_file_pages_id_fk",
+          "tableFrom": "file_page_chunks",
+          "tableTo": "file_pages",
           "columnsFrom": [
-            "knowledge_base_id"
+            "file_page_id"
           ],
           "columnsTo": [
             "id"
@@ -699,8 +698,154 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.knowledge_bases": {
-      "name": "knowledge_bases",
+    "public.file_page_images": {
+      "name": "file_page_images",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "file_page_id": {
+          "name": "file_page_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chunk_id": {
+          "name": "chunk_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "image_path": {
+          "name": "image_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "embeddings": {
+          "name": "embeddings",
+          "type": "vector(1024)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "file_page_image_embeddings_index": {
+          "name": "file_page_image_embeddings_index",
+          "columns": [
+            {
+              "expression": "embeddings",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "vector_cosine_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "hnsw",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "file_page_images_file_page_id_file_pages_id_fk": {
+          "name": "file_page_images_file_page_id_file_pages_id_fk",
+          "tableFrom": "file_page_images",
+          "tableTo": "file_pages",
+          "columnsFrom": [
+            "file_page_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "file_page_images_chunk_id_file_page_chunks_id_fk": {
+          "name": "file_page_images_chunk_id_file_page_chunks_id_fk",
+          "tableFrom": "file_page_images",
+          "tableTo": "file_page_chunks",
+          "columnsFrom": [
+            "chunk_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.file_pages": {
+      "name": "file_pages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "file_id": {
+          "name": "file_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "page_number": {
+          "name": "page_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sheet_name": {
+          "name": "sheet_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "file_pages_file_id_files_id_fk": {
+          "name": "file_pages_file_id_files_id_fk",
+          "tableFrom": "file_pages",
+          "tableTo": "files",
+          "columnsFrom": [
+            "file_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.files": {
+      "name": "files",
       "schema": "",
       "columns": {
         "id": {
@@ -716,29 +861,59 @@
           "primaryKey": false,
           "notNull": true
         },
-        "description": {
-          "name": "description",
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size": {
+          "name": "size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_hash": {
+          "name": "file_hash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "syyclops_path": {
+          "name": "syyclops_path",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "uuid",
+        "sharepoint_path": {
+          "name": "sharepoint_path",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
+        "google_drive_path": {
+          "name": "google_drive_path",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
+        "file_origin_type": {
+          "name": "file_origin_type",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -756,47 +931,7 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "knowledge_bases_organization_id_organizations_id_fk": {
-          "name": "knowledge_bases_organization_id_organizations_id_fk",
-          "tableFrom": "knowledge_bases",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "knowledge_bases_user_id_users_id_fk": {
-          "name": "knowledge_bases_user_id_users_id_fk",
-          "tableFrom": "knowledge_bases",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "knowledge_bases_created_by_users_id_fk": {
-          "name": "knowledge_bases_created_by_users_id_fk",
-          "tableFrom": "knowledge_bases",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -859,12 +994,6 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "organization_id": {
           "name": "organization_id",
           "type": "uuid",
@@ -900,19 +1029,6 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "member_roles_project_id_projects_id_fk": {
-          "name": "member_roles_project_id_projects_id_fk",
-          "tableFrom": "member_roles",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "member_roles_organization_id_organizations_id_fk": {
           "name": "member_roles_organization_id_organizations_id_fk",
           "tableFrom": "member_roles",
@@ -1090,6 +1206,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "reasoning_duration_seconds": {
+          "name": "reasoning_duration_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "model": {
           "name": "model",
           "type": "text",
@@ -1105,6 +1227,19 @@
         "embedding": {
           "name": "embedding",
           "type": "vector(1536)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'streaming'"
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -1154,6 +1289,65 @@
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.messages_files": {
+      "name": "messages_files",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "message_id": {
+          "name": "message_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_id": {
+          "name": "file_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "messages_files_message_id_messages_id_fk": {
+          "name": "messages_files_message_id_messages_id_fk",
+          "tableFrom": "messages_files",
+          "tableTo": "messages",
+          "columnsFrom": [
+            "message_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "messages_files_file_id_files_id_fk": {
+          "name": "messages_files_file_id_files_id_fk",
+          "tableFrom": "messages_files",
+          "tableTo": "files",
+          "columnsFrom": [
+            "file_id"
           ],
           "columnsTo": [
             "id"
@@ -1543,141 +1737,6 @@
           "tableTo": "actions",
           "columnsFrom": [
             "action_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.projects": {
-      "name": "projects",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "slug": {
-          "name": "slug",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "project_number": {
-          "name": "project_number",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "visibility": {
-          "name": "visibility",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'private'"
-        },
-        "estimated_start_date": {
-          "name": "estimated_start_date",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "estimated_end_date": {
-          "name": "estimated_end_date",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "site_id": {
-          "name": "site_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "projects_site_id_sites_id_fk": {
-          "name": "projects_site_id_sites_id_fk",
-          "tableFrom": "projects",
-          "tableTo": "sites",
-          "columnsFrom": [
-            "site_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "projects_organization_id_organizations_id_fk": {
-          "name": "projects_organization_id_organizations_id_fk",
-          "tableFrom": "projects",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "projects_user_id_users_id_fk": {
-          "name": "projects_user_id_users_id_fk",
-          "tableFrom": "projects",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
           ],
           "columnsTo": [
             "id"
@@ -2093,18 +2152,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "knowledge_base_id": {
-          "name": "knowledge_base_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "workflow_id": {
           "name": "workflow_id",
           "type": "text",
@@ -2133,32 +2180,6 @@
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "threads_project_id_projects_id_fk": {
-          "name": "threads_project_id_projects_id_fk",
-          "tableFrom": "threads",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "threads_knowledge_base_id_knowledge_bases_id_fk": {
-          "name": "threads_knowledge_base_id_knowledge_bases_id_fk",
-          "tableFrom": "threads",
-          "tableTo": "knowledge_bases",
-          "columnsFrom": [
-            "knowledge_base_id"
           ],
           "columnsTo": [
             "id"
@@ -2243,6 +2264,72 @@
           "tableTo": "messages",
           "columnsFrom": [
             "message_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_files": {
+      "name": "user_files",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_id": {
+          "name": "file_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_files_user_id_users_id_fk": {
+          "name": "user_files_user_id_users_id_fk",
+          "tableFrom": "user_files",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_files_file_id_files_id_fk": {
+          "name": "user_files_file_id_files_id_fk",
+          "tableFrom": "user_files",
+          "tableTo": "files",
+          "columnsFrom": [
+            "file_id"
           ],
           "columnsTo": [
             "id"

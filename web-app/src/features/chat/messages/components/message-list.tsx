@@ -167,7 +167,7 @@ const ChatMessagesList = React.memo(
         <ChatContainer
           className={cn(
             "absolute inset-0 overflow-y-auto p-4 flex flex-col",
-            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent pt-20"
+            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent pt-20 overflow-x-hidden"
           )}
           autoScroll
           ref={chatContainerRef}
@@ -211,6 +211,9 @@ const ChatMessagesList = React.memo(
                     <AssistantMessage
                       message={message}
                       showEye={showEye}
+                      animateEye={
+                        status === "streaming" && message.id === lastMessage?.id
+                      }
                       showActions={showActions}
                       messages={messages}
                       onRetry={onRetry}
