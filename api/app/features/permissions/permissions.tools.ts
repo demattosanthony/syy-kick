@@ -15,7 +15,6 @@ import {
   permissions,
   resources,
   roles,
-  sites,
 } from "../../config/schema";
 import { permissionsOps } from "./permissions.ops";
 import Constants from "./permissions.constants";
@@ -408,58 +407,6 @@ export class PermissionManager {
   }
 
   /**
-   * Checks if a site is owned by a user (would mean that it belongs to his personal workspace)
-   * @param {string} userId - The user ID
-   * @param {string} siteId - The site ID
-   * @returns {Promise<boolean>} - True if the user owns the site, false otherwise
-   * @memberof PermissionManager
-   * @example
-   * const isUserSite = await PermissionManager.isUserSite("user-id", "site-id");
-   * console.log(isUserSite); // true
-   **/
-  static async isUserSite(userId: string, siteId: string): Promise<boolean> {
-    const site = await db.query.sites.findFirst({
-      where: and(eq(sites.id, siteId), eq(sites.userId, userId)),
-    });
-
-    return !!site;
-  }
-
-  static async getUserSitesIds(
-    userId: string,
-    orgId: string
-  ): Promise<string[]> {
-    const userRole = await db.query.memberRoles.findFirst({
-      where: and(
-        eq(memberRoles.organizationId, orgId),
-        eq(memberRoles.userId, userId)
-      ),
-      with: {
-        role: true,
-      },
-    });
-
-    if (!userRole) {
-      return [];
-    }
-
-    if (
-      [
-        Permissions.Roles.ORGANIZATION_ADMIN,
-        Permissions.Roles.ORGANIZATION_MANAGER,
-      ].includes(userRole.role.name as Permissions.Roles)
-    ) {
-      const sitesList = await db.query.sites.findMany({
-        where: eq(sites.organizationId, orgId),
-      });
-
-      return sitesList.map((site) => site.id);
-    }
-
-    return [];
-  }
-
-  /**
    * Get personnal workspace permissions (full access)
    * @returns {Promise<UserRole>} - The user's personnal workspace permissions
    * @memberof PermissionManager
@@ -549,7 +496,6 @@ export class PermissionManager {
     identifiers: {
       organizationId?: string;
       documentId?: string;
-      siteId?: string;
     }
   ) {
     const actionId = await PermissionManager.getActionId(action);
@@ -565,7 +511,6 @@ export class PermissionManager {
       documentId: identifiers.documentId,
       actionId,
       resourceId,
-      siteId: identifiers.siteId,
       status,
     });
   }

@@ -1,8 +1,3 @@
-export type WorkspaceSite = {
-  id: string;
-  address: string;
-};
-
 export type Workspace = {
   id: string;
   name: string;
@@ -18,5 +13,4 @@ export type Workspace = {
     | "past_due"
     | "trialing"
     | "unpaid";
-  sites: WorkspaceSite[];
 };

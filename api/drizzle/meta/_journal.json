@@ -449,6 +449,13 @@
       "when": 1749587201157,
       "tag": "0063_mushy_silver_centurion",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1749665808839,
+      "tag": "0064_giant_solo",
+      "breakpoints": true
     }
   ]
 }

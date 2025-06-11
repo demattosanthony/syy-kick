@@ -5,14 +5,9 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -26,70 +21,8 @@ import { SidebarButton } from "./sidebar-button";
 import { DropdownMenuGroup } from "../ui/dropdown-menu";
 import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "@/workspace-context";
-import { Button } from "../ui/button";
-import {
-  BookOpen,
-  MapPinIcon,
-  Plus,
-  Workflow,
-  LinkIcon,
-  Brain,
-  House,
-  LucideIcon,
-  ChevronRight,
-  FileIcon,
-  FolderIcon,
-} from "lucide-react";
-import { Link, useLocation } from "react-router";
+import { Workflow, LinkIcon, FolderIcon } from "lucide-react";
 import { NewThreadButton } from "./new-thread-button";
-import { usePermissions } from "@/features/permissions/context";
-import { MobileWorkspaceSwitcher } from "./mobile-workspace-switcher";
-import { CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
-import { Collapsible } from "../ui/collapsible";
-
-const products: {
-  title: string;
-  url: string;
-  icon?: LucideIcon;
-  isActive?: boolean;
-  items?: {
-    title: string;
-    url: string;
-  }[];
-}[] = [
-  {
-    title: "AI Engineer",
-    url: "/ai-engineer",
-    icon: Brain,
-    isActive: true,
-    items: [
-      {
-        title: "New Chat",
-        url: "/",
-      },
-      {
-        title: "Chat History",
-        url: "/threads",
-      },
-    ],
-  },
-  {
-    title: "Workflows",
-    url: "/workflows",
-    icon: Workflow,
-    isActive: true,
-    items: [
-      {
-        title: "View All",
-        url: "/workflows",
-      },
-      {
-        title: "Workflow History",
-        url: "/workflows",
-      },
-    ],
-  },
-];
 
 export function AppSidebar({
   user,
@@ -99,7 +32,6 @@ export function AppSidebar({
   const isMobile = useIsMobile();
   const { activeWorkspace } = useWorkspace();
   const sidebarRef = React.useRef<HTMLDivElement>(null);
-  const location = useLocation();
 
   return (
     <Sidebar collapsible={"icon"} variant="inset" ref={sidebarRef} {...props}>
@@ -130,20 +62,6 @@ export function AppSidebar({
                   label="Workflows"
                 />
               </SidebarMenuItem>
-              {/* 
-              <SidebarMenuItem>
-                {!(
-                  activeWorkspace?.type === "personal" &&
-                  user.subscriptionStatus !== "active"
-                ) && (
-                  <SidebarButton
-                    href="/sites"
-                    icon={MapPinIcon}
-                    hoverIcon={MapPinIcon}
-                    label="Sites"
-                  />
-                )}
-              </SidebarMenuItem> */}
 
               <SidebarMenuItem>
                 <SidebarButton

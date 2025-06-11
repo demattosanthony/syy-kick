@@ -11,7 +11,6 @@ export * from "./workflows/page";
 export * from "./workflows/[workflowId]/page";
 export * from "./workflows/[workflowId]/runs/page";
 export * from "./workflows/[workflowId]/runs/[runId]/page";
-export * from "./sites/page";
 export * from "./files/page";
 export * from "./settings/page";
 export * from "./forbidden/page";

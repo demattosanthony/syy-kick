@@ -7,7 +7,6 @@ import {
   TransferableRolesPermissions,
   UpdateOrgMemberRoleRequest,
 } from "@/features/permissions/types";
-import { Site } from "@/features/sites/types/sites";
 import {
   CustomWorkflowRun,
   CustomWorkflowRuns,
@@ -801,47 +800,6 @@ class WorkflowsApi extends ApiRequest {
   }
 }
 
-class SitesApi extends ApiRequest {
-  async listSites(options?: {
-    search?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{
-    data: Site[];
-    pagination: {
-      page: number;
-      limit: number;
-      totalCount: number;
-      totalPages: number;
-      hasMore: boolean;
-    };
-  }> {
-    const queryParams = new URLSearchParams();
-
-    if (options?.search) {
-      queryParams.append("search", options.search);
-    }
-
-    if (options?.page !== undefined) {
-      queryParams.append("page", options.page.toString());
-    }
-
-    if (options?.limit !== undefined) {
-      queryParams.append("limit", options.limit.toString());
-    }
-
-    return await this.request(`/sites?${queryParams.toString()}`);
-  }
-
-  async getSite(siteId: string): Promise<Site> {
-    try {
-      return await this.request<Site>(`/sites/${siteId}`);
-    } catch (error) {
-      throw error;
-    }
-  }
-}
-
 class IntegrationsApi extends ApiRequest {
   async getTokens(): Promise<AccessToken[]> {
     return await this.request<AccessToken[]>("/integrations", "GET");
@@ -978,7 +936,6 @@ class ApiClient {
   threads: ThreadApi;
   workflows: WorkflowsApi;
   permissions: PermissionsApi;
-  sites: SitesApi;
   integrations: IntegrationsApi;
   files: FilesApi;
 
@@ -991,7 +948,6 @@ class ApiClient {
     this.threads = new ThreadApi(baseUrl);
     this.workflows = new WorkflowsApi(baseUrl);
     this.permissions = new PermissionsApi(baseUrl);
-    this.sites = new SitesApi(baseUrl);
     this.integrations = new IntegrationsApi(baseUrl);
     this.files = new FilesApi(baseUrl);
   }

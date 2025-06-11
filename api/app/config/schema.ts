@@ -14,7 +14,6 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { customType } from "drizzle-orm/pg-core";
-import { sites } from "../features/sites/sites.schema";
 
 const MESSAGE_ROLES = ["system", "user", "assistant", "tool"] as const;
 const TOOL_CALL_STATUS = ["pending", "completed", "failed"] as const;
@@ -40,7 +39,6 @@ export const bytea = customType<{
   },
 });
 
-export { sites, sitesRelations } from "../features/sites/sites.schema";
 export {
   workflows,
   workflowOrganizations,
@@ -468,7 +466,6 @@ export const accessLogs = pgTable("access_logs", {
   resourceId: uuid("resource_id")
     .references(() => resources.id, { onDelete: "cascade" })
     .notNull(),
-  siteId: uuid("site_id").references(() => sites.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -572,7 +569,6 @@ export const organizationsRelations = relations(
     members: many(organizationMembers),
     threads: many(threads),
     samlConfig: one(samlConfigs),
-    sites: many(sites),
   })
 );
 
@@ -671,10 +667,6 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
   resource: one(resources, {
     fields: [accessLogs.resourceId],
     references: [resources.id],
-  }),
-  site: one(sites, {
-    fields: [accessLogs.siteId],
-    references: [sites.id],
   }),
 }));
 

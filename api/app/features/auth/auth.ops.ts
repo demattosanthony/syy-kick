@@ -7,7 +7,6 @@ import {
   organizationInvites,
   organizations,
   roles,
-  sites,
   users,
 } from "../../config/schema";
 import { DbUser } from "../../createAuthToken";
@@ -104,32 +103,14 @@ export const ops = {
       with: { organization: true, role: true },
     });
 
-    const sitesList = await db.query.sites.findMany({
-      where: or(
-        inArray(
-          sites.organizationId,
-          organizations.map((o) => o.organizationId)
-        ),
-        eq(sites.userId, userId)
-      ),
-    });
-
     user.organizations = organizations.map((o) =>
       ops.addLogoUrl({
         ...o.organization,
         role: o.role,
         type: "organization",
         slug: o.organization.slug,
-        sites: sitesList
-          .filter((s) => s.organizationId === o.organizationId)
-          .map((s) => ({
-            id: s.id,
-            address: `${s.address}, ${s.city}, ${s.state} ${s.postalCode}`,
-          })),
       })
     );
-
-    const personalSites = sitesList.filter((s) => !s.organizationId);
 
     user.organizations.push({
       id: user.id,
@@ -137,10 +118,6 @@ export const ops = {
       logo: user.profilePicture,
       type: "personal",
       slug: user.username,
-      sites: personalSites.map((s) => ({
-        id: s.id,
-        address: `${s.address}, ${s.city}, ${s.state} ${s.postalCode}`,
-      })),
     });
 
     return user;
