@@ -1,5 +1,6 @@
 import { Router } from "express";
-import * as threadsHandlers from "./threads.handlers";
+import messagesRouter from "./messages/messages.routes";
+import { threadsHandlers } from "./threads.handlers";
 
 const router = Router();
 
@@ -14,11 +15,6 @@ router.get("/:threadId/stream", threadsHandlers.streamMessages);
 router.post("/:threadId/clone", threadsHandlers.cloneThread);
 router.post("/:threadId/stop", threadsHandlers.stopInference);
 
-router.get("/:threadId/messages", threadsHandlers.getThreadMessages);
-router.post("/:threadId/messages", threadsHandlers.postMessage);
-router.post(
-  "/:threadId/messages/:messageId/retry",
-  threadsHandlers.retryMessage
-);
+router.use("/:threadId/messages", messagesRouter);
 
 export default router;

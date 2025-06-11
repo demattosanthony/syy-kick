@@ -41,20 +41,4 @@ type ThreadWithMessages = {
   organization?: any;
 };
 
-type DocumentSearchToolResult = {
-  documentId: string;
-  path: string;
-  documentName: string;
-  text: string | null;
-  similarity: number;
-  pageNumber?: number;
-  mimeType?: string | null;
-  fileKey?: string | null;
-};
-
-export {
-  MyMessage,
-  ThreadWithMessages,
-  DocumentSearchToolResult,
-  ExtendedAttachment,
-};
+export { MyMessage, ThreadWithMessages, ExtendedAttachment };
