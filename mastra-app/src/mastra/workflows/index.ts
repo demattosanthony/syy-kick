@@ -5,3 +5,4 @@ export { equipmentServingListWorkflow } from "./equipment-serving-list.ts";
 export { rfpResearcherWorkflow } from "./rfp-researcher.ts";
 export { kitchenSinkWorkflow } from "./kitchen-sink.ts";
 export { pointCheckoutSheetsWorkflow } from "./point-checkout-sheets.ts";
+export { windowDoorSchedulesTables } from "./window-door-schedules-tables.ts";
