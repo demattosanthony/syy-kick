@@ -202,7 +202,6 @@ Access and display content from files in this conversation thread or SharePoint.
           return {
             success: true,
             message: `Successfully loaded content from '${file.name}' (${result.pageInfo})${images.length ? ` with ${images.length} images` : ""}.`,
-            // fileId: file.id,
             fileName: file.name,
             mimeType: file.mimeType,
             content: result.content,

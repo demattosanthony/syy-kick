@@ -5,11 +5,11 @@ import s3 from "../../config/s3";
 import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
-import { convertPdfToImages } from "../../utils";
 import {
   MARKITDOWN_MIME_TYPES,
   PROGRAMMING_FILE_MIME_TYPES,
 } from "../../config/constants";
+import { convertPdfToImages } from "../../config/convertapi";
 
 const CHUNK_SIZE = 2000;
 const CHUNK_OVERLAP = 0;
@@ -324,9 +324,6 @@ export async function processPdf(
                 await file.write(imageBuffer, {
                   type: "image/jpeg",
                 });
-
-                // const url = s3.presign(fileKey, { expiresIn: 60 * 60 * 24 });
-                // console.log("url", url);
 
                 filePageChunk.images = [
                   ...(filePageChunk.images || []),

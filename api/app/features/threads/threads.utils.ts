@@ -1,5 +1,5 @@
 // External dependencies
-import { CoreMessage } from "ai";
+import { CoreMessage, generateText } from "ai";
 import { eq, inArray } from "drizzle-orm";
 
 // Internal configuration
@@ -20,9 +20,6 @@ import {
   filePages,
   filePageImages,
 } from "../../config/schema";
-
-// Internal utilities
-import { generateThreadTitle } from "../../utils";
 
 // Feature imports
 import { MODELS } from "../models";
@@ -908,8 +905,19 @@ async function createAndSaveThreadTitle(
   }
 }
 
+async function generateThreadTitle(message: string) {
+  const { text } = await generateText({
+    model: MODELS["gpt-4.1-mini"].model,
+    temperature: 0.65,
+    prompt: `Generate a title for the following user message. The title should describe what their message is about so they can later find it easily. The title should be 3 to 4 words give or take. Only respond with the title and nothing else.\n\nUser message:\n\n${message}`,
+  });
+
+  return text;
+}
+
 export {
   getModelConfig,
+  generateThreadTitle,
   generateAttachmentData,
   dbMessagesToInferenceMessages,
   createAndSaveThreadTitle,

@@ -3,9 +3,9 @@ import { organizationInvites } from "./config/schema";
 import db from "./config/db";
 import { eq } from "drizzle-orm";
 import s3 from "./config/s3";
-import { handle } from "./utils";
 import { auth, checkSub } from "./middleware";
 import threadsOps from "./features/threads/threads.ops";
+import { messagesOps } from "./features/threads/messages/messages.ops";
 
 // Routes
 import authRoutes from "./features/auth/auth.routes";
@@ -25,65 +25,69 @@ export default Router()
   .use("/auth", authRoutes)
   .use("/models", modelRoutes)
   // Add a public endpoint for accessing shared threads
-  .get(
-    "/public/threads/:threadId",
-    handle(async (req) => {
-      return threadsOps.getThread(req.params.threadId);
-    })
-  )
-  .get(
-    "/public/threads/:threadId/messages",
-    handle(async (req) => {
-      return threadsOps.getThreadMessages(req.params.threadId);
-    })
-  )
+  .get("/public/threads/:threadId", async (req, res) => {
+    try {
+      const thread = await threadsOps.getThread(req.params.threadId);
+      res.json(thread);
+    } catch (error) {
+      console.error("Error getting thread:", error);
+      res.status(500).json({ error: "Failed to get thread" });
+    }
+  })
+  .get("/public/threads/:threadId/messages", async (req, res) => {
+    try {
+      const messages = await messagesOps.getMessages(req.params.threadId);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error getting thread messages:", error);
+      res.status(500).json({ error: "Failed to get thread messages" });
+    }
+  })
   .use("/threads", auth, checkSub, threadRoutes)
   .post("/payments/webhook", webhook)
   .use("/payments", auth, paymentRoutes)
-  .get(
-    "/organizations/invite/:inviteToken",
-    handle(async (req) => {
-      const { inviteToken } = req.params;
-      const invite = await db.query.organizationInvites.findFirst({
-        where: eq(organizationInvites.token, inviteToken),
-        with: {
-          organization: {
-            columns: {
-              id: true,
-              name: true,
-              slug: true,
-              seats: true,
-              logo: true,
-            },
-            with: {
-              members: true, // Include members to count seats used
-            },
+  .get("/organizations/invite/:inviteToken", async (req, res) => {
+    const { inviteToken } = req.params;
+    const invite = await db.query.organizationInvites.findFirst({
+      where: eq(organizationInvites.token, inviteToken),
+      with: {
+        organization: {
+          columns: {
+            id: true,
+            name: true,
+            slug: true,
+            seats: true,
+            logo: true,
+          },
+          with: {
+            members: true, // Include members to count seats used
           },
         },
-      });
+      },
+    });
 
-      if (!invite) {
-        return { error: "Invalid invite token" };
-      }
+    if (!invite) {
+      res.status(404).json({ error: "Invalid invite token" });
+      return;
+    }
 
-      const seatsUsed = invite.organization?.members.length;
+    const seatsUsed = invite.organization?.members.length;
 
-      const logoUrl = invite.organization?.logo
-        ? s3.presign(invite.organization.logo, {
-            expiresIn: 3600,
-            method: "GET",
-          })
-        : null;
+    const logoUrl = invite.organization?.logo
+      ? s3.presign(invite.organization.logo, {
+          expiresIn: 3600,
+          method: "GET",
+        })
+      : null;
 
-      return {
-        organization: {
-          ...invite.organization,
-          seatsUsed,
-          logoUrl,
-        },
-      };
-    })
-  )
+    res.json({
+      organization: {
+        ...invite.organization,
+        seatsUsed,
+        logoUrl,
+      },
+    });
+  })
   .use("/organizations", auth, organizationRoutes)
   .use("/sites", auth, checkSub, sitesRoutes)
   .use("/workflows", auth, workflowRoutes)
