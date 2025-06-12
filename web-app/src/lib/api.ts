@@ -272,12 +272,6 @@ class OrganizationApi extends ApiRequest {
     ownerEmail?: string;
     ownerName?: string;
     seats?: number;
-    saml?: {
-      entryPoint: string;
-      issuer: string;
-      cert: string;
-      callbackUrl: string;
-    };
   }): Promise<Organization> {
     return await this.request<Organization>(`/organizations`, "POST", data);
   }
@@ -288,12 +282,6 @@ class OrganizationApi extends ApiRequest {
       name: string;
       domain: string;
       logo: string;
-      saml: Partial<{
-        entryPoint: string;
-        issuer: string;
-        cert: string;
-        callbackUrl: string;
-      }>;
     }>
   ): Promise<Organization> {
     return await this.request<Organization>(
@@ -861,7 +849,9 @@ class FilesApi extends ApiRequest {
     fileName: string,
     mimeType: string,
     size: number,
-    featureType: "threads" | "workflows"
+    options:
+      | { featureType: "threads" | "workflows" }
+      | { organizationFeature: "avatars" }
   ): Promise<{
     fileKey: string;
     uploadUrl: string;
@@ -875,7 +865,22 @@ class FilesApi extends ApiRequest {
       fileName,
       mimeType,
       size,
-      featureType,
+      ...options,
+    });
+  }
+
+  async getPresignedUrlForOrganization(
+    fileName: string,
+    mimeType: string,
+    size: number,
+    feature: "avatars" = "avatars"
+  ): Promise<{
+    fileKey: string;
+    uploadUrl: string;
+    viewUrl: string;
+  }> {
+    return this.getPresignedUrl(fileName, mimeType, size, {
+      organizationFeature: feature,
     });
   }
 
@@ -938,6 +943,7 @@ class ApiClient {
   permissions: PermissionsApi;
   integrations: IntegrationsApi;
   files: FilesApi;
+  uploads: FilesApi; // Alias for files API for more intuitive upload operations
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -950,6 +956,7 @@ class ApiClient {
     this.permissions = new PermissionsApi(baseUrl);
     this.integrations = new IntegrationsApi(baseUrl);
     this.files = new FilesApi(baseUrl);
+    this.uploads = this.files; // Point to the same instance
   }
 }
 

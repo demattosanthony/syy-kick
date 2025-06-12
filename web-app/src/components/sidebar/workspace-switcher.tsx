@@ -128,7 +128,6 @@ export function WorkSpaceSwitcher({
                 <CreateOrgForm
                   onComplete={handleCreateOrgComplete}
                   showBackButton={false}
-                  includeSamlSetup={false}
                 />
               </DialogContent>
             </Dialog>

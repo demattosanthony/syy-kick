@@ -30,6 +30,29 @@ export const GetFilesQuerySchema = z.object({
     .optional(),
 });
 
+// Schema for presigned URL requests
+export const PresignedUrlRequestSchema = z
+  .object({
+    fileName: z.string().min(1),
+    mimeType: z.string().min(1),
+    size: z.number(),
+    featureType: z.enum(["threads", "workflows"]).optional(),
+    organizationFeature: z.enum(["avatars"]).optional(),
+  })
+  .refine(
+    (data) => {
+      // Either featureType or organizationFeature must be provided, but not both
+      return (
+        (data.featureType && !data.organizationFeature) ||
+        (!data.featureType && data.organizationFeature)
+      );
+    },
+    {
+      message:
+        "Either featureType or organizationFeature must be provided, but not both",
+    }
+  );
+
 // Response type for paginated files
 export const PaginatedFilesSchema = z.object({
   files: z.array(FileSchema),
@@ -46,6 +69,7 @@ export const PaginatedFilesSchema = z.object({
 export type File = z.infer<typeof FileSchema>;
 export type GetFilesQuery = z.infer<typeof GetFilesQuerySchema>;
 export type PaginatedFiles = z.infer<typeof PaginatedFilesSchema>;
+export type PresignedUrlRequest = z.infer<typeof PresignedUrlRequestSchema>;
 
 // Generic file operation types
 export type FileContext =

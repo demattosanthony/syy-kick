@@ -1,9 +1,9 @@
 import { useAtom } from "jotai";
 import { toast } from "sonner";
-import { validateFile } from "@/lib/utils/file-validation";
 import { uploadsAtom, modelAtom } from "@/atoms/chat";
 import { FileUpload, FileUploadMimeType } from "@/types/chat";
 import api from "@/lib/api";
+import { validateFile } from "@/features/chat/threads/utils";
 
 export function useFileUpload(acceptedTypes: string[]) {
   const [uploads, setUploads] = useAtom(uploadsAtom);
@@ -39,7 +39,7 @@ export function useFileUpload(acceptedTypes: string[]) {
         file.name,
         file.type,
         file.size,
-        "threads"
+        { featureType: "threads" }
       );
 
       // Update status to uploading

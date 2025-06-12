@@ -10,8 +10,8 @@ import {
   SharePointFileBrowser,
   SharePointItem,
 } from "@/features/integrations/microsoft/components/sharepoint-file-browser";
-import { validateFile } from "@/lib/utils/file-validation";
 import { useFileUpload } from "@/hooks/use-file-upload";
+import { validateFile } from "@/features/chat/threads/utils";
 
 interface ContextSelectorProps {
   showContextSelector: boolean;

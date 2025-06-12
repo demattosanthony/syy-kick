@@ -79,11 +79,6 @@ export const handlers = {
     res.redirect(process.env.FRONTEND_URL!);
   },
 
-  samlCallback: (req: Request, res: any) => {
-    sendAuthCookies(res, req.user as DbUser);
-    res.redirect(process.env.FRONTEND_URL!);
-  },
-
   logout: (req: Request, res: any) => {
     const options = CONFIG.COOKIE_OPTIONS;
     res

@@ -181,7 +181,8 @@ export default function WorkflowPageContent({
           const { fileKey, uploadUrl } = await api.files.getPresignedUrl(
             value.name,
             value.type,
-            value.size
+            value.size,
+            { featureType: "workflows" }
           );
 
           await fetch(uploadUrl, {

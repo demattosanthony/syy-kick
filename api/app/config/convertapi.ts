@@ -118,8 +118,8 @@ export async function convertPdfToImages(
     const parameters: Record<string, any> = {
       File: pdfData, // Pass Buffer directly instead of base64
       ImageResolution: dpi,
-      ImageMaxWidth: maxDimension,
-      ImageMaxHeight: maxDimension,
+      ImageWidth: maxDimension,
+      ImageHeight: maxDimension,
     };
 
     // If only first page is requested, set page range

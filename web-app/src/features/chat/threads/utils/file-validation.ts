@@ -21,14 +21,14 @@ export const validateFile = (
   }
 
   // Check file size for all files
-  //   if (maxFileSize && file.size > maxFileSize) {
-  //     toast.error(
-  //       `File is too large: ${(file.size / 1024 / 1024).toFixed(
-  //         2
-  //       )} MB. Maximum size is ${(maxFileSize / 1024 / 1024).toFixed(2)} MB.`
-  //     );
-  //     return false;
-  //   }
+  if (maxFileSize && file.size > maxFileSize) {
+    toast.error(
+      `File is too large: ${(file.size / 1024 / 1024).toFixed(
+        2
+      )} MB. Maximum size is ${(maxFileSize / 1024 / 1024).toFixed(2)} MB.`
+    );
+    return false;
+  }
 
   // Check image dimensions if it's an image and maxImageSize is specified
   if (file.type.startsWith("image/") && maxImageSize) {

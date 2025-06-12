@@ -1,5 +1,4 @@
 import { Role } from "@/features/permissions/types";
-import { WorkspaceSite } from "./workspace";
 
 export interface User {
   id: string;
@@ -41,11 +40,5 @@ export interface Organization {
   createdAt: string;
   updatedAt: string;
   logoUrl?: string;
-  samlConfig?: {
-    entryPoint: string;
-    issuer: string;
-    cert: string;
-  };
   role: Role;
-  sites: WorkspaceSite[];
 }

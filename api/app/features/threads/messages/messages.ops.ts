@@ -348,8 +348,6 @@ export const messagesOps = {
         instructions && instructions.length > 0 ? instructions : undefined
       );
 
-      console.log("inferenceMsgs", inferenceMsgs);
-
       if (!thread.title) {
         createAndSaveThreadTitle(threadId, inferenceMsgs);
       }

@@ -10,12 +10,6 @@ export function useCreateOrganizationMutation() {
       logo?: string;
       ownerEmail?: string;
       ownerName?: string;
-      saml?: {
-        entryPoint: string;
-        issuer: string;
-        cert: string;
-        callbackUrl: string;
-      };
     }) => api.organizations.createOrganization(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["me"] });

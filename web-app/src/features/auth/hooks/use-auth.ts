@@ -33,12 +33,6 @@ const useAuth = () => {
     }/auth/microsoft`;
   };
 
-  const handleSSOLogin = (slug: string) => {
-    window.location.href = `${
-      import.meta.env.VITE_API_URL || "http://localhost:4000"
-    }/auth/saml/${slug}`;
-  };
-
   const handleJoinOrg = async (token: string) => {
     try {
       const result = await api.auth.joinWithInvite(token);
@@ -117,7 +111,6 @@ const useAuth = () => {
   return {
     logOut,
     handleGoogleLogin,
-    handleSSOLogin,
     handleJoinOrg,
     handleMicrosoftLogin,
   };

@@ -1,16 +1,11 @@
-import { Router, Request, Response } from "express";
-
-/** Drizzle */
-import { eq } from "drizzle-orm";
+import { Router } from "express";
 
 /** Auth */
 import { handlers } from "./auth.handlers";
 import { middlewares } from "./auth.middlewares";
 
 /** Config */
-import db from "../../config/db";
-import { organizations } from "../../config/schema";
-import myPassport, { authenticateSaml } from "../../config/passport";
+import myPassport from "../../config/passport";
 
 const authConfig = {
   session: false,
@@ -44,28 +39,6 @@ export default Router({ mergeParams: true })
   )
   .get("/microsoft-files/init", handlers.microsoftFilesInit)
   .get("/microsoft-files/callback", handlers.microsoftFilesCallback)
-  .get("/saml/:slug", authenticateSaml)
-  .post("/saml/:slug/callback", authenticateSaml, handlers.samlCallback)
-  .get("/saml/check/:slug", async (req: Request, res: Response) => {
-    const { slug } = req.params;
-
-    const org = await db.query.organizations.findFirst({
-      where: eq(organizations.slug, slug),
-      with: {
-        samlConfig: true,
-      },
-    });
-
-    if (!org || !org.samlConfig) {
-      res.status(404).json({
-        error: "Organization not found.",
-      });
-      return;
-    }
-
-    res.status(200).json({ valid: true });
-    return;
-  })
   .post("/logout", handlers.logout)
   .post("/invite/:token", middlewares.optionalAuth, handlers.joinWithInvite)
   .get("/me", handlers.me)

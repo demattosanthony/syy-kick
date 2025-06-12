@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
-import { GetFilesQuerySchema } from "./files.schemas";
+import {
+  GetFilesQuerySchema,
+  PresignedUrlRequestSchema,
+} from "./files.schemas";
 import {
   getFilesForUser,
   generatePresignedUrl,
@@ -53,14 +56,34 @@ export async function getPresignedUrlHandler(
       return;
     }
 
-    const { fileName, mimeType, size, featureType } = req.body;
-
-    // Validate required fields
-    if (!fileName || !mimeType || !size) {
+    // Validate request body
+    const bodyValidation = PresignedUrlRequestSchema.safeParse(req.body);
+    if (!bodyValidation.success) {
       res.status(400).json({
-        error: "Missing required fields: fileName, mimeType, size",
+        error: "Invalid request body",
+        details: bodyValidation.error.errors,
       });
       return;
+    }
+
+    const { fileName, mimeType, size, featureType, organizationFeature } =
+      bodyValidation.data;
+
+    // Determine path configuration based on request
+    let pathConfig;
+    if (organizationFeature) {
+      // Organization feature (e.g., avatars)
+      pathConfig = {
+        type: "organization" as const,
+        feature: organizationFeature,
+      };
+    } else {
+      // User feature (threads, workflows) - we know featureType exists due to schema validation
+      pathConfig = {
+        type: "user" as const,
+        userId,
+        featureType: featureType!,
+      };
     }
 
     // Generate presigned URL
@@ -68,8 +91,7 @@ export async function getPresignedUrlHandler(
       fileName,
       mimeType,
       size,
-      featureType,
-      userId
+      pathConfig
     );
 
     res.json(result);

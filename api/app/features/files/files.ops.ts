@@ -260,16 +260,28 @@ export async function generatePresignedUrl(
   fileName: string,
   mimeType: string,
   size: number,
-  featureType: "threads" | "workflows",
-  userId: string
+  pathConfig:
+    | { type: "user"; userId: string; featureType: "threads" | "workflows" }
+    | { type: "organization"; feature: "avatars" }
 ): Promise<{
   fileKey: string;
   uploadUrl: string;
   viewUrl: string;
 }> {
-  // Generate unique file key for S3
+  // Generate unique file key for S3 based on path configuration
   const fileSlug = generateFileSlug(fileName);
-  const fileKey = `users/${userId}/${featureType}/${fileSlug}`;
+  let fileKey: string;
+
+  switch (pathConfig.type) {
+    case "user":
+      fileKey = `users/${pathConfig.userId}/${pathConfig.featureType}/${fileSlug}`;
+      break;
+    case "organization":
+      fileKey = `organizations/${pathConfig.feature}/${fileSlug}`;
+      break;
+    default:
+      throw new Error(`Unsupported path configuration type`);
+  }
 
   console.log(
     `🔗 [GeneratePresignedUrl] Generating presigned URL for: ${fileName} -> ${fileKey}`

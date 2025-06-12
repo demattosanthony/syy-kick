@@ -101,19 +101,6 @@ export const organizationInvites = pgTable("organization_invites", {
 });
 export type Organization = typeof organizations.$inferSelect;
 
-export const samlConfigs = pgTable("saml_configs", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id")
-    .notNull()
-    .references(() => organizations.id, { onDelete: "cascade" }),
-  entryPoint: bytea("entry_point").notNull(),
-  issuer: bytea("issuer").notNull(),
-  cert: bytea("cert").notNull(),
-  callbackUrl: text("callback_url").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
 // Users table with additional fields
 export const users = pgTable("users", {
   id: uuid("id")
@@ -143,66 +130,6 @@ export const users = pgTable("users", {
   systemRole: text("system_role", { enum: ["super_admin"] }), // identify system super admins
 });
 export type User = typeof users.$inferSelect;
-
-export const documentEmbeddings = pgTable("document_embeddings", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  documentId: uuid("document_id")
-    .notNull()
-    .references(() => documents.id, { onDelete: "cascade" }),
-  text: text("text"),
-  metadata: jsonb("metadata"),
-  embedding: vector("embedding", { dimensions: 768 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const documents = pgTable("documents", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: varchar("name", { length: 255 }).notNull(),
-  fileHash: varchar("file_hash", { length: 255 }),
-  type: text("type", { enum: DOCUMENT_TYPE }).notNull(),
-  mimeType: varchar("mime_type", { length: 255 }),
-  path: varchar("path", { length: 255 }).notNull(),
-  fileKey: varchar("file_key", { length: 255 }),
-  parentId: uuid("parent_id").references((): any => documents.id, {
-    onDelete: "cascade",
-  }),
-  size: integer("size"), // size in bytes
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const documentProcessingJobs = pgTable("document_processing_jobs", {
-  id: serial("id").primaryKey(),
-  documentId: uuid("document_id")
-    .notNull()
-    .references(() => documents.id, { onDelete: "cascade" }),
-  fileKey: text("file_key").notNull(),
-  fileName: text("file_name").notNull(),
-  mimeType: text("mime_type").notNull(),
-  status: text("status", {
-    enum: ["pending", "processing", "completed", "failed"],
-  })
-    .notNull()
-    .default("pending"),
-  attempts: integer("attempts").notNull().default(0),
-  maxAttempts: integer("max_attempts").notNull().default(3),
-  lastError: text("last_error"),
-  createdAt: timestamp("created_at").defaultNow(),
-  processAfter: timestamp("process_after").defaultNow(),
-});
-
-export const documentThumbnails = pgTable("document_thumbnails", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  documentId: uuid("document_id")
-    .notNull()
-    .references(() => documents.id, { onDelete: "cascade" }),
-  fileKey: text("file_key").notNull(),
-  pageNumber: integer("page_number"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
-export type DocumentThumbnail = typeof documentThumbnails.$inferSelect;
 
 export const files = pgTable("files", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -312,21 +239,6 @@ export type ThreadWithRelations = Thread & {
   organization?: Organization;
   user: User;
 };
-
-export const messageAttachments = pgTable("message_attachments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  messageId: uuid("message_id")
-    .notNull()
-    .references(() => messages.id, { onDelete: "cascade" }),
-  type: text("type", { enum: ["file", "image", "markdown"] }).notNull(),
-  fileKey: varchar("file_key", { length: 255 }).notNull(),
-  fileName: varchar("file_name", { length: 255 }),
-  mimeType: varchar("mime_type", { length: 255 }),
-  size: integer("size"),
-  markdown: text("markdown"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
 
 // Messages table with user association
 export const messages = pgTable(
@@ -454,9 +366,6 @@ export const accessLogs = pgTable("access_logs", {
   organizationId: uuid("organization_id").references(() => organizations.id, {
     onDelete: "cascade",
   }),
-  documentId: uuid("document_id").references(() => documents.id, {
-    onDelete: "cascade",
-  }),
   actionId: uuid("action_id")
     .references(() => actions.id, { onDelete: "cascade" })
     .notNull(),
@@ -510,18 +419,6 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
   messages: many(messages),
 }));
 
-export const documentsRelations = relations(documents, ({ one, many }) => ({
-  parent: one(documents, {
-    fields: [documents.parentId],
-    references: [documents.id],
-  }),
-  children: many(documents),
-  processingJob: one(documentProcessingJobs, {
-    fields: [documents.id],
-    references: [documentProcessingJobs.documentId],
-  }),
-}));
-
 export const messagesRelations = relations(messages, ({ one, many }) => ({
   thread: one(threads, {
     fields: [messages.threadId],
@@ -546,16 +443,6 @@ export const messagesFilesRelations = relations(messagesFiles, ({ one }) => ({
   }),
 }));
 
-export const messageAttachmentsRelations = relations(
-  messageAttachments,
-  ({ one }) => ({
-    message: one(messages, {
-      fields: [messageAttachments.messageId],
-      references: [messages.id],
-    }),
-  })
-);
-
 export const toolCallsRelations = relations(toolCalls, ({ one }) => ({
   message: one(messages, {
     fields: [toolCalls.messageId],
@@ -563,14 +450,10 @@ export const toolCallsRelations = relations(toolCalls, ({ one }) => ({
   }),
 }));
 
-export const organizationsRelations = relations(
-  organizations,
-  ({ many, one }) => ({
-    members: many(organizationMembers),
-    threads: many(threads),
-    samlConfig: one(samlConfigs),
-  })
-);
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  members: many(organizationMembers),
+  threads: many(threads),
+}));
 
 export const organizationMembersRelations = relations(
   organizationMembers,
@@ -603,13 +486,6 @@ export const organizationInvitesRelations = relations(
     }),
   })
 );
-
-export const samlConfigsRelations = relations(samlConfigs, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [samlConfigs.organizationId],
-    references: [organizations.id],
-  }),
-}));
 
 // Permissions relations
 export const rolesRelations = relations(roles, ({ many }) => ({
@@ -655,10 +531,6 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
   organization: one(organizations, {
     fields: [accessLogs.organizationId],
     references: [organizations.id],
-  }),
-  document: one(documents, {
-    fields: [accessLogs.documentId],
-    references: [documents.id],
   }),
   action: one(actions, {
     fields: [accessLogs.actionId],

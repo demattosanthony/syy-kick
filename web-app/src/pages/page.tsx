@@ -30,7 +30,6 @@ import { useMeQuery } from "@/features/user/api";
 import { useNavigate } from "react-router";
 import { SharePointFileBrowser } from "@/features/integrations/microsoft/components/sharepoint-file-browser";
 import type { GraphDriveItem } from "@/features/integrations/microsoft/api/microsoft-graph";
-import { validateFile } from "@/lib/utils/file-validation";
 import { MessageRole } from "@/types/chat";
 import ThreadsList from "@/features/chat/threads/components/threads-list";
 import { useAttachmentProcessing } from "@/features/chat/threads/hooks/use-attachment-processing";
@@ -38,6 +37,7 @@ import { useFileUpload } from "@/hooks/use-file-upload";
 
 // Images
 import logo from "@/assets/logo192.png";
+import { validateFile } from "@/features/chat/threads/utils";
 
 // Local type alias if SharePointItem is not exported from its original file
 // This mirrors the definition in sharepoint-file-browser.tsx
