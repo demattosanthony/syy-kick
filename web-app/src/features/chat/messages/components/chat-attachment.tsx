@@ -84,7 +84,7 @@ export default function ChatAttachment({
           >
             {pdfError ? (
               <div
-                className="flex items-center justify-center h-32 w-[200px] bg-muted rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                className="flex items-center justify-center min-h-32 h-auto w-[200px] bg-muted rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => window.open(attachment.url, "_blank")}
               >
                 <div className="text-center text-muted-foreground max-w-[195px]">
@@ -94,7 +94,7 @@ export default function ChatAttachment({
                 </div>
               </div>
             ) : (
-              <div className="w-[200px] h-32 rounded-lg overflow-hidden">
+              <div className="w-[200px] min-h-32 h-auto rounded-lg overflow-hidden">
                 <PdfThumbnail
                   url={attachment.url || ""}
                   width={200}

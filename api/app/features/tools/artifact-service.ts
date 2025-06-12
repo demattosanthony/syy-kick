@@ -71,45 +71,43 @@ export class ArtifactService {
 
   private createLoadFileContentTool(): Tool {
     return tool({
-      description: `**LOAD FILE CONTENT TOOL**
-
-**Purpose:** 
-Access and display content from files in this conversation thread or SharePoint. This is your main tool for reading documents, images, and data.
-
-**When to use:**
-- Reading or analyzing file content
-- Accessing PDFs, documents, spreadsheets, or images
-- Examining specific files mentioned by the user
-- IMPORTANT: Use this tool for engineering drawings/CAD files (stored as images)
-
-**File Types & How to Access:**
-• PDFs & Drawings: Use page numbers (startPage/endPage)
-• Text & Spreadsheets: Use chunks (startChunk/endChunk)
-• Images: Load as single page/chunk
-
-**Required Parameters:**
-• fileName: File identifier (required unless using SharePoint)
-• sharePointFileId: SharePoint file ID (required unless using fileName)
-• startPage/endPage: For PDFs/drawings (1-indexed)
-• startChunk/endChunk: For text files (1-indexed)
+      description: `Get files contents. This tool allows you to open and paginate through files from user attachments or a sharepoint integration.
+You should use this tool differently depending on the type of file contents you are trying to read. Remember there are two types of files (regular document or engineering drawing).
 
 **Example Uses:**
-1. Load full file:
-   fileName: "document.pdf", sharePointFileId: null, startPage: null, endPage: null, startChunk: null, endChunk: null
+1. Load PDF pages 5-10 from a PDF:
+{
+  "fileName": "report.pdf",
+  "sharePointFileId": null,
+  "startPage": 5,
+  "endPage": 10,
+  "startChunk": null,
+  "endChunk": null
+}
 
-2. Load PDF pages 5-10:
-   fileName: "report.pdf", sharePointFileId: null, startPage: 5, endPage: 10, startChunk: null, endChunk: null
+2. Load text chunks 1-3 from a word document:
+{
+  "fileName": "contract.docx",
+  "sharePointFileId": null,
+  "startPage": null,
+  "endPage": null,
+  "startChunk": 1,
+  "endChunk": 3
+}
 
-3. Load text chunks 1-3:
-   fileName: "contract.docx", sharePointFileId: null, startChunk: 1, endChunk: 3, startPage: null, endPage: null
-
-4. Load SharePoint file:
-   fileName: null, sharePointFileId: "sp123456", startPage: 1, endPage: 3, startChunk: null, endChunk: null
+3. Load SharePoint-hosted drawing pages 1-3:
+{
+  "fileName": null,
+  "sharePointFileId": "sp123456",
+  "startPage": 1,
+  "endPage": 3,
+  "startChunk": null,
+  "endChunk": null
+}
 
 **Tips:**
 - Always include all parameters (use null if not needed)
-- Start with small ranges and expand if needed
-- For unknown file types, try loading first page/chunk first`,
+- Make proper use of the pagination parameters`,
       parameters: z.object({
         fileName: z
           .string()
@@ -222,33 +220,46 @@ Access and display content from files in this conversation thread or SharePoint.
 
   private createSearchFileContentTool(): Tool {
     return tool({
-      description: `**SEARCH FILE CONTENT TOOL**
-
-**Purpose:** 
-Search and find specific information within files in this conversation thread. Returns the most relevant sections matching your query.
-
-**When to use:**
-- Finding specific information, keywords, or concepts within a file
-- Locating relevant sections without reading entire documents
-- Searching for technical terms, specifications, or data points
-- Use BEFORE load_file_content when you need to find specific information
+      description: `Search file contents. This tool allows you to search for specific information inside a file and returns the most relevant matching sections. 
 
 **Search Capabilities:**
 • Text Documents: Searches through all text content and chunks
 • PDFs & Reports: Searches across all pages and sections
-• Engineering Drawings: Searches text annotations and descriptions
-• Spreadsheets: Searches cell contents and metadata
+• Spreadsheets: Searches for rows and specific cell information
 
-**Required Parameters:**
-• fileName: File identifier to search within
-• query: Search terms or phrases to find
-• limit: Number of results to return (1-10, default: 5)
 
 **Example Uses:**
-1. Find technical data: fileName: "specs.pdf", sharePointFileId: null, query: "operating temperature"
-2. Search for people: fileName: "contract.docx", sharePointFileId: null, query: "John Smith OR manager"
-3. Locate safety info: fileName: "manual.pdf", sharePointFileId: null, query: "safety precautions warning"
-4. Search SharePoint file: fileName: null, sharePointFileId: "sp123456", query: "operating temperature"
+1. Find technical data from PDF:
+{
+  "fileName": "specs.pdf",
+  "sharePointFileId": null,
+  "query": "operating temperature",
+  "limit": 5
+}
+
+2. Search a Word document for people mentioned:
+{
+  "fileName": "contract.docx",
+  "sharePointFileId": null,
+  "query": "John Smith OR manager",
+  "limit": 3
+}
+
+3. Locate safety-related info in a manual:
+{
+  "fileName": "manual.pdf",
+  "sharePointFileId": null,
+  "query": "safety precautions warning",
+  "limit": 5
+}
+
+4. Search a SharePoint-hosted file:
+{
+  "fileName": null,
+  "sharePointFileId": "sp123456",
+  "query": "operating temperature",
+  "limit": 5
+}
 
 **Tips:**
 - Use specific keywords for precise results
@@ -343,41 +354,42 @@ Search and find specific information within files in this conversation thread. R
 
   private createFileTool(): Tool {
     return tool({
-      description: `**CREATE FILE TOOL**
-
-**Purpose:** 
-Create files in the current conversation that will be shared and rendered to the user. Use this to save outputs, deliverables, code, documents, reports, or any content the user might want to download, view, or reference later.
+      description: `Create a file. This tool allows you to create and return files in the current conversation. It’s ideal for saving results, code, data, or documentation that the user might want to download, keep, or reuse.
 
 **When to use:**
-- Saving analysis results, reports, or summaries from file processing
-- Creating code files, scripts, or configuration files
-- Generating documentation, specifications, or formatted outputs
-- Storing processed data, CSV exports, or structured content
-- Creating deliverables that the user requested
-
-**File Types Supported:**
-• Text files: .txt, .md, .json, .xml, .csv
-• Code files: .py, .js, .ts, .html, .css, .sql
-• Data files: .json, .csv, .xml, .yaml
-• Configuration files: .config, .env, .ini
-
-**Required Parameters:**
-• fileName: Name of the file to create (include extension, add version number if editing an existing file)
-• mimeType: MIME type matching the file content
-• data: The actual content/data to save in the file
+- Save summaries, analysis results, or report findings
+- Generate scripts, configuration files, or formatted code
+- Export data in structured formats (CSV, JSON, YAML, etc.)
+- Deliver final outputs, checklists, specs, or templates requested by the user
 
 **Example Uses:**
-1. Save analysis results: fileName: "analysis_report.md", mimeType: "text/markdown"
-2. Create code file: fileName: "script.py", mimeType: "text/x-python"
-3. Export data: fileName: "results.csv", mimeType: "text/csv"
-4. Generate config: fileName: "settings.json", mimeType: "application/json"
+1. Save a Markdown analysis report:
+{
+  "fileName": "analysis_report.md",
+  "mimeType": "text/markdown",
+  "data": "# Report\n\nSummary of key findings..."
+}
+
+2. Create a Python script:
+{
+  "fileName": "script.py",
+  "mimeType": "text/x-python",
+  "data": "import ifcopenshell"
+}
+
+3. Export CSV data:
+{
+  "fileName": "results.csv",
+  "mimeType": "text/csv",
+  "data": "Name,Value\nTemperature,72\nHumidity,40"
+}
 
 **Tips:**
-- Use descriptive filenames with proper extensions
-- Match MIME type to file extension and content type
-- Include timestamp in filename for multiple versions if needed
-- Use this tool for final outputs the user should keep or download
-- If the user asks for a spreadsheet, use this tool to create a CSV file`,
+- Use clear, descriptive filenames with proper extensions.
+- Always match the MIME type to the content and extension.
+- For spreadsheets, use .csv as a lightweight and widely supported format.
+
+*This create_file tool only supports regular text files*`,
       parameters: z.object({
         fileName: z.string().describe("Name of the file to create"),
         mimeType: z.string().describe("MIME type of the file content"),

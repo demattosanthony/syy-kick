@@ -53,12 +53,31 @@ export const createSharepointSearchTool = (
   db: NodePgDatabase<typeof import("../../../config/schema")>
 ) =>
   tool({
-    description:
-      "Searches for files and folders within the user's SharePoint drive based on a query string. Use this tool to find specific items by name or keywords. Returns a list of matching files and folders with their metadata (name, id, type, size, last modified date, web URL).",
+    description: `Sharepoint File Search. This tool allows you to search for files and folders within the user's SharePoint drive based on a query string. 
+
+**Example Uses:**
+1. Search for a specific file by name:
+{
+  "query": "Q2 Financial Report",
+  "limit": 10
+}
+
+2. Search for technical specs or product sheets:
+{
+  "query": "VRF system datasheet",
+  "limit": 10
+}
+
+**Tips:**
+- Returned IDs can be used with other SharePoint tools to load or manage the files
+- Use product names, file types, or project titles when known
+- Limit is the maximum number of files to return, default is 10, max is 25`,
+
     parameters: z.object({
       query: z.string(),
+      limit: z.number().nullable(),
     }),
-    execute: async ({ query }) => {
+    execute: async ({ query, limit }) => {
       try {
         if (!query.trim()) {
           return { files: [] };
@@ -69,7 +88,7 @@ export const createSharepointSearchTool = (
         const encodedSearch = encodeURIComponent(query);
         const response = await graphClient
           .api(`/drives/${driveId}/root/search(q='${encodedSearch}')`)
-          .top(25)
+          .top(limit ?? 10)
           .get();
 
         const files = response.value || [];
@@ -89,8 +108,27 @@ export const createSharepointListTool = (
   db: NodePgDatabase<typeof import("../../../config/schema")>
 ) =>
   tool({
-    description:
-      "Lists files and folders within a specified path in the user's SharePoint drive. If no path is provided, it lists the contents of the root directory. Use this to explore the folder structure or get a list of items in a known folder. Returns a list of files and folders with their metadata (name, id, type, size, last modified date, web URL).",
+    description: `Sharepoint List tool. This tool allows you to list the contents of a folder in the user’s SharePoint drive, helping you explore the directory structure or view files in a known path.
+
+**What it does:**
+- Lists files and folders in a specified SharePoint path
+- If no path is provided, it defaults to the root directory
+- Returns metadata for each item (Name, Type (file or folder), Size, Web URL, Unique ID)
+
+**Example Uses:**
+1. List root directory contents:
+{
+  "path": null
+}
+
+2. Explore subfolders within a known directory:
+{
+  "path": "/Engineering/Specs"
+}
+
+**Tips:**
+- Paths are case-sensitive and must reflect actual SharePoint folder names
+- Combine with sharepoint_search or file-loading tools for full file management`,
     parameters: z.object({
       path: z.string().nullable(),
     }),

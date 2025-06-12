@@ -24,7 +24,7 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({
   return (
     <div
       className={cn(
-        "group relative rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden w-full max-w-[480px] transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md",
+        "group relative rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden w-full max-w-[400px]  transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md",
         isStreaming
           ? "border-primary/30 bg-primary/5 shadow-primary/10 hover:shadow-primary/20 hover:bg-primary/10"
           : "hover:border-border hover:bg-card/80 hover:shadow-lg hover:-translate-y-0.5",
@@ -53,7 +53,7 @@ const ArtifactCard: React.FC<ArtifactCardProps> = ({
           <div className="flex justify-between items-start gap-2 mb-1">
             <h3
               className={cn(
-                "text-sm font-semibold leading-tight truncate max-w-[250px]",
+                "text-sm font-semibold leading-tight truncate max-w-[275px]",
                 isStreaming
                   ? "text-primary"
                   : "text-foreground group-hover:text-foreground"

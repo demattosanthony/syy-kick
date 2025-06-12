@@ -481,12 +481,34 @@ export const messagesOps = {
         provider: modelConfig.provider,
       };
 
+      // Create a debug-friendly version that excludes base64 content
+      //   const debugMessages = currentMessages.map((msg) => {
+      //     if (msg.content && Array.isArray(msg.content)) {
+      //       return {
+      //         ...msg,
+      //         content: msg.content.map((item: any) => {
+      //           if (item.type === "image") {
+      //             return {
+      //               ...item,
+      //               image: item.image
+      //                 ? "[BASE64_IMAGE_DATA_EXCLUDED]"
+      //                 : item.image,
+      //             };
+      //           }
+      //           return item;
+      //         }),
+      //       };
+      //     }
+      //     return msg;
+      //   });
+      //   console.log("currentMessages", debugMessages);
+
       try {
         // Call streamText without maxSteps - we control the flow manually
         const result = streamText({
           model: modelConfig.model,
           messages: currentMessages,
-          temperature: 0.45,
+          temperature: 0.2,
           ...(tools && {
             tools: tools,
             toolChoice: "auto",
@@ -503,13 +525,13 @@ export const messagesOps = {
             anthropic: {
               thinking: {
                 type: iteration === 0 ? "enabled" : "disabled",
-                budgetTokens: iteration === 0 ? 24_000 : 0,
+                budgetTokens: iteration === 0 ? 12_000 : 0,
               },
             } satisfies AnthropicProviderOptions,
             google: {
               thinkingConfig: {
                 includeThoughts: true,
-                thinkingBudget: 24_000,
+                thinkingBudget: 12_000,
               },
             } satisfies GoogleGenerativeAIProviderOptions,
           },

@@ -159,11 +159,11 @@ function ChatInputForm(
       <Card
         ref={cardRef}
         className={cn(
-          "relative flex flex-col h-auto min-h-[130px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-3xl border shadow-sm",
+          "relative flex flex-col h-auto min-h-[115px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-3xl border shadow-sm",
           focused && !isMobile && "border-border border-[1.5px]",
           isDragging && "border-border border-[1.5px]",
-          hasThread && "min-h-[130px]",
-          !!hasThread && "min-h-[145px]"
+          hasThread && "min-h-[115px]",
+          !!hasThread && "min-h-[130px]"
         )}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}

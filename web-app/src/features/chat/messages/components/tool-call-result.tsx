@@ -247,6 +247,13 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                 {resultCount} web {resultCount === 1 ? "source" : "sources"}
               </span>
             </div>
+          ) : hasResults ? (
+            <div className="flex items-center gap-2">
+              <Search className="w-3 h-3 text-muted-foreground" />
+              <span className="font-normal text-sm text-muted-foreground">
+                No web results found
+              </span>
+            </div>
           ) : (
             <div className="flex items-center gap-1.5 text-xs">
               <Search className="w-3.5 h-3.5 text-muted-foreground" />
@@ -938,14 +945,12 @@ const LoadFileContentTool = ({ tool }: { tool: ToolInvocation }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {result.images.map((image: any, idx: number) => (
                   <a
+                    key={`image-${idx}`}
                     href={image.imageUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <div
-                      key={`image-${idx}`}
-                      className="border rounded-lg overflow-hidden"
-                    >
+                    <div className="border rounded-lg overflow-hidden">
                       <img
                         src={
                           image.imageUrl ||

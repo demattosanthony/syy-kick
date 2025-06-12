@@ -54,37 +54,51 @@ async function processWebContent(
 
 export const createWebSearchTool = () =>
   tool({
-    description: `Web search and content scraping tool that provides access to real-time information from the internet.
+    description: `Web search. This tool gives you live access to the internet, combining search engine queries with automated content extraction. Use it to gather the most up-to-date information available online, far beyond the limits of pretraining.
 
-This tool performs comprehensive web searches and automatically scrapes content from the top results, giving you access to:
-- Current, up-to-date information beyond your training data
-- Real-time data from websites, news sources, and technical documentation
-- Live content from manufacturer websites, product specifications, and technical resources
-- Recent developments, code updates, and industry announcements
+**What this tool does:**
+- Retrieves current, real-time information from the web
+- Scrapes and processes full content from top-ranked web pages
 
-The tool can operate in two modes:
-1. **Web Search Mode**: Searches the web, retrieves the most relevant results, and automatically fetches and processes the full content from each page
-2. **Direct URL Mode**: Directly extracts and processes content from a specific webpage URL
+**Tool modes:**
+1. **Web Search Mode** (default)
+- Searches the web using the provided query
+- Fetches and processes content from the top results
+- Use this to discover what’s new or broadly available
+2. **Direct URL Mode**
+- Skips search and directly processes a specific URL
+- Use this when you already know the exact webpage
 
-## Parameters
+**Examples Uses:**
+1. Web Search – Look up recent tech best practices:
+{
+  "query": "React 2024 best practices",
+  "limit": 3
+}
 
-- **query**: The search query to perform OR a description of what you're looking for when using direct URL mode. Be specific and include relevant keywords for better results.
-- **url**: Optional direct URL to extract content from. When provided, skips web search and directly processes the specified webpage content.
-- **limit**: Optional number of pages to scrape and process (default: 3, max: 5). Only applies to web search mode. Higher limits provide more comprehensive information but take longer to process.
+2. Web Search - Search manufacturer specs:
+{
+  "query": "Daikin VRV IV specifications pdf",
+  "limit": 2
+}
 
-## Usage Tips
+3. Direct URL – Extract from a known doc:
 
+{
+  "url": "https://www.daikinapplied.com/products/air-handlers",
+  "query": "recent daikan air handlers"
+}
+
+**Usage Tips:**
 **For Web Search Mode:**
-- Use specific search terms including manufacturer names, model numbers, and version information
-- Add "pdf" when looking for technical documents, manuals, or specifications
-- Include year or "latest" for current information (e.g., "React 2024 best practices")
-- Use quotes for exact phrases when searching for specific error messages or configurations
-- Adjust limit based on need: use 1-2 for quick answers, 3-4 for comprehensive research
+- Use specific queries: include product names, error codes, version numbers
+- Add "pdf" for manuals or spec sheets
+- Use limit: 1 for speed, or increase to 4–5 for thorough research
 
 **For Direct URL Mode:**
-- Provide the complete URL including protocol (https://)
-- Use query parameter to describe what specific information you're looking for from that page
-- Ideal for extracting content from known documentation pages, articles, or technical resources`,
+- Always include full URL with https://
+- Use query to specify what you want extracted from that page
+- Great for pulling details from technical docs, blogs, changelogs, etc.`,
     parameters: z.object({
       query: z.string(),
       url: z.string().nullable(),
