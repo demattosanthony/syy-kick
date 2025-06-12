@@ -330,13 +330,17 @@ export const messagesOps = {
           },
         },
       });
-      const modelConfig = getModelConfig(model);
 
       if (!thread) {
         console.error(`Thread not found: ${threadId}`);
         cleanup();
         return;
       }
+
+      const modelConfig = await getModelConfig(
+        model,
+        thread.messages[0].text || ""
+      );
 
       const inferenceMsgs = await dbMessagesToInferenceMessages(
         thread.messages,
@@ -895,7 +899,9 @@ export const messagesOps = {
           !hasToolCalls ||
           finishReason === "stop" ||
           finishReason === "length" ||
-          finishReason === "error"
+          finishReason === "error" ||
+          finishReason === "other" ||
+          finishReason === "unknown"
         ) {
           console.log(
             `Stopping iteration: hasToolCalls=${hasToolCalls}, finishReason=${finishReason}`

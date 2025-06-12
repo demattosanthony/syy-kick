@@ -32,7 +32,7 @@ export default function ChatAttachment({
               <DialogTrigger asChild>
                 <div
                   key={`img-${stableKey}`}
-                  className="cursor-pointer bg-[#242628] dark:bg-input p-2 rounded-lg"
+                  className="cursor-pointer bg-[#242628] dark:bg-input p-2 rounded-xl"
                 >
                   {imageError ? (
                     <div className="flex items-center justify-center h-52 max-w-[400px] bg-muted rounded-lg">
@@ -80,7 +80,7 @@ export default function ChatAttachment({
         return (
           <div
             key={`pdf-${stableKey}`}
-            className="bg-[#242628] dark:bg-input p-2 rounded-lg w-[216px]"
+            className="bg-[#242628] dark:bg-input p-2 rounded-xl w-[216px]"
           >
             {pdfError ? (
               <div

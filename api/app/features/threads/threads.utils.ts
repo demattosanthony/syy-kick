@@ -1,5 +1,5 @@
 // External dependencies
-import { CoreMessage, generateText } from "ai";
+import { CoreMessage, generateObject, generateText } from "ai";
 import { eq, inArray } from "drizzle-orm";
 
 // Internal configuration
@@ -25,6 +25,7 @@ import {
 import { MODELS } from "../models";
 import { MyMessage } from "./threads.types";
 import { DbUser } from "../../createAuthToken";
+import { z } from "zod";
 
 export interface ImageData {
   name: string;
@@ -231,10 +232,29 @@ async function presignToolResultImages(result: any): Promise<any> {
 }
 
 /** Retrieve the model config. */
-function getModelConfig(model: string) {
+async function getModelConfig(model: string, messageContent: string) {
   if (model !== "Auto") return MODELS[model];
 
-  return MODELS["claude-4-sonnet"];
+  const { object } = await generateObject({
+    model: MODELS["gpt-4.1-mini"].model,
+    schema: z.object({
+      type: z.enum(["simple", "hard"]),
+    }),
+    prompt: `Your task is to understand the user's question and determine if its a 'simple' query or if its something hard/important.
+Simple queries are ones that should be answered fast and quick.
+Hard/important queries are ones where the user cares about it more and is willing to wait longer to get the full response.
+
+The user's question is: ${messageContent}
+
+Respond with a JSON object with the following schema:
+{
+  "type": "simple" | "hard"
+}`,
+  });
+
+  return object.type === "simple"
+    ? MODELS["gpt-4.1"]
+    : MODELS["gemini-2.5-pro"];
 }
 
 /** If environment is production and user allows, return a presigned URL, else base64. */
@@ -324,8 +344,8 @@ You must follow these rules and restrictions when responding to users.
     | Feature     | Description         |
     |-------------|---------------------|
     | Markdown    | Clean documentation |
+  - Do not include <br> tags inside of tables.
 5. Avoid nested lists and combining ordered and unordered lists. Tables are much better for structured data.
-
 
 **Bonus Touches:**
 - Emojis (🌟) and icons (✔️) can be nice to add with section headers depending on the context.
@@ -354,6 +374,9 @@ You have tools at your disposal to solve the user's task. Follow these rules reg
 5. Before calling each tool, first explain to the USER why you are calling it.
 6. If you know that you need to make multiple tool calls, you can call them in parallel to save time.
 7. You do not need to ask the user before calling a tool, just call it.
+
+**Important:**
+ALWAYS include all tool call parameters in your response, even if they are null. If you don't include all of them, the tool call with fail and your operation will stop and the user will see a error in the UI. No one wants this. 
 </tool_calling>
 
 <file_operations>
