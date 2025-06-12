@@ -8,11 +8,9 @@ import { cn, getRelativeTimeString } from "@/lib/utils";
 
 export default function ThreadsList({
   compact = false,
-  workflowId,
   showLatestMessage = true,
 }: {
   compact?: boolean;
-  workflowId?: string;
   showLatestMessage?: boolean;
 }) {
   const searchParams = useSearchParams();
@@ -22,7 +20,6 @@ export default function ThreadsList({
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useThreadsQuery({
       search,
-      workflowId,
     });
 
   useEffect(() => {

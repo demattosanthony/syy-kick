@@ -226,8 +226,7 @@ export const messagesOps = {
     model: string,
     maxTokens?: number,
     instructions?: string,
-    workspace?: Workspace,
-    thinking?: boolean
+    workspace?: Workspace
   ) {
     // 1) Store the user message
     if (message) {
@@ -248,8 +247,7 @@ export const messagesOps = {
           model,
           maxTokens,
           instructions,
-          workspace,
-          thinking
+          workspace
         );
       } catch (error) {
         console.error("Error during background inference:", error);
@@ -268,8 +266,7 @@ export const messagesOps = {
     model: string,
     maxTokens?: number,
     instructions?: string,
-    workspace?: Workspace,
-    thinking?: boolean
+    workspace?: Workspace
   ) {
     const controller = new AbortController();
     let inferenceCompleteEmitted = false;
@@ -380,7 +377,6 @@ export const messagesOps = {
         userId,
         threadId,
         model,
-        thinking,
         cleanup,
         emitInferenceComplete,
         artifactService,
@@ -456,7 +452,6 @@ export const messagesOps = {
     userId: string,
     threadId: string,
     model: string,
-    thinking: boolean | undefined,
     cleanup: () => void,
     emitInferenceComplete: () => void,
     artifactService?: ArtifactService,
@@ -507,8 +502,8 @@ export const messagesOps = {
             } satisfies OpenAIResponsesProviderOptions,
             anthropic: {
               thinking: {
-                type: iteration === 0 && thinking ? "enabled" : "disabled",
-                budgetTokens: iteration === 0 && thinking ? 24_000 : 0,
+                type: iteration === 0 ? "enabled" : "disabled",
+                budgetTokens: iteration === 0 ? 24_000 : 0,
               },
             } satisfies AnthropicProviderOptions,
             google: {
@@ -1198,8 +1193,7 @@ export const messagesOps = {
           model,
           maxTokens,
           instructions,
-          workspace,
-          thinking
+          workspace
         );
       } catch (error) {
         console.error("Error during retry inference:", error);

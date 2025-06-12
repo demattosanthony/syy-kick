@@ -1,12 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  ArrowRight,
-  File,
-  Loader2,
-  Paperclip,
-  Square,
-  Lightbulb,
-} from "lucide-react";
+import { ArrowRight, File, Loader2, Paperclip, Square } from "lucide-react";
 import ModelSelector from "../model-selector";
 import {
   Popover,
@@ -16,10 +9,7 @@ import {
 import { useState } from "react";
 import { useMicrosoftPicker } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
 import { SharePointFile } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
-import { thinkingAtom, modelAtom } from "@/atoms/chat";
-import { useAtom } from "jotai";
 import sharepointLogo from "@/assets/logos/sharepoint.svg";
-import { cn } from "@/lib/utils";
 
 interface ActionButtonsProps {
   isGenerating?: boolean;
@@ -52,8 +42,6 @@ export function ActionButtons({
   //   showSharePointPopoverButton = true,
   isReadyToSubmit = true,
 }: ActionButtonsProps) {
-  const [thinking, setThinking] = useAtom(thinkingAtom);
-  const [model] = useAtom(modelAtom);
   const [open, setOpen] = useState(false);
   const {
     openPicker,
@@ -76,36 +64,10 @@ export function ActionButtons({
 
   const isAnyLoading = isMicrosoftPickerLoading || isProcessingFiles;
 
-  // Only show thinking toggle for Auto model
-  const isAutoModel = model.name?.toLowerCase() === "auto";
-
   return (
     <div className="w-full flex justify-between items-center px-1 pb-1">
       <div className="flex items-center gap-2">
         <ModelSelector />
-        {isAutoModel && (
-          <Button
-            className={cn("h-8 p-2 px-3 gap-2", thinking && "bg-accent")}
-            variant={"outline"}
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              setThinking(!thinking);
-            }}
-            title={thinking ? "Disable Think Mode" : "Enable Think Mode"}
-          >
-            <Lightbulb
-              className={cn(
-                "w-8 h-8",
-                thinking
-                  ? "text-black dark:text-white fill-yellow-300"
-                  : "text-black dark:text-white"
-              )}
-            />
-
-            <div className="">Think</div>
-          </Button>
-        )}
       </div>
       <div className="flex items-center gap-1 h-full">
         {selectedModel.supportedMimeTypes &&

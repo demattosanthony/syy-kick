@@ -105,7 +105,7 @@ export async function convertPdfToImages(
     }
 
     const maxDimension = options?.maxDimension || 8000;
-    const dpi = 300;
+    const dpi = 400;
 
     console.log("Converting PDF to images using ConvertAPI with options:", {
       maxDimension,
@@ -117,8 +117,8 @@ export async function convertPdfToImages(
     const parameters: Record<string, any> = {
       File: pdfData,
       ImageResolution: dpi,
-      ImageMaxWidth: maxDimension,
-      ImageMaxHeight: maxDimension,
+      ImageWidth: maxDimension,
+      ImageHeight: maxDimension,
     };
 
     // Call ConvertAPI to convert PDF to PNG

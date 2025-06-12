@@ -5,7 +5,6 @@ const retryMessageSchema = z.object({
   maxTokens: z.number().optional(),
   temperature: z.number().optional(),
   instructions: z.string().optional(),
-  thinking: z.boolean().optional(),
 });
 
 const postMessageSchema = z.object({
@@ -14,7 +13,6 @@ const postMessageSchema = z.object({
   temperature: z.number().optional(),
   instructions: z.string().optional(),
   workflowId: z.string().optional(),
-  thinking: z.boolean().optional(),
   message: z.object({
     id: z.string().optional(),
     role: z.enum(["system", "user", "assistant", "tool"]).optional(),

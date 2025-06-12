@@ -1,12 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useAtom } from "jotai";
 import { ChatMessage, MessageRole } from "@/types/chat";
-import {
-  chatStatusAtom,
-  modelAtom,
-  instructionsAtom,
-  thinkingAtom,
-} from "@/atoms/chat";
+import { chatStatusAtom, modelAtom, instructionsAtom } from "@/atoms/chat";
 import api from "@/lib/api";
 import { useAttachmentProcessing } from "./use-attachment-processing";
 
@@ -24,37 +19,41 @@ export function useMessageSubmission({
   const [chatStatus, setChatStatus] = useAtom(chatStatusAtom);
   const [model] = useAtom(modelAtom);
   const [instructions] = useAtom(instructionsAtom);
-  const [thinking] = useAtom(thinkingAtom);
   const { processAttachments, clearAttachments } = useAttachmentProcessing();
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const createUserMessage = useCallback((input: string, attachments: any[]) => {
-    return {
-      id: crypto.randomUUID(),
-      role: MessageRole.user,
-      text: input,
-      createdAt: new Date().toISOString(),
-      attachments: attachments.map((att) => ({
+  const createUserMessage = useCallback(
+    (input: string, attachments: any[]) => {
+      return {
         id: crypto.randomUUID(),
-        messageId: "",
-        name: att.name,
-        fileName: att.name,
-        contentType: att.contentType,
-        mimeType: att.contentType,
-        fileKey: att.file_key,
-        url: att.url,
-        type: (att.contentType?.includes("image") ? "image" : "file") as
-          | "image"
-          | "file",
-        size: undefined,
-        markdown: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })),
-      toolCalls: [],
-    };
-  }, []);
+        threadId: threadId || "",
+        userId: "", // Default empty string - this gets updated properly by the backend data
+        role: MessageRole.user,
+        text: input,
+        createdAt: new Date().toISOString(),
+        attachments: attachments.map((att) => ({
+          id: crypto.randomUUID(),
+          messageId: "",
+          name: att.name,
+          fileName: att.name,
+          contentType: att.contentType,
+          mimeType: att.contentType,
+          fileKey: att.file_key,
+          url: att.url,
+          type: (att.contentType?.includes("image") ? "image" : "file") as
+            | "image"
+            | "file",
+          size: undefined,
+          markdown: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })),
+        toolCalls: [],
+      };
+    },
+    [threadId]
+  );
 
   const submitMessage = useCallback(
     async (input: string) => {
@@ -87,7 +86,6 @@ export function useMessageSubmission({
           model: model.name,
           maxTokens: undefined,
           instructions: instructions || undefined,
-          thinking: model.name?.toLowerCase() === "auto" ? thinking : false,
         });
 
         clearAttachments();
@@ -107,7 +105,6 @@ export function useMessageSubmission({
       onMessageAdd,
       model.name,
       instructions,
-      thinking,
       clearAttachments,
       onError,
       setChatStatus,

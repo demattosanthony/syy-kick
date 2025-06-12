@@ -116,7 +116,7 @@ export async function convertPdfToImages(
 
     // Prepare parameters for ConvertAPI - pass Buffer directly
     const parameters: Record<string, any> = {
-      File: pdfData, // Pass Buffer directly instead of base64
+      File: pdfData,
       ImageResolution: dpi,
       ImageWidth: maxDimension,
       ImageHeight: maxDimension,

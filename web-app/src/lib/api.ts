@@ -557,7 +557,6 @@ class ThreadApi extends ApiRequest {
     model: string;
     maxTokens?: number;
     instructions?: string;
-    thinking?: boolean;
   }): Promise<{ success: boolean; message: string }> {
     const { threadId, ...body } = params;
     return await this.request<{ success: boolean; message: string }>(
@@ -596,7 +595,6 @@ class ThreadApi extends ApiRequest {
     model: string;
     maxTokens?: number;
     instructions?: string;
-    thinking?: boolean;
   }): Promise<{
     success: boolean;
     message: string;

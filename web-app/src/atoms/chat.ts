@@ -206,7 +206,6 @@ export const modelAtom = atomWithStorage<Model>(
 );
 export const temperatureAtom = atomWithStorage("chatTemp", 0.5);
 export const instructionsAtom = atomWithStorage("customInstructions", "");
-export const thinkingAtom = atomWithStorage("thinkingMode", false);
 
 // Session atoms
 export const messagesAtom = atom<ChatMessage[]>([]);
@@ -230,7 +229,6 @@ export interface PendingThread {
   uploads: FileUpload[];
   model: string;
   instructions?: string;
-  thinking?: boolean;
   status: "processing" | "created" | "error";
   actualThreadId?: string;
   error?: string;

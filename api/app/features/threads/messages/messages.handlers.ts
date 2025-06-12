@@ -15,7 +15,7 @@ export const messagesHandlers = {
 
   async postMessage(req: Request, res: Response) {
     try {
-      const { message, model, maxTokens, instructions, thinking } =
+      const { message, model, maxTokens, instructions } =
         postMessageSchema.parse(req.body);
       const { threadId } = req.params;
 
@@ -26,8 +26,7 @@ export const messagesHandlers = {
         model,
         maxTokens,
         instructions,
-        req.workspace,
-        thinking
+        req.workspace
       );
 
       res.json({
@@ -42,8 +41,9 @@ export const messagesHandlers = {
 
   async retryMessage(req: Request, res: Response) {
     try {
-      const { model, maxTokens, instructions, thinking } =
-        retryMessageSchema.parse(req.body);
+      const { model, maxTokens, instructions } = retryMessageSchema.parse(
+        req.body
+      );
       const { threadId, messageId } = req.params;
 
       const result = await messagesOps.retryMessage(
@@ -53,8 +53,7 @@ export const messagesHandlers = {
         model,
         maxTokens,
         instructions,
-        req.workspace,
-        thinking
+        req.workspace
       );
       res.json(result);
     } catch (error) {

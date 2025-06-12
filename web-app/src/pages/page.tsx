@@ -12,7 +12,6 @@ import {
   modelAtom,
   chatStatusAtom,
   instructionsAtom,
-  thinkingAtom,
   pendingThreadAtom,
   isPendingThreadAtom,
   PendingThread,
@@ -62,7 +61,6 @@ export function HomePage() {
   const [selectedModel] = useAtom(modelAtom);
   const [, setChatStatus] = useAtom(chatStatusAtom);
   const [instructions] = useAtom(instructionsAtom);
-  const [thinking] = useAtom(thinkingAtom);
   const [isDownloadingSPFile, setIsDownloadingSPFile] = useState(false);
   const { processAttachments, clearAttachments } = useAttachmentProcessing();
   const [, setPendingThread] = useAtom(pendingThreadAtom);
@@ -98,7 +96,6 @@ export function HomePage() {
       uploads: [...uploads],
       model: selectedModel.name,
       instructions: instructions || undefined,
-      thinking: selectedModel.name?.toLowerCase() === "auto" ? thinking : false,
       status: "processing",
     };
 
@@ -130,8 +127,6 @@ export function HomePage() {
         },
         model: selectedModel.name,
         instructions: instructions || undefined,
-        thinking:
-          selectedModel.name?.toLowerCase() === "auto" ? thinking : false,
       });
 
       // Invalidate threads query to update sidebar with new thread

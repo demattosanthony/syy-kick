@@ -65,7 +65,7 @@ const ModelSelector: React.FC = () => {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           role="combobox"
           aria-expanded={open}
           className="h-8 justify-between gap-0 p-2 px-3"

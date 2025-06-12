@@ -20,12 +20,7 @@ import {
 } from "../hooks";
 import { useChatState } from "../hooks/use-chat-state";
 import { useAtom } from "jotai";
-import {
-  instructionsAtom,
-  modelAtom,
-  pendingThreadAtom,
-  thinkingAtom,
-} from "@/atoms/chat";
+import { instructionsAtom, modelAtom, pendingThreadAtom } from "@/atoms/chat";
 
 // Utils
 import { convertChatMessagesToMessages } from "../utils/message-conversion";
@@ -60,7 +55,6 @@ export default function ThreadPage({
 
   const [pendingThread] = useAtom(pendingThreadAtom);
   const [selectedModel] = useAtom(modelAtom);
-  const [thinking] = useAtom(thinkingAtom);
   const [instructions] = useAtom(instructionsAtom);
 
   // Check if this is a pending thread
@@ -112,7 +106,6 @@ export default function ThreadPage({
           messageId,
           model: selectedModel.name,
           instructions: instructions,
-          thinking: thinking,
         });
 
         if (response.success) {
@@ -138,7 +131,7 @@ export default function ThreadPage({
         );
       }
     },
-    [threadId, setMessages, selectedModel, instructions, thinking]
+    [threadId, setMessages, selectedModel, instructions]
   );
 
   return (
