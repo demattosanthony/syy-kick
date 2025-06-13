@@ -102,8 +102,7 @@ You should use this tool differently depending on the type of file contents you 
 }
 
 **Tips:**
-- Always include all parameters (use null if not needed)
-- Make proper use of the pagination parameters`,
+- ALWAYS INCLUDE ALL PARAMETERS (you can use null for null values)`,
       parameters: z.object({
         fileName: z
           .string()
