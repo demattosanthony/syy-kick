@@ -1156,29 +1156,51 @@ export const messagesOps = {
       throw new Error("Message to retry not found in thread");
     }
 
-    // Get all messages that come after the message to retry (by creation time)
-    const messagesToDelete = allMessages.slice(messageToRetryIndex + 1);
+    // Start collecting messages to delete
+    const messagesToDelete: typeof allMessages = [];
 
-    if (messagesToDelete.length === 0) {
-      // If there are no messages after the one to retry, we still need to delete the retry message itself
-      // and regenerate it, so add it to the deletion list
-      messagesToDelete.push(messageToRetry);
-    } else {
-      // If there are messages after, we also want to delete the message to retry itself
-      messagesToDelete.push(messageToRetry);
+    // 1. Add all messages that come after the retry message
+    const messagesAfterRetry = allMessages.slice(messageToRetryIndex + 1);
+    messagesToDelete.push(...messagesAfterRetry);
+
+    // 2. Add the retry message itself
+    messagesToDelete.push(messageToRetry);
+
+    // 3. Go backwards from the retry message and collect all consecutive assistant/tool messages
+    // until we hit a user message or reach the beginning
+    let currentIndex = messageToRetryIndex - 1;
+    while (currentIndex >= 0) {
+      const currentMessage = allMessages[currentIndex];
+
+      // If we hit a user message, stop - this is where we want to restart from
+      if (currentMessage.role === "user") {
+        break;
+      }
+
+      // If it's an assistant or tool message, add it to deletion list
+      if (
+        currentMessage.role === "assistant" ||
+        currentMessage.role === "tool"
+      ) {
+        messagesToDelete.unshift(currentMessage); // Add to beginning to maintain order
+        currentIndex--;
+      } else {
+        // If we hit any other role (like system), stop here
+        break;
+      }
     }
 
-    // Delete all these messages and their associated data
+    // Get the IDs of all messages to delete
     const messageIdsToDelete = messagesToDelete.map((msg) => msg.id);
 
-    // Delete tool calls for all these messages
+    // Delete all tool calls for these messages
     for (const msgId of messageIdsToDelete) {
       await db
         .delete(toolCallsTable)
         .where(eq(toolCallsTable.messageId, msgId));
     }
 
-    // Delete message-file relationships for all these messages
+    // Delete message-file relationships for these messages
     for (const msgId of messageIdsToDelete) {
       await db.delete(messagesFiles).where(eq(messagesFiles.messageId, msgId));
     }
@@ -1194,13 +1216,12 @@ export const messagesOps = {
       orderBy: [messages.createdAt],
     });
 
-    // The last remaining message should ideally be a user message to retry from
-    // If not, we'll still proceed as the inference can handle various scenarios
-    const lastMessage = remainingMessages[remainingMessages.length - 1];
-
-    if (!lastMessage) {
+    if (remainingMessages.length === 0) {
       throw new Error("No messages remain in thread after deletion");
     }
+
+    // The last message should be a user message (or system message)
+    const lastMessage = remainingMessages[remainingMessages.length - 1];
 
     // Start inference asynchronously (don't await)
     setImmediate(async () => {
@@ -1224,7 +1245,7 @@ export const messagesOps = {
     return {
       success: true,
       message:
-        "Message retry initiated - deleted all messages from retry point onwards",
+        "Message retry initiated - deleted selected messages and restarting inference",
       deletedMessageIds: messageIdsToDelete,
       deletedMessageCount: messageIdsToDelete.length,
       retryFromMessageId: lastMessage.id,
