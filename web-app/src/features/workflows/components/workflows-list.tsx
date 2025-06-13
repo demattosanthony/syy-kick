@@ -58,21 +58,15 @@ export default function WorkflowsList() {
 function WorkflowItem({
   id,
   workflow,
-  projectId,
 }: {
   id: string;
   workflow: EnhancedWorkflowResponse;
-  projectId?: string;
 }) {
   const Icon = getWorkflowIcon(workflow.name);
 
   return (
     <Link
-      to={
-        projectId
-          ? `/projects/${projectId}/workflows/${id}`
-          : `/workflows/${id}`
-      }
+      to={`/workflows/${id}`}
       className="block p-6 rounded-lg bg-card hover:bg-accent border transition-colors group"
     >
       <div className="flex flex-col gap-4">

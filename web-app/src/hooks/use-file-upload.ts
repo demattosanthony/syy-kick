@@ -1,94 +1,202 @@
 import { useAtom } from "jotai";
-import { modelAtom, uploadsAtom } from "@/atoms/chat";
-import { FileUpload } from "@/types/chat";
-import { useEffect } from "react";
 import { toast } from "sonner";
+import { uploadsAtom, modelAtom } from "@/atoms/chat";
+import { FileUpload, FileUploadMimeType } from "@/types/chat";
+import api from "@/lib/api";
+import { validateFile } from "@/features/chat/threads/utils";
 
 export function useFileUpload(acceptedTypes: string[]) {
   const [uploads, setUploads] = useAtom(uploadsAtom);
   const [model] = useAtom(modelAtom);
 
-  const validateFileSize = (file: File) => {
+  const processFileUpload = async (
+    file: File,
+    uploadIndex: number
+  ): Promise<void> => {
+    let fileType: FileUploadMimeType = "other";
     if (file.type.startsWith("image/")) {
-      const isValidSize =
-        !model.maxImageSize || file.size <= model.maxImageSize;
-      if (!isValidSize) {
-        toast.error(
-          `Image file size must be under ${
-            (model.maxImageSize as number) / (1024 * 1024)
-          }MB for the selected model.`
-        );
-      }
-      return isValidSize;
+      fileType = "image";
+    } else if (file.type === "application/pdf") {
+      fileType = "pdf";
     }
-    const isValidSize = !model.maxFileSize || file.size <= model.maxFileSize;
-    if (!isValidSize) {
+
+    const newUpload: FileUpload = {
+      file,
+      preview:
+        fileType === "image" || fileType === "pdf"
+          ? URL.createObjectURL(file)
+          : "",
+      type: fileType,
+      status: "uploading",
+    };
+
+    // Add to uploads immediately
+    setUploads((prev) => [...prev, newUpload]);
+
+    try {
+      // Step 1: Get presigned URL
+      const { fileKey, uploadUrl, viewUrl } = await api.files.getPresignedUrl(
+        file.name,
+        file.type,
+        file.size,
+        { featureType: "threads" }
+      );
+
+      // Update status to uploading
+      setUploads((prev) =>
+        prev.map((upload, index) =>
+          index === uploadIndex
+            ? { ...upload, status: "uploading", fileKey, url: viewUrl }
+            : upload
+        )
+      );
+
+      // Step 2: Upload file to S3
+      await api.files.uploadFile(file, uploadUrl);
+
+      // Update status to processing
+      setUploads((prev) =>
+        prev.map((upload, index) =>
+          index === uploadIndex ? { ...upload, status: "processing" } : upload
+        )
+      );
+
+      // Step 3: Create file record and start processing
+      const result = await api.files.createFileRecord(
+        file.name,
+        file.type,
+        file.size,
+        fileKey
+      );
+
+      // Update status to completed with final data
+      setUploads((prev) =>
+        prev.map((upload, index) =>
+          index === uploadIndex
+            ? {
+                ...upload,
+                status: "completed",
+                fileKey: result.fileKey,
+                url: result.url,
+              }
+            : upload
+        )
+      );
+
+      //   if (result.isExisting) {
+      //     toast.info(`File "${file.name}" was already processed.`);
+      //   } else {
+      //     toast.success(`File "${file.name}" processed successfully.`);
+      //   }
+    } catch (error) {
+      console.error("Error processing file upload:", error);
+
+      // Update status to error
+      setUploads((prev) =>
+        prev.map((upload, index) =>
+          index === uploadIndex
+            ? {
+                ...upload,
+                status: "error",
+                error: error instanceof Error ? error.message : "Upload failed",
+              }
+            : upload
+        )
+      );
+
       toast.error(
-        `File size must be under ${
-          (model.maxFileSize as number) / (1024 * 1024)
-        }MB for the selected model.`
+        `Failed to process "${file.name}": ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
       );
     }
-    return isValidSize;
   };
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const files = Array.from(e.target.files || []);
-    processFiles(files);
+    if (e.target.files) {
+      processFileList(e.target.files);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const files = Array.from(e.dataTransfer.files);
-    processFiles(files);
-  };
+  const processFileList = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const validFiles: File[] = [];
 
-  const processFiles = (files: File[]) => {
-    const validFiles = files.filter((file) => {
-      if (!acceptedTypes.includes(file.type)) {
-        toast.error(`File type not supported at this time.`);
-        return false;
+    // First, validate all files and collect valid ones
+    for (const file of fileArray) {
+      if (
+        validateFile(file, acceptedTypes, {
+          maxFileSize: model.maxFileSize,
+          maxImageSize: model.maxImageSize,
+        })
+      ) {
+        validFiles.push(file);
       }
-      return validateFileSize(file);
-    });
+    }
 
-    const newUploads: FileUpload[] = validFiles.map((file) => ({
-      file,
-      preview: URL.createObjectURL(file),
-      type: file.type.startsWith("image/") ? "image" : "pdf",
-    }));
-
-    setUploads((prev) => [...prev, ...newUploads]);
+    // Process valid files with correct indexing
+    const startIndex = uploads.length;
+    for (let i = 0; i < validFiles.length; i++) {
+      await processFileUpload(validFiles[i], startIndex + i);
+    }
   };
 
   const removeUpload = (index: number) => {
     setUploads((prev) => {
-      const updatedUploads = [...prev];
-      URL.revokeObjectURL(updatedUploads[index].preview);
-      updatedUploads.splice(index, 1);
-      return updatedUploads;
+      const upload = prev[index];
+      if (upload?.preview && upload.preview.startsWith("blob:")) {
+        URL.revokeObjectURL(upload.preview);
+      }
+      return prev.filter((_, i) => i !== index);
     });
   };
 
-  const clearUploads = () => {
-    uploads.forEach((upload) => URL.revokeObjectURL(upload.preview));
-    setUploads([]);
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    await processFileList(files);
   };
 
-  useEffect(() => {
-    return () => {
-      uploads.forEach((upload) => URL.revokeObjectURL(upload.preview));
-    };
-  }, [uploads]);
+  const processFiles = (files: File[]) => {
+    processFileList(files);
+  };
+
+  // Wrapper for single file upload to maintain backward compatibility
+  const processSingleFile = async (file: File): Promise<void> => {
+    if (
+      !validateFile(file, acceptedTypes, {
+        maxFileSize: model.maxFileSize,
+        maxImageSize: model.maxImageSize,
+      })
+    ) {
+      return; // validateFile already shows toast messages
+    }
+
+    const uploadIndex = uploads.length;
+    await processFileUpload(file, uploadIndex);
+  };
+
+  // Check if any files are still processing
+  const isProcessing = uploads.some(
+    (upload) => upload.status === "uploading" || upload.status === "processing"
+  );
+
+  // Check if all completed uploads have no errors
+  const hasErrors = uploads.some((upload) => upload.status === "error");
+
+  // Check if ready to submit (no processing files and no errors)
+  const isReadyToSubmit =
+    uploads.length === 0 || (!isProcessing && !hasErrors && uploads.length > 0);
 
   return {
-    uploads,
     handleFiles,
     removeUpload,
-    clearUploads,
     handleDrop,
     processFiles,
+    processFileUpload: processSingleFile,
+    isProcessing,
+    hasErrors,
+    isReadyToSubmit,
   };
 }

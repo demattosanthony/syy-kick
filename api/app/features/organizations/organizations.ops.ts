@@ -2,7 +2,6 @@
 import { schemas } from "./organizations.schema";
 import {
   organizations,
-  samlConfigs,
   memberRoles,
   users,
   roles,
@@ -11,12 +10,11 @@ import {
 
 /** Utils */
 import { z } from "zod";
-import { crypto } from "./organizations.utils";
 import { slugify } from "../../utils";
 
 /** Types */
 import { DbUser } from "../../createAuthToken";
-import { Role, SamlConfig } from "./organizations.types";
+import { Role } from "./organizations.types";
 
 /** Permissions */
 import { permissionsOps } from "../permissions/permissions.ops";
@@ -28,14 +26,13 @@ import db from "../../config/db";
 import s3 from "../../config/s3";
 
 /** Drizzle */
-import { sql, eq, and, isNull, asc } from "drizzle-orm";
+import { sql, eq, and, asc } from "drizzle-orm";
 
 export const ops = {
   async list(page = 1, limit = 10) {
     const offset = (page - 1) * limit;
     const [orgs, count] = await Promise.all([
       db.query.organizations.findMany({
-        with: { samlConfig: true },
         limit,
         offset,
       }),
@@ -47,9 +44,6 @@ export const ops = {
         ...org,
         logoUrl: org.logo
           ? s3.file(org.logo).presign({ expiresIn: 3600 })
-          : null,
-        samlConfig: org.samlConfig
-          ? await ops.decryptSaml(org.samlConfig)
           : null,
       }))
     );
@@ -86,10 +80,6 @@ export const ops = {
 
       const [org] = await tx.insert(organizations).values(values).returning();
 
-      if (data.saml) {
-        await ops.updateSaml(org.id, data.saml);
-      }
-
       return org;
     });
   },
@@ -109,62 +99,14 @@ export const ops = {
           .where(eq(organizations.id, orgId));
       }
 
-      if (data.saml) {
-        await ops.updateSaml(orgId, data.saml);
-      }
-
       return ops.getById(orgId);
     });
-  },
-
-  async updateSaml(orgId: string, config: SamlConfig) {
-    const existing = await db.query.samlConfigs.findFirst({
-      where: eq(samlConfigs.organizationId, orgId),
-    });
-
-    const values = {
-      organizationId: orgId,
-      entryPoint: crypto.encrypt(config.entryPoint || ""),
-      issuer: crypto.encrypt(config.issuer || ""),
-      cert: crypto.encrypt(config.cert || ""),
-      callbackUrl:
-        config.callbackUrl || `${process.env.BASE_URL}/auth/saml/callback`,
-      updatedAt: new Date(),
-    };
-
-    return existing
-      ? db
-          .update(samlConfigs)
-          .set(values)
-          .where(eq(samlConfigs.id, existing.id))
-      : db.insert(samlConfigs).values(values);
-  },
-
-  async decryptSaml(config: any) {
-    const decrypted = await db
-      .execute(
-        sql`
-        SELECT 
-          ${crypto.decrypt(config.entryPoint)} as entry_point,
-          ${crypto.decrypt(config.issuer)} as issuer,
-          ${crypto.decrypt(config.cert)} as cert,
-          ${config.callbackUrl} as callback_url
-      `
-      )
-      .then((r) => r.rows[0]);
-
-    return {
-      entryPoint: decrypted.entry_point,
-      issuer: decrypted.issuer,
-      cert: decrypted.cert,
-      callbackUrl: config.callbackUrl,
-    };
   },
 
   async getById(id: string) {
     const org = await db.query.organizations.findFirst({
       where: eq(organizations.id, id),
-      with: { samlConfig: true, members: true },
+      with: { members: true },
     });
     if (!org) throw new Error("Organization not found");
 
@@ -176,7 +118,6 @@ export const ops = {
     return {
       ...org,
       logoUrl,
-      samlConfig: org.samlConfig ? await ops.decryptSaml(org.samlConfig) : null,
     };
   },
 
@@ -219,12 +160,7 @@ export const ops = {
       .from(memberRoles)
       .innerJoin(users, eq(users.id, memberRoles.userId))
       .innerJoin(roles, eq(roles.id, memberRoles.roleId))
-      .where(
-        and(
-          eq(memberRoles.organizationId, orgId),
-          isNull(memberRoles.projectId)
-        )
-      );
+      .where(and(eq(memberRoles.organizationId, orgId)));
 
     return members.map((member) => {
       const hasSuperiorRole = PermissionManager.hasSuperiorRole(

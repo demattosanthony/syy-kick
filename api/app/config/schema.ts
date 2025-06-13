@@ -14,7 +14,6 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { customType } from "drizzle-orm/pg-core";
-import { sites } from "../features/sites/sites.schema";
 
 const MESSAGE_ROLES = ["system", "user", "assistant", "tool"] as const;
 const TOOL_CALL_STATUS = ["pending", "completed", "failed"] as const;
@@ -40,15 +39,6 @@ export const bytea = customType<{
   },
 });
 
-export { sites, sitesRelations } from "../features/sites/sites.schema";
-export {
-  issues,
-  issueAssignees,
-  issueComments,
-  issueAssigneesRelations,
-  issuesRelations,
-  issueCommentsRelations,
-} from "../features/projects/issues/issues.schema";
 export {
   workflows,
   workflowOrganizations,
@@ -111,19 +101,6 @@ export const organizationInvites = pgTable("organization_invites", {
 });
 export type Organization = typeof organizations.$inferSelect;
 
-export const samlConfigs = pgTable("saml_configs", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  organizationId: uuid("organization_id")
-    .notNull()
-    .references(() => organizations.id, { onDelete: "cascade" }),
-  entryPoint: bytea("entry_point").notNull(),
-  issuer: bytea("issuer").notNull(),
-  cert: bytea("cert").notNull(),
-  callbackUrl: text("callback_url").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
 // Users table with additional fields
 export const users = pgTable("users", {
   id: uuid("id")
@@ -154,104 +131,96 @@ export const users = pgTable("users", {
 });
 export type User = typeof users.$inferSelect;
 
-export const projects = pgTable("projects", {
+export const files = pgTable("files", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
-  slug: varchar("slug", { length: 255 }),
-  projectNumber: varchar("project_number", { length: 255 }),
-  visibility: text("visibility", { enum: ["private", "public"] })
-    .default("private")
-    .notNull(),
-  estimatedStartDate: timestamp("estimated_start_date"),
-  estimatedEndDate: timestamp("estimated_end_date"),
-  siteId: uuid("site_id").references(() => sites.id, { onDelete: "cascade" }),
-  organizationId: uuid("organization_id").references(() => organizations.id, {
-    onDelete: "cascade",
-  }),
-  userId: uuid("user_id").references(() => users.id, {
-    onDelete: "cascade",
+  mimeType: text("mime_type").notNull(),
+  size: integer("size"),
+  type: text("type", { enum: ["file", "folder"] }).notNull(),
+  fileHash: varchar("file_hash", { length: 255 }),
+  syyclops_path: text("syyclops_path"),
+  sharepoint_path: text("sharepoint_path"),
+  google_drive_path: text("google_drive_path"),
+  file_origin_type: text("file_origin_type", {
+    enum: ["syyclops", "sharepoint", "google_drive"],
+  }).notNull(),
+  category: text("category", {
+    enum: ["drawing", "document"],
   }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
-export type Project = typeof projects.$inferSelect;
 
-export const documentEmbeddings = pgTable("document_embeddings", {
+export const userFiles = pgTable("user_files", {
   id: uuid("id").primaryKey().defaultRandom(),
-  documentId: uuid("document_id")
+  userId: uuid("user_id")
     .notNull()
-    .references(() => documents.id, { onDelete: "cascade" }),
-  text: text("text"),
-  metadata: jsonb("metadata"),
-  embedding: vector("embedding", { dimensions: 768 }),
+    .references(() => users.id, { onDelete: "cascade" }),
+  fileId: uuid("file_id")
+    .notNull()
+    .references(() => files.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const documents = pgTable(
-  "documents",
+export const filePages = pgTable("file_pages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  fileId: uuid("file_id")
+    .notNull()
+    .references(() => files.id, { onDelete: "cascade" }),
+  pageNumber: integer("page_number"), // Indexed at 1
+  sheetName: text("sheet_name"),
+});
+
+export const filePageChunks = pgTable(
+  "file_page_chunks",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    name: varchar("name", { length: 255 }).notNull(),
-    fileHash: varchar("file_hash", { length: 255 }),
-    type: text("type", { enum: DOCUMENT_TYPE }).notNull(),
-    mimeType: varchar("mime_type", { length: 255 }),
-    path: varchar("path", { length: 255 }).notNull(),
-    fileKey: varchar("file_key", { length: 255 }),
-    parentId: uuid("parent_id").references((): any => documents.id, {
-      onDelete: "cascade",
-    }),
-    projectId: uuid("project_id").references(() => projects.id, {
-      onDelete: "cascade",
-    }),
-    knowledgeBaseId: uuid("knowledge_base_id").references(
-      () => knowledgeBases.id,
-      {
-        onDelete: "cascade",
-      }
-    ),
-    size: integer("size"), // size in bytes
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    filePageId: uuid("file_page_id")
+      .notNull()
+      .references(() => filePages.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    position: integer("position"), // indexed at 0 and relative to the page
+    embeddings: vector("embeddings", { dimensions: 1024 }),
   },
   (table) => [
-    // Ensure a document belongs to either a project OR a knowledge base, not both
-    sql`CONSTRAINT project_or_knowledge_base CHECK ((project_id IS NOT NULL AND knowledge_base_id IS NULL) OR (project_id IS NULL AND knowledge_base_id IS NOT NULL))`,
+    index("file_page_chunk_embeddings_index").using(
+      "hnsw",
+      table.embeddings.op("vector_cosine_ops")
+    ),
   ]
 );
 
-export const documentProcessingJobs = pgTable("document_processing_jobs", {
-  id: serial("id").primaryKey(),
-  documentId: uuid("document_id")
-    .notNull()
-    .references(() => documents.id, { onDelete: "cascade" }),
-  fileKey: text("file_key").notNull(),
-  fileName: text("file_name").notNull(),
-  mimeType: text("mime_type").notNull(),
-  status: text("status", {
-    enum: ["pending", "processing", "completed", "failed"],
-  })
-    .notNull()
-    .default("pending"),
-  attempts: integer("attempts").notNull().default(0),
-  maxAttempts: integer("max_attempts").notNull().default(3),
-  lastError: text("last_error"),
-  createdAt: timestamp("created_at").defaultNow(),
-  processAfter: timestamp("process_after").defaultNow(),
-});
+export const filePageImages = pgTable(
+  "file_page_images",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    filePageId: uuid("file_page_id")
+      .notNull()
+      .references(() => filePages.id, { onDelete: "cascade" }),
+    chunkId: uuid("chunk_id").references(() => filePageChunks.id, {
+      onDelete: "cascade",
+    }),
+    imagePath: text("image_path").notNull(),
+    name: text("name"),
+    embeddings: vector("embeddings", { dimensions: 1024 }),
+  },
+  (table) => [
+    index("file_page_image_embeddings_index").using(
+      "hnsw",
+      table.embeddings.op("vector_cosine_ops")
+    ),
+  ]
+);
 
-export const documentThumbnails = pgTable("document_thumbnails", {
+export const messagesFiles = pgTable("messages_files", {
   id: uuid("id").primaryKey().defaultRandom(),
-  documentId: uuid("document_id")
+  messageId: uuid("message_id")
     .notNull()
-    .references(() => documents.id, { onDelete: "cascade" }),
-  fileKey: text("file_key").notNull(),
-  pageNumber: integer("page_number"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    .references(() => messages.id, { onDelete: "cascade" }),
+  fileId: uuid("file_id")
+    .notNull()
+    .references(() => files.id, { onDelete: "cascade" }),
 });
-export type DocumentThumbnail = typeof documentThumbnails.$inferSelect;
 
 // Threads table with user association
 export const threads = pgTable("threads", {
@@ -263,41 +232,13 @@ export const threads = pgTable("threads", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   isPublic: boolean("is_public").default(false).notNull(),
-  organizationId: uuid("organization_id").references(() => organizations.id, {
-    onDelete: "cascade",
-  }),
-  projectId: uuid("project_id").references(() => projects.id, {
-    onDelete: "cascade",
-  }),
-  knowledgeBaseId: uuid("knowledge_base_id").references(
-    () => knowledgeBases.id,
-    { onDelete: "cascade" }
-  ),
-  workflowId: text("workflow_id"),
 });
 export type Thread = typeof threads.$inferSelect;
 export type ThreadWithRelations = Thread & {
   messages: Message[];
-  project?: Project;
   organization?: Organization;
-  knowledgeBase?: KnowledgeBase;
   user: User;
 };
-
-export const messageAttachments = pgTable("message_attachments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  messageId: uuid("message_id")
-    .notNull()
-    .references(() => messages.id, { onDelete: "cascade" }),
-  type: text("type", { enum: ["file", "image", "markdown"] }).notNull(),
-  fileKey: varchar("file_key", { length: 255 }).notNull(),
-  fileName: varchar("file_name", { length: 255 }),
-  mimeType: varchar("mime_type", { length: 255 }),
-  size: integer("size"),
-  markdown: text("markdown"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
 
 // Messages table with user association
 export const messages = pgTable(
@@ -313,9 +254,14 @@ export const messages = pgTable(
     role: text("role", { enum: MESSAGE_ROLES }).notNull(),
     text: text("text"),
     reasoning: text("reasoning"),
+    reasoningDurationSeconds: integer("reasoning_duration_seconds"),
     model: text("model"),
     provider: text("provider"),
     embedding: vector("embedding", { dimensions: 1536 }),
+    status: text("status", {
+      enum: ["streaming", "completed", "failed", "cancelled"],
+    }).default("streaming"),
+    error: text("error"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
@@ -342,31 +288,6 @@ export const toolCalls = pgTable("tool_calls", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const knowledgeBases = pgTable(
-  "knowledge_bases",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    name: varchar("name", { length: 255 }).notNull(),
-    description: text("description"),
-    organizationId: uuid("organization_id").references(() => organizations.id, {
-      onDelete: "cascade",
-    }), // Optional
-    userId: uuid("user_id").references(() => users.id, {
-      onDelete: "cascade",
-    }), // Optional
-    createdBy: uuid("created_by")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  (table) => [
-    // Ensure a knowledge base belongs to either a user OR an organization, not both
-    sql`CONSTRAINT user_or_organization CHECK ((user_id IS NOT NULL AND organization_id IS NULL) OR (user_id IS NULL AND organization_id IS NOT NULL))`,
-  ]
-);
-export type KnowledgeBase = typeof knowledgeBases.$inferSelect;
-
 /** ---- Permissions ---- */
 export const roles = pgTable("roles", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -376,7 +297,7 @@ export const roles = pgTable("roles", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Organization, Project, Document, Message, User...
+// Organization, Document, Message, User...
 export const resources = pgTable("resources", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull().unique(),
@@ -394,7 +315,7 @@ export const actions = pgTable("actions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// A permission is a combination of a role (org or project), resource, and action
+// A permission is a combination of a role (org), resource, and action
 export const permissions = pgTable(
   "permissions",
   {
@@ -422,9 +343,6 @@ export const permissions = pgTable(
 
 export const memberRoles = pgTable("member_roles", {
   id: uuid("id").primaryKey().defaultRandom(),
-  projectId: uuid("project_id").references(() => projects.id, {
-    onDelete: "cascade",
-  }),
   organizationId: uuid("organization_id")
     .references(() => organizations.id, {
       onDelete: "cascade",
@@ -448,18 +366,6 @@ export const accessLogs = pgTable("access_logs", {
   organizationId: uuid("organization_id").references(() => organizations.id, {
     onDelete: "cascade",
   }),
-  projectId: uuid("project_id").references(() => projects.id, {
-    onDelete: "cascade",
-  }),
-  documentId: uuid("document_id").references(() => documents.id, {
-    onDelete: "cascade",
-  }),
-  knowledgeBaseId: uuid("knowledge_base_id").references(
-    () => knowledgeBases.id,
-    {
-      onDelete: "cascade",
-    }
-  ),
   actionId: uuid("action_id")
     .references(() => actions.id, { onDelete: "cascade" })
     .notNull(),
@@ -469,7 +375,6 @@ export const accessLogs = pgTable("access_logs", {
   resourceId: uuid("resource_id")
     .references(() => resources.id, { onDelete: "cascade" })
     .notNull(),
-  siteId: uuid("site_id").references(() => sites.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -502,9 +407,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   threads: many(threads),
   messages: many(messages),
   organizationMembers: many(organizationMembers),
-  projects: many(projects),
-  knowledgeBases: many(knowledgeBases),
   accessTokens: many(accessTokens),
+  userFiles: many(userFiles),
 }));
 
 export const threadsRelations = relations(threads, ({ one, many }) => ({
@@ -512,35 +416,7 @@ export const threadsRelations = relations(threads, ({ one, many }) => ({
     fields: [threads.userId],
     references: [users.id],
   }),
-  organization: one(organizations, {
-    fields: [threads.organizationId],
-    references: [organizations.id],
-  }),
   messages: many(messages),
-  project: one(projects, {
-    fields: [threads.projectId],
-    references: [projects.id],
-  }),
-  knowledgeBase: one(knowledgeBases, {
-    fields: [threads.knowledgeBaseId],
-    references: [knowledgeBases.id],
-  }),
-}));
-
-export const documentsRelations = relations(documents, ({ one, many }) => ({
-  parent: one(documents, {
-    fields: [documents.parentId],
-    references: [documents.id],
-  }),
-  children: many(documents),
-  project: one(projects, {
-    fields: [documents.projectId],
-    references: [projects.id],
-  }),
-  processingJob: one(documentProcessingJobs, {
-    fields: [documents.id],
-    references: [documentProcessingJobs.documentId],
-  }),
 }));
 
 export const messagesRelations = relations(messages, ({ one, many }) => ({
@@ -552,19 +428,20 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     fields: [messages.userId],
     references: [users.id],
   }),
-  attachments: many(messageAttachments),
+  files: many(messagesFiles),
   toolCalls: many(toolCalls),
 }));
 
-export const messageAttachmentsRelations = relations(
-  messageAttachments,
-  ({ one }) => ({
-    message: one(messages, {
-      fields: [messageAttachments.messageId],
-      references: [messages.id],
-    }),
-  })
-);
+export const messagesFilesRelations = relations(messagesFiles, ({ one }) => ({
+  message: one(messages, {
+    fields: [messagesFiles.messageId],
+    references: [messages.id],
+  }),
+  file: one(files, {
+    fields: [messagesFiles.fileId],
+    references: [files.id],
+  }),
+}));
 
 export const toolCallsRelations = relations(toolCalls, ({ one }) => ({
   message: one(messages, {
@@ -573,16 +450,10 @@ export const toolCallsRelations = relations(toolCalls, ({ one }) => ({
   }),
 }));
 
-export const organizationsRelations = relations(
-  organizations,
-  ({ many, one }) => ({
-    members: many(organizationMembers),
-    threads: many(threads),
-    samlConfig: one(samlConfigs),
-    sites: many(sites),
-    knowledgeBases: many(knowledgeBases),
-  })
-);
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  members: many(organizationMembers),
+  threads: many(threads),
+}));
 
 export const organizationMembersRelations = relations(
   organizationMembers,
@@ -616,48 +487,6 @@ export const organizationInvitesRelations = relations(
   })
 );
 
-export const samlConfigsRelations = relations(samlConfigs, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [samlConfigs.organizationId],
-    references: [organizations.id],
-  }),
-}));
-
-export const projectsRelations = relations(projects, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [projects.organizationId],
-    references: [organizations.id],
-  }),
-  user: one(users, {
-    fields: [projects.userId],
-    references: [users.id],
-  }),
-  site: one(sites, {
-    fields: [projects.siteId],
-    references: [sites.id],
-  }),
-}));
-
-export const knowledgeBasesRelations = relations(
-  knowledgeBases,
-  ({ one, many }) => ({
-    organization: one(organizations, {
-      fields: [knowledgeBases.organizationId],
-      references: [organizations.id],
-    }),
-    user: one(users, {
-      fields: [knowledgeBases.userId],
-      references: [users.id],
-    }),
-    createdBy: one(users, {
-      fields: [knowledgeBases.createdBy],
-      references: [users.id],
-    }),
-    documents: many(documents),
-    threads: many(threads),
-  })
-);
-
 // Permissions relations
 export const rolesRelations = relations(roles, ({ many }) => ({
   permissions: many(permissions),
@@ -679,10 +508,6 @@ export const permissionsRelations = relations(permissions, ({ one }) => ({
 }));
 
 export const memberRolesRelations = relations(memberRoles, ({ one, many }) => ({
-  project: one(projects, {
-    fields: [memberRoles.projectId],
-    references: [projects.id],
-  }),
   organization: one(organizations, {
     fields: [memberRoles.organizationId],
     references: [organizations.id],
@@ -707,14 +532,6 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
     fields: [accessLogs.organizationId],
     references: [organizations.id],
   }),
-  project: one(projects, {
-    fields: [accessLogs.projectId],
-    references: [projects.id],
-  }),
-  document: one(documents, {
-    fields: [accessLogs.documentId],
-    references: [documents.id],
-  }),
   action: one(actions, {
     fields: [accessLogs.actionId],
     references: [actions.id],
@@ -723,20 +540,60 @@ export const accessLogsRelations = relations(accessLogs, ({ one }) => ({
     fields: [accessLogs.resourceId],
     references: [resources.id],
   }),
-  site: one(sites, {
-    fields: [accessLogs.siteId],
-    references: [sites.id],
-  }),
-  knowledgeBase: one(knowledgeBases, {
-    fields: [accessLogs.knowledgeBaseId],
-    references: [knowledgeBases.id],
-  }),
 }));
 
 export const accessTokensRelations = relations(accessTokens, ({ one }) => ({
   user: one(users, {
     fields: [accessTokens.userId],
     references: [users.id],
+  }),
+}));
+
+export const filesRelations = relations(files, ({ one, many }) => ({
+  pages: many(filePages),
+  messages: many(messagesFiles),
+  users: many(userFiles),
+}));
+
+export const filePagesRelations = relations(filePages, ({ one, many }) => ({
+  file: one(files, {
+    fields: [filePages.fileId],
+    references: [files.id],
+  }),
+  chunks: many(filePageChunks),
+  images: many(filePageImages),
+}));
+
+export const filePageChunksRelations = relations(
+  filePageChunks,
+  ({ one, many }) => ({
+    page: one(filePages, {
+      fields: [filePageChunks.filePageId],
+      references: [filePages.id],
+    }),
+    images: many(filePageImages),
+  })
+);
+
+export const filePageImagesRelations = relations(filePageImages, ({ one }) => ({
+  page: one(filePages, {
+    fields: [filePageImages.filePageId],
+    references: [filePages.id],
+  }),
+  chunk: one(filePageChunks, {
+    fields: [filePageImages.chunkId],
+    references: [filePageChunks.id],
+  }),
+}));
+
+export const userFilesRelations = relations(userFiles, ({ one }) => ({
+  user: one(users, {
+    fields: [userFiles.userId],
+    references: [users.id],
+  }),
+  file: one(files, {
+    fields: [userFiles.fileId],
+    references: [files.id],
   }),
 }));
 

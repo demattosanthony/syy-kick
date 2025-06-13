@@ -123,15 +123,6 @@ export type WorkflowInputSchemaParsed = {
 
 export type WorkflowInputSchema = Record<string, WorkflowInputSchemaParsed>;
 
-export interface WorkflowProjectFile {
-  source: "project";
-  name: string;
-  type: string;
-  url: string;
-  size: number;
-  file_key: string;
-}
-
 export enum StepStatus {
   Pending = "pending",
   Blocked = "blocked",

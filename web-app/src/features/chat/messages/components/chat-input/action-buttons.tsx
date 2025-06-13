@@ -7,11 +7,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useState } from "react";
-import useMicrosoftPicker from "@/features/projects/hooks/use-microsoft-picker";
-import { SharePointFile } from "@/features/projects/types";
-import { useAtom } from "jotai";
-import { uploadsAtom } from "@/atoms/chat";
-import { FileUploadMimeType } from "@/types/chat";
+import { useMicrosoftPicker } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
+import { SharePointFile } from "@/features/integrations/microsoft/hooks/use-microsoft-picker";
 import sharepointLogo from "@/assets/logos/sharepoint.svg";
 
 interface ActionButtonsProps {
@@ -19,10 +16,17 @@ interface ActionButtonsProps {
   input: string;
   stop?: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  selectedModel: { supportedMimeTypes?: string[] };
+  selectedModel: {
+    supportedMimeTypes?: string[];
+    maxFileSize?: number;
+    maxImageSize?: number;
+  };
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  processFileUpload: (file: File) => Promise<void>;
   onFileUploadComplete?: () => void;
+  showSharePointPopoverButton?: boolean;
+  isReadyToSubmit?: boolean;
 }
 
 export function ActionButtons({
@@ -33,10 +37,11 @@ export function ActionButtons({
   selectedModel,
   fileInputRef,
   handleFiles,
+  processFileUpload,
   onFileUploadComplete,
+  //   showSharePointPopoverButton = true,
+  isReadyToSubmit = true,
 }: ActionButtonsProps) {
-  const [uploads, setUploads] = useAtom(uploadsAtom);
-
   const [open, setOpen] = useState(false);
   const {
     openPicker,
@@ -46,14 +51,12 @@ export function ActionButtons({
   } = useMicrosoftPicker({
     onFilesSelected: async (files: SharePointFile[]) => {
       const filesToUpload = await pickerSelectionsToFiles(files);
-      const fileUploads = filesToUpload.map((file) => ({
-        file: file,
-        preview: URL.createObjectURL(file),
-        type: file.type.startsWith("image/")
-          ? "image"
-          : ("pdf" as FileUploadMimeType),
-      }));
-      setUploads([...uploads, ...fileUploads]);
+
+      // Process each file through the same pipeline as regular uploads
+      for (const file of filesToUpload) {
+        await processFileUpload(file);
+      }
+
       setOpen(false);
       onFileUploadComplete?.();
     },
@@ -63,7 +66,7 @@ export function ActionButtons({
 
   return (
     <div className="w-full flex justify-between items-center px-1 pb-1">
-      <div>
+      <div className="flex items-center gap-2">
         <ModelSelector />
       </div>
       <div className="flex items-center gap-1 h-full">
@@ -73,7 +76,7 @@ export function ActionButtons({
               <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                   <Button
-                    className="h-7 w-7 p-0 rounded-full"
+                    className="h-8 w-8 p-0 rounded-full"
                     variant="ghost"
                     type="button"
                     onClick={(e) => {
@@ -134,7 +137,7 @@ export function ActionButtons({
           )}
         <Button
           className="h-8 w-8 rounded-full"
-          disabled={!input && !isGenerating}
+          disabled={(!input && !isGenerating) || !isReadyToSubmit}
           variant={!input ? "secondary" : "default"}
           onClick={(e) => {
             e.preventDefault();

@@ -32,8 +32,8 @@ export function ThreadsList({ user }: ThreadsListProps) {
       ? params.threadId
       : null
     : null;
-  const { data, isLoading } = useThreadsQuery();
-  const threads = data?.pages[0]?.threads ?? [];
+  const { data, isLoading } = useThreadsQuery({ pageSize: 20 });
+  const threads = data?.pages?.flatMap((page) => page.threads) ?? [];
 
   const deleteThreadMutation = useDeleteThreadMutation();
 
@@ -50,7 +50,7 @@ export function ThreadsList({ user }: ThreadsListProps) {
     <SidebarGroup key={"Recents"}>
       <SidebarGroupLabel className="gap-1">
         <History className="max-h-[12px] max-w-[12px]" />
-        {"Recent Threads"}
+        {"Recent Chats"}
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>

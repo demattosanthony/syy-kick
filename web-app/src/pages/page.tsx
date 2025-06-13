@@ -2,48 +2,81 @@ import api from "@/lib/api";
 
 // Hooks
 import { useAtom } from "jotai";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 // State
-import { initalInputAtom } from "@/atoms/chat";
+import {
+  initalInputAtom,
+  uploadsAtom,
+  modelAtom,
+  chatStatusAtom,
+  instructionsAtom,
+  pendingThreadAtom,
+  isPendingThreadAtom,
+  PendingThread,
+} from "@/atoms/chat";
 import { pricingPlanDialogOpenAtom } from "@/components/PricingDialog";
 
 // Components
-import ConversationStarters from "@/features/chat/messages/components/conversation-starters";
 import { toast } from "sonner";
 import {
   AnimatedGreeting,
   ChatInputFormRef,
 } from "@/features/chat/messages/components";
-import ProjectPreviews from "@/features/projects/components/project-previews";
 import ChatInputForm from "@/features/chat/messages/components/chat-input/chat-input";
 import { useMeQuery } from "@/features/user/api";
-import { useProjectsQuery } from "@/features/projects/api";
 import { useNavigate } from "react-router";
+import { SharePointFileBrowser } from "@/features/integrations/microsoft/components/sharepoint-file-browser";
+import type { GraphDriveItem } from "@/features/integrations/microsoft/api/microsoft-graph";
+import { MessageRole } from "@/types/chat";
+import ThreadsList from "@/features/chat/threads/components/threads-list";
+import { useAttachmentProcessing } from "@/features/chat/threads/hooks/use-attachment-processing";
+import { useFileUpload } from "@/hooks/use-file-upload";
 
 // Images
 import logo from "@/assets/logo192.png";
+import { validateFile } from "@/features/chat/threads/utils";
+
+// Local type alias if SharePointItem is not exported from its original file
+// This mirrors the definition in sharepoint-file-browser.tsx
+type SharePointItem = Omit<GraphDriveItem, "folder" | "file"> & {
+  folder?: boolean;
+  file?: boolean;
+  driveId?: string;
+  "@microsoft.graph.downloadUrl"?: string; // Ensure this is part of the type for use in handleSharePointFileSelectForWidget
+  name: string; // ensure name is part of the type
+  id: string; // ensure id is part of the type
+};
 
 export function HomePage() {
   const { data: user, isFetched: userFetched } = useMeQuery();
-  const { data: recentProjects, isLoading: projectsLoading } = useProjectsQuery(
-    {
-      sort: "recent",
-      limit: 6,
-    }
-  );
+  const queryClient = useQueryClient();
 
   const navigate = useNavigate();
-  const [initalInput, setInitalInput] = useAtom(initalInputAtom);
+  const [input, setInput] = useAtom(initalInputAtom);
   const [, setShowPricingDialog] = useAtom(pricingPlanDialogOpenAtom);
   const chatInputRef = useRef<ChatInputFormRef>(null);
+  const [uploads, setUploads] = useAtom(uploadsAtom);
+  const [selectedModel] = useAtom(modelAtom);
+  const [, setChatStatus] = useAtom(chatStatusAtom);
+  const [instructions] = useAtom(instructionsAtom);
+  const [isDownloadingSPFile, setIsDownloadingSPFile] = useState(false);
+  const { processAttachments, clearAttachments } = useAttachmentProcessing();
+  const [, setPendingThread] = useAtom(pendingThreadAtom);
+  const [, setIsPendingThread] = useAtom(isPendingThreadAtom);
+
+  // Get the file processing function from the file upload hook
+  const { processFileUpload } = useFileUpload(
+    selectedModel.supportedMimeTypes || []
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInitalInput(e.target.value);
+    setInput(e.target.value);
   };
 
   const handleSubmit = async () => {
-    if (initalInput.trim() === "") return;
+    if (input.trim() === "" && uploads.length === 0) return;
 
     // Require login
     if (!user) {
@@ -51,13 +84,88 @@ export function HomePage() {
       return;
     }
 
-    setInitalInput(initalInput.trim());
+    // Generate temporary ID for immediate navigation
+    const tempId = `pending-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
 
+    // Create pending thread state
+    const pendingThread: PendingThread = {
+      tempId,
+      initialMessage: input.trim(),
+      uploads: [...uploads],
+      model: selectedModel.name,
+      instructions: instructions || undefined,
+      status: "processing",
+    };
+
+    // Set pending state and navigate immediately
+    setPendingThread(pendingThread);
+    setIsPendingThread(true);
+    setChatStatus("submitted");
+
+    // Clear input and attachments immediately for better UX
+    setInput("");
+    setUploads([]);
+
+    // Navigate to pending thread
+    navigate(`/threads/${tempId}`);
+
+    // Process thread creation in background
     try {
-      // Create thread in background
-      const { id: threadId } = await api.threads.createThread({});
-      navigate(`/threads/${threadId}?isNew=true`);
+      // Process attachments
+      const attachments = await processAttachments();
+
+      // Create thread
+      const { id: threadId } = await api.threads.createThread();
+      await api.threads.postMessage({
+        threadId,
+        message: {
+          content: pendingThread.initialMessage,
+          role: MessageRole.user,
+          experimental_attachments: attachments,
+        },
+        model: selectedModel.name,
+        instructions: instructions || undefined,
+      });
+
+      // Invalidate threads query to update sidebar with new thread
+      setTimeout(() => {
+        queryClient.invalidateQueries({
+          queryKey: ["threads"],
+        });
+      }, 4000);
+
+      // Update pending thread with actual thread ID
+      setPendingThread((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "created",
+              actualThreadId: threadId,
+            }
+          : null
+      );
+
+      // Clear attachments after successful submission
+      clearAttachments();
+
+      // Navigate to actual thread
+      navigate(`/threads/${threadId}`, { replace: true });
     } catch (error: unknown) {
+      // Update pending thread with error
+      setPendingThread((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "error",
+              error: error instanceof Error ? error.message : "Unknown error",
+            }
+          : null
+      );
+
+      setChatStatus("error");
+
       if (error instanceof Error && error.message === "subscription_required") {
         setShowPricingDialog(true);
         toast.error("Pro plan required to create a new thread.");
@@ -65,63 +173,120 @@ export function HomePage() {
         toast.error("Failed to create thread. Please try again.", {
           action: {
             label: "Retry",
-            onClick: () => handleSubmit(),
+            onClick: () => {
+              // Reset and retry
+              setPendingThread(null);
+              setIsPendingThread(false);
+              navigate("/");
+              setInput(pendingThread.initialMessage);
+              setUploads(pendingThread.uploads);
+            },
           },
         });
       }
+
+      // Reset status after showing error
+      setTimeout(() => {
+        setChatStatus("ready");
+      }, 3000);
     }
   };
 
+  // Added handler for SharePoint widget
+  const handleSharePointFileSelectForWidget = async (file: SharePointItem) => {
+    if (!file["@microsoft.graph.downloadUrl"]) {
+      toast.error("No download URL available for this file.");
+      return;
+    }
+
+    setIsDownloadingSPFile(true);
+    try {
+      const response = await fetch(file["@microsoft.graph.downloadUrl"]);
+      if (!response.ok) {
+        throw new Error(`Failed to download file: ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      const contentType =
+        response.headers.get("Content-Type") || "application/octet-stream";
+      const downloadedFile = new window.File([blob], file.name, {
+        type: contentType,
+      });
+
+      if (
+        !validateFile(downloadedFile, selectedModel.supportedMimeTypes || [], {
+          maxFileSize: selectedModel.maxFileSize,
+          maxImageSize: selectedModel.maxImageSize,
+        })
+      ) {
+        setIsDownloadingSPFile(false);
+        return;
+      }
+
+      // Process the file through the same pipeline as regular uploads
+      await processFileUpload(downloadedFile);
+    } catch (error) {
+      console.error("Error downloading SharePoint file from widget:", error);
+      toast.error("Failed to add SharePoint file. Please try again.");
+    }
+
+    setIsDownloadingSPFile(false);
+  };
+
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      <div className="flex flex-col flex-1">
-        <div className="flex flex-col items-center w-full gap-6 pb-4">
-          <div className="w-[85px] flex items-center justify-center min-h-[85px] mt-[16vh]">
-            <img src={logo} width={85} height={85} alt="Logo" />
+    <div className="flex flex-col h-full overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 items-center">
+      <div className="flex flex-col items-center w-full gap-4 md:gap-12 max-w-3xl">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-[75px] md:w-[75px] flex items-center justify-center min-h-[75px] md:min-h-[75px] mt-[10vh] md:mt-[12vh]">
+            <img src={logo} width={75} height={75} alt="Logo" />
           </div>
 
-          <div className="flex flex-col gap-6 min-h-[72px]">
+          <div className="flex flex-col gap-4 md:gap-6">
             {userFetched && (
               <AnimatedGreeting name={user?.name?.split(" ")[0] ?? ""} />
             )}
           </div>
+        </div>
 
-          <div className="flex flex-col w-full px-6 mt-4 md:px-2">
-            <ChatInputForm
-              input={initalInput}
-              setInput={setInitalInput}
-              handleInputChange={handleInputChange}
-              ref={chatInputRef}
-              onSubmit={handleSubmit}
-            />
-          </div>
+        <div className="flex flex-col w-full">
+          <ChatInputForm
+            input={input}
+            setInput={setInput}
+            handleInputChange={handleInputChange}
+            ref={chatInputRef}
+            onSubmit={handleSubmit}
+            hasThread={false}
+          />
+        </div>
 
-          <div className="max-w-5xl w-full flex flex-col items-center">
-            {user ? (
-              <div className="mt-6 w-full">
-                <ProjectPreviews
-                  projects={recentProjects || []}
-                  isLoading={projectsLoading}
-                />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center max-w-[800px] w-full">
-                <ConversationStarters
-                  triggerFileInput={() =>
-                    chatInputRef.current?.triggerFileInput()
-                  }
-                  triggerTextAreaFocus={() =>
-                    chatInputRef.current?.focusTextArea()
-                  }
-                />
+        {userFetched && (
+          <div className="w-full">
+            {user && (
+              <div className="flex flex-col md:flex-row gap-4 md:gap-6 w-full max-w-3xl mx-auto">
+                <div className="w-full md:w-1/2 h-min">
+                  <SharePointFileBrowser
+                    displayMode="inline"
+                    onFileSelect={handleSharePointFileSelectForWidget}
+                    isDownloading={isDownloadingSPFile}
+                  />
+                </div>
+                <div className="w-full md:w-1/2 h-[400px] border rounded-md bg-card">
+                  <div className="flex items-center border-b px-3 h-10">
+                    <span className="text-sm font-medium truncate flex-1">
+                      Recent Chats
+                    </span>
+                  </div>
+                  <div className="px-1 py-1 overflow-y-auto h-[355px]">
+                    <ThreadsList compact={true} showLatestMessage={false} />
+                  </div>
+                </div>
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
 
       {!user && userFetched && (
-        <footer className="text-xs text-gray-500 text-center p-4 shrink-0">
+        <footer className="text-xs text-gray-500 text-center p-4 shrink-0 w-full">
           By using our service, you agree to our{" "}
           <a
             href="/policies/terms-of-use"

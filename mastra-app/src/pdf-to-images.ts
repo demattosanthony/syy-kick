@@ -1,10 +1,88 @@
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
-import path from "node:path";
-import os from "node:os";
-import fs from "node:fs/promises";
-
 import { getFileFromS3, uploadFileToS3 } from "./s3.ts";
+
+// ConvertAPI configuration
+const CONVERT_API_SECRET = process.env.CONVERT_API_SECRET || "";
+const CONVERT_API_URL = "https://v2.convertapi.com";
+
+interface ConvertApiResponse {
+  ConversionCost: number;
+  Files: Array<{
+    FileName: string;
+    FileSize: number;
+    Url: string;
+    FileData?: string; // Base64 encoded file data (alternative to Url)
+  }>;
+}
+
+async function callConvertApi(
+  fromFormat: string,
+  toFormat: string,
+  parameters: Record<string, any>
+): Promise<ConvertApiResponse> {
+  if (!CONVERT_API_SECRET) {
+    throw new Error("CONVERT_API_SECRET environment variable is not set");
+  }
+
+  const url = `${CONVERT_API_URL}/convert/${fromFormat}/to/${toFormat}?Secret=${CONVERT_API_SECRET}`;
+
+  console.log(`🔗 [ConvertAPI] Calling: ${fromFormat} → ${toFormat}`);
+  console.log(
+    `📋 [ConvertAPI] Parameters:`,
+    Object.keys(parameters).map((key) =>
+      key === "File"
+        ? `${key}: [Buffer ${parameters[key]?.byteLength || parameters[key]?.length || 0} bytes]`
+        : `${key}: ${parameters[key]}`
+    )
+  );
+
+  // Create FormData for multipart upload
+  const formData = new FormData();
+
+  for (const [key, value] of Object.entries(parameters)) {
+    if (key === "File") {
+      // Convert buffer to blob for file upload
+      let fileBuffer: Buffer;
+      if (typeof value === "string") {
+        fileBuffer = Buffer.from(value, "base64");
+      } else if (Buffer.isBuffer(value)) {
+        fileBuffer = value;
+      } else {
+        throw new Error("File parameter must be a base64 string or Buffer");
+      }
+
+      // Create a Blob from the buffer for FormData
+      const blob = new Blob([fileBuffer], { type: "application/pdf" });
+      formData.append("File", blob, "input.pdf");
+    } else {
+      // Add other parameters as regular form fields
+      formData.append(key, String(value));
+    }
+  }
+
+  console.log(
+    `🔗 [ConvertAPI] Request URL: ${url.replace(CONVERT_API_SECRET, "[SECRET]")}`
+  );
+
+  const response = await fetch(url, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ [ConvertAPI] Error response:`, errorText);
+    throw new Error(
+      `ConvertAPI error: ${response.status} ${response.statusText} - ${errorText}`
+    );
+  }
+
+  const result = await response.json();
+  console.log(
+    `✅ [ConvertAPI] Success: ${result.Files?.length || 0} files generated`
+  );
+
+  return result;
+}
 
 export async function convertPdfToImages(
   pdfData: Buffer,
@@ -18,64 +96,110 @@ export async function convertPdfToImages(
     base64: string;
   }[]
 > {
-  const execAsync = promisify(exec);
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pdf-images-"));
-  const tempPdfPath = path.join(tempDir, "input.pdf");
-  const outputPattern = path.join(tempDir, "output-%d.png");
-
   try {
-    await fs.writeFile(tempPdfPath, Buffer.from(pdfData));
+    // Validate input buffer
+    if (!pdfData || !Buffer.isBuffer(pdfData) || pdfData.length === 0) {
+      throw new Error(
+        `Invalid PDF data: ${!pdfData ? "null/undefined" : !Buffer.isBuffer(pdfData) ? "not a Buffer" : "empty buffer (0 bytes)"}`
+      );
+    }
 
-    const gsCommand = `gs -dNOPAUSE -dBATCH -sDEVICE=png16m -r400 -sOutputFile="${outputPattern}" "${tempPdfPath}"`;
+    const maxDimension = options?.maxDimension || 8000;
+    const dpi = 400;
 
-    await execAsync(gsCommand);
+    console.log("Converting PDF to images using ConvertAPI with options:", {
+      maxDimension,
+      dpi,
+      bufferSize: pdfData.length,
+    });
 
-    const imageFiles = await fs.readdir(tempDir);
+    // Prepare parameters for ConvertAPI
+    const parameters: Record<string, any> = {
+      File: pdfData,
+      ImageResolution: dpi,
+      ImageWidth: maxDimension,
+      ImageHeight: maxDimension,
+    };
+
+    // Call ConvertAPI to convert PDF to PNG
+    const result = await callConvertApi("pdf", "png", parameters);
+
+    if (!result.Files || result.Files.length === 0) {
+      throw new Error("No files returned from ConvertAPI");
+    }
+
     const images = [];
 
-    for (const imageFile of imageFiles) {
-      if (imageFile.startsWith("output-") && imageFile.endsWith(".png")) {
-        const imagePath = path.join(tempDir, imageFile);
+    for (let i = 0; i < result.Files.length; i++) {
+      const file = result.Files[i];
 
-        // Resize the image if maxDimension is provided
-        if (options?.maxDimension && options.maxDimension > 0) {
-          const resizeCommand = `convert "${imagePath}" -resize "${options.maxDimension}x${options.maxDimension}>" "${imagePath}"`;
-          try {
-            await execAsync(resizeCommand);
-          } catch (resizeError) {
-            console.error(`Failed to resize image ${imageFile}:`, resizeError);
-            // Optionally, decide if you want to throw or continue without resizing
-            // For now, we log and continue, the original image will be used.
+      console.log(
+        `🖼️ [ConvertAPI] Processing file ${i + 1}: ${JSON.stringify(file)}`
+      );
+
+      try {
+        let base64Data: string;
+
+        // Check if the response contains base64 data directly or a URL
+        if (file.FileData) {
+          // ConvertAPI returned base64 data directly
+          console.log(`📄 [ConvertAPI] Using direct base64 data from FileData`);
+          base64Data = file.FileData;
+        } else if (file.Url && file.Url.trim() !== "") {
+          // ConvertAPI returned a URL to download from
+          console.log(`⬇️ [ConvertAPI] Downloading image from: ${file.Url}`);
+          const imageResponse = await fetch(file.Url);
+
+          if (!imageResponse.ok) {
+            console.error(
+              `Failed to download image ${i + 1}: ${imageResponse.status}`
+            );
+            continue;
           }
+
+          const imageBuffer = await imageResponse.arrayBuffer();
+          base64Data = Buffer.from(imageBuffer).toString("base64");
+        } else {
+          console.error(
+            `❌ [ConvertAPI] File ${i + 1} has no URL or FileData:`,
+            file
+          );
+          continue;
         }
 
-        const pageMatch = imageFile.match(/output-(\d+)\.png/);
-        const pageNum = pageMatch ? parseInt(pageMatch[1], 10) : 0;
-
-        const imageBuffer = await fs.readFile(imagePath);
-        const stats = await fs.stat(imagePath);
+        // Validate we have base64 data
+        if (!base64Data || base64Data.trim() === "") {
+          console.error(`❌ [ConvertAPI] File ${i + 1} has empty base64 data`);
+          continue;
+        }
 
         images.push({
-          name: imageFile,
-          path: imagePath,
-          size: stats.size,
-          page: pageNum,
-          base64: imageBuffer.toString("base64"),
+          name: file.FileName || `page-${i + 1}.png`,
+          path: file.Url || "",
+          size: file.FileSize || base64Data.length,
+          page: i + 1,
+          base64: base64Data,
         });
+
+        console.log(`✅ [ConvertAPI] Successfully processed image ${i + 1}`);
+      } catch (error) {
+        console.error(`Error processing image ${i + 1}:`, error);
+        continue;
       }
     }
 
-    await fs.rm(tempDir, { recursive: true, force: true });
+    // Check if we got any valid images
+    if (images.length === 0) {
+      throw new Error(
+        "No valid images were processed from ConvertAPI response"
+      );
+    }
 
-    // Sort images by page number to ensure correct order
-    images.sort((a, b) => a.page - b.page);
-
-    return images;
-  } catch (error) {
-    console.error(error);
-    // Delete the temp directory
-    await fs.rm(tempDir, { recursive: true, force: true });
-    throw error;
+    // Return images sorted by page number
+    return images.sort((a, b) => a.page - b.page);
+  } catch (error: any) {
+    console.error("Error converting PDF to images with ConvertAPI:", error);
+    throw new Error(`Failed to convert PDF to images: ${error.message}`);
   }
 }
 

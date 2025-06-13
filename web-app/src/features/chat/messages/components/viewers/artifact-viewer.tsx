@@ -1,11 +1,10 @@
 // React and hooks
 import React from "react";
 import { useEffect, useRef, useState } from "react";
-import { useSetAtom } from "jotai";
+import { useSetAtom, useAtom } from "jotai";
 
 // UI Components
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -17,92 +16,80 @@ import { motion } from "framer-motion";
 import { Check, Copy, Download, X } from "lucide-react";
 
 // State management
-import { selectedArtifactAtom } from "@/atoms/chat";
+import {
+  selectedArtifactAtom,
+  userClosedArtifactsAtom,
+  artifactSelectionModeAtom,
+} from "@/atoms/chat";
 
 // Utilities and helpers
 import { cn } from "@/lib/utils";
-import { getArtifactVersionInfo } from "@/lib/artifact-utils";
 
 // Types
 import { Artifact } from "@/types/chat";
-import { Message } from "ai";
 
 // Content renderers and parsers
 import MarkdownViewer from "./markdown-viewer";
 import { marked } from "marked";
-// import mermaid from "mermaid"; // Remove static import
-import Papa from "papaparse";
+import { CsvViewer } from "./csv-viewer";
+import { CodeViewer } from "./code-viewer";
+import { SvgViewer } from "./svg-viewer";
 
-export const CsvViewer: React.FC<{ content: string }> = ({ content }) => {
-  // Parse CSV
-  const parseResult = Papa.parse(content, {
-    header: false,
-    skipEmptyLines: true,
-    delimiter: ",", // explicitly set delimiter
-    quoteChar: '"', // explicitly set quote character
-    escapeChar: '"', // use double quotes for escaping
-  });
+const HtmlViewer: React.FC<{ content: string }> = ({ content }) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const rows = parseResult.data as string[][];
-  const headerRow = rows[0];
-  const bodyRows = rows.slice(1);
+  useEffect(() => {
+    if (!iframeRef.current) return;
 
-  // Find the maximum number of columns
-  const maxColumns = Math.max(
-    headerRow?.length || 0,
-    ...bodyRows.map((row) => row.length)
-  );
+    const iframe = iframeRef.current;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
 
-  // Pad header cells if needed
-  const headerCells = [...(headerRow || [])];
-  while (headerCells.length < maxColumns) {
-    headerCells.push("");
-  }
+    if (doc) {
+      doc.open();
+      doc.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 20px;
+                background: white;
+              }
+              * {
+                box-sizing: border-box;
+              }
+            </style>
+          </head>
+          <body>
+            ${content}
+          </body>
+        </html>
+      `);
+      doc.close();
+    }
+  }, [content]);
 
   return (
-    <div className="h-full w-full overflow-auto whitespace-nowrap">
-      <table className="min-w-full table-fixed border-collapse">
-        <thead>
-          <tr className="bg-secondary font-semibold">
-            {headerCells.map((cell, i) => (
-              <td
-                key={i}
-                className="px-4 py-2 border overflow-hidden text-ellipsis"
-              >
-                {cell.trim()}
-              </td>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {bodyRows.map((row, i) => {
-            // Pad row cells with empty strings if needed
-            const cells = [...row];
-            while (cells.length < maxColumns) {
-              cells.push("");
-            }
-            return (
-              <tr key={i} className="border-t">
-                {cells.map((cell, j) => (
-                  <td
-                    key={j}
-                    className="px-4 py-2 border overflow-hidden text-ellipsis"
-                  >
-                    {cell.trim()}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="w-full h-full bg-white rounded-lg overflow-hidden">
+      <iframe
+        ref={iframeRef}
+        className="w-full h-full border-0"
+        sandbox="allow-scripts allow-same-origin"
+        title="HTML Content"
+      />
     </div>
   );
 };
 
 const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
-  const mermaidRef = useRef<HTMLDivElement>(null); // Outer container ref
-  const diagramRef = useRef<HTMLDivElement>(null); // Inner container ref (for transform)
+  const mermaidRef = useRef<HTMLDivElement>(null);
+  const diagramRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const isDragging = useRef(false);
@@ -113,9 +100,8 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
 
     const initializeAndRenderMermaid = async () => {
       try {
-        // Dynamically import mermaid
         const mermaidModule = await import("mermaid");
-        const mermaid = mermaidModule.default; // Access the default export
+        const mermaid = mermaidModule.default;
 
         mermaid.initialize({
           startOnLoad: false,
@@ -124,14 +110,12 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
         });
 
         const id = `mermaid-diagram-${Date.now()}`;
-        const currentDiagramRef = diagramRef.current; // Capture ref value
+        const currentDiagramRef = diagramRef.current;
 
-        // Clear previous content and show loading indicator
-        if (!currentDiagramRef) return; // Guard against null ref
+        if (!currentDiagramRef) return;
         currentDiagramRef.innerHTML = "<p>Loading diagram...</p>";
-        currentDiagramRef.style.cursor = "default"; // Reset cursor
+        currentDiagramRef.style.cursor = "default";
 
-        // Use a temporary invisible div for rendering
         const tempRenderDiv = document.createElement("div");
         tempRenderDiv.id = id;
         tempRenderDiv.className = "mermaid";
@@ -140,17 +124,13 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
         tempRenderDiv.style.position = "absolute";
         document.body.appendChild(tempRenderDiv);
 
-        // Use a try-finally block for cleanup, even if parse fails
         try {
-          await mermaid.parse(content); // Ensure parsing completes before rendering
+          await mermaid.parse(content);
           const { svg } = await mermaid.render(id, content);
 
           if (currentDiagramRef) {
-            currentDiagramRef.innerHTML = svg; // Inject SVG
-            currentDiagramRef.style.cursor = "grab"; // Set cursor for panning
-            // Reset zoom/pan state when content changes (already handled by content dependency)
-            // setScale(1); // Consider if resetting is needed here or if effect dependency handles it
-            // setPosition({ x: 0, y: 0 });
+            currentDiagramRef.innerHTML = svg;
+            currentDiagramRef.style.cursor = "grab";
           }
         } catch (error) {
           console.error("Error parsing or rendering mermaid diagram:", error);
@@ -159,7 +139,6 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
               '<p class="text-red-500 p-4">Error rendering diagram. Check console for details.</p>';
           }
         } finally {
-          // Clean up the temporary div regardless of success/failure
           if (document.body.contains(tempRenderDiv)) {
             document.body.removeChild(tempRenderDiv);
           }
@@ -167,7 +146,6 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
       } catch (error) {
         console.error("Error loading or initializing mermaid:", error);
         if (diagramRef.current) {
-          // Check diagramRef.current again
           diagramRef.current.innerHTML =
             '<p class="text-red-500 p-4">Error setting up diagram rendering.</p>';
         }
@@ -175,75 +153,57 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
     };
 
     initializeAndRenderMermaid();
-
-    // We still need the cleanup for event listeners, keep this part
-    // return () => {
-    //   // Any specific mermaid cleanup needed? Usually not, but depends on lib.
-    // };
-  }, [content]); // Rerun effect when content changes
+  }, [content]);
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomFactor = 1.1;
-    // Calculate scale delta based on scroll direction
     const scaleDelta = e.deltaY < 0 ? zoomFactor : 1 / zoomFactor;
 
     setScale((prevScale) => {
-      const newScale = Math.max(0.1, Math.min(prevScale * scaleDelta, 10)); // Min/Max scale
-
-      // TODO: Adjust position based on cursor location during zoom for better UX
-      // This requires calculating the pointer position relative to the diagram element
-      // For now, we keep the position fixed during zoom, effectively zooming towards the center.
-
+      const newScale = Math.max(0.1, Math.min(prevScale * scaleDelta, 10));
       return newScale;
     });
   };
 
-  // Mouse move handler (attached to window)
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging.current || !diagramRef.current) return;
-    e.preventDefault(); // Prevent text selection during drag
+    e.preventDefault();
     const newX = e.clientX - startDragPos.current.x;
     const newY = e.clientY - startDragPos.current.y;
     setPosition({ x: newX, y: newY });
   };
 
-  // Mouse up handler (attached to window)
   const handleMouseUp = () => {
-    if (!isDragging.current) return; // Avoid removing listeners if not dragging
+    if (!isDragging.current) return;
     isDragging.current = false;
     if (diagramRef.current) {
-      diagramRef.current.style.cursor = "grab"; // Change cursor back
+      diagramRef.current.style.cursor = "grab";
     }
     window.removeEventListener("mousemove", handleMouseMove);
     window.removeEventListener("mouseup", handleMouseUp);
   };
 
-  // Mouse down handler (on the diagram)
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Prevent dragging on error messages or loading text
     if (
       !diagramRef.current ||
       diagramRef.current.querySelector("svg") === null
     ) {
       return;
     }
-    e.preventDefault(); // Prevent default image drag behavior
+    e.preventDefault();
     isDragging.current = true;
-    // Calculate starting position relative to the current transform
     startDragPos.current = {
       x: e.clientX - position.x,
       y: e.clientY - position.y,
     };
     if (diagramRef.current) {
-      diagramRef.current.style.cursor = "grabbing"; // Change cursor
+      diagramRef.current.style.cursor = "grabbing";
     }
-    // Add listeners to window to capture mouse movements outside the element
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
   };
 
-  // Cleanup window event listeners on component unmount
   useEffect(() => {
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
@@ -252,72 +212,24 @@ const MermaidViewer: React.FC<{ content: string }> = ({ content }) => {
   }, []);
 
   return (
-    // Outer container: Handles viewport clipping and wheel events
     <div
       ref={mermaidRef}
-      className="w-full flex-1 h-full overflow-hidden cursor-default bg-muted/20" // Added subtle background
+      className="w-full flex-1 h-full overflow-hidden cursor-default bg-muted/20"
       onWheel={handleWheel}
     >
-      {/* Inner container: Handles dragging and transforms */}
       <div
         ref={diagramRef}
-        className="w-full h-full flex justify-center items-center" // Center content initially
+        className="w-full h-full flex justify-center items-center"
         style={{
-          // Apply scale first, then translation
           transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-          transformOrigin: "center", // Zoom/scale relative to the center
-          transition: isDragging.current ? "none" : "transform 0.1s ease-out", // Faster updates during drag
+          transformOrigin: "center",
+          transition: isDragging.current ? "none" : "transform 0.1s ease-out",
         }}
         onMouseDown={handleMouseDown}
-        // Prevent context menu while dragging
         onContextMenu={(e) => {
           if (isDragging.current) e.preventDefault();
         }}
-      >
-        {/* Mermaid SVG will be rendered here by the useEffect */}
-      </div>
-    </div>
-  );
-};
-
-const CodeViewer: React.FC<{ content: string; mimeType: string }> = ({
-  content,
-  mimeType,
-}) => {
-  // Extract language from MIME type
-  let language = "";
-
-  // Check if the MIME type contains a language attribute
-  if (mimeType.includes("language=")) {
-    // Try to extract the language value
-    const match = mimeType.match(/language=["']?([^"'\s;]+)["']?/);
-    if (match && match[1]) {
-      language = match[1];
-    }
-  } else {
-    // Fall back to MIME type parsing
-    language = mimeType.split("/")[1] || "";
-    // Clean up any additional parameters
-    language = language.split(";")[0].split(" ")[0];
-  }
-
-  const wrappedContent = `\`\`\`${language}\n${content}\n\`\`\``;
-
-  return (
-    <div className="w-full max-w-full">
-      <MarkdownViewer content={wrappedContent} />
-    </div>
-  );
-};
-
-const SvgViewer: React.FC<{ content: string }> = ({ content }) => {
-  return (
-    <div className="flex justify-center w-full">
-      <div
-        className="max-w-full"
-        style={{ width: "100%", maxHeight: "80vh" }}
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
+      ></div>
     </div>
   );
 };
@@ -353,10 +265,15 @@ const DownloadOptions: React.FC<{
         name: "Mermaid",
       },
       "image/svg+xml": { ext: ".svg", type: "image/svg+xml", name: "SVG" },
+      "text/html": { ext: ".html", type: "text/html", name: "HTML" },
+      "application/vnd.ant.html": {
+        ext: ".html",
+        type: "text/html",
+        name: "HTML",
+      },
       default: { ext: ".txt", type: "text/plain", name: "Text" },
     } as const;
 
-    // Check for the special case with language attribute
     if (
       mimeType.includes("application/vnd.ant.code") &&
       mimeType.includes("csv")
@@ -375,7 +292,11 @@ const DownloadOptions: React.FC<{
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${title.replace(/\s+/g, "_")}${ext}`;
+
+    // Remove any existing extension from title to prevent double extensions
+    const cleanTitle = title.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_");
+    a.download = `${cleanTitle}${ext}`;
+
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -491,24 +412,30 @@ const DownloadOptions: React.FC<{
   );
 };
 
-// Update the main ArtifactViewer component to use these new components
 const ArtifactViewer: React.FC<{
   artifact: Artifact;
   splitPosition: number;
-  messages: Message[];
-}> = ({ artifact, splitPosition, messages }) => {
+}> = ({ artifact, splitPosition }) => {
   const [copied, setCopied] = useState(false);
   const setSelectedArtifact = useSetAtom(selectedArtifactAtom);
-  const { version, content, title } = getArtifactVersionInfo(
-    artifact,
-    messages
-  );
+  const [, setUserClosedArtifacts] = useAtom(userClosedArtifactsAtom);
+  const [, setArtifactSelectionMode] = useAtom(artifactSelectionModeAtom);
+  const content = artifact.content;
+  const title = artifact.title;
+
   const mimeType = artifact.type || "text/markdown";
+  const isStreaming = !artifact.isComplete;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleClose = () => {
+    setUserClosedArtifacts((prev) => new Set([...prev, artifact.identifier]));
+    setSelectedArtifact(null);
+    setArtifactSelectionMode("auto");
   };
 
   const renderViewer = () => {
@@ -520,15 +447,18 @@ const ArtifactViewer: React.FC<{
       return <SvgViewer content={content} />;
     }
 
-    if (
-      mimeType.startsWith("application/vnd.ant.code") &&
-      mimeType.includes("csv")
-    ) {
+    if (mimeType === "text/html" || mimeType === "application/vnd.ant.html") {
+      return <HtmlViewer content={content} />;
+    }
+
+    if (mimeType === "text/csv") {
       return <CsvViewer content={content} />;
     }
 
     if (
-      (mimeType.startsWith("text/") && mimeType !== "text/markdown") ||
+      (mimeType.startsWith("text/") &&
+        mimeType !== "text/markdown" &&
+        mimeType !== "text/html") ||
       mimeType.startsWith("application/json") ||
       mimeType.startsWith("application/xml") ||
       mimeType.includes("javascript") ||
@@ -539,7 +469,7 @@ const ArtifactViewer: React.FC<{
     }
 
     return (
-      <div className="max-w-[750px]">
+      <div className="px-12 w-full">
         <MarkdownViewer content={content} />
       </div>
     );
@@ -559,61 +489,177 @@ const ArtifactViewer: React.FC<{
       exit={{ opacity: 0, x: -50, scale: 0.95, transition: { duration: 0.2 } }}
     >
       <motion.div
-        className="flex-1 w-full h-full relative shadow-md"
+        className="flex-1 w-full h-full flex flex-col relative shadow-md"
         initial={{ boxShadow: "0 0 0 rgba(0,0,0,0)" }}
         animate={{
           boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
           transition: { delay: 0.1, duration: 0.3 },
         }}
       >
+        {/* Fixed Header */}
+        <div className="flex justify-between items-center px-4 py-3 bg-background border-b border-border/40 shrink-0">
+          <div className="flex items-center gap-2">
+            <Button onClick={handleClose} size="icon" variant="ghost">
+              <X className="min-w-[18px] min-h-[18px]" />
+            </Button>
+            <h3 className="text-lg font-medium truncate max-w-[400px]">
+              {title}
+            </h3>
+            {/* {!isStreaming && <Badge variant="secondary">v{version}</Badge>} */}
+          </div>
+          <div className="flex items-center gap-2">
+            {!isStreaming && (
+              <DownloadOptions
+                title={title}
+                content={content}
+                mimeType={mimeType}
+              />
+            )}
+            <Button
+              onClick={handleCopy}
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              disabled={!content || content.length === 0}
+            >
+              {copied ? (
+                <Check className="w-[18px] h-[18px] text-green-500" />
+              ) : (
+                <Copy className="w-[18px] h-[18px]" />
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
         <div
           className={cn(
-            "absolute inset-0 overflow-y-auto",
+            "flex-1 overflow-y-auto",
             "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent"
           )}
         >
-          <div className="mx-auto h-[95%]">
-            <div className="flex justify-between items-center sticky top-0 z-10 px-4 py-3 bg-background/80 backdrop-blur-md">
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => {
-                    setSelectedArtifact(null);
-                  }}
-                  size="icon"
-                  variant="ghost"
-                >
-                  <X className="min-w-[18px] min-h-[18px]" />
-                </Button>
-                <h3 className="text-lg font-medium truncate max-w-[400px]">
-                  {title}
-                </h3>
-                <Badge variant="secondary">v{version}</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <DownloadOptions
-                  title={title}
-                  content={content}
-                  mimeType={mimeType}
-                />
-                <Button
-                  onClick={handleCopy}
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                >
-                  {copied ? (
-                    <Check className="w-[18px] h-[18px] text-green-500" />
-                  ) : (
-                    <Copy className="w-[18px] h-[18px]" />
-                  )}
-                </Button>
-              </div>
-            </div>
+          <div className="p-4 px-6 flex justify-center min-h-full">
+            <div className="w-full flex justify-center flex-1 relative">
+              {content && content.length > 0 ? (
+                renderViewer()
+              ) : (
+                <div className="flex items-center justify-center flex-1 text-muted-foreground">
+                  <div className="text-center">
+                    {true ? (
+                      <motion.div
+                        className="flex flex-col items-center space-y-6"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        {/* Animated Document Icon */}
+                        <motion.div
+                          className="relative"
+                          animate={{
+                            scale: [1, 1.05, 1],
+                            rotate: [0, 1, -1, 0],
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          }}
+                        >
+                          <div className="text-6xl mb-2">📝</div>
+                          <motion.div
+                            className="absolute -top-2 -right-2 w-3 h-3 bg-blue-500 rounded-full"
+                            animate={{
+                              scale: [0, 1.2, 0],
+                              opacity: [0, 1, 0],
+                            }}
+                            transition={{
+                              duration: 1.5,
+                              repeat: Infinity,
+                              delay: 0.2,
+                            }}
+                          />
+                          <motion.div
+                            className="absolute -bottom-1 -left-1 w-2 h-2 bg-green-500 rounded-full"
+                            animate={{
+                              scale: [0, 1, 0],
+                              opacity: [0, 0.8, 0],
+                            }}
+                            transition={{
+                              duration: 1.5,
+                              repeat: Infinity,
+                              delay: 0.8,
+                            }}
+                          />
+                        </motion.div>
 
-            <div className="p-4 px-6 flex justify-center h-full">
-              <div className="w-full flex justify-center flex-1 h-full">
-                {renderViewer()}
-              </div>
+                        {/* Animated Text */}
+                        <div className="space-y-3">
+                          <motion.div
+                            className="text-xl font-semibold text-foreground"
+                            animate={{ opacity: [0.7, 1, 0.7] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          >
+                            Generating file...
+                          </motion.div>
+
+                          {/* Simulated Writing Lines */}
+                          <div className="space-y-2 w-80 max-w-full">
+                            {[1, 2, 3, 4].map((i) => (
+                              <motion.div
+                                key={i}
+                                className="flex space-x-1"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: [0, 0.3, 0.6, 0.3, 0] }}
+                                transition={{
+                                  duration: 3,
+                                  repeat: Infinity,
+                                  delay: i * 0.5,
+                                }}
+                              >
+                                <div className="h-2 bg-muted rounded-full flex-1" />
+                                <div className="h-2 bg-muted rounded-full flex-1" />
+                                <div className="h-2 bg-muted rounded-full w-16" />
+                              </motion.div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Subtle particles effect */}
+                        <div className="absolute inset-0 pointer-events-none">
+                          {[...Array(6)].map((_, i) => (
+                            <motion.div
+                              key={i}
+                              className="absolute w-1 h-1 bg-primary/30 rounded-full"
+                              style={{
+                                left: `${20 + i * 12}%`,
+                                top: `${30 + (i % 2) * 20}%`,
+                              }}
+                              animate={{
+                                y: [-10, -20, -10],
+                                opacity: [0, 0.6, 0],
+                                scale: [0.5, 1, 0.5],
+                              }}
+                              transition={{
+                                duration: 2.5,
+                                repeat: Infinity,
+                                delay: i * 0.4,
+                                ease: "easeInOut",
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <div>
+                        <div className="text-4xl mb-4">📄</div>
+                        <div className="text-lg font-medium mb-2">
+                          No content yet
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

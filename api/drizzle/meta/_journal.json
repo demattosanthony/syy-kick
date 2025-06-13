@@ -435,6 +435,34 @@
       "when": 1748356551311,
       "tag": "0061_yielding_maddog",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1749566333949,
+      "tag": "0062_puzzling_annihilus",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1749587201157,
+      "tag": "0063_mushy_silver_centurion",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1749665808839,
+      "tag": "0064_giant_solo",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1749736801590,
+      "tag": "0065_tan_stingray",
+      "breakpoints": true
     }
   ]
 }

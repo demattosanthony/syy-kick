@@ -1,13 +1,7 @@
 import api from "@/lib/api";
 import { Organization } from "@/types/user";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Camera,
-  ChevronDown,
-} from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Camera } from "lucide-react";
 import { useState } from "react";
 import {
   AlertDialogHeader,
@@ -30,17 +24,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../../components/ui/dialog";
-import { Textarea } from "../../../components/ui/textarea";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "../../../components/ui/avatar";
-import {
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
-} from "../../../components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -54,11 +42,9 @@ import { useUpdateOrganizationMutation } from "../api";
 const OrganizationCard = ({
   org,
   onDelete,
-  showSamlSettings = false, // Add new prop with default value
 }: {
   org: Organization;
   onDelete: (orgId: string) => void;
-  showSamlSettings?: boolean; // Add to type definition
 }) => {
   const [open, setOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(
@@ -151,15 +137,14 @@ const OrganizationCard = ({
                 if (newLogoFile) {
                   const file = formData.get("logo") as File;
                   // Store file in s3
-                  const { url, file_metadata } =
-                    await api.uploads.getPresignedUrl(
+                  const { uploadUrl, fileKey } =
+                    await api.files.getPresignedUrlForOrganization(
                       file.name,
                       file.type,
-                      file.size,
-                      `uploads/${Date.now()}-${file.name}`
+                      file.size
                     );
 
-                  const res = await fetch(url, {
+                  const res = await fetch(uploadUrl, {
                     method: "PUT",
                     body: file,
                   });
@@ -168,7 +153,7 @@ const OrganizationCard = ({
                     throw new Error("Failed to upload logo");
                   }
 
-                  file_key = file_metadata.file_key;
+                  file_key = fileKey;
                 }
 
                 updateOrgMutation.mutate(
@@ -178,17 +163,6 @@ const OrganizationCard = ({
                       name: formData.get("name") as string,
                       domain: formData.get("domain") as string,
                       ...(file_key && { logo: file_key }),
-                      saml: {
-                        ...(formData.get("entryPoint") && {
-                          entryPoint: formData.get("entryPoint") as string,
-                        }),
-                        ...(formData.get("issuer") && {
-                          issuer: formData.get("issuer") as string,
-                        }),
-                        ...(formData.get("cert") && {
-                          cert: formData.get("cert") as string,
-                        }),
-                      },
                     },
                   },
                   {
@@ -240,49 +214,6 @@ const OrganizationCard = ({
                   <Label htmlFor="domain">Domain</Label>
                   <Input id="domain" name="domain" defaultValue={org.domain} />
                 </div>
-
-                {showSamlSettings && (
-                  <Collapsible>
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-between"
-                      >
-                        Advanced Settings
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="entryPoint">SAML Entry Point</Label>
-                        <Input
-                          id="entryPoint"
-                          name="entryPoint"
-                          defaultValue={org.samlConfig?.entryPoint}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="issuer">SAML Issuer</Label>
-                        <Input
-                          id="issuer"
-                          name="issuer"
-                          defaultValue={org.samlConfig?.issuer}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="cert">SAML Certificate</Label>
-                        <Textarea
-                          id="cert"
-                          name="cert"
-                          defaultValue={org.samlConfig?.cert}
-                          className="h-[100px]"
-                        />
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
 
                 <DialogFooter>
                   <Button type="submit">Save</Button>

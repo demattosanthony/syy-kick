@@ -1,6 +1,3 @@
-import { KnowledgeBase } from "@/features/knowledge-bases/types";
-import { Project } from "./project";
-
 export enum MessageRole {
   system = "system",
   user = "user",
@@ -40,31 +37,43 @@ export type ChatToolCall = {
   createdAt: string;
   id: string;
   messageId: string;
-  status: "completed" | "failed" | "pending";
+  status: "completed" | "failed" | "pending" | "streaming";
   toolCallId: string;
   toolName: string;
   result?: any;
+  state: "call" | "result" | "partial-call";
+  argsText?: string;
 };
 
-export type ChatMessage = {
+export interface ChatMessage {
   id: string;
-  role: MessageRole;
-  text: string;
+  threadId: string;
+  userId: string;
+  role: "system" | "user" | "assistant" | "tool";
+  text?: string | null;
+  reasoning?: string | null;
+  reasoningDurationSeconds?: number | null;
+  model?: string | null;
+  provider?: string | null;
+  status?: "streaming" | "completed" | "failed" | "cancelled";
+  error?: string | null;
+  embedding?: number[] | null;
   createdAt: string;
-  attachments?: MessageAttachment[];
   toolCalls?: ChatToolCall[];
-  model?: string;
-  provider?: string;
-  reasoning?: string;
-};
+  attachments?: MessageAttachment[];
+}
 
-export type FileUploadMimeType = "image" | "pdf";
+export type FileUploadMimeType = "image" | "pdf" | "other";
 
 export type FileUpload = {
   file: File;
   preview: string;
   type: FileUploadMimeType;
   inputId?: string;
+  status?: "uploading" | "processing" | "completed" | "error";
+  fileKey?: string;
+  url?: string;
+  error?: string;
 };
 
 export interface Thread {
@@ -73,11 +82,7 @@ export interface Thread {
   updatedAt: string;
   title?: string;
   organizationId?: string;
-  projectId?: string;
-  project?: Project;
   isPublic?: boolean;
-  knowledgeBaseId?: string;
-  knowledgeBase?: KnowledgeBase;
   workflowId?: string;
   messages: ChatMessage[];
 }
@@ -94,6 +99,5 @@ export type Artifact = {
 
 export interface UpdateThreadMutationData {
   title?: string;
-  projectId?: string;
   isPublic?: boolean;
 }

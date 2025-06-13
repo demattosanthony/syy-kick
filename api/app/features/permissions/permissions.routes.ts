@@ -32,10 +32,6 @@ export default Router()
     permissionsOps.deleteInvitations
   )
   .get(
-    "/organizations/:orgId/transferable-projects",
-    permissionsOps.getTransferableProjects
-  )
-  .get(
     "/organizations/:orgId/transferable-permissions",
     permissionsOps.getTransferablePermissions
   )

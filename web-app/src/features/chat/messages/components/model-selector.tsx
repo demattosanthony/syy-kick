@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, WandSparkles } from "lucide-react";
+import { Check, ChevronsUpDown, WandSparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,19 +68,19 @@ const ModelSelector: React.FC = () => {
           variant="ghost"
           role="combobox"
           aria-expanded={open}
-          className="h-8 justify-between gap-0 p-2"
+          className="h-8 justify-between gap-0 p-2 px-3"
         >
           <div className="flex items-center">
-            {selectedModel.provider === "Auto" ? (
-              <WandSparkles className="w-4 h-4" />
+            {/* {selectedModel.provider === "Auto" ? (
+              <WandSparkles className="w-3 h-3" />
             ) : (
               getModelImage(selectedModel.provider)
-            )}
-            {/* <div className="hidden md:flex truncate ">
+            )} */}
+            <div className="hidden md:flex truncate">
               {selectedModel.name || "Select model..."}
-            </div> */}
+            </div>
           </div>
-          {/* <ChevronsUpDown className="md:ml-2 h-4 w-4 shrink-0 opacity-50" /> */}
+          <ChevronsUpDown className="md:ml-2 h-3 w-3 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="p-0 ">

@@ -4,11 +4,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { modelAtom } from "@/atoms/chat";
+import { modelAtom, uploadsAtom } from "@/atoms/chat";
 import { FileUploadSection } from "./file-upload-section";
-import { ContextSelector } from "./context-selector";
 import { TextInputArea } from "./chat-input-text-area";
 import { ActionButtons } from "./action-buttons";
+import { ContextSelector } from "./context-selector";
 
 interface ChatInputFormProps {
   onSubmit: (e: React.FormEvent) => void;
@@ -18,8 +18,7 @@ interface ChatInputFormProps {
   placeholder?: string;
   isGenerating?: boolean;
   stop?: () => void;
-  showContextSelector?: boolean;
-  projectId?: string;
+  hasThread?: boolean;
 }
 
 export interface ChatInputFormRef {
@@ -33,11 +32,10 @@ function ChatInputForm(
     input,
     setInput,
     handleInputChange,
-    placeholder = "What do you want to know?",
+    placeholder = "How can I help you today?",
     isGenerating,
     stop,
-    showContextSelector = false,
-    projectId,
+    hasThread,
   }: ChatInputFormProps,
   ref: React.ForwardedRef<ChatInputFormRef>
 ) {
@@ -45,10 +43,19 @@ function ChatInputForm(
   const [focused, setFocused] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedModel] = useAtom(modelAtom);
+  const [uploads] = useAtom(uploadsAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const { uploads, handleFiles, removeUpload, handleDrop, processFiles } =
-    useFileUpload(selectedModel.supportedMimeTypes || []);
+  const {
+    handleFiles,
+    removeUpload,
+    handleDrop,
+    processFiles,
+    processFileUpload,
+    isProcessing,
+    hasErrors,
+    isReadyToSubmit,
+  } = useFileUpload(selectedModel.supportedMimeTypes || []);
 
   React.useImperativeHandle(ref, () => ({
     triggerFileInput: () => fileInputRef.current?.click(),
@@ -77,6 +84,12 @@ function ChatInputForm(
       }, 0);
     } else if (event.key === "Enter") {
       event.preventDefault();
+
+      // Don't submit if files are still processing
+      if (isProcessing) {
+        return;
+      }
+
       onSubmit(event);
     }
   };
@@ -118,6 +131,18 @@ function ChatInputForm(
     handleDrop(e);
   };
 
+  // Handle form submission with file processing check
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Don't submit if files are still processing
+    if (isProcessing) {
+      return;
+    }
+
+    onSubmit(e);
+  };
+
   useEffect(() => {
     if (textAreaRef?.current) {
       textAreaRef.current.style.height = "24px";
@@ -134,9 +159,11 @@ function ChatInputForm(
       <Card
         ref={cardRef}
         className={cn(
-          "relative flex flex-col h-auto min-h-[102px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-3xl border shadow-md ",
+          "relative flex flex-col h-auto min-h-[115px] max-h-[600px] w-full mx-auto max-w-[640px] p-0 rounded-3xl border shadow-sm",
           focused && !isMobile && "border-border border-[1.5px]",
-          isDragging && "border-border border-[1.5px]"
+          isDragging && "border-border border-[1.5px]",
+          hasThread && "min-h-[115px]",
+          !!hasThread && "min-h-[130px]"
         )}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -146,12 +173,16 @@ function ChatInputForm(
       >
         <form
           className="relative flex flex-col flex-1 w-full justify-center p-2"
-          onSubmit={onSubmit}
+          onSubmit={handleFormSubmit}
         >
+          <ContextSelector
+            showContextSelector={!!hasThread}
+            selectedModel={selectedModel}
+          />
           <div className="flex flex-col flex-1 relative">
             {/* Drag message section above the input */}
             {isDragging && (
-              <div className="mb-2 w-full max-w-[640px] flex items-center justify-center border-2 border-dashed border-border rounded-lg py-2 bg-accent transition-all duration-200">
+              <div className="mb-2 w-full max-w-[640px] flex items-center justify-center border-2 border-dashed border-border rounded-lg py-4 bg-accent transition-all duration-200">
                 <span className="text-sm text-muted-foreground flex items-center gap-2">
                   <svg
                     className="w-5 h-5 text-muted-foreground"
@@ -172,32 +203,43 @@ function ChatInputForm(
               </div>
             )}
 
-            <ContextSelector
-              showContextSelector={showContextSelector}
-              projectId={projectId}
-              selectedModel={selectedModel}
-            />
             <FileUploadSection uploads={uploads} removeUpload={removeUpload} />
-            <TextInputArea
-              input={input}
-              handleInputChange={handleInputChange}
-              handleKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              isGenerating={isGenerating}
-              textAreaRef={textAreaRef}
-              setFocused={setFocused}
-              processFiles={processFiles}
-            />
+
+            {/* Error status message */}
+            {hasErrors && (
+              <div className="px-2 pb-2">
+                <div className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1">
+                  Some files failed to process. Remove them or try uploading
+                  again.
+                </div>
+              </div>
+            )}
+
+            <div className="min-h-[65px]">
+              <TextInputArea
+                input={input}
+                handleInputChange={handleInputChange}
+                handleKeyDown={handleKeyDown}
+                placeholder={placeholder}
+                isGenerating={isGenerating}
+                textAreaRef={textAreaRef}
+                setFocused={setFocused}
+                processFiles={processFiles}
+              />
+            </div>
           </div>
           <ActionButtons
             isGenerating={isGenerating}
             input={input}
             stop={stop}
-            onSubmit={onSubmit}
+            onSubmit={handleFormSubmit}
             selectedModel={selectedModel}
             fileInputRef={fileInputRef}
             handleFiles={handleFiles}
+            processFileUpload={processFileUpload}
             onFileUploadComplete={handleFileUploadComplete}
+            showSharePointPopoverButton={false}
+            isReadyToSubmit={isReadyToSubmit}
           />
         </form>
       </Card>

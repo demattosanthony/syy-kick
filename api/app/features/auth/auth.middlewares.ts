@@ -1,7 +1,7 @@
 import { checkTokens, sendAuthCookies } from "../../createAuthToken";
 import { Workspace } from "./auth.types";
 
-export const middlewares = {
+const authMiddlewares = {
   optionalAuth: async (req: any, res: any, next: any) => {
     try {
       const { id, rid } = req.cookies;
@@ -43,3 +43,5 @@ export const middlewares = {
     }
   },
 };
+
+export default authMiddlewares;

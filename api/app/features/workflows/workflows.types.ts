@@ -1,5 +1,5 @@
 import { FinishReason, LanguageModelUsage } from "ai";
-import { ArtifactEvent } from "./artifact-service";
+import { ArtifactEvent } from "../tools/artifact-service";
 import { ToolName } from "../tools/tools.types";
 import { z } from "zod";
 import { InferSelectModel } from "drizzle-orm";

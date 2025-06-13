@@ -50,14 +50,14 @@ export default function OrganizationInfo({ org }: { org?: Organization }) {
             let file_key = undefined;
             if (newLogoFile) {
               const file = newLogoFile;
-              const { url, file_metadata } = await api.uploads.getPresignedUrl(
-                file.name,
-                file.type,
-                file.size,
-                `uploads/${Date.now()}-${file.name}`
-              );
+              const { uploadUrl, fileKey } =
+                await api.uploads.getPresignedUrlForOrganization(
+                  file.name,
+                  file.type,
+                  file.size
+                );
 
-              const res = await fetch(url, {
+              const res = await fetch(uploadUrl, {
                 method: "PUT",
                 body: file,
               });
@@ -66,7 +66,7 @@ export default function OrganizationInfo({ org }: { org?: Organization }) {
                 throw new Error("Failed to upload logo");
               }
 
-              file_key = file_metadata.file_key;
+              file_key = fileKey;
             }
 
             updateOrg({

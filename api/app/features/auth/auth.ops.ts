@@ -7,7 +7,6 @@ import {
   organizationInvites,
   organizations,
   roles,
-  sites,
   users,
 } from "../../config/schema";
 import { DbUser } from "../../createAuthToken";
@@ -18,9 +17,9 @@ import { Permissions } from "../permissions/permissions.types";
 import { AccessTokenProvider } from "./auth.types";
 
 /** ORM */
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
-export const ops = {
+const authOps = {
   addAccessToken: async (
     userId: string,
     provider: AccessTokenProvider,
@@ -100,44 +99,18 @@ export const ops = {
     })) as DbUser & { organizations?: any[] };
 
     const organizations = await db.query.memberRoles.findMany({
-      where: and(eq(memberRoles.userId, userId), isNull(memberRoles.projectId)),
+      where: eq(memberRoles.userId, userId),
       with: { organization: true, role: true },
     });
 
-    const sitesList = await db.query.sites.findMany({
-      where: or(
-        inArray(
-          sites.organizationId,
-          organizations.map((o) => o.organizationId)
-        ),
-        eq(sites.userId, userId)
-      ),
-      with: {
-        projects: true,
-      },
-    });
-
     user.organizations = organizations.map((o) =>
-      ops.addLogoUrl({
+      authOps.addLogoUrl({
         ...o.organization,
         role: o.role,
         type: "organization",
         slug: o.organization.slug,
-        sites: sitesList
-          .filter((s) => s.organizationId === o.organizationId)
-          .map((s) => ({
-            id: s.id,
-            address: `${s.address}, ${s.city}, ${s.state} ${s.postalCode}`,
-            projects: s.projects.map((p) => ({
-              id: p.id,
-              name: p.name,
-              slug: p.slug,
-            })),
-          })),
       })
     );
-
-    const personalSites = sitesList.filter((s) => !s.organizationId);
 
     user.organizations.push({
       id: user.id,
@@ -145,15 +118,6 @@ export const ops = {
       logo: user.profilePicture,
       type: "personal",
       slug: user.username,
-      sites: personalSites.map((s) => ({
-        id: s.id,
-        address: `${s.address}, ${s.city}, ${s.state} ${s.postalCode}`,
-        projects: s.projects.map((p) => ({
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-        })),
-      })),
     });
 
     return user;
@@ -172,3 +136,5 @@ export const ops = {
       throw new Error("insufficient_seats");
   },
 };
+
+export default authOps;

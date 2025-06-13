@@ -110,6 +110,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     </a>
   ),
   img: ({ ...props }) => <img className="max-w-full h-auto" {...props} />,
+  hr: ({ ...props }) => <hr className="my-4" {...props} />,
 };
 
 const MemoizedMarkdownBlock = memo(

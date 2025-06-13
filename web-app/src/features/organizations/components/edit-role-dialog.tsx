@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
@@ -34,23 +32,6 @@ import {
   TransferableRolesPermissions,
 } from "@/features/permissions/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Check, ChevronsUpDown, X } from "lucide-react";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { cn } from "@/lib/utils";
-import { useGetTransferableOrgProjectsQuery } from "@/features/permissions/api";
-import { Badge } from "@/components/ui/badge";
 import useUpdateOrgMemberRoleMutation from "@/features/permissions/api/organizations/update-org-member-role";
 import { toast } from "sonner";
 import {
@@ -78,18 +59,10 @@ export default function EditRoleDialog({
   const [permissions, setPermissions] = useState<
     Record<string, Record<string, boolean>>
   >({});
-  const [selectedProjects, setSelectedProjects] = useState<
-    { id: string; name: string }[]
-  >([]);
-  const [projectsOpen, setProjectsOpen] = useState(false);
 
   const { data: memberRole, isLoading } = useGetMemberQuery({
     organizationId,
     memberId: member.id,
-  });
-
-  const { data: projects } = useGetTransferableOrgProjectsQuery({
-    organizationId,
   });
 
   const { mutate: updateOrgMemberRole } = useUpdateOrgMemberRoleMutation();
@@ -122,11 +95,6 @@ export default function EditRoleDialog({
         newPermissions[resource.id][action.id] = true;
       });
     });
-
-    // User has a project role, set selected projects
-    if (response?.projects) {
-      setSelectedProjects(response.projects);
-    }
 
     setPermissions(newPermissions);
   };
@@ -193,7 +161,6 @@ export default function EditRoleDialog({
           memberId: member.id,
           data: {
             resources,
-            projectIds: selectedProjects.map((p) => p.id),
             roleId: selectedRoleId,
           },
         },
@@ -235,52 +202,26 @@ export default function EditRoleDialog({
     return action?.configurable || false;
   };
 
-  const isProjectRole = (roleName?: string): boolean => {
-    if (!roleName) return false;
-    return (
-      roleName === Permissions.Roles.PROJECT_MANAGER ||
-      roleName === Permissions.Roles.PROJECT_MEMBER
-    );
-  };
-
-  const toggleProject = (project: { id: string; name: string }) => {
-    setSelectedProjects((current) => {
-      const exists = current.some((p) => p.id === project.id);
-
-      if (exists) {
-        return current.filter((p) => p.id !== project.id);
-      } else {
-        return [...current, project];
-      }
-    });
-  };
-
-  const removeProject = (projectId: string) => {
-    setSelectedProjects((current) => current.filter((p) => p.id !== projectId));
-  };
-
-  const getConfigBadge = (resourceName: Permissions.Resources) => {
+  const getConfigBadge = (_: Permissions.Resources) => {
     if (!selectedRole) return null;
 
-    if (
-      Permissions.Roles.PROJECT_MEMBER === selectedRole.name &&
-      [
-        Permissions.Resources.ORGANIZATION_PROJECTS,
-        Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-      ].includes(resourceName)
-    ) {
-      return <Badge>config</Badge>;
-    }
+    // if (
+    //   Permissions.Roles.PROJECT_MEMBER === selectedRole.name &&
+    //   [
+    //     Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
+    //     Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
+    //   ].includes(resourceName)
+    // ) {
+    //   return <Badge>config</Badge>;
+    // }
 
-    if (
-      Permissions.Roles.PROJECT_MANAGER === selectedRole.name &&
-      (Permissions.Resources.ORGANIZATION_PROJECTS === resourceName ||
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES === resourceName)
-    ) {
-      return <Badge>config</Badge>;
-    }
+    // if (
+    //   Permissions.Roles.PROJECT_MANAGER === selectedRole.name &&
+    //   Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES === resourceName
+    // ) {
+    //   return <Badge>config</Badge>;
+    // }
+
     return null;
   };
 
@@ -322,94 +263,6 @@ export default function EditRoleDialog({
               </Select>
             )}
           </div>
-
-          {selectedRole && isProjectRole(selectedRole.name) && projects && (
-            <div>
-              <Label htmlFor="projects-select">Projects</Label>
-              {isLoading ? (
-                <Skeleton className="h-10 w-full mt-1" />
-              ) : (
-                <div className="mt-1">
-                  <Popover open={projectsOpen} onOpenChange={setProjectsOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={projectsOpen}
-                        className="w-full justify-between"
-                      >
-                        {selectedProjects.length > 0
-                          ? `${selectedProjects.length} project${
-                              selectedProjects.length > 1 ? "s" : ""
-                            } selected`
-                          : "Select projects"}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <Command>
-                        <CommandInput placeholder="Search projects..." />
-                        <CommandList>
-                          <CommandEmpty>No projects found.</CommandEmpty>
-                          <CommandGroup>
-                            {projects.map((project) => {
-                              const isSelected = selectedProjects.some(
-                                (p) => p.id === project.id
-                              );
-                              return (
-                                <CommandItem
-                                  key={project.id}
-                                  value={project.id}
-                                  onSelect={() => toggleProject(project)}
-                                >
-                                  <Checkbox
-                                    checked={isSelected}
-                                    className="mr-2"
-                                  />
-                                  {project.name}
-                                  <Check
-                                    className={cn(
-                                      "ml-auto h-4 w-4",
-                                      isSelected ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                </CommandItem>
-                              );
-                            })}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-
-                  {/* Display selected projects as badges */}
-                  {selectedProjects.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {selectedProjects.map((project) => (
-                        <Badge
-                          key={project.id}
-                          className="flex items-center gap-1"
-                        >
-                          {project.name}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-4 w-4 p-0 ml-1"
-                            onClick={() => removeProject(project.id)}
-                          >
-                            <X className="h-3 w-3" />
-                            <span className="sr-only">
-                              Remove {project.name}
-                            </span>
-                          </Button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         <Separator />
