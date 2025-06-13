@@ -1,18 +1,14 @@
 import { Router } from "express";
 
 /** Auth */
-import { handlers } from "./auth.handlers";
-import { middlewares } from "./auth.middlewares";
+import authHandlers from "./auth.handlers";
 
 /** Config */
 import myPassport from "../../config/passport";
+import { authConfig } from "./auth.utils";
+import authMiddlewares from "./auth.middlewares";
 
-const authConfig = {
-  session: false,
-  failureRedirect: `${process.env.FRONTEND_URL}?error=unauthorized`,
-};
-
-export default Router({ mergeParams: true })
+const authRouter = Router({ mergeParams: true })
   .get("/google", (req, res) => {
     myPassport.authenticate("google", {
       session: false,
@@ -23,7 +19,7 @@ export default Router({ mergeParams: true })
   .get(
     "/google/callback",
     myPassport.authenticate("google", authConfig),
-    handlers.oauthCallback
+    authHandlers.oauthCallback
   )
   .get("/microsoft", (req, res) => {
     myPassport.authenticate("microsoft", {
@@ -35,11 +31,17 @@ export default Router({ mergeParams: true })
   .get(
     "/microsoft/callback",
     myPassport.authenticate("microsoft", authConfig),
-    handlers.oauthCallback
+    authHandlers.oauthCallback
   )
-  .get("/microsoft-files/init", handlers.microsoftFilesInit)
-  .get("/microsoft-files/callback", handlers.microsoftFilesCallback)
-  .post("/logout", handlers.logout)
-  .post("/invite/:token", middlewares.optionalAuth, handlers.joinWithInvite)
-  .get("/me", handlers.me)
-  .get("/me/upload-token", middlewares.auth, handlers.getUploadToken);
+  .get("/microsoft-files/init", authHandlers.microsoftFilesInit)
+  .get("/microsoft-files/callback", authHandlers.microsoftFilesCallback)
+  .post("/logout", authHandlers.logout)
+  .post(
+    "/invite/:token",
+    authMiddlewares.optionalAuth,
+    authHandlers.joinWithInvite
+  )
+  .get("/me", authHandlers.me)
+  .get("/me/upload-token", authMiddlewares.auth, authHandlers.getUploadToken);
+
+export default authRouter;

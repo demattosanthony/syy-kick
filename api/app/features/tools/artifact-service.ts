@@ -1,11 +1,7 @@
 import { Tool, tool } from "ai";
 import { z } from "zod";
 import s3 from "../../config/s3";
-import {
-  getFileContent,
-  searchFileContent,
-  getFilesForThread,
-} from "../files/files.ops";
+import { filesOps } from "../files/files.ops";
 import { loadImagesForPages } from "../threads/threads.utils";
 import type { File } from "../files/files.schemas";
 import { processSharePointFile } from "./tool-definitions/sharepoint";
@@ -44,7 +40,7 @@ export class ArtifactService {
       `🔍 [ArtifactService] Getting files for thread: ${this.threadId}`
     );
 
-    const result = await getFilesForThread(this.threadId, {
+    const result = await filesOps.getFilesForThread(this.threadId, {
       page: 1,
       limit: 1000,
     });
@@ -176,7 +172,7 @@ You should use this tool differently depending on the type of file contents you 
             };
           }
 
-          const result = await getFileContent(file.id, {
+          const result = await filesOps.getFileContent(file.id, {
             startPage: startPage ?? undefined,
             endPage: endPage ?? undefined,
             startChunk: startChunk ?? undefined,
@@ -303,7 +299,7 @@ You should use this tool differently depending on the type of file contents you 
             };
           }
 
-          const result = await searchFileContent(
+          const result = await filesOps.searchFileContent(
             file.id,
             query,
             Math.min(limit ?? 5, 10)

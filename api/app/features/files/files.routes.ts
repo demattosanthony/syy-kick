@@ -1,14 +1,10 @@
 import { Router } from "express";
-import {
-  getFilesHandler,
-  getPresignedUrlHandler,
-  createFileRecordHandler,
-} from "./files.handlers";
+import { filesHandlers } from "./files.handlers";
 
 const router = Router();
 
-router.get("/", getFilesHandler);
-router.post("/presigned-url", getPresignedUrlHandler);
-router.post("/", createFileRecordHandler);
+router.get("/", filesHandlers.getFiles);
+router.post("/", filesHandlers.createFile);
+router.post("/presigned-url", filesHandlers.getPresignedUrl);
 
 export default router;

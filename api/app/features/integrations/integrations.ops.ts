@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import db from "../../config/db";
 import { accessTokens } from "../../config/schema";
 
-export const integrationsOps = {
+const integrationsOps = {
   deleteIntegration: async (
     provider: "microsoft" | "google",
     userId: string
@@ -17,3 +17,5 @@ export const integrationsOps = {
       );
   },
 };
+
+export default integrationsOps;

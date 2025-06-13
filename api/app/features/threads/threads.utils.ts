@@ -235,6 +235,9 @@ async function presignToolResultImages(result: any): Promise<any> {
 async function getModelConfig(model: string, messageContent: string) {
   if (model !== "Auto") return MODELS[model];
 
+  console.log("🤖 Model routing started");
+  const start = Date.now();
+
   const { object } = await generateObject({
     model: MODELS["gpt-4.1-mini"].model,
     schema: z.object({
@@ -251,6 +254,8 @@ Respond with a JSON object with the following schema:
   "type": "simple" | "hard"
 }`,
   });
+
+  console.log(`🤖 Model routing complete in ${Date.now() - start}ms`);
 
   return object.type === "simple"
     ? MODELS["gpt-4.1"]

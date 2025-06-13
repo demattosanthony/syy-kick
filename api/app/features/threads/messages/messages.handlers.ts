@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { messagesOps } from "./messages.ops";
-import { postMessageSchema, retryMessageSchema } from "./messages.schemas";
+import messagesSchemas from "./messages.schemas";
 
-export const messagesHandlers = {
+const messagesHandlers = {
   async getThreadMessages(req: Request, res: Response) {
     try {
       const result = await messagesOps.getMessages(req.params.threadId);
@@ -16,7 +16,7 @@ export const messagesHandlers = {
   async postMessage(req: Request, res: Response) {
     try {
       const { message, model, maxTokens, instructions } =
-        postMessageSchema.parse(req.body);
+        messagesSchemas.postMessage.parse(req.body);
       const { threadId } = req.params;
 
       await messagesOps.postMessageAndStartInference(
@@ -41,9 +41,8 @@ export const messagesHandlers = {
 
   async retryMessage(req: Request, res: Response) {
     try {
-      const { model, maxTokens, instructions } = retryMessageSchema.parse(
-        req.body
-      );
+      const { model, maxTokens, instructions } =
+        messagesSchemas.retryMessage.parse(req.body);
       const { threadId, messageId } = req.params;
 
       const result = await messagesOps.retryMessage(
@@ -62,3 +61,5 @@ export const messagesHandlers = {
     }
   },
 };
+
+export default messagesHandlers;

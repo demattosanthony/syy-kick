@@ -1,20 +1,16 @@
 import { Router } from "express";
+import threadsHandlers from "./threads.handlers";
 import messagesRouter from "./messages/messages.routes";
-import { threadsHandlers } from "./threads.handlers";
 
-const router = Router();
+const threadsRouter = Router({ mergeParams: true })
+  .get("/", threadsHandlers.getThreads)
+  .post("/", threadsHandlers.createThread)
+  .get("/:threadId", threadsHandlers.getThread)
+  .put("/:threadId", threadsHandlers.updateThread)
+  .delete("/:threadId", threadsHandlers.deleteThread)
+  .get("/:threadId/stream", threadsHandlers.streamMessages)
+  .post("/:threadId/clone", threadsHandlers.cloneThread)
+  .post("/:threadId/stop", threadsHandlers.stopInference)
+  .use("/:threadId/messages", messagesRouter);
 
-router.post("/", threadsHandlers.createThread);
-router.get("/", threadsHandlers.getThreads);
-
-router.get("/:threadId", threadsHandlers.getThread);
-router.put("/:threadId", threadsHandlers.updateThread);
-router.delete("/:threadId", threadsHandlers.deleteThread);
-
-router.get("/:threadId/stream", threadsHandlers.streamMessages);
-router.post("/:threadId/clone", threadsHandlers.cloneThread);
-router.post("/:threadId/stop", threadsHandlers.stopInference);
-
-router.use("/:threadId/messages", messagesRouter);
-
-export default router;
+export default threadsRouter;

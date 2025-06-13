@@ -17,9 +17,9 @@ import { Permissions } from "../permissions/permissions.types";
 import { AccessTokenProvider } from "./auth.types";
 
 /** ORM */
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
-export const ops = {
+const authOps = {
   addAccessToken: async (
     userId: string,
     provider: AccessTokenProvider,
@@ -104,7 +104,7 @@ export const ops = {
     });
 
     user.organizations = organizations.map((o) =>
-      ops.addLogoUrl({
+      authOps.addLogoUrl({
         ...o.organization,
         role: o.role,
         type: "organization",
@@ -136,3 +136,5 @@ export const ops = {
       throw new Error("insufficient_seats");
   },
 };
+
+export default authOps;

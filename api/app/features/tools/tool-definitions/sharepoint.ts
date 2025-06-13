@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { MicrosoftAPI } from "../../../config/microsoft";
-import { processAndStoreFile } from "../../files/files.ops";
+import { filesOps } from "../../files/files.ops";
 
 interface GraphDriveItem {
   id: string;
@@ -247,7 +247,7 @@ export async function processSharePointFile(
   const buffer = Buffer.from(await blob.arrayBuffer());
 
   // Use the generic processing function
-  const result = await processAndStoreFile({
+  const result = await filesOps.processAndStoreFile({
     userId,
     fileName: fileMetadata.name,
     mimeType: fileMetadata.file?.mimeType || "application/octet-stream",

@@ -1,10 +1,9 @@
 import { Router } from "express";
-import { integrationsHandlers } from "./integrations.handlers";
+import integrationsHandlers from "./integrations.handlers";
 
-const router = Router();
+const integrationsRouter = Router({ mergeParams: true })
+  .get("/", integrationsHandlers.getTokens)
+  .get("/:provider/token", integrationsHandlers.getToken)
+  .delete("/:provider", integrationsHandlers.deleteIntegration);
 
-router.get("/", integrationsHandlers.getTokens);
-router.get("/:provider/token", integrationsHandlers.getToken);
-router.delete("/:provider", integrationsHandlers.deleteIntegration);
-
-export default router;
+export default integrationsRouter;

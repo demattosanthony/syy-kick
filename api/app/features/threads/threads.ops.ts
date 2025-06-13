@@ -30,7 +30,7 @@ export const activeStreamCache = new Map<string, ActiveStreamData>();
 // In-memory cache for abort controllers
 export const abortControllers = new Map<string, AbortController>();
 
-const threadsOps = {
+export const threadsOps = {
   async createThread(userId: string) {
     if (!userId) throw new Error("User ID is required");
     const id = uuidv4();
@@ -362,5 +362,3 @@ const threadsOps = {
     return { id: newThread.id };
   },
 };
-
-export default threadsOps;

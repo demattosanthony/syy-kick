@@ -1,10 +1,9 @@
 import { Router } from "express";
-import { messagesHandlers } from "./messages.handlers";
+import messagesHandlers from "./messages.handlers";
 
-const router = Router({ mergeParams: true });
+const messagesRouter = Router({ mergeParams: true })
+  .get("/", messagesHandlers.getThreadMessages)
+  .post("/", messagesHandlers.postMessage)
+  .post("/:messageId/retry", messagesHandlers.retryMessage);
 
-router.get("/", messagesHandlers.getThreadMessages);
-router.post("/", messagesHandlers.postMessage);
-router.post("/:messageId/retry", messagesHandlers.retryMessage);
-
-export default router;
+export default messagesRouter;

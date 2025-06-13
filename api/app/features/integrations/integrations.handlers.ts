@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { integrationsOps } from "./integrations.ops";
+import integrationsOps from "./integrations.ops";
 import {
   MicrosoftAPI,
   MicrosoftRefreshTokenError,
@@ -8,7 +8,7 @@ import db from "../../config/db";
 import { accessTokens } from "../../config/schema";
 import { eq } from "drizzle-orm";
 
-export const integrationsHandlers = {
+const integrationsHandlers = {
   getTokens: async (req: Request, res: Response) => {
     const user = req.dbUser;
 
@@ -93,3 +93,5 @@ export const integrationsHandlers = {
     }
   },
 };
+
+export default integrationsHandlers;

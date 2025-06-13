@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { DbUser, sendAuthCookies, checkTokens } from "../../createAuthToken";
-import { ops } from "./auth.ops";
+import authOps from "./auth.ops";
 import db from "../../config/db";
 import { memberRoles, organizationInvites } from "../../config/schema";
 import { and, eq } from "drizzle-orm";
@@ -33,7 +33,7 @@ type MicrosoftSite = {
   };
 };
 
-export const handlers = {
+const authHandlers = {
   oauthCallback: async (req: Request, res: Response) => {
     const user = req.user as DbUser;
     const state = req.query.state as string | undefined;
@@ -44,14 +44,14 @@ export const handlers = {
     if (state) {
       try {
         // Verify and process invite
-        const invite = await ops.checkInvite(state);
+        const invite = await authOps.checkInvite(state);
 
         if (!invite?.roleId || !invite.organizationId) {
           res.status(403).json({ message: "Invalid invite" });
           return;
         }
 
-        await ops.addOrgMember(
+        await authOps.addOrgMember(
           invite.organizationId as string,
           user.id,
           invite.roleId
@@ -99,7 +99,7 @@ export const handlers = {
         return;
       }
       const { userId } = await checkTokens(id, rid);
-      const user = await ops.getUserWithOrgs(userId);
+      const user = await authOps.getUserWithOrgs(userId);
 
       if (!user) {
         res.status(401).json({
@@ -116,7 +116,7 @@ export const handlers = {
 
   joinWithInvite: async (req: Request, res: Response) => {
     try {
-      const invite = await ops.checkInvite(req.params.token);
+      const invite = await authOps.checkInvite(req.params.token);
 
       if (!req.dbUser) {
         res.status(401).json({
@@ -149,9 +149,9 @@ export const handlers = {
         throw new Error("wrong_email");
       }
 
-      await ops.checkOrgCapacity(invite.organizationId as string);
+      await authOps.checkOrgCapacity(invite.organizationId as string);
 
-      await ops.addOrgMember(
+      await authOps.addOrgMember(
         invite.organizationId as string,
         req.dbUser.id,
         invite.roleId
@@ -399,3 +399,5 @@ export const handlers = {
     }
   },
 };
+
+export default authHandlers;

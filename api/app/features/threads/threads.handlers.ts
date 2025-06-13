@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import threadsOps from "./threads.ops";
-import { getThreadsSchema, updateThreadSchema } from "./threads.schemas";
+import { threadsOps } from "./threads.ops";
+import threadSchemas from "./threads.schemas";
 
-export const threadsHandlers = {
+const threadsHandlers = {
   async createThread(req: Request, res: Response) {
     try {
       const result = await threadsOps.createThread(req.dbUser!.id);
@@ -15,7 +15,9 @@ export const threadsHandlers = {
 
   async getThreads(req: Request, res: Response) {
     try {
-      const { page, pageSize, search } = getThreadsSchema.parse(req.query);
+      const { page, pageSize, search } = threadSchemas.getThreadsQuery.parse(
+        req.query
+      );
       const result = await threadsOps.listThreads(
         req.dbUser!.id,
         parseInt(page || "1", 10),
@@ -41,7 +43,7 @@ export const threadsHandlers = {
 
   async updateThread(req: Request, res: Response) {
     try {
-      const { title, isPublic } = updateThreadSchema.parse(req.body);
+      const { title, isPublic } = threadSchemas.updateThread.parse(req.body);
       const result = await threadsOps.updateThread(
         req.params.threadId,
         req.dbUser!.id,
@@ -108,3 +110,5 @@ export const threadsHandlers = {
     }
   },
 };
+
+export default threadsHandlers;

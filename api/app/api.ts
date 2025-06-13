@@ -4,13 +4,13 @@ import db from "./config/db";
 import { eq } from "drizzle-orm";
 import s3 from "./config/s3";
 import { auth, checkSub } from "./middleware";
-import threadsOps from "./features/threads/threads.ops";
+import { threadsOps } from "./features/threads/threads.ops";
 import { messagesOps } from "./features/threads/messages/messages.ops";
 
 // Routes
 import authRoutes from "./features/auth/auth.routes";
 import modelRoutes from "./features/models";
-import threadRoutes from "./features/threads/threads.routes";
+import threadsRouter from "./features/threads/threads.routes";
 import paymentRoutes, { webhook } from "./features/payments";
 import organizationRoutes from "./features/organizations/organizations.routes";
 import workflowRoutes from "./features/workflows/workflows.routes";
@@ -42,7 +42,7 @@ export default Router()
       res.status(500).json({ error: "Failed to get thread messages" });
     }
   })
-  .use("/threads", auth, checkSub, threadRoutes)
+  .use("/threads", auth, checkSub, threadsRouter)
   .post("/payments/webhook", webhook)
   .use("/payments", auth, paymentRoutes)
   .get("/organizations/invite/:inviteToken", async (req, res) => {

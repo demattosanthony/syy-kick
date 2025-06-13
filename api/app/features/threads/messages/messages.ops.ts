@@ -337,9 +337,13 @@ export const messagesOps = {
         return;
       }
 
+      const allConversationTextContext = thread.messages
+        .map((msg) => `Role: ${msg.role}\nContent: ${msg.text}`)
+        .join("\n");
+
       const modelConfig = await getModelConfig(
         model,
-        thread.messages[0].text || ""
+        allConversationTextContext
       );
 
       const inferenceMsgs = await dbMessagesToInferenceMessages(
