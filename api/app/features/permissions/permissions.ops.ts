@@ -1,11 +1,10 @@
-import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import db from "../../config/db";
 import {
   organizationInvites,
   organizations,
   memberRoles,
   permissions,
-  projects,
   roles,
   users,
 } from "../../config/schema";
@@ -40,49 +39,6 @@ export const permissionsOps = {
       .returning({ id: memberRoles.id });
 
     await permissionsOps.insertPermissions(permissions, orgMemberRole.id);
-  },
-  /** ---- Create Project permissions for a member */
-  createProjectsAccess: async (
-    userId: string,
-    projectsIds: string[],
-    organizationId: string,
-    roleId: string,
-    permissions: Record<string, string[]> // ressourceId: actionId[]
-  ): Promise<void> => {
-    const userOrgRole = await db.query.memberRoles.findFirst({
-      where: and(
-        eq(memberRoles.userId, userId),
-        eq(memberRoles.organizationId, organizationId),
-        isNull(memberRoles.projectId)
-      ),
-      with: {
-        role: true,
-      },
-    });
-
-    // User with organization role can access all projects
-    if (
-      [
-        Permissions.Roles.ORGANIZATION_ADMIN,
-        Permissions.Roles.ORGANIZATION_MANAGER,
-      ].includes(userOrgRole?.role.name as Permissions.Roles)
-    ) {
-      return;
-    }
-
-    const [projectMemberRole] = await db
-      .insert(memberRoles)
-      .values(
-        projectsIds.map((projectId) => ({
-          userId,
-          projectId,
-          organizationId,
-          roleId,
-        }))
-      )
-      .returning({ id: memberRoles.id });
-
-    await permissionsOps.insertPermissions(permissions, projectMemberRole.id);
   },
 
   /** ---- Insert permissions */
@@ -122,8 +78,7 @@ export const permissionsOps = {
     const userRole = await db.query.memberRoles.findFirst({
       where: and(
         eq(memberRoles.userId, userId),
-        eq(memberRoles.organizationId, orgId),
-        isNull(memberRoles.projectId)
+        eq(memberRoles.organizationId, orgId)
       ),
       with: {
         role: true,
@@ -145,7 +100,6 @@ export const permissionsOps = {
     return {
       ...userRole,
       permissions: permissionsList,
-      projects: [],
     };
   },
 
@@ -303,9 +257,9 @@ export const permissionsOps = {
       role: invitation.role,
       canUpdate: invitation.role
         ? PermissionManager.hasSuperiorRole(
-          userRole.role.name as Permissions.Roles,
-          invitation.role.name as Permissions.Roles
-        )
+            userRole.role.name as Permissions.Roles,
+            invitation.role.name as Permissions.Roles
+          )
         : false,
       createdAt: invitation.createdAt,
     }));
@@ -329,73 +283,12 @@ export const permissionsOps = {
     res.status(200).json({ message: "Invitations deleted" });
   },
 
-  getTransferableProjects: async (req: Request, res: Response) => {
-    const orgId = req.params.orgId;
-    const user = req.dbUser!;
-
-    if (!orgId) {
-      res.status(403).json({ error: "Please select an organization" });
-      return;
-    }
-
-    if (!user) {
-      res.status(403).json({ error: "Please login to your account" });
-      return;
-    }
-
-    const userOrganisationRole = await permissionsOps.getUserOrganizationRole(
-      user.id,
-      orgId
-    );
-
-    // User has access to all projects in the organization (ORGANIZATION_ADMIN or ORGANIZATION_MANAGER)
-    if (userOrganisationRole) {
-      res.json(
-        await db.query.projects.findMany({
-          where: eq(projects.organizationId, orgId),
-          columns: {
-            id: true,
-            name: true,
-          },
-        })
-      );
-      return;
-    }
-
-    // User has access to some projects in the organization (PROJECT_MANAGER or PROJECT_MEMBER)
-    const userProjects = await db.query.memberRoles.findMany({
-      where: and(
-        eq(memberRoles.userId, user.id),
-        eq(memberRoles.organizationId, orgId),
-        isNotNull(memberRoles.projectId)
-      ),
-      columns: {
-        projectId: true,
-      },
-      with: {
-        project: {
-          columns: {
-            name: true,
-          },
-        },
-      },
-    });
-
-    res.json(
-      userProjects.map((project) => ({
-        id: project.projectId,
-        name: project.project!.name,
-      }))
-    );
-  },
-
   updateOrgMemberRole: async (req: Request, res: Response) => {
     const { orgId, memberId } = req.params;
     const user = req.dbUser!;
-    const { resources, roleId, projectIds } = req.body as {
+    const { resources, roleId } = req.body as {
       resources: Record<string, string[]>; // resourceId: actionId[]
       roleId: string;
-      projectIds?: string[];
     };
 
     const newRole = await db.query.roles.findFirst({
@@ -470,44 +363,6 @@ export const permissionsOps = {
       },
     });
 
-    if (
-      [
-        Permissions.Roles.PROJECT_MANAGER,
-        Permissions.Roles.PROJECT_MEMBER,
-      ].includes(newRole.name as Permissions.Roles)
-    ) {
-      // Insert project roles & permissions if projectIds are provided
-      if (projectIds && projectIds.length > 0) {
-        const insertedProjectMemberRoles = await db
-          .insert(memberRoles)
-          .values(
-            projectIds.map((projectId) => ({
-              userId: memberId,
-              projectId,
-              organizationId: orgId,
-              roleId,
-            }))
-          )
-          .returning({
-            id: memberRoles.id,
-          });
-
-        const permissionsToInsert = insertedProjectMemberRoles.flatMap(
-          ({ id: memberRoleId }) =>
-            Object.entries(resources).flatMap(([resourceId, actionIds]) =>
-              actionIds.map((actionId) => ({
-                roleId,
-                resourceId,
-                actionId,
-                memberRoleId,
-              }))
-            )
-        );
-
-        await db.insert(permissions).values(permissionsToInsert);
-      }
-    }
-
     res.json({ message: "Role updated" });
   },
 
@@ -542,5 +397,5 @@ export const permissionsOps = {
       orgId
     );
     res.json(permissions);
-  }
+  },
 };

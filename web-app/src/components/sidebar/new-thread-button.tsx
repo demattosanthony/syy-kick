@@ -17,7 +17,7 @@ export function NewThreadButton() {
         <PlusIcon
           className={state === "collapsed" && !isMobile ? "size-2" : "size-4"}
         />
-        {state === "expanded" && !isMobile && "New Thread"}
+        {state === "expanded" && "New Chat"}
       </Button>
     </Link>
   );

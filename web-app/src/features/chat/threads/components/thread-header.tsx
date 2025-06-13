@@ -38,10 +38,13 @@ export default function ThreadHeader() {
   const [shareLinkCopied, setShareLinkCopied] = React.useState(false);
 
   const threadId = params.threadId as string;
+  const isPendingThread = threadId?.startsWith("pending-");
 
   const [, setMessages] = useAtom(messagesAtom);
 
-  const { data: thread } = useThreadQuery(threadId, false);
+  const { data: thread } = useThreadQuery(threadId, {
+    enabled: !isPendingThread && !!threadId,
+  });
 
   const handleCopyShareLink = async () => {
     if (!thread) return;
@@ -66,13 +69,7 @@ export default function ThreadHeader() {
   let parentName: string | undefined;
   let parentLink: string | undefined;
 
-  if (thread?.project) {
-    parentName = thread.project.name;
-    parentLink = `/projects/${thread.project.id}`;
-  } else if (thread?.knowledgeBase) {
-    parentName = thread.knowledgeBase.name;
-    parentLink = `/knowledge-bases/${thread.knowledgeBase.id}`;
-  } else if (thread?.workflowId) {
+  if (thread?.workflowId) {
     parentName = workflowNameMap[thread.workflowId as WorkflowId] || "Workflow";
     parentLink = `/workflows/${thread.workflowId}`;
   }
@@ -80,7 +77,7 @@ export default function ThreadHeader() {
   return (
     <header
       className={cn(
-        "absolute inset-x-0 top-0 z-[5] flex h-14 items-center bg-background md:bg-background/50 px-4 md:backdrop-blur-xl transition-all"
+        "absolute inset-x-0 top-0 z-[5] flex h-12 items-center bg-background md:bg-background/50 px-4 md:backdrop-blur-xl transition-all"
       )}
     >
       <div className="flex w-full items-center justify-between">

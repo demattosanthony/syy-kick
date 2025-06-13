@@ -14,7 +14,6 @@ type ThreadWithMessages = {
   title?: string | null;
   userId: string;
   organizationId?: string | null;
-  projectId?: string | null;
   isPublic?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -39,27 +38,7 @@ type ThreadWithMessages = {
       toolCallId: string;
     }[];
   }[];
-  project?: any;
   organization?: any;
-  knowledgeBase?: any;
 };
 
-type DocumentSearchToolResult = {
-  documentId: string;
-  path: string;
-  documentName: string;
-  text: string | null;
-  projectId?: string;
-  similarity: number;
-  pageNumber?: number;
-  knowledgeBaseId?: string;
-  mimeType?: string | null;
-  fileKey?: string | null;
-};
-
-export {
-  MyMessage,
-  ThreadWithMessages,
-  DocumentSearchToolResult,
-  ExtendedAttachment,
-};
+export { MyMessage, ThreadWithMessages, ExtendedAttachment };

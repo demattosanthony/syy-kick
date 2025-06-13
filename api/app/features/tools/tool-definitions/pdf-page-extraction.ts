@@ -1,8 +1,7 @@
 import { tool, Tool } from "ai";
 import { z } from "zod";
 import { PDFDocument } from "pdf-lib";
-import { ArtifactService } from "../../workflows/artifact-service";
-import { getPdfPageAsImage } from "../../../utils";
+import { ArtifactService } from "../artifact-service";
 
 export function createPdfPageExtractionTool(
   toolArtifactService: ArtifactService
@@ -36,19 +35,19 @@ export function createPdfPageExtractionTool(
           ]);
           newPdfDoc.addPage(copiedPage);
           const newPdfBytes = await newPdfDoc.save();
-          const pageImageBase64 = await getPdfPageAsImage(newPdfBytes, 1, {
-            format: "png",
-            dpi: 96,
-            maxDimension: 8000,
-          });
+          //   const pageImageBase64 = await getPdfPageAsImage(newPdfBytes, 1, {
+          //     format: "png",
+          //     dpi: 96,
+          //     maxDimension: 8000,
+          //   });
 
-          await toolArtifactService.saveArtifact(
-            `${fileName}-page-${pageNumber}.png`,
-            {
-              data: Buffer.from(pageImageBase64, "base64"),
-              mimeType: "image/png",
-            }
-          );
+          //   await toolArtifactService.saveArtifact(
+          //     `${fileName}-page-${pageNumber}.png`,
+          //     {
+          //       data: Buffer.from(pageImageBase64, "base64"),
+          //       mimeType: "image/png",
+          //     }
+          //   );
         }
 
         return {

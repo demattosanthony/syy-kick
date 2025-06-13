@@ -181,6 +181,11 @@
     width: 100%;
     user-select: text;
   }
+
+  button:not([disabled]),
+  [role="button"]:not([disabled]) {
+    cursor: pointer;
+  }
 }
 
 @theme {

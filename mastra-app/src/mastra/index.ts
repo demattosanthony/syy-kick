@@ -11,6 +11,7 @@ import {
   rfpResearcherWorkflow,
   kitchenSinkWorkflow,
   pointCheckoutSheetsWorkflow,
+  windowDoorSchedulesTables,
 } from "./workflows/index.ts";
 import { csvWriter, webResearcher, codingAgent } from "./agents/index.ts";
 
@@ -32,6 +33,7 @@ export const mastra = new Mastra({
     "equipment-serving-list": equipmentServingListWorkflow,
     "rfp-researcher": rfpResearcherWorkflow,
     "kitchen-sink": kitchenSinkWorkflow,
+    "window-door-schedules-tables": windowDoorSchedulesTables,
   },
   logger: logger,
   storage,

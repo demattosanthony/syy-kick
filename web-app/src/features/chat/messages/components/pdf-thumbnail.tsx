@@ -7,10 +7,12 @@ const PdfThumbnail = ({
   url,
   width = 200,
   pageNumber = 1,
+  onError,
 }: {
   url: string;
   width?: number;
   pageNumber?: number;
+  onError?: () => void;
 }) => {
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -93,10 +95,10 @@ const PdfThumbnail = ({
           // Ignore cancellation errors, log others
           if (error?.name !== "RenderingCancelledException") {
             console.error("Error generating thumbnail:", error);
-            // Consider setting an error state here for the UI
+            // Call error callback to let parent know about the error
+            onError?.();
           }
-          // Keep loading true or set error state if needed on cancellation
-          // setLoading(false); // Avoid setting loading false on cancellation or other errors
+          setLoading(false); // Set loading false on error to show fallback
         }
       }
     };
@@ -111,15 +113,28 @@ const PdfThumbnail = ({
         renderTask = null;
       }
     };
-  }, [url, width, pageNumber]);
+  }, [url, width, pageNumber, onError]);
 
   return (
     <div
-      className="thumbnail-container cursor-pointer transition-all rounded overflow-hidden"
+      className="thumbnail-container cursor-pointer transition-all rounded overflow-hidden relative"
       onClick={() => window.open(url, "_blank")}
+      style={{ width: `${width}px`, minHeight: "128px" }}
     >
-      {loading && <Skeleton className="w-full h-32" />}
-      <canvas ref={canvasRef} style={{ display: loading ? "none" : "block" }} />
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/10 rounded">
+          <Skeleton className="w-full h-32 rounded" />
+        </div>
+      )}
+      <canvas
+        ref={canvasRef}
+        style={{
+          display: loading ? "none" : "block",
+          width: "100%",
+          height: "auto",
+        }}
+        className="rounded"
+      />
     </div>
   );
 };

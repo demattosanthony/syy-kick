@@ -10,17 +10,9 @@ type UserData = {
   messageCount: number;
 };
 
-// Define document stats type
-type DocumentStats = {
-  total: number;
-  processing: number;
-  pending: number;
-};
-
 // Define the props type for the component
 type AnalyticsDashboardProps = {
   usersData: UserData[];
-  documentStats: DocumentStats;
 };
 
 // Format Date function
@@ -36,10 +28,7 @@ const formatDate = (date: Date | null | string): string => {
   }
 };
 
-export function AnalyticsDashboard({
-  usersData,
-  documentStats,
-}: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ usersData }: AnalyticsDashboardProps) {
   return (
     <html>
       <head>
@@ -96,25 +85,6 @@ export function AnalyticsDashboard({
               ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Document Processing Section */}
-        <div id="documents-content">
-          <h2>Document Processing Status</h2>
-          <div className="stats-container">
-            <div className="stat-item">
-              <h3>Total Documents</h3>
-              <p>{documentStats.total}</p>
-            </div>
-            <div className="stat-item">
-              <h3>Processing</h3>
-              <p>{documentStats.processing}</p>
-            </div>
-            <div className="stat-item">
-              <h3>Pending</h3>
-              <p>{documentStats.pending}</p>
-            </div>
-          </div>
         </div>
       </body>
     </html>

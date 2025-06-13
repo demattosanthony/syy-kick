@@ -29,7 +29,7 @@ export function ThreadsLink() {
         ) : (
           <>
             <History />
-            Threads
+            Chat History
           </>
         )}
       </Button>

@@ -12,7 +12,9 @@ import { createPerplexity } from "@ai-sdk/perplexity";
 import { mistral } from "@ai-sdk/mistral";
 import { wrapLanguageModel, extractReasoningMiddleware } from "ai";
 import { Mistral as MistralAi } from "@mistralai/mistralai";
-import { markitdownMimeTypes } from "../doc-processor-v2";
+import { MARKITDOWN_MIME_TYPES } from "../config/constants";
+
+const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
 
 const perplexity = createPerplexity({
   apiKey: process.env.PPLX_API_KEY ?? "",
@@ -45,7 +47,7 @@ export const anthropicModels = (
     "image/webp",
     "image/gif",
     "application/pdf",
-    ...markitdownMimeTypes,
+    ...MARKITDOWN_MIME_TYPES,
   ];
 
   return {
@@ -57,7 +59,7 @@ export const anthropicModels = (
       supportsSystemMessages: true,
       supportedMimeTypes,
       maxImageSize: 5 * 1024 * 1024, // 5MB
-      maxFileSize: 32 * 1024 * 1024, // 32MB
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Claude Opus 4 is Anthropic's most powerful model yet and the best coding model in the world, leading on SWE-bench (72.5%) and Terminal-bench (43.2%). It delivers sustained performance on long-running tasks that require focused effort and thousands of steps, with the ability to work continuously for several hours—dramatically outperforming all Sonnet models and significantly expanding what AI agents can accomplish.",
     },
@@ -69,7 +71,7 @@ export const anthropicModels = (
       supportsSystemMessages: true,
       supportedMimeTypes,
       maxImageSize: 5 * 1024 * 1024, // 5MB
-      maxFileSize: 32 * 1024 * 1024, // 32MB
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Claude Sonnet 4 significantly improves on Sonnet 3.7's industry-leading capabilities, excelling in coding with a state-of-the-art 72.7% on SWE-bench. The model balances performance and efficiency for internal and external use cases, with enhanced steerability for greater control over implementations. While not matching Opus 4 in most domains, it delivers an optimal mix of capability and practicality.",
     },
@@ -81,7 +83,7 @@ export const anthropicModels = (
       supportsSystemMessages: true,
       supportedMimeTypes,
       maxImageSize: 5 * 1024 * 1024, // 5MB
-      maxFileSize: 32 * 1024 * 1024, // 32MB
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Claude 3.7 Sonnet is a hybrid model capable of both standard thinking as well as extended thinking modes. In standard mode, Claude 3.7 Sonnet operates similarly to other models in the Claude 3 family. In extended thinking mode, Claude will output its thinking before outputting its response, allowing you insight into its reasoning process.",
     },
@@ -103,7 +105,7 @@ export const anthropicModels = (
       provider: "anthropic",
       supportsSystemMessages: true,
       supportedMimeTypes: [
-        ...markitdownMimeTypes,
+        ...MARKITDOWN_MIME_TYPES,
         "image/jpeg",
         "image/png",
         "image/webp",
@@ -125,7 +127,7 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
     "image/webp",
     "image/gif",
     "application/pdf",
-    ...markitdownMimeTypes,
+    ...MARKITDOWN_MIME_TYPES,
   ];
 
   return {
@@ -230,45 +232,31 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
     "text/properties",
     "text/conf",
     "text/log",
-    ...markitdownMimeTypes,
+    ...MARKITDOWN_MIME_TYPES,
   ];
 
   return {
-    "gemini-2.5-pro-preview": {
-      model: google("gemini-2.5-pro-preview-05-06"),
+    "gemini-2.5-pro": {
+      model: google("gemini-2.5-pro-preview-06-05"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "google",
       supportsSystemMessages: true,
       supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024,
-      maxFileSize: 50 * 1024 * 1024, // 50MB
+      maxImageSize: 2 * 1024 * 1024 * 1024, // 2GB
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Gemini 2.5 Pro Experimental is Google's state-of-the-art thinking model, capable of reasoning over complex problems in code, math, and STEM, as well as analyzing large datasets, codebases, and documents using long context.",
     },
-    "gemini-2.5-flash-preview": {
-      model: google("gemini-2.5-flash-preview-04-17"),
+    "gemini-2.5-flash": {
+      model: google("gemini-2.5-flash-preview-05-20"),
       supportsToolUse: true,
       supportsStreaming: true,
       provider: "google",
       supportsSystemMessages: true,
       supportedMimeTypes,
       maxImageSize: 2 * 1024 * 1024 * 1024,
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      description:
-        "Gemini 2.5 Flash is Google's first fully hybrid reasoning model, giving developers the ability to turn thinking on or off. The model also allows developers to set thinking budgets to find the right tradeoff between quality, cost, and latency.",
-    },
-    "gemini-2.5-flash-online": {
-      model: google("gemini-2.5-flash-preview-04-17", {
-        useSearchGrounding: true,
-      }),
-      supportsToolUse: true,
-      supportsStreaming: true,
-      provider: "google",
-      supportsSystemMessages: true,
-      supportedMimeTypes,
-      maxImageSize: 2 * 1024 * 1024 * 1024, //
-      maxFileSize: 50 * 1024 * 1024, // 50MB
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Gemini 2.5 Flash is Google's first fully hybrid reasoning model, giving developers the ability to turn thinking on or off. The model also allows developers to set thinking budgets to find the right tradeoff between quality, cost, and latency.",
     },
@@ -278,6 +266,15 @@ export const googleModels = (apiKey?: string): Record<string, ModelConfig> => {
 export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
+  const supportedMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    ...MARKITDOWN_MIME_TYPES,
+  ];
+
   return {
     "grok-3-beta": {
       model: xai("grok-3-beta"),
@@ -285,7 +282,9 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: [...markitdownMimeTypes],
+      maxFileSize: MAX_FILE_SIZE, // 1GB
+      maxImageSize: 10 * 1024 * 1024, // 10MB
+      supportedMimeTypes,
       description:
         "xAI's flagship model that excels at enterprise use cases like data extraction, coding, and text summarization. Possesses deep domain knowledge in finance, healthcare, law, and science.",
     },
@@ -295,8 +294,9 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsStreaming: true,
       provider: "xai",
       supportsSystemMessages: true,
-      supportedMimeTypes: [...markitdownMimeTypes],
+      supportedMimeTypes,
       maxImageSize: 10 * 1024 * 1024, // 10MB
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "xAI's lightweight model that thinks before responding. Great for simple or logic-based tasks that do not require deep domain knowledge. The raw thinking traces are accessible.",
     },
@@ -308,7 +308,14 @@ export const togetherAiModels = (
 ): Record<string, ModelConfig> => {
   if (!apiKey) return {};
 
-  const supportedMimeTypes = [...markitdownMimeTypes];
+  const supportedMimeTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    ...MARKITDOWN_MIME_TYPES,
+  ];
 
   return {
     "deepseek-r1": {
@@ -321,6 +328,7 @@ export const togetherAiModels = (
       supportsStreaming: true,
       provider: "deepseek",
       supportsSystemMessages: true,
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "DeepSeek Reasoner is a specialized model developed by DeepSeek that uses Chain of Thought (CoT) reasoning to improve response accuracy. Before providing a final answer, it generates detailed reasoning steps that are accessible through the API, allowing users to examine and leverage the model's thought process. The model is hosted on Together AI and running on USA servers, no data gets shared with DeepSeek or china.",
     },
@@ -331,6 +339,7 @@ export const togetherAiModels = (
       supportedMimeTypes,
       provider: "deepseek",
       supportsSystemMessages: true,
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description: `DeepSeek-V3 is an open-source large language model that builds upon LLaMA (Meta’s foundational language model) to enable versatile functionalities such as text generation, code completion, and more. The model is hosted on Together AI and running on USA servers, no data gets shared with DeepSeek or china.`,
     },
     "llama-4-maverick": {
@@ -340,6 +349,7 @@ export const togetherAiModels = (
       supportedMimeTypes,
       provider: "meta",
       supportsSystemMessages: true,
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Llama 4 Maverick is a large language model that is optimized for reasoning and has a focus on providing accurate and helpful responses. It is hosted on Together AI and running on USA servers, no data gets shared with Meta.",
     },
@@ -350,6 +360,7 @@ export const togetherAiModels = (
       supportedMimeTypes,
       provider: "meta",
       supportsSystemMessages: true,
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Llama 4 Scout is a large language model that is optimized for reasoning and has a focus on providing accurate and helpful responses. It is hosted on Together AI and running on USA servers, no data gets shared with Meta.",
     },
@@ -360,6 +371,7 @@ export const togetherAiModels = (
       supportedMimeTypes,
       provider: "meta",
       supportsSystemMessages: true,
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "The Meta Llama 3.1 multilingual large language model (LLM) is a pretrained and instruction tuned generative model in 405B (text in/text out). The Llama 3.1 instruction tuned text only model is optimized for multilingual dialogue use cases and outperforms many of the available open source and closed chat models on common industry benchmarks.",
     },
@@ -375,8 +387,9 @@ export const groqModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportsToolUse: true,
       supportsStreaming: true,
       supportsSystemMessages: true,
-      supportedMimeTypes: [...markitdownMimeTypes],
+      supportedMimeTypes: [...MARKITDOWN_MIME_TYPES],
       provider: "meta",
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "The Meta Llama 3.3 multilingual large language model (LLM) is a pretrained and instruction tuned generative model in 70B (text in/text out). The Llama 3.3 instruction tuned text only model is optimized for multilingual dialogue use cases and outperforms many of the available open source and closed chat models on common industry benchmarks.",
     },
@@ -399,6 +412,7 @@ export const perplexityModels = (
       provider: "perplexity",
       supportedMimeTypes: [],
       supportsSystemMessages: true,
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description: "New API offering powered by DeepSeek's reasoning models",
     },
     "sonar-pro": {
@@ -408,6 +422,7 @@ export const perplexityModels = (
       supportedMimeTypes: [],
       provider: "perplexity",
       supportsSystemMessages: true,
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Permier offering with search grounding, supporting advanced queries and follow-ups",
     },
@@ -437,6 +452,7 @@ export const mistralModels = (apiKey?: string): Record<string, ModelConfig> => {
       provider: "mistral",
       supportsSystemMessages: true,
       supportedMimeTypes,
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Mistral Large is a large language model optimized for performance and accuracy. It is suitable for a wide range of tasks that require high-quality responses.",
     },
@@ -447,6 +463,7 @@ export const mistralModels = (apiKey?: string): Record<string, ModelConfig> => {
       provider: "mistral",
       supportsSystemMessages: true,
       supportedMimeTypes,
+      maxFileSize: MAX_FILE_SIZE, // 1GB
       description:
         "Mistral Small is a smaller version of the Mistral language model that is optimized for speed and efficiency. It is suitable for tasks that require quick responses and low resource usage.",
     },

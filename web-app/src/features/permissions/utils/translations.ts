@@ -41,22 +41,6 @@ export const resourcesTranslations: Record<string, string> = Object.freeze({
   [Permissions.Resources.ORGANIZATION_SEATS]: "Organization Seats",
   [Permissions.Resources.ORGANIZATION_SITES]: "Organization Sites",
   [Permissions.Resources.ORGANIZATION_ACCESS_LOGS]: "Organization Access Logs",
-  [Permissions.Resources.ORGANIZATION_PROJECTS]: "Organization Projects",
-  [Permissions.Resources.ORGANIZATION_PROJECT_DOCS]:
-    "Project Docs",
-  [Permissions.Resources.ORGANIZATION_PROJECT_INVITATIONS]:
-    "Project Invitations",
-  [Permissions.Resources.ORGANIZATION_PROJECT_MEMBERS]:
-    "Project Members",
-  [Permissions.Resources.ORGANIZATION_PROJECT_ACCESS_LOGS]:
-    "Project Access Logs",
-  [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES]:
-    "Knowledge Bases",
-  [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS]:
-    "Knowledge Bases Docs",
-  [Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS]:
-    "Knowledge Bases Access Logs",
-  [Permissions.Resources.PROJECT_ISSUES]: "Project Issues",
 });
 
 export const actionsTranslations: Record<string, string> = Object.freeze({

@@ -1,6 +1,8 @@
-import { usePublicThreadQuery } from "@/features/chat/threads/api";
+import {
+  usePublicThreadMessagesQuery,
+  usePublicThreadQuery,
+} from "@/features/chat/threads/api";
 import { ChatThread } from "@/features/chat/threads/components";
-import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
 import { useMeQuery } from "@/features/user/api";
 import { redirect } from "react-router";
 import { useParams } from "react-router";
@@ -15,7 +17,9 @@ export function ShareThreadPage() {
     redirect("/");
   }
 
-  const initialMessages = thread ? mapThreadMessagesToMessages(thread) : [];
+  const { data: threadMessages } = usePublicThreadMessagesQuery(
+    threadId as string
+  );
 
   const isAllowedToCloneThread =
     !thread?.organizationId ||
@@ -28,7 +32,7 @@ export function ShareThreadPage() {
   return (
     <div className="flex flex-col h-screen relative">
       <ChatThread
-        initalMessages={initialMessages}
+        initalMessages={threadMessages || []}
         thread={thread}
         viewOnly
         showCloneThreadButton={isAllowedToCloneThread}

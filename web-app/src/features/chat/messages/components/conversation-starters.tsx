@@ -1,5 +1,3 @@
-"use client";
-
 import { motion } from "framer-motion";
 import { useAtom } from "jotai";
 import { AUTO_MODEL_CONFIG, initalInputAtom, modelAtom } from "@/atoms/chat";

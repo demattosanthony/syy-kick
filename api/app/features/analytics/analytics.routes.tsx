@@ -7,8 +7,6 @@ import { AnalyticsDashboard } from "./analytics-dashboard";
 import {
   threads as threadsTable,
   messages as messagesTable,
-  documentProcessingJobs,
-  documents,
 } from "../../config/schema";
 import logsRoutes from "./log_viewer/logs.routes";
 
@@ -68,25 +66,8 @@ router.get("", async (req, res) => {
       )
       .orderBy(desc(sql`COALESCE(${users.lastActiveAt}, '1970-01-01')`));
 
-    // Fetch document stats
-    const totalDocsResult = await db.select({ count: count() }).from(documents);
-    const jobStatsResult = await db
-      .select({
-        processing: count(
-          sql`CASE WHEN status = 'processing' THEN 1 ELSE NULL END`
-        ),
-        pending: count(sql`CASE WHEN status = 'pending' THEN 1 ELSE NULL END`),
-      })
-      .from(documentProcessingJobs);
-
-    const documentStats = {
-      total: totalDocsResult[0]?.count ?? 0,
-      processing: jobStatsResult[0]?.processing ?? 0,
-      pending: jobStatsResult[0]?.pending ?? 0,
-    };
-
     const stream = await renderToReadableStream(
-      <AnalyticsDashboard usersData={usersData} documentStats={documentStats} />
+      <AnalyticsDashboard usersData={usersData} />
     );
 
     res.setHeader("Content-Type", "text/html");

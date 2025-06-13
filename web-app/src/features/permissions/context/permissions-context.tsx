@@ -16,29 +16,8 @@ type PermissionsContextType = {
   canUpdateOrgInvitations: boolean;
   canDeleteOrgInvitations: boolean;
   canReadOrgAccessLogs: boolean;
-  canCreateOrgProjects: boolean;
-  canUpdateOrgProjects: boolean;
-  canDeleteOrgProjects: boolean;
   canReadOrgSeats: boolean;
   canUpdateOrgSeats: boolean;
-  canReadOrgProjectDocs: boolean;
-  canCreateOrgProjectDocs: boolean;
-  canUpdateOrgProjectDocs: boolean;
-  canDeleteOrgProjectDocs: boolean;
-  canReadOrgProjectAccessLogs: boolean;
-  canCreateOrgKnowledgeBases: boolean;
-  canReadOrgKnowledgeBases: boolean;
-  canUpdateOrgKnowledgeBases: boolean;
-  canDeleteOrgKnowledgeBases: boolean;
-  canCreateOrgKnowledgeBaseDocs: boolean;
-  canReadOrgKnowledgeBaseDocs: boolean;
-  canUpdateOrgKnowledgeBaseDocs: boolean;
-  canDeleteOrgKnowledgeBaseDocs: boolean;
-  canReadOrgKnowledgeBaseAccessLogs: boolean;
-  canCreateProjectIssues: boolean;
-  canReadProjectIssues: boolean;
-  canUpdateProjectIssues: boolean;
-  canDeleteProjectIssues: boolean;
   isLoading: boolean;
 };
 
@@ -74,54 +53,11 @@ export const PermissionsProvider = ({
     canUpdateOrgInvitations,
     canDeleteOrgInvitations,
     canReadOrgAccessLogs,
-    canCreateOrgProjects,
-    canUpdateOrgProjects,
-    canDeleteOrgProjects,
     canReadOrgSeats,
     canUpdateOrgSeats,
-    canReadOrgProjectDocs,
-    canCreateOrgProjectDocs,
-    canUpdateOrgProjectDocs,
-    canDeleteOrgProjectDocs,
-    canReadOrgProjectAccessLogs,
-    canCreateOrgKnowledgeBases,
-    canReadOrgKnowledgeBases,
-    canUpdateOrgKnowledgeBases,
-    canDeleteOrgKnowledgeBases,
-    canCreateOrgKnowledgeBaseDocs,
-    canReadOrgKnowledgeBaseDocs,
-    canUpdateOrgKnowledgeBaseDocs,
-    canDeleteOrgKnowledgeBaseDocs,
-    canReadOrgKnowledgeBaseAccessLogs,
-    canCreateProjectIssues,
-    canReadProjectIssues,
-    canUpdateProjectIssues,
-    canDeleteProjectIssues,
   ] = useMemo(() => {
     if (userId === orgId) {
       return [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
         true,
         true,
         true,
@@ -141,27 +77,6 @@ export const PermissionsProvider = ({
 
     if (!userPermissions) {
       return [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
         false,
         false,
         false,
@@ -228,96 +143,12 @@ export const PermissionsProvider = ({
         Permissions.Actions.READ
       ),
       userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_PROJECTS,
-        Permissions.Actions.CREATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_PROJECTS,
-        Permissions.Actions.UPDATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_PROJECTS,
-        Permissions.Actions.DELETE
-      ),
-      userPermissions.hasAccess(
         Permissions.Resources.ORGANIZATION_SEATS,
         Permissions.Actions.READ
       ),
       userPermissions.hasAccess(
         Permissions.Resources.ORGANIZATION_SEATS,
         Permissions.Actions.UPDATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
-        Permissions.Actions.READ
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
-        Permissions.Actions.CREATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
-        Permissions.Actions.UPDATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_PROJECT_DOCS,
-        Permissions.Actions.DELETE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_PROJECT_ACCESS_LOGS,
-        Permissions.Actions.READ
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
-        Permissions.Actions.CREATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
-        Permissions.Actions.READ
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
-        Permissions.Actions.UPDATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
-        Permissions.Actions.DELETE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-        Permissions.Actions.CREATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-        Permissions.Actions.READ
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-        Permissions.Actions.UPDATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-        Permissions.Actions.DELETE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS,
-        Permissions.Actions.READ
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.PROJECT_ISSUES,
-        Permissions.Actions.CREATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.PROJECT_ISSUES,
-        Permissions.Actions.READ
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.PROJECT_ISSUES,
-        Permissions.Actions.UPDATE
-      ),
-      userPermissions.hasAccess(
-        Permissions.Resources.PROJECT_ISSUES,
-        Permissions.Actions.DELETE
       ),
     ];
   }, [userPermissions, userId, orgId]);
@@ -337,29 +168,8 @@ export const PermissionsProvider = ({
         canUpdateOrgInvitations,
         canDeleteOrgInvitations,
         canReadOrgAccessLogs,
-        canCreateOrgProjects,
-        canUpdateOrgProjects,
-        canDeleteOrgProjects,
         canReadOrgSeats,
         canUpdateOrgSeats,
-        canReadOrgProjectDocs,
-        canCreateOrgProjectDocs,
-        canUpdateOrgProjectDocs,
-        canDeleteOrgProjectDocs,
-        canReadOrgProjectAccessLogs,
-        canCreateOrgKnowledgeBases,
-        canReadOrgKnowledgeBases,
-        canUpdateOrgKnowledgeBases,
-        canDeleteOrgKnowledgeBases,
-        canCreateOrgKnowledgeBaseDocs,
-        canReadOrgKnowledgeBaseDocs,
-        canUpdateOrgKnowledgeBaseDocs,
-        canDeleteOrgKnowledgeBaseDocs,
-        canReadOrgKnowledgeBaseAccessLogs,
-        canCreateProjectIssues,
-        canReadProjectIssues,
-        canUpdateProjectIssues,
-        canDeleteProjectIssues,
         isLoading,
       }}
     >
@@ -384,29 +194,8 @@ export const usePermissions = () => {
       canUpdateOrgInvitations: false,
       canDeleteOrgInvitations: false,
       canReadOrgAccessLogs: false,
-      canCreateOrgProjects: false,
-      canUpdateOrgProjects: false,
-      canDeleteOrgProjects: false,
       canReadOrgSeats: false,
       canUpdateOrgSeats: false,
-      canReadOrgProjectDocs: false,
-      canCreateOrgProjectDocs: false,
-      canUpdateOrgProjectDocs: false,
-      canDeleteOrgProjectDocs: false,
-      canReadOrgProjectAccessLogs: false,
-      canCreateOrgKnowledgeBases: false,
-      canReadOrgKnowledgeBases: false,
-      canUpdateOrgKnowledgeBases: false,
-      canDeleteOrgKnowledgeBases: false,
-      canCreateOrgKnowledgeBaseDocs: false,
-      canReadOrgKnowledgeBaseDocs: false,
-      canUpdateOrgKnowledgeBaseDocs: false,
-      canDeleteOrgKnowledgeBaseDocs: false,
-      canReadOrgKnowledgeBaseAccessLogs: false,
-      canCreateProjectIssues: false,
-      canReadProjectIssues: false,
-      canUpdateProjectIssues: false,
-      canDeleteProjectIssues: false,
       isLoading: true,
     };
   }

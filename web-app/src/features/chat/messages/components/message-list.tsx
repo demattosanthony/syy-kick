@@ -1,95 +1,124 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
-
-interface MessageBubbleProps {
-  content: string;
-  isUser: boolean;
-  onCopy?: () => void;
-  copied?: boolean;
-}
-
-const MessageBubble = ({
-  content,
-  isUser,
-  onCopy,
-  copied,
-}: MessageBubbleProps) => (
-  <div
-    className={`group flex w-full ${isUser ? "justify-end" : "justify-start"}`}
-  >
-    <div
-      className={`
-        relative flex flex-col rounded-lg p-2 bg-[#242628] dark:bg-input
-        ${isUser ? " text-white dark:text-white max-w-[515px]" : " max-w-full"}
-      `}
-      style={{
-        whiteSpace: isUser ? "pre-wrap" : "normal",
-      }}
-    >
-      <div
-        className="
-          break-words
-          whitespace-pre-wrap
-          w-full
-          overflow-hidden
-        "
-      >
-        {content}
-      </div>
-
-      {isUser && onCopy && (
-        <div className="absolute -bottom-6 right-0 group-hover:opacity-100 opacity-0 transition-all duration-200">
-          {copied ? (
-            <Check className="w-4 h-4 text-green-500" />
-          ) : (
-            <Copy
-              className="w-4 h-4 cursor-pointer text-primary"
-              onClick={onCopy}
-            />
-          )}
-        </div>
-      )}
-    </div>
-  </div>
-);
+import {
+  Message as UIMessage,
+  MessageAction,
+  MessageActions,
+  MessageAvatar,
+} from "@/components/ui/message";
+import { Button } from "@/components/ui/button";
 
 import ChatAttachment from "./chat-attachment";
+import TruncatedText from "./truncated-text";
 
-const UserMessage = React.memo(({ message }: { message: Message }) => {
-  const [copied, setCopied] = React.useState<boolean>(false);
+const UserMessage = React.memo(
+  ({ message }: { message: Message }) => {
+    const [copied, setCopied] = React.useState<boolean>(false);
+    const [isHovering, setIsHovering] = useState(false);
 
-  const handleCopy = () => {
-    if (message.content) {
-      navigator.clipboard.writeText(message.content).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      });
-    }
-  };
+    const handleCopy = () => {
+      if (message.content) {
+        navigator.clipboard.writeText(message.content).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        });
+      }
+    };
 
-  return (
-    <div className="mb-2">
-      {message.experimental_attachments &&
-        message.experimental_attachments.length > 0 && (
-          <div className="flex justify-end mb-2">
-            <div className="flex flex-col gap-2 items-end">
-              {message.experimental_attachments.map((attachment, idx) => (
-                <ChatAttachment key={idx} attachment={attachment} />
-              ))}
+    return (
+      <div className="mb-2">
+        {message.experimental_attachments &&
+          message.experimental_attachments.length > 0 && (
+            <div className="flex justify-end mb-2">
+              <div className="flex flex-col gap-2 items-end">
+                {message.experimental_attachments.map(
+                  (attachment: any, idx: number) => (
+                    <ChatAttachment
+                      key={`${attachment.name}-${
+                        attachment.contentType || attachment.mimeType || ""
+                      }-${idx}`}
+                      attachment={attachment}
+                    />
+                  )
+                )}
+              </div>
             </div>
-          </div>
+          )}
+        {message.content && (
+          <UIMessage
+            className="justify-end group"
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+          >
+            <div className="flex w-full flex-col gap-2 items-end">
+              <div className="bg-[#242628] dark:bg-input text-white dark:text-white max-w-[515px] rounded-lg p-2">
+                <TruncatedText content={message.content} maxLength={1500} />
+              </div>
+
+              <MessageActions
+                className={`self-end transition-opacity duration-200 ${
+                  isHovering ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                <MessageAction
+                  tooltip={copied ? "Copied!" : "Copy to clipboard"}
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full"
+                    onClick={handleCopy}
+                  >
+                    {copied ? (
+                      <Check className="size-4 text-green-500" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
+                  </Button>
+                </MessageAction>
+              </MessageActions>
+            </div>
+          </UIMessage>
         )}
-      {message.content && (
-        <MessageBubble
-          content={message.content || ""}
-          isUser={true}
-          onCopy={handleCopy}
-          copied={copied}
-        />
-      )}
-    </div>
-  );
-});
+      </div>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison function to prevent unnecessary re-renders
+    const prevMessage = prevProps.message;
+    const nextMessage = nextProps.message;
+
+    // Compare message content
+    if (prevMessage.content !== nextMessage.content) {
+      return false;
+    }
+
+    // Compare attachments
+    const prevAttachments = prevMessage.experimental_attachments || [];
+    const nextAttachments = nextMessage.experimental_attachments || [];
+
+    if (prevAttachments.length !== nextAttachments.length) {
+      return false;
+    }
+
+    // Compare attachments by name and content type only, ignore URL changes
+    // This prevents re-renders when URL changes from blob to server URL
+    for (let i = 0; i < prevAttachments.length; i++) {
+      const prev = prevAttachments[i] as any;
+      const next = nextAttachments[i] as any;
+
+      if (
+        prev.name !== next.name ||
+        (prev.contentType || prev.mimeType) !==
+          (next.contentType || next.mimeType)
+      ) {
+        return false;
+      }
+    }
+
+    return true; // Props are equal, skip re-render
+  }
+);
 
 UserMessage.displayName = "UserMessage";
 
@@ -101,33 +130,15 @@ import {
   AssistantSkeletonMessage,
   UserSkeletonMessage,
 } from "./message-skeletons";
-import { Loader } from "@/components/ui/loader";
 import { ChatContainer } from "@/components/ui/chat-container";
 import { ScrollButton } from "@/components/ui/scroll-button";
 import logo from "@/assets/logo192.png";
 
-const LoadingMessage = React.memo(
-  ({ status }: { status: "error" | "submitted" | "streaming" | "ready" }) => {
-    return (
-      <div className="mb-4 mt flex flex-col justify-start">
-        <div className="flex items-center">
-          {status === "submitted" && (
-            <div className="w-[22px] h-[22px] mr-2">
-              <img src={logo} width={22} height={22} alt="" />
-            </div>
-          )}
-          <div className="flex h-full items-start justify-center">
-            {status === "submitted" ? (
-              <Loader variant="text-shimmer" text={"Thinking..."} size="lg" />
-            ) : (
-              <Loader variant="wave" size="lg" />
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-);
+const LoadingMessage = React.memo(() => (
+  <UIMessage className="justify-start">
+    <MessageAvatar src={logo} alt="AI" fallback="AI" className="animate-spin" />
+  </UIMessage>
+));
 
 LoadingMessage.displayName = "LoadingMessage";
 
@@ -137,26 +148,32 @@ const ChatMessagesList = React.memo(
     messages,
     status,
     showSkeletons = false,
+    onRetry,
   }: {
     messages: Message[];
     status: "error" | "submitted" | "streaming" | "ready";
     showSkeletons?: boolean;
+    onRetry?: (messageId: string) => void;
   }) => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
+
+    const lastMessage = useMemo(() => {
+      return messages[messages.length - 1] || null;
+    }, [messages]);
 
     return (
       <div className="flex-1 w-full h-full relative">
         <ChatContainer
           className={cn(
             "absolute inset-0 overflow-y-auto p-4 flex flex-col",
-            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent pt-20"
+            "scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40 scrollbar-track-transparent pt-20 overflow-x-hidden"
           )}
           autoScroll
           ref={chatContainerRef}
           scrollToRef={bottomRef}
         >
-          <div className="max-w-[840px] mx-auto w-full flex-1 flex flex-col gap-2">
+          <div className="max-w-[840px] mx-auto w-full flex-1 flex flex-col">
             {showSkeletons ? (
               // Show skeleton messages when loading the thread
               <>
@@ -169,23 +186,44 @@ const ChatMessagesList = React.memo(
               // Show actual messages
               messages.map((message, index) => {
                 const nextMessage = messages[index + 1];
+                const prevMessage = messages[index - 1];
                 const showEye =
                   message.role !== MessageRole.user &&
                   (!nextMessage || nextMessage.role === MessageRole.user);
 
+                const showActions =
+                  message.role !== MessageRole.user &&
+                  (!nextMessage || nextMessage.role === MessageRole.user);
+
+                // Add spacing between consecutive assistant messages
+                const isConsecutiveAssistantMessage =
+                  message.role !== MessageRole.user &&
+                  prevMessage &&
+                  prevMessage.role !== MessageRole.user;
+
                 return message.role === MessageRole.user ? (
                   <UserMessage key={index} message={message} />
                 ) : (
-                  <AssistantMessage
+                  <div
                     key={index}
-                    message={message}
-                    showEye={showEye}
-                    messages={messages}
-                  />
+                    className={isConsecutiveAssistantMessage ? "mt-4" : ""}
+                  >
+                    <AssistantMessage
+                      message={message}
+                      showEye={showEye}
+                      animateEye={
+                        status === "streaming" && message.id === lastMessage?.id
+                      }
+                      showActions={showActions}
+                      messages={messages}
+                      onRetry={onRetry}
+                    />
+                  </div>
                 );
               })
             )}
-            {status === "submitted" && <LoadingMessage status={status} />}
+            {(status === "submitted" ||
+              lastMessage?.role === MessageRole.user) && <LoadingMessage />}
           </div>
         </ChatContainer>
 

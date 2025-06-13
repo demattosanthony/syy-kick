@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { DbUser, sendAuthCookies, checkTokens } from "../../createAuthToken";
-import { ops } from "./auth.ops";
+import authOps from "./auth.ops";
 import db from "../../config/db";
 import { memberRoles, organizationInvites } from "../../config/schema";
 import { and, eq } from "drizzle-orm";
@@ -10,10 +10,30 @@ import {
   MicrosoftRefreshTokenError,
   MicrosoftRefreshTokenResponse,
 } from "../../config/microsoft";
-import { generateStateEntry, getStateEntry, clearStateEntry } from "./auth.utils";
+import {
+  generateStateEntry,
+  getStateEntry,
+  clearStateEntry,
+} from "./auth.utils";
 import { jwtDecode } from "jwt-decode";
 
-export const handlers = {
+// Define the interface locally since we removed it from microsoft.ts
+type MicrosoftSite = {
+  "@odata.context": string;
+  createdDateTime: string;
+  description: string;
+  id: string;
+  lastModifiedDateTime: string;
+  name: string;
+  webUrl: string;
+  displayName: string;
+  root: any;
+  siteCollection: {
+    hostname: string;
+  };
+};
+
+const authHandlers = {
   oauthCallback: async (req: Request, res: Response) => {
     const user = req.user as DbUser;
     const state = req.query.state as string | undefined;
@@ -24,14 +44,14 @@ export const handlers = {
     if (state) {
       try {
         // Verify and process invite
-        const invite = await ops.checkInvite(state);
+        const invite = await authOps.checkInvite(state);
 
         if (!invite?.roleId || !invite.organizationId) {
           res.status(403).json({ message: "Invalid invite" });
           return;
         }
 
-        await ops.addOrgMember(
+        await authOps.addOrgMember(
           invite.organizationId as string,
           user.id,
           invite.roleId
@@ -59,11 +79,6 @@ export const handlers = {
     res.redirect(process.env.FRONTEND_URL!);
   },
 
-  samlCallback: (req: Request, res: any) => {
-    sendAuthCookies(res, req.user as DbUser);
-    res.redirect(process.env.FRONTEND_URL!);
-  },
-
   logout: (req: Request, res: any) => {
     const options = CONFIG.COOKIE_OPTIONS;
     res
@@ -84,7 +99,7 @@ export const handlers = {
         return;
       }
       const { userId } = await checkTokens(id, rid);
-      const user = await ops.getUserWithOrgs(userId);
+      const user = await authOps.getUserWithOrgs(userId);
 
       if (!user) {
         res.status(401).json({
@@ -101,7 +116,7 @@ export const handlers = {
 
   joinWithInvite: async (req: Request, res: Response) => {
     try {
-      const invite = await ops.checkInvite(req.params.token);
+      const invite = await authOps.checkInvite(req.params.token);
 
       if (!req.dbUser) {
         res.status(401).json({
@@ -134,9 +149,9 @@ export const handlers = {
         throw new Error("wrong_email");
       }
 
-      await ops.checkOrgCapacity(invite.organizationId as string);
+      await authOps.checkOrgCapacity(invite.organizationId as string);
 
-      await ops.addOrgMember(
+      await authOps.addOrgMember(
         invite.organizationId as string,
         req.dbUser.id,
         invite.roleId
@@ -178,10 +193,7 @@ export const handlers = {
     };
 
     try {
-      const graphToken = await microsoftGraph.getAccessToken(
-        "graph",
-        "graph.microsoft.com"
-      );
+      const graphToken = await microsoftGraph.getAccessToken("graph");
       const pickerToken = await microsoftPicker.getAccessToken("picker");
 
       if (
@@ -205,6 +217,7 @@ export const handlers = {
 
   microsoftFilesInit: async (req: Request, res: Response) => {
     const redirectUrl = req.query.redirectUrl as string;
+    const authSource = req.query.auth_source as string;
     const { id, rid } = req.cookies;
     const { userId } = await checkTokens(id, rid);
 
@@ -214,7 +227,14 @@ export const handlers = {
       return;
     }
 
-    const state = generateStateEntry(redirectUrl);
+    let finalRedirectUrl = redirectUrl;
+    if (authSource) {
+      const url = new URL(redirectUrl);
+      url.searchParams.set("auth_source", authSource);
+      finalRedirectUrl = url.toString();
+    }
+
+    const state = generateStateEntry(finalRedirectUrl);
 
     const authUrl = new URL(
       "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize"
@@ -243,14 +263,16 @@ export const handlers = {
       return;
     }
 
+    const { redirectUrl } = stateEntry;
+
     if (error) {
-      res.redirect(
-        `${stateEntry.redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${error_description}`
-      );
+      const errorUrl = new URL(redirectUrl);
+      errorUrl.searchParams.set("syy-connector", "microsoft-files");
+      errorUrl.searchParams.set("oauth_success", "false");
+      errorUrl.searchParams.set("error", error_description as string);
+      res.redirect(errorUrl.toString());
       return;
     }
-
-    const { redirectUrl } = stateEntry;
 
     if (!redirectUrl) {
       res.redirect(`${process.env.FRONTEND_URL}?error=Missing redirect url`);
@@ -258,26 +280,28 @@ export const handlers = {
     }
 
     if (!userId) {
-      res.redirect(
-        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Unauthorized`
-      );
+      const errorUrl = new URL(redirectUrl);
+      errorUrl.searchParams.set("syy-connector", "microsoft-files");
+      errorUrl.searchParams.set("oauth_success", "false");
+      errorUrl.searchParams.set("error", "Unauthorized");
+      res.redirect(errorUrl.toString());
       return;
     }
 
     if (!code) {
       console.log("missing code");
-      res.redirect(
-        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Missing code`
-      );
+      const errorUrl = new URL(redirectUrl);
+      errorUrl.searchParams.set("syy-connector", "microsoft-files");
+      errorUrl.searchParams.set("oauth_success", "false");
+      errorUrl.searchParams.set("error", "Missing code");
+      res.redirect(errorUrl.toString());
       return;
     }
 
     const microsoftApi = new MicrosoftAPI({ userId });
 
     try {
-      // start transaction
       await db.transaction(async (tx) => {
-        // Generate
         const tokenData = await microsoftApi.getMicrosoftToken(
           "login.microsoftonline.com/organizations",
           {
@@ -297,20 +321,35 @@ export const handlers = {
 
         let refreshedToken: MicrosoftRefreshTokenResponse;
 
-        // Refresh token if expired
         if (microsoftApi.isAccessTokenExpired(access_token)) {
           refreshedToken = await microsoftApi.refreshTokenSilently(
-            "graph.microsoft.com",
-            tokenData.refresh_token
+            `login.microsoftonline.com/${jwt.tid}`,
+            tokenData.refresh_token,
+            "graph.microsoft.com"
           );
         } else {
           refreshedToken = tokenData;
         }
 
-        // Get site
-        const site = await microsoftApi.getSite(access_token);
+        // Save the Graph token first so we can use getGraphClient()
+        await microsoftApi.saveToken(
+          refreshedToken.access_token,
+          refreshedToken.refresh_token,
+          "graph.microsoft.com",
+          "graph",
+          tx
+        );
 
-        // Get token for sharepoint picker
+        // Now use the class method to get the Graph client, passing the transaction
+        const graphClient = await microsoftApi.getGraphClient("graph", tx);
+        if (!graphClient) {
+          throw new Error("Failed to create Graph client");
+        }
+
+        const site = (await graphClient
+          .api("/sites/root")
+          .get()) as MicrosoftSite;
+
         const tokenForSharepointData = await microsoftApi.getMicrosoftToken(
           `login.microsoftonline.com/${jwt.tid}`,
           {
@@ -320,51 +359,45 @@ export const handlers = {
           }
         );
 
-        // Sauvegarder les deux tokens dans la même transaction
-        await Promise.all([
-          microsoftApi.saveToken(
-            tokenData.access_token,
-            tokenData.refresh_token,
-            "graph.microsoft.com",
-            "graph",
-            tx
-          ),
-          microsoftApi.saveToken(
-            tokenForSharepointData.access_token,
-            tokenForSharepointData.refresh_token,
-            site.siteCollection.hostname,
-            "picker",
-            tx
-          ),
-        ]);
+        // Save the SharePoint token
+        await microsoftApi.saveToken(
+          tokenForSharepointData.access_token,
+          tokenForSharepointData.refresh_token,
+          site.siteCollection.hostname,
+          "picker",
+          tx
+        );
       });
 
       clearStateEntry(state as string);
-      res.redirect(
-        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=true`
-      );
+      const successUrl = new URL(redirectUrl);
+      successUrl.searchParams.set("syy-connector", "microsoft-files");
+      successUrl.searchParams.set("oauth_success", "true");
+      res.redirect(successUrl.toString());
     } catch (err: any | MicrosoftRefreshTokenError) {
-      if(err?.error_codes?.includes(650053)) {
-        const stateEntry = getStateEntry(state as string);
-        if (!stateEntry?.redirectUrl) {
-          res.redirect(`${process.env.FRONTEND_URL}?error=Missing redirect url`);
-          return;
-        }
-        const newState = generateStateEntry(stateEntry.redirectUrl);
+      if (err?.error_codes?.includes(650053)) {
+        const newState = generateStateEntry(redirectUrl);
         const authUrl = microsoftApi.getConsentUrl(newState);
         res.redirect(authUrl);
         return;
       }
 
-      // After consent request
-      if(err?.error_codes?.includes(65004)) {
-        res.redirect(
-          `${stateEntry.redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=Waiting for admin approval`
-        )
+      if (err?.error_codes?.includes(65004)) {
+        const errorUrl = new URL(redirectUrl);
+        errorUrl.searchParams.set("syy-connector", "microsoft-files");
+        errorUrl.searchParams.set("oauth_success", "false");
+        errorUrl.searchParams.set("error", "Waiting for admin approval");
+        res.redirect(errorUrl.toString());
+        return;
       }
-      res.redirect(
-        `${redirectUrl}?syy-connector=microsoft-files&oauth_success=false&error=${err.message}`
-      );
+
+      const errorUrl = new URL(redirectUrl);
+      errorUrl.searchParams.set("syy-connector", "microsoft-files");
+      errorUrl.searchParams.set("oauth_success", "false");
+      errorUrl.searchParams.set("error", err.message);
+      res.redirect(errorUrl.toString());
     }
   },
 };
+
+export default authHandlers;

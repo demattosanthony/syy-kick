@@ -89,7 +89,6 @@ export const WorkspaceProvider = ({
         slug: personalOrg.slug,
         type: "personal",
         logo: personalOrg.logo,
-        sites: personalOrg.sites,
       };
 
       const organizationWorkspaces: Workspace[] = (
@@ -101,7 +100,6 @@ export const WorkspaceProvider = ({
         type: organization.type,
         logo: organization.logo,
         subscriptionStatus: organization.subscriptionStatus,
-        sites: organization.sites,
       }));
 
       setWorkspaces(organizationWorkspaces);

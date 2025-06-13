@@ -21,15 +21,6 @@ export namespace Permissions {
     ORGANIZATION_SEATS = "org_seats",
     ORGANIZATION_SITES = "org_sites",
     ORGANIZATION_ACCESS_LOGS = "org_access_logs",
-    ORGANIZATION_PROJECTS = "org_projects",
-    ORGANIZATION_PROJECT_DOCS = "org_project_docs",
-    ORGANIZATION_PROJECT_INVITATIONS = "org_project_invitations",
-    ORGANIZATION_PROJECT_MEMBERS = "org_project_members",
-    ORGANIZATION_PROJECT_ACCESS_LOGS = "org_project_access_logs",
-    ORGANIZATION_KNOWLEDGE_BASES = "org_knowledge_bases",
-    ORGANIZATION_KNOWLEDGE_BASES_DOCS = "org_knowledge_bases_docs",
-    ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS = "org_knowledge_bases_access_logs",
-    PROJECT_ISSUES = "project_issues",
   }
 
   export enum Level {
@@ -68,13 +59,6 @@ export interface Permission {
   updatedAt: Date;
 }
 
-export type TransferableProject = {
-  id: string;
-  name: string;
-};
-
-export type TransferableProjectsResponse = TransferableProject[];
-
 export type TransferableRolesResource = {
   id: string;
   name: string;
@@ -103,7 +87,6 @@ export interface OrganizationMemberRoleResponse {
   organizationId: string;
   role: Role;
   resources: ResourcePermissions[];
-  projects?: { id: string; name: string }[];
 }
 
 export type RolesResponse = Role[];
@@ -138,5 +121,4 @@ export type OrgInvitationsResponse = OrgInvitationResponseItem[];
 export type UpdateOrgMemberRoleRequest = {
   resources: Record<string, string[]>; // resourceId: actionId[]
   roleId: string;
-  projectIds?: string[];
 };

@@ -1,35 +1,189 @@
-import { useThreadQuery } from "@/features/chat/threads/api";
+import {
+  useThreadMessagesQuery,
+  useThreadQuery,
+} from "@/features/chat/threads/api";
 import { ChatThread } from "@/features/chat/threads/components";
-import { mapThreadMessagesToMessages } from "@/features/chat/threads/utils";
-import { useParams, useSearchParams } from "react-router";
+import { useParams } from "react-router";
+import { useAtom } from "jotai";
+import {
+  pendingThreadAtom,
+  isPendingThreadAtom,
+  chatStatusAtom,
+} from "@/atoms/chat";
+import { ChatMessage, MessageRole } from "@/types/chat";
+import { useEffect, useState, useMemo } from "react";
 
 export function ThreadPage() {
-  const params = useParams<{
+  const { threadId } = useParams<{
     threadId: string;
   }>();
-  const [searchParams] = useSearchParams();
-  const isNew = searchParams.get("isNew") === "true";
-  const isWorkflow = searchParams.get("isWorkflow") === "true";
-  const workflowId = searchParams.get("workflowId") || "";
-  const threadId = params.threadId;
 
-  // Only fetch the thread if it's not a new thread
-  const { data: thread } = useThreadQuery(
-    threadId as string,
-    isNew || isWorkflow
-  );
+  const [pendingThread, setPendingThread] = useAtom(pendingThreadAtom);
+  const [, setIsPendingThread] = useAtom(isPendingThreadAtom);
+  const [, setChatStatus] = useAtom(chatStatusAtom);
 
-  const initialMessages =
-    isNew || !thread ? [] : mapThreadMessagesToMessages(thread);
+  const [displayedMessages, setDisplayedMessages] = useState<ChatMessage[]>([]);
+
+  // Check if this is a pending thread
+  const isPendingThreadId = threadId?.startsWith("pending-");
+  const isTransitioning =
+    !isPendingThreadId && pendingThread?.actualThreadId === threadId;
+
+  // For regular threads, use existing queries
+  const queryThreadId = isPendingThreadId ? "" : (threadId as string);
+  const { data: thread } = useThreadQuery(queryThreadId, {
+    enabled: !isPendingThreadId && !!threadId && queryThreadId !== "",
+  });
+
+  const {
+    data: threadMessages,
+    isFetching,
+    isRefetching,
+  } = useThreadMessagesQuery(queryThreadId, {
+    enabled: !isPendingThreadId && !!threadId && queryThreadId !== "",
+  });
+
+  const optimisticMessage = useMemo((): ChatMessage | null => {
+    if (isPendingThreadId && pendingThread) {
+      return {
+        id: `${pendingThread.tempId}-user-message`,
+        threadId: pendingThread.tempId,
+        userId: "pending-user-id",
+        role: MessageRole.user,
+        text: pendingThread.initialMessage,
+        createdAt: new Date().toISOString(),
+        attachments: pendingThread.uploads.map((upload, index) => {
+          // Ensure we always have a valid URL for the attachment
+          let attachmentUrl = upload.preview;
+          if (!attachmentUrl || attachmentUrl.trim() === "") {
+            // Create a blob URL for non-image files or images without preview
+            attachmentUrl = URL.createObjectURL(upload.file);
+          }
+
+          return {
+            id: `${pendingThread.tempId}-attachment-${index}`,
+            messageId: `${pendingThread.tempId}-user-message`,
+            type: upload.type === "image" ? "image" : "file",
+            fileKey: "pending", // Placeholder
+            url: attachmentUrl,
+            name: upload.file.name,
+            fileName: upload.file.name,
+            contentType: upload.file.type,
+            mimeType: upload.file.type,
+            size: upload.file.size,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+        }),
+      };
+    }
+    return null;
+  }, [isPendingThreadId, pendingThread]);
+
+  // Effect to manage the lifecycle of displayedMessages
+  useEffect(() => {
+    // 1. Initialize with optimistic message
+    if (optimisticMessage && displayedMessages.length === 0) {
+      setDisplayedMessages([optimisticMessage]);
+      setChatStatus("submitted");
+    }
+
+    // 2. Transition from optimistic to real messages
+    if (isTransitioning && threadMessages && threadMessages.length > 0) {
+      // Smooth transition: only update if the content is actually different
+      // This helps avoid flickering when attachments are the same
+      const shouldUpdate =
+        displayedMessages.length !== threadMessages.length ||
+        displayedMessages.some((msg, index) => {
+          const threadMsg = threadMessages[index];
+          if (!threadMsg) return true;
+
+          // Compare message content
+          if (msg.text !== threadMsg.text) return true;
+
+          // Compare attachment count
+          const optimisticAttachments = msg.attachments || [];
+          const realAttachments = threadMsg.attachments || [];
+          if (optimisticAttachments.length !== realAttachments.length)
+            return true;
+
+          // Compare attachment filenames and sizes (core content)
+          return optimisticAttachments.some((optimisticAtt, attIndex) => {
+            const realAtt = realAttachments[attIndex];
+            return (
+              !realAtt ||
+              optimisticAtt.fileName !== realAtt.fileName ||
+              optimisticAtt.mimeType !== realAtt.mimeType ||
+              optimisticAtt.size !== realAtt.size
+            );
+          });
+        });
+
+      if (shouldUpdate) {
+        setDisplayedMessages(threadMessages);
+      }
+
+      // 3. Clean up pending state after transition is complete
+      const timer = setTimeout(() => {
+        setPendingThread(null);
+        setIsPendingThread(false);
+        setChatStatus("ready");
+
+        // Clean up any blob URLs from optimistic message to prevent memory leaks
+        if (optimisticMessage?.attachments) {
+          optimisticMessage.attachments.forEach((att) => {
+            if (att.url.startsWith("blob:")) {
+              URL.revokeObjectURL(att.url);
+            }
+          });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+
+    // 4. Handle direct load of a normal thread
+    if (!isPendingThreadId && !isTransitioning && threadMessages) {
+      setDisplayedMessages(threadMessages);
+    }
+  }, [
+    optimisticMessage,
+    threadMessages,
+    isTransitioning,
+    isPendingThreadId,
+    setPendingThread,
+    setIsPendingThread,
+    setChatStatus,
+    displayedMessages.length,
+    displayedMessages, // Add displayedMessages to dependencies for comparison
+  ]);
+
+  const displayThread = useMemo(() => {
+    if ((isPendingThreadId || isTransitioning) && pendingThread) {
+      return {
+        id: threadId!,
+        title:
+          pendingThread.initialMessage.slice(0, 50) +
+          (pendingThread.initialMessage.length > 50 ? "..." : ""),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [], // Add missing messages property to fix linter error
+      };
+    }
+    return thread;
+  }, [isPendingThreadId, isTransitioning, pendingThread, threadId, thread]);
+
+  const messagesAreBeingFetched =
+    (isFetching || isRefetching) && !isTransitioning;
+
+  //   const isProcessingPending =
+  //     isPendingThreadId && pendingThread?.status === "processing";
 
   return (
     <ChatThread
-      initalMessages={initialMessages}
-      thread={thread}
-      messagesAreBeingFetched={false}
-      isNew={isNew}
-      isWorkflow={isWorkflow}
-      workflowId={workflowId}
+      initalMessages={displayedMessages}
+      thread={displayThread}
+      messagesAreBeingFetched={messagesAreBeingFetched}
+      viewOnly={false}
     />
   );
 }
