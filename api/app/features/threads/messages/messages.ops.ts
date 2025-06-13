@@ -1141,79 +1141,65 @@ export const messagesOps = {
       throw new Error("Message not found or access denied");
     }
 
-    // Verify it's an assistant message that can be retried
-    if (messageToRetry.role !== "assistant") {
-      throw new Error("Only assistant messages can be retried");
-    }
-
     // Get all messages in the thread ordered by creation time
     const allMessages = await db.query.messages.findMany({
       where: eq(messages.threadId, threadId),
       orderBy: [messages.createdAt],
     });
 
-    // Find the last user message
-    let lastUserMessageIndex = -1;
-    for (let i = allMessages.length - 1; i >= 0; i--) {
-      if (allMessages[i].role === "user") {
-        lastUserMessageIndex = i;
-        break;
-      }
-    }
-
-    if (lastUserMessageIndex === -1) {
-      throw new Error("No user message found in thread");
-    }
-
-    // Get all assistant messages after the last user message
-    const assistantMessagesToDelete = allMessages
-      .slice(lastUserMessageIndex + 1)
-      .filter((msg) => msg.role === "assistant");
-
-    if (assistantMessagesToDelete.length === 0) {
-      throw new Error("No assistant messages to retry");
-    }
-
-    // Verify that the message being retried is among the assistant messages to delete
-    const messageToRetryExists = assistantMessagesToDelete.some(
+    // Find the index of the message to retry
+    const messageToRetryIndex = allMessages.findIndex(
       (msg) => msg.id === messageId
     );
-    if (!messageToRetryExists) {
-      throw new Error(
-        "Message to retry is not in the sequence of assistant messages after the last user message"
-      );
+
+    if (messageToRetryIndex === -1) {
+      throw new Error("Message to retry not found in thread");
     }
 
-    // Delete all assistant messages and their associated data since the last user message
-    const assistantMessageIds = assistantMessagesToDelete.map((msg) => msg.id);
+    // Get all messages that come after the message to retry (by creation time)
+    const messagesToDelete = allMessages.slice(messageToRetryIndex + 1);
+
+    if (messagesToDelete.length === 0) {
+      // If there are no messages after the one to retry, we still need to delete the retry message itself
+      // and regenerate it, so add it to the deletion list
+      messagesToDelete.push(messageToRetry);
+    } else {
+      // If there are messages after, we also want to delete the message to retry itself
+      messagesToDelete.push(messageToRetry);
+    }
+
+    // Delete all these messages and their associated data
+    const messageIdsToDelete = messagesToDelete.map((msg) => msg.id);
 
     // Delete tool calls for all these messages
-    for (const msgId of assistantMessageIds) {
+    for (const msgId of messageIdsToDelete) {
       await db
         .delete(toolCallsTable)
         .where(eq(toolCallsTable.messageId, msgId));
     }
 
     // Delete message-file relationships for all these messages
-    for (const msgId of assistantMessageIds) {
+    for (const msgId of messageIdsToDelete) {
       await db.delete(messagesFiles).where(eq(messagesFiles.messageId, msgId));
     }
 
-    // Delete all the assistant messages
-    for (const msgId of assistantMessageIds) {
+    // Delete all the messages
+    for (const msgId of messageIdsToDelete) {
       await db.delete(messages).where(eq(messages.id, msgId));
     }
 
-    // Verify that the last message is now a user message
-    const lastMessage = await db.query.messages.findFirst({
+    // Verify that we have a valid state to retry from
+    const remainingMessages = await db.query.messages.findMany({
       where: eq(messages.threadId, threadId),
-      orderBy: [desc(messages.createdAt)],
+      orderBy: [messages.createdAt],
     });
 
-    if (!lastMessage || lastMessage.role !== "user") {
-      throw new Error(
-        "Cannot retry: Last message in thread must be a user message"
-      );
+    // The last remaining message should ideally be a user message to retry from
+    // If not, we'll still proceed as the inference can handle various scenarios
+    const lastMessage = remainingMessages[remainingMessages.length - 1];
+
+    if (!lastMessage) {
+      throw new Error("No messages remain in thread after deletion");
     }
 
     // Start inference asynchronously (don't await)
@@ -1237,10 +1223,11 @@ export const messagesOps = {
 
     return {
       success: true,
-      message: "Message retry initiated",
-      deletedMessageIds: assistantMessageIds,
-      deletedMessageCount: assistantMessageIds.length,
-      lastUserMessageId: lastMessage.id,
+      message:
+        "Message retry initiated - deleted all messages from retry point onwards",
+      deletedMessageIds: messageIdsToDelete,
+      deletedMessageCount: messageIdsToDelete.length,
+      retryFromMessageId: lastMessage.id,
     };
   },
 };

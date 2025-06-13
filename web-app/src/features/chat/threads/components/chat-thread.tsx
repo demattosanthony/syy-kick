@@ -109,19 +109,20 @@ export default function ThreadPage({
         });
 
         if (response.success) {
-          // Remove all assistant messages after the last user message
+          // Remove the retry message and all messages that come after it
           setMessages((prev) => {
-            // Find the last user message index
-            let lastUserMessageIndex = -1;
-            for (let i = prev.length - 1; i >= 0; i--) {
-              if (prev[i].role === "user") {
-                lastUserMessageIndex = i;
-                break;
-              }
+            // Find the index of the message being retried
+            const messageToRetryIndex = prev.findIndex(
+              (msg) => msg.id === messageId
+            );
+
+            if (messageToRetryIndex === -1) {
+              // If message not found, return previous state unchanged
+              return prev;
             }
 
-            // Keep only messages up to and including the last user message
-            return prev.slice(0, lastUserMessageIndex + 1);
+            // Keep only messages up to (but not including) the retry message
+            return prev.slice(0, messageToRetryIndex);
           });
         }
       } catch (error: any) {
