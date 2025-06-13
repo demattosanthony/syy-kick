@@ -5,15 +5,7 @@ import { memo } from "react";
 import { Permissions } from "@/features/permissions/types/permissions";
 
 /** Icons */
-import {
-  Book,
-  Building,
-  MapPin,
-  ScanEye,
-  Shield,
-  UserRoundPlus,
-  Users,
-} from "lucide-react";
+import { Building, MapPin, Shield, UserRoundPlus, Users } from "lucide-react";
 
 const ResourceIcon = ({
   resource,
@@ -33,11 +25,6 @@ const ResourceIcon = ({
       return <Users size={size} />;
     case Permissions.Resources.ORGANIZATION_SITES:
       return <MapPin size={size} />;
-    case Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES:
-      return <Book size={size} />;
-    case Permissions.Resources.ORGANIZATION_ACCESS_LOGS:
-    case Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_ACCESS_LOGS:
-      return <ScanEye size={size} />;
     default:
       return <Shield size={size} />;
   }

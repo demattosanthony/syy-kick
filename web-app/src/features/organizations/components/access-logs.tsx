@@ -42,7 +42,6 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  FolderOpen,
   RefreshCw,
 } from "lucide-react";
 

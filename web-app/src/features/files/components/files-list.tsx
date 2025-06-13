@@ -76,7 +76,7 @@ export default function FilesList({ compact = false }: { compact?: boolean }) {
         </div>
       ) : (
         <>
-          {files?.map((file, i) => (
+          {files?.map((file) => (
             <FileItem key={file.id} file={file} compact={compact} />
           ))}
 

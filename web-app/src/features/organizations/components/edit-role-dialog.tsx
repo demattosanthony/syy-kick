@@ -32,7 +32,6 @@ import {
   TransferableRolesPermissions,
 } from "@/features/permissions/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import useUpdateOrgMemberRoleMutation from "@/features/permissions/api/organizations/update-org-member-role";
 import { toast } from "sonner";
 import {
@@ -203,25 +202,26 @@ export default function EditRoleDialog({
     return action?.configurable || false;
   };
 
-  const getConfigBadge = (resourceName: Permissions.Resources) => {
+  const getConfigBadge = (_: Permissions.Resources) => {
     if (!selectedRole) return null;
 
-    if (
-      Permissions.Roles.PROJECT_MEMBER === selectedRole.name &&
-      [
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
-        Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
-      ].includes(resourceName)
-    ) {
-      return <Badge>config</Badge>;
-    }
+    // if (
+    //   Permissions.Roles.PROJECT_MEMBER === selectedRole.name &&
+    //   [
+    //     Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES,
+    //     Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES_DOCS,
+    //   ].includes(resourceName)
+    // ) {
+    //   return <Badge>config</Badge>;
+    // }
 
-    if (
-      Permissions.Roles.PROJECT_MANAGER === selectedRole.name &&
-      Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES === resourceName
-    ) {
-      return <Badge>config</Badge>;
-    }
+    // if (
+    //   Permissions.Roles.PROJECT_MANAGER === selectedRole.name &&
+    //   Permissions.Resources.ORGANIZATION_KNOWLEDGE_BASES === resourceName
+    // ) {
+    //   return <Badge>config</Badge>;
+    // }
+
     return null;
   };
 

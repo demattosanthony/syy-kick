@@ -256,6 +256,7 @@ Respond with a JSON object with the following schema:
   });
 
   console.log(`🤖 Model routing complete in ${Date.now() - start}ms`);
+  console.log("🤖 [ModelConfig] Type of user query:", object.type);
 
   return object.type === "simple"
     ? MODELS["gpt-4.1"]

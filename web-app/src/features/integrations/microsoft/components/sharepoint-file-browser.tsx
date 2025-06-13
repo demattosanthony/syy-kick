@@ -334,8 +334,7 @@ const useSharePointBrowser = (accessToken: string | null) => {
 
 // Utility functions
 const extractPathFromSearchResult = (
-  folder: SharePointItem,
-  currentDriveId: string | undefined
+  folder: SharePointItem
 ): { path: string[]; driveId: string } | null => {
   if (folder.parentReference?.path && folder.parentReference?.driveId) {
     const driveId = folder.parentReference.driveId;
@@ -531,7 +530,7 @@ export function SharePointFileBrowser({
   isDownloading = false,
   displayMode = "popover",
 }: SharePointFileBrowserProps) {
-  const [open, setOpen] = useState(displayMode === "inline" ? true : false);
+  const [, setOpen] = useState(displayMode === "inline" ? true : false);
   const [initialLoadAttempted, setInitialLoadAttempted] = useState(false);
   const navigate = useNavigate();
 
@@ -615,7 +614,7 @@ export function SharePointFileBrowser({
       let targetDriveId = driveId;
 
       if (isSearching) {
-        const extractedPath = extractPathFromSearchResult(folder, driveId);
+        const extractedPath = extractPathFromSearchResult(folder);
         if (extractedPath) {
           newPath = extractedPath.path;
           targetDriveId = extractedPath.driveId;

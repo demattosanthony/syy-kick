@@ -21,7 +21,6 @@ const AnimatedGreeting = ({ name }: AnimatedGreetingProps) => {
 
   const greeting = getGreeting();
   const greetingText = name ? `${greeting}, ${name}` : greeting;
-  const assistText = "How can I help you today?";
 
   useEffect(() => {
     setIsAnimated(true);
