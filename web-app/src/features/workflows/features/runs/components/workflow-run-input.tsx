@@ -1,4 +1,4 @@
-import { renderFile } from "@/features/workflows/utils";
+import { renderFile, renderFiles } from "@/features/workflows/utils";
 import {
   CustomWorkflowRun,
   VNextWorkflowRunState,
@@ -22,7 +22,12 @@ export function WorkflowRunInput({
 
     switch (value.type) {
       case "file":
-        return renderFile(value.value);
+        // Check if the value is an array of files or a single file
+        if (Array.isArray(value.value)) {
+          return renderFiles(value.value);
+        } else {
+          return renderFile(value.value);
+        }
       case "text":
         return (
           <div className="text-sm">

@@ -145,7 +145,7 @@ export async function convertPdfToImages(
       const file = result.Files[i];
 
       console.log(
-        `🖼️ [ConvertAPI] Processing file ${i + 1}: ${JSON.stringify(file)}`
+        `🖼️ [ConvertAPI] Processing file ${i + 1}.`
       );
 
       try {

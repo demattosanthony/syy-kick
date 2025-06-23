@@ -35,6 +35,15 @@ export function WorkflowFormFields({
     switch (field.properties.type.const) {
       case "file":
         const fileField = field.properties as FileFormField["properties"];
+        // Convert the value to an array of files for compatibility
+        const fileValue = values[fieldId];
+        const files = fileValue ? (Array.isArray(fileValue) ? fileValue : [fileValue]) : [];
+        
+        // Extract mimeType from the value structure
+        const mimeType = fileField.value.type === "object" 
+          ? fileField.value.properties.mimeType.const
+          : fileField.value.items.properties.mimeType.const;
+        
         return (
           <div key={fieldId} className="space-y-2 p-4">
             <FileUploadInput
@@ -42,12 +51,21 @@ export function WorkflowFormFields({
                 id: fieldId,
                 title: field.properties.label.const,
                 description: fieldId,
-                acceptedFileTypes: fileField.value.properties.mimeType.const,
+                acceptedFileTypes: mimeType,
                 required: true,
-                maxFileSize: 50 * 1024 * 1024, // 50 MB par défaut
+                maxFileSize: 50 * 1024 * 1024, // 50 MB by default
               }}
-              file={values[fieldId] as File}
-              onFileChange={(file) => onChange(fieldId, file, "file")}
+              files={files}
+              multiple={fileField.multiple || false} // Use the multiple property from schema
+              onFilesChange={(files) => {
+                // To maintain compatibility, we take the first file if not multiple
+                if (fileField.multiple) {
+                  onChange(fieldId, files, "file");
+                } else {
+                  const file = files.length > 0 ? files[0] : null;
+                  onChange(fieldId, file, "file");
+                }
+              }}
             />
             {requiredFields.includes(fieldId) && (
               <span className="text-sm text-red-500">Required</span>
