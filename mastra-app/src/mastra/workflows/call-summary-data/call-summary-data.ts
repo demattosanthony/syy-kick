@@ -12,6 +12,8 @@ import { google } from "@ai-sdk/google";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import * as readline from "node:readline";
 import { Readable } from "stream";
+import fs from "fs";
+import path from "path";
 
 // Local utilities
 import { getFileFromS3, getPresignedUrl, uploadFileToS3 } from "../../../s3.ts";
@@ -33,16 +35,6 @@ interface CallRecord {
 }
 
 const inputSchema: z.ZodType<WorkflowExecutionInputValues> = z.object({
-  csvFile: z.object({
-    type: z.literal("file"),
-    label: z.literal("CSV File"),
-    value: z.array(z.object({
-      fileKey: z.string(),
-      mimeType: z.literal("text/csv"),
-      fileName: z.string(),
-    })),
-    multiple: z.literal(true),
-  }),
   custNMBR: z.object({
     type: z.literal("text"),
     label: z.literal("CUSTNMBR"),
@@ -72,177 +64,9 @@ const finalStepOutputSchema = z.object({
 });
 
 const stepOne = createStep({
-  id: "streamAndFilterRecords",
-  description: "Stream CSV files, parse, and filter records on-the-fly.",
+  id: "streamFilterAndSort",
+  description: "Stream CSV files, filter, sort, and generate summary in a single pass to minimize memory usage.",
   inputSchema: inputSchema,
-  outputSchema: z.object({
-    filteredRecords: z.array(z.object({
-      DATE1: z.string(),
-      CUSTNAME: z.string(),
-      CUSTNMBR: z.string(),
-      ADRSCODE: z.string(),
-      Service_Call_ID: z.string(),
-      Record_Notes: z.string(),
-      fileName: z.string(),
-    })),
-    custNMBR: z.string(),
-    adrsCode: z.string(),
-  }),
-  execute: async ({ inputData }) => {
-    const csvFiles = inputData.csvFile.value as WorkflowFile[];
-    const custNMBR = (inputData.custNMBR.value as { text: string }).text.trim();
-    const adrsCode = (inputData.adrsCode.value as { text: string }).text.trim();
-
-    logger.info(`Starting stream processing for ${csvFiles.length} file(s).`);
-    logger.info(`Filtering for CUSTNMBR: "${custNMBR}", ADRSCODE: "${adrsCode}"`);
-
-    const processingPromises = csvFiles.map((csvFile) =>
-      new Promise<CallRecord[]>(async (resolve, reject) => {
-        try {
-          const { fileKey, fileName } = csvFile;
-          const matchingRecords: CallRecord[] = [];
-          
-          const file = await getFileFromS3(fileKey);
-          const s3Stream = file.Body;
-
-          if (!s3Stream || !(s3Stream instanceof Readable)) {
-            logger.warn(`Could not get readable stream for ${fileName}. Skipping.`);
-            resolve([]);
-            return;
-          }
-
-          const rl = readline.createInterface({
-            input: s3Stream,
-            crlfDelay: Infinity,
-          });
-
-          let isFirstLine = true;
-          rl.on('line', (line) => {
-            if (isFirstLine) {
-              isFirstLine = false;
-              return; // Skip header
-            }
-
-            const values = line.split(',');
-            if (values.length < 6) return;
-
-            const recordCustNmbr = values[2].trim();
-            const recordAdrsCode = values[3].trim();
-
-            if (recordCustNmbr === custNMBR && recordAdrsCode === adrsCode) {
-              const noteParts = values.slice(5);
-              let recordNotes = noteParts.join(',').trim();
-              if (recordNotes.startsWith('"') && recordNotes.endsWith('"')) {
-                recordNotes = recordNotes.substring(1, recordNotes.length - 1);
-              }
-              
-              matchingRecords.push({
-                DATE1: values[0].trim(),
-                CUSTNAME: values[1].trim(),
-                CUSTNMBR: recordCustNmbr,
-                ADRSCODE: recordAdrsCode,
-                Service_Call_ID: values[4].trim(),
-                Record_Notes: recordNotes,
-                fileName,
-              });
-            }
-          });
-
-          rl.on('close', () => {
-            logger.info(`   ...finished streaming ${fileName}, found ${matchingRecords.length} matching records.`);
-            resolve(matchingRecords);
-          });
-
-          rl.on('error', (err) => {
-            logger.error(`Error streaming file ${fileName}:`, err);
-            reject(err);
-          });
-        } catch (error) {
-          reject(error);
-        }
-      })
-    );
-    
-    const results = await Promise.all(processingPromises);
-    const allFilteredRecords = results.flat();
-
-    logger.info(`Found a total of ${allFilteredRecords.length} matching records across all files.`);
-    
-    if (allFilteredRecords.length === 0) {
-      throw new Error(`No records found for CUSTNMBR: ${custNMBR} and ADRSCODE: ${adrsCode}`);
-    }
-    
-    return {
-      filteredRecords: allFilteredRecords,
-      custNMBR,
-      adrsCode,
-    };
-  },
-});
-
-const stepTwo = createStep({
-  id: "sortRecordsByDate",
-  description: "Sort records by date (most recent first)",
-  inputSchema: z.object({
-    filteredRecords: z.array(z.object({
-      DATE1: z.string(),
-      CUSTNAME: z.string(),
-      CUSTNMBR: z.string(),
-      ADRSCODE: z.string(),
-      Service_Call_ID: z.string(),
-      Record_Notes: z.string(),
-      fileName: z.string(),
-    })),
-    custNMBR: z.string(),
-    adrsCode: z.string(),
-  }),
-  outputSchema: z.object({
-    sortedRecords: z.array(z.object({
-      DATE1: z.string(),
-      CUSTNAME: z.string(),
-      CUSTNMBR: z.string(),
-      ADRSCODE: z.string(),
-      Service_Call_ID: z.string(),
-      Record_Notes: z.string(),
-      fileName: z.string(),
-    })),
-    custNMBR: z.string(),
-    adrsCode: z.string(),
-  }),
-  execute: async ({ inputData }) => {
-    const { filteredRecords } = inputData;
-    logger.info(`Sorting ${filteredRecords.length} records by date (most recent first)`);
-
-    const sortedRecords = [...filteredRecords].sort((a, b) => {
-      const dateA = new Date(a.DATE1);
-      const dateB = new Date(b.DATE1);
-      return dateB.getTime() - dateA.getTime();
-    });
-
-    return {
-      sortedRecords,
-      custNMBR: inputData.custNMBR,
-      adrsCode: inputData.adrsCode,
-    };
-  },
-});
-
-const stepThree = createStep({
-  id: "generateLlmSummary",
-  description: "Generate a concise summary of all service calls using an LLM.",
-  inputSchema: z.object({
-    sortedRecords: z.array(z.object({
-      DATE1: z.string(),
-      CUSTNAME: z.string(),
-      CUSTNMBR: z.string(),
-      ADRSCODE: z.string(),
-      Service_Call_ID: z.string(),
-      Record_Notes: z.string(),
-      fileName: z.string(),
-    })),
-    custNMBR: z.string(),
-    adrsCode: z.string(),
-  }),
   outputSchema: z.object({
     summaryText: z.string(),
     sortedRecords: z.array(z.object({
@@ -258,8 +82,122 @@ const stepThree = createStep({
     adrsCode: z.string(),
   }),
   execute: async ({ inputData }) => {
-    const { sortedRecords, custNMBR, adrsCode } = inputData;
-    logger.info(`Generating LLM summary for ${sortedRecords.length} records.`);
+    const custNMBR = (inputData.custNMBR.value as { text: string }).text.trim();
+    const adrsCode = (inputData.adrsCode.value as { text: string }).text.trim();
+
+    logger.info(`Starting optimized stream processing from local directory.`);
+    logger.info(`Filtering for CUSTNMBR: "${custNMBR}", ADRSCODE: "${adrsCode}"`);
+
+    // Get the local directory path
+    const localDir = process.cwd();
+    const projectRoot = localDir.split("/.mastra")[0];
+    const csvDirectory = path.join(projectRoot, "customer-templates", "service-call-summary-dataset");
+
+    logger.info(`Reading CSV files from: ${csvDirectory}`);
+
+    // Check if directory exists
+    if (!fs.existsSync(csvDirectory)) {
+      throw new Error(`CSV directory not found: ${csvDirectory}`);
+    }
+
+    // Get all CSV files in the directory
+    const files = fs.readdirSync(csvDirectory)
+      .filter(file => file.toLowerCase().endsWith('.csv'))
+      .map(file => path.join(csvDirectory, file));
+
+    if (files.length === 0) {
+      throw new Error(`No CSV files found in directory: ${csvDirectory}`);
+    }
+
+    logger.info(`Found ${files.length} CSV files to process`);
+
+    // Process files sequentially to avoid memory buildup
+    const allMatchingRecords: CallRecord[] = [];
+    
+    for (const filePath of files) {
+      const fileName = path.basename(filePath);
+      logger.info(`--> Processing file: ${fileName}`);
+      
+      try {
+        // Create read stream for the file
+        const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
+        
+        const rl = readline.createInterface({
+          input: fileStream,
+          crlfDelay: Infinity,
+        });
+
+        let isFirstLine = true;
+        const fileRecords: CallRecord[] = [];
+        
+        for await (const line of rl) {
+          if (isFirstLine) {
+            isFirstLine = false;
+            continue; // Skip header
+          }
+
+          const values = line.split(',');
+          if (values.length < 6) continue;
+
+          const recordCustNmbr = values[2].trim();
+          const recordAdrsCode = values[3].trim();
+
+          if (recordCustNmbr === custNMBR && recordAdrsCode === adrsCode) {
+            const noteParts = values.slice(5);
+            let recordNotes = noteParts.join(',').trim();
+            if (recordNotes.startsWith('"') && recordNotes.endsWith('"')) {
+              recordNotes = recordNotes.substring(1, recordNotes.length - 1);
+            }
+            
+            fileRecords.push({
+              DATE1: values[0].trim(),
+              CUSTNAME: values[1].trim(),
+              CUSTNMBR: recordCustNmbr,
+              ADRSCODE: recordAdrsCode,
+              Service_Call_ID: values[4].trim(),
+              Record_Notes: recordNotes,
+              fileName: fileName,
+            });
+          }
+        }
+        
+        // Add records from this file to the main array
+        allMatchingRecords.push(...fileRecords);
+        logger.info(`   ...finished streaming ${fileName}, found ${fileRecords.length} matching records.`);
+        
+        // Force garbage collection if available
+        if (global.gc) {
+          global.gc();
+        }
+        
+      } catch (error) {
+        logger.error(`Error processing file ${fileName}:`, error);
+        // Continue with other files
+      }
+    }
+
+    logger.info(`Found a total of ${allMatchingRecords.length} matching records across all files.`);
+    
+    if (allMatchingRecords.length === 0) {
+      throw new Error(`No records found for CUSTNMBR: ${custNMBR} and ADRSCODE: ${adrsCode}`);
+    }
+
+    // Sort records by date (most recent first)
+    logger.info(`Sorting ${allMatchingRecords.length} records by date`);
+    const sortedRecords = allMatchingRecords.sort((a, b) => {
+      const dateA = new Date(a.DATE1);
+      const dateB = new Date(b.DATE1);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    // Limit to most recent 100 records to prevent memory issues
+    const limitedRecords = sortedRecords.slice(0, 100);
+    if (sortedRecords.length > 100) {
+      logger.warn(`Limited to 100 most recent records (total found: ${sortedRecords.length})`);
+    }
+
+    // Generate summary using LLM
+    logger.info(`Generating LLM summary for ${limitedRecords.length} records.`);
 
     const prompt = `Your role is to act as an expert technical analyst. A busy field technician is about to visit a customer and needs a high-level summary of all previous service calls to quickly understand the situation.
 
@@ -281,7 +219,7 @@ Your task is to synthesize this information into a concise, easy-to-read summary
 - The output must be a single block of plain text. Do not use Markdown formatting like '#' or '**'. Use bullet points with '-'.
 
 Here are the service records for CUSTNMBR ${custNMBR}:
-${JSON.stringify(sortedRecords, null, 2)}`;
+${JSON.stringify(limitedRecords, null, 2)}`;
 
     const { object } = await generateObject({
       model: google("gemini-2.5-pro-preview-06-05"),
@@ -295,14 +233,14 @@ ${JSON.stringify(sortedRecords, null, 2)}`;
 
     return {
       summaryText: object.summaryText,
-      sortedRecords,
+      sortedRecords: limitedRecords,
       custNMBR,
       adrsCode,
     };
   },
 });
 
-const stepFour = createStep({
+const stepTwo = createStep({
   id: "generatePdfFromData",
   description: "Generate PDF summary directly from sorted records",
   inputSchema: z.object({
@@ -340,28 +278,6 @@ const stepFour = createStep({
     const lineHeight = 14;
     const sectionSpacing = 10;
     
-    // Helper function to format date
-    const formatDate = (dateString: string): string => {
-      try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-      } catch (error) {
-        return dateString;
-      }
-    };
-
-    // Helper function to clean notes
-    const cleanNotes = (notes: string): string => {
-      return notes
-        .replace(/\n/g, ' ') // Replace newlines with spaces
-        .replace(/\s+/g, ' ') // Normalize whitespace
-        .trim();
-    };
-
     // Helper to calculate height of a text block without drawing it
     const calculateBlockHeight = (text: string, fontSize: number, fontToUse: any): number => {
       const maxWidth = width - leftMargin - rightMargin;
@@ -382,11 +298,11 @@ const stepFour = createStep({
           currentLine = testLine;
         }
       }
-
+      
       if (currentLine) {
         lineCount++;
       }
-
+      
       return lineCount * lineHeight;
     };
 
@@ -413,6 +329,28 @@ const stepFour = createStep({
         page.drawText(currentLine, { x: xPos, y: yPosition, size: fontSize, font: fontToUse, color: rgb(0, 0, 0) });
         yPosition -= lineHeight;
       }
+    };
+
+    // Helper function to format date
+    const formatDate = (dateString: string): string => {
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch (error) {
+        return dateString;
+      }
+    };
+
+    // Helper function to clean notes
+    const cleanNotes = (notes: string): string => {
+      return notes
+        .replace(/\n/g, ' ') // Replace newlines with spaces
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim();
     };
 
     // --- SUMMARY PAGE ---
@@ -473,7 +411,6 @@ const stepFour = createStep({
     const presignedUrlString = await getPresignedUrl(fileKey);
 
     logger.info("PDF generated and uploaded successfully");
-    logger.info(`Processed ${sortedRecords.length} records`);
 
     const pdfFile = {
       type: "file" as const,
@@ -494,20 +431,16 @@ const stepFour = createStep({
 // Build the workflow
 const callSummaryData = createWorkflow({
   id: "Call Summary Data",
-  description: "This workflow processes a CSV file of call records and generates a PDF summary for a specific customer",
+  description: "This workflow processes CSV files from local directory and generates a PDF summary for a specific customer",
   inputSchema: inputSchema,
   outputSchema: finalStepOutputSchema,
   steps: [
     stepOne,
     stepTwo,
-    stepThree,
-    stepFour,
   ],
 })
   .then(stepOne)
   .then(stepTwo)
-  .then(stepThree)
-  .then(stepFour)
   .commit();
 
 export { callSummaryData };
