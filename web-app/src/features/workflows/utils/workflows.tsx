@@ -210,6 +210,28 @@ export function renderFile(file: WorkflowFile) {
   );
 }
 
+// Helper function to render multiple files
+export function renderFiles(files: WorkflowFile[]) {
+  if (files.length === 0) {
+    return <div className="text-sm text-muted-foreground">No files</div>;
+  }
+
+  if (files.length === 1) {
+    return renderFile(files[0]);
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-medium mb-2">
+        {files.length} file{files.length > 1 ? 's' : ''}
+      </div>
+      <div className="flex flex-wrap gap-4">
+        {files.map((file) => renderFile(file))}
+      </div>
+    </div>
+  );
+}
+
 // Helper function to render arrays of outputs
 function renderOutputArray(array: any[], label: string) {
   // Check if this is an array of our schema types
