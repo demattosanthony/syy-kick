@@ -51,7 +51,17 @@ export default function WorkflowPageContent({
   const [zodConditions, setZodConditions] = useState<Record<string, any>>({});
 
   const getZodSchemaFromPropertiesType = (property: any) => {
+    if (property.type === "array" && property.items?.properties?.fileKey) {
+      // Multiple files
+      return z.array(z.object({
+        fileKey: z.string(),
+        mimeType: z.string(),
+        fileName: z.string(),
+      }));
+    }
+
     if (property.properties?.fileKey) {
+      // Single file
       return z.object({
         fileKey: z.string(),
         mimeType: z.string(),
@@ -132,6 +142,17 @@ export default function WorkflowPageContent({
             fileKey: "tmp",
           },
         };
+      } else if (Array.isArray(value) && value.length > 0 && value[0] instanceof File) {
+        // Handle multiple files for validation
+        inputValues[key] = {
+          type: property.properties.type.const,
+          label: property.properties.label.const,
+          value: value.map((file: File) => ({
+            mimeType: file.type,
+            fileName: file.name,
+            fileKey: "tmp",
+          })),
+        };
       } else if (property.properties.type.const === "number") {
         inputValues[key] = {
           type: property.properties.type.const,
@@ -199,6 +220,36 @@ export default function WorkflowPageContent({
               mimeType: value.type,
               fileName: value.name,
             },
+          };
+        } else if (Array.isArray(value) && value.length > 0 && value[0] instanceof File) {
+          // Handle multiple files
+          const filePromises = value.map(async (file: File) => {
+            const { fileKey, uploadUrl } = await api.files.getPresignedUrl(
+              file.name,
+              file.type,
+              file.size,
+              { featureType: "workflows" }
+            );
+
+            await fetch(uploadUrl, {
+              method: "PUT",
+              body: file,
+              headers: { "Content-Type": file.type },
+            });
+
+            return {
+              fileKey,
+              mimeType: file.type,
+              fileName: file.name,
+            };
+          });
+
+          const uploadedFiles = await Promise.all(filePromises);
+
+          inputValues[key] = {
+            type: property.properties.type.const,
+            label: property.properties.label.const,
+            value: uploadedFiles,
           };
         } else if (property.properties.type.const === "number") {
           inputValues[key] = {

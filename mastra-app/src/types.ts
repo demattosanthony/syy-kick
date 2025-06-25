@@ -30,8 +30,9 @@ export type WorkflowExecutionInputValue = {
   label: string;
   value:
     | WorkflowTextExecutionInputValue
-    | WorkflowFileExecutionInputValue
+    | WorkflowFileExecutionInputValue | WorkflowFileExecutionInputValue[]
     | WorkflowNumberExecutionInputValue;
+  multiple?: boolean;
 };
 
 export type WorkflowExecutionInputValues = {

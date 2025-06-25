@@ -26,6 +26,7 @@ import {
 import {
   windowAndDoorScheduleInputSchema,
 } from "./window-door-schedules/schemas.ts";
+import { openai } from "@ai-sdk/openai";
 
 // Update the output schema for Excel file instead of CSV
 const finalStepOutputSchema = z.object({
@@ -146,10 +147,12 @@ const stepFour = createStep({
         const imageBase64 = Buffer.from(imageData).toString("base64");
 
         const { object } = await generateObject({
-          model: google("gemini-2.5-pro-preview-05-06"),
+          // model: google("gemini-2.5-pro-preview-05-06"),
+          model: openai("o4-mini"),
           schema: z.object({
             markdownTable: z.string(),
           }),
+          abortSignal: AbortSignal.timeout(300000), // 5 minutes
           messages: [
             {
               role: "user",
@@ -189,7 +192,7 @@ Focus on exterior openings only. Ignore interior doors and any non-opening eleme
           providerOptions: {
             google: {
               thinkingConfig: {
-                thinkingBudget: 35000,
+                thinkingBudget: 32768,
               },
             } satisfies GoogleGenerativeAIProviderOptions,
           },
@@ -373,7 +376,7 @@ if confidence_value in confidence_colors:
           runtimeContext: codeExecutionContext,
           providerOptions: {
             anthropic: {
-              thinking: { type: "enabled", budgetTokens: 35000 },
+              thinking: { type: "enabled", budgetTokens: 32768 },
             } satisfies AnthropicProviderOptions,
           },
         }

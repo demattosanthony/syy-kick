@@ -8,16 +8,17 @@ type BaseFieldType = {
 };
 
 type BaseFieldValue = {
-  type: "object";
-  properties: Record<
+  type: "object" | "array";
+  properties?: Record<
     string,
     {
       type: string;
       const?: string;
     }
   >;
-  required: string[];
-  additionalProperties: boolean;
+  items?: BaseFieldValue;
+  required?: string[];
+  additionalProperties?: boolean;
 };
 
 // Base structure for all fields
@@ -41,6 +42,7 @@ type NumberFieldType = BaseFieldType & {
 };
 
 type TextFieldValue = BaseFieldValue & {
+  type: "object";
   properties: {
     text: {
       type: string;
@@ -50,6 +52,7 @@ type TextFieldValue = BaseFieldValue & {
 };
 
 type NumberFieldValue = BaseFieldValue & {
+  type: "object";
   properties: {
     number: {
       type: string;
@@ -82,6 +85,7 @@ type FileFieldType = BaseFieldType & {
 };
 
 type FileFieldValue = BaseFieldValue & {
+  type: "object";
   properties: {
     fileKey: {
       type: string;
@@ -97,10 +101,17 @@ type FileFieldValue = BaseFieldValue & {
   required: ["fileKey", "mimeType", "fileName"];
 };
 
+// Type for multiple files - array of FileFieldValue
+type MultipleFileFieldValue = BaseFieldValue & {
+  type: "array";
+  items: FileFieldValue;
+};
+
 export interface FileFormField extends BaseFieldStructure {
   properties: {
     type: FileFieldType;
-    value: FileFieldValue;
+    multiple?: boolean;
+    value: FileFieldValue | MultipleFileFieldValue;
     label: BaseFieldType;
   };
 }

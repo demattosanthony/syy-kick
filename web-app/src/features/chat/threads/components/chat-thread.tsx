@@ -109,7 +109,7 @@ export default function ThreadPage({
         });
 
         if (response.success) {
-          // Remove the retry message and all messages that come after it
+          // Implement the same deletion logic as the server
           setMessages((prev) => {
             // Find the index of the message being retried
             const messageToRetryIndex = prev.findIndex(
@@ -121,8 +121,53 @@ export default function ThreadPage({
               return prev;
             }
 
-            // Keep only messages up to (but not including) the retry message
-            return prev.slice(0, messageToRetryIndex);
+            // Start collecting indices of messages to remove
+            const indicesToRemove: number[] = [];
+
+            // 1. Add all messages that come after the retry message
+            for (let i = messageToRetryIndex + 1; i < prev.length; i++) {
+              indicesToRemove.push(i);
+            }
+
+            // 2. Add the retry message itself
+            indicesToRemove.push(messageToRetryIndex);
+
+            // 3. Go backwards from the retry message and collect all consecutive assistant/tool messages
+            // until we hit a user message or reach the beginning
+            let currentIndex = messageToRetryIndex - 1;
+            while (currentIndex >= 0) {
+              const currentMessage = prev[currentIndex];
+
+              // If we hit a user message, stop - this is where we want to restart from
+              if (currentMessage.role === "user") {
+                break;
+              }
+
+              // If it's an assistant or tool message, add it to removal list
+              if (
+                currentMessage.role === "assistant" ||
+                currentMessage.role === "tool"
+              ) {
+                indicesToRemove.unshift(currentIndex); // Add to beginning to maintain order
+                currentIndex--;
+              } else {
+                // If we hit any other role (like system), stop here
+                break;
+              }
+            }
+
+            // Sort indices in descending order to remove from end to beginning
+            // This prevents index shifting issues
+            const sortedIndices = [...new Set(indicesToRemove)].sort(
+              (a, b) => b - a
+            );
+
+            // Create new array without the messages to be removed
+            const newMessages = prev.filter(
+              (_, index) => !sortedIndices.includes(index)
+            );
+
+            return newMessages;
           });
         }
       } catch (error: any) {

@@ -275,6 +275,7 @@ const stepFive = createStep({
       schema: z.object({
         totalizedBomMarkdownContent: z.string(),
       }),
+      abortSignal: AbortSignal.timeout(300000), // 5 minutes
       messages: [
         {
           role: "user",
@@ -321,7 +322,7 @@ Remember to use your expertise to provide the most accurate and comprehensive co
       providerOptions: {
         google: {
           thinkingConfig: {
-            thinkingBudget: 35000,
+            thinkingBudget: 32768,
           },
         } satisfies GoogleGenerativeAIProviderOptions,
       },
@@ -456,7 +457,7 @@ ${markdownData}
           runtimeContext: codeExecutionContext,
           providerOptions: {
             anthropic: {
-              thinking: { type: "enabled", budgetTokens: 35000 },
+              thinking: { type: "enabled", budgetTokens: 32768 },
             } satisfies AnthropicProviderOptions,
           },
         }

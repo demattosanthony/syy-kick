@@ -15,12 +15,13 @@ interface FileUploadInputProps {
     required?: boolean;
     maxFileSize?: number;
   };
-  file: File | null;
-  onFileChange: (file: File | null) => void;
+  files: File[];
+  multiple?: boolean;
+  onFilesChange: (files: File[]) => void;
 }
 
-/** FileUploadInput: Handles file selection for a single workflow input */
-function FileUploadInput({ input, file, onFileChange }: FileUploadInputProps) {
+/** FileUploadInput: Handles file selection for workflow inputs */
+function FileUploadInput({ input, files, multiple = false, onFilesChange }: FileUploadInputProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [sizeError, setSizeError] = useState<string | null>(null);
   const [isHovering, setIsHovering] = useState(false);
@@ -31,21 +32,37 @@ function FileUploadInput({ input, file, onFileChange }: FileUploadInputProps) {
     loading: isMicrosoftPickerLoading,
     isProcessingFiles,
   } = useMicrosoftPicker({
-    onFilesSelected: async (files: SharePointFile[]) => {
-      const filesToUpload = await pickerSelectionsToFiles(files);
+    onFilesSelected: async (sharePointFiles: SharePointFile[]) => {
+      const filesToUpload = await pickerSelectionsToFiles(sharePointFiles);
       if (filesToUpload.length > 0) {
-        // Check size before setting
-        const selectedFile = filesToUpload[0];
-        if (input.maxFileSize && selectedFile.size > input.maxFileSize) {
+        // Check size for each file
+        const validFiles: File[] = [];
+        const invalidFiles: string[] = [];
+
+        for (const file of filesToUpload) {
+          if (input.maxFileSize && file.size > input.maxFileSize) {
+            invalidFiles.push(file.name);
+          } else {
+            validFiles.push(file);
+          }
+        }
+
+        if (invalidFiles.length > 0) {
           setSizeError(
-            `File is too large. Maximum size is ${formatFileSize(
-              input.maxFileSize
+            `Files too large: ${invalidFiles.join(", ")}. Maximum size is ${formatFileSize(
+              input.maxFileSize!
             )}`
           );
-          onFileChange(null); // Clear any previous selection
         } else {
           setSizeError(null);
-          onFileChange(selectedFile);
+        }
+
+        if (multiple) {
+          // Add to existing files
+          onFilesChange([...files, ...validFiles]);
+        } else {
+          // Replace with first file only
+          onFilesChange(validFiles.slice(0, 1));
         }
       }
     },
@@ -64,46 +81,93 @@ function FileUploadInput({ input, file, onFileChange }: FileUploadInputProps) {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const droppedFile = e.dataTransfer.files[0];
+    const droppedFiles = Array.from(e.dataTransfer.files);
 
-    if (droppedFile) {
-      // Check file size if maxFileSize is specified
-      if (input.maxFileSize && droppedFile.size > input.maxFileSize) {
-        setSizeError(
-          `File is too large. Maximum size is ${formatFileSize(
-            input.maxFileSize
-          )}`
-        );
-        return;
+    if (droppedFiles.length > 0) {
+      // Check file size for each file
+      const validFiles: File[] = [];
+      const invalidFiles: string[] = [];
+
+      for (const file of droppedFiles) {
+        if (input.maxFileSize && file.size > input.maxFileSize) {
+          invalidFiles.push(file.name);
+        } else {
+          validFiles.push(file);
+        }
       }
 
-      setSizeError(null);
-      onFileChange(droppedFile);
+      if (invalidFiles.length > 0) {
+        setSizeError(
+          `Files too large: ${invalidFiles.join(", ")}. Maximum size is ${formatFileSize(
+            input.maxFileSize!
+          )}`
+        );
+      } else {
+        setSizeError(null);
+      }
+
+      if (multiple) {
+        // Add to existing files
+        onFilesChange([...files, ...validFiles]);
+      } else {
+        // Replace with first file only
+        onFilesChange(validFiles.slice(0, 1));
+      }
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0] || null;
+    const selectedFiles = Array.from(e.target.files || []);
 
-    if (selectedFile) {
-      // Check file size if maxFileSize is specified
-      if (input.maxFileSize && selectedFile.size > input.maxFileSize) {
-        setSizeError(
-          `File is too large. Maximum size is ${formatFileSize(
-            input.maxFileSize
-          )}`
-        );
+    if (selectedFiles.length > 0) {
+      // Check file size for each file
+      const validFiles: File[] = [];
+      const invalidFiles: string[] = [];
 
-        onFileChange(null);
-        return;
+      for (const file of selectedFiles) {
+        if (input.maxFileSize && file.size > input.maxFileSize) {
+          invalidFiles.push(file.name);
+        } else {
+          validFiles.push(file);
+        }
       }
 
-      setSizeError(null);
-      onFileChange(selectedFile);
+      if (invalidFiles.length > 0) {
+        setSizeError(
+          `Files too large: ${invalidFiles.join(", ")}. Maximum size is ${formatFileSize(
+            input.maxFileSize!
+          )}`
+        );
+      } else {
+        setSizeError(null);
+      }
+
+      if (multiple) {
+        // Add to existing files
+        onFilesChange([...files, ...validFiles]);
+      } else {
+        // Replace with first file only
+        onFilesChange(validFiles.slice(0, 1));
+      }
     } else {
       // Handle case where user cancels file selection
-      onFileChange(null);
+      if (!multiple) {
+        onFilesChange([]);
+      }
     }
+  };
+
+  const removeFile = (index: number) => {
+    const newFiles = files.filter((_, i) => i !== index);
+    onFilesChange(newFiles);
+  };
+
+  const removeAllFiles = () => {
+    onFilesChange([]);
+    const fileInput = document.getElementById(
+      `file-input-${input.id}`
+    ) as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
   };
 
   // Helper function to format file size
@@ -116,15 +180,18 @@ function FileUploadInput({ input, file, onFileChange }: FileUploadInputProps) {
     return `${bytes} B`;
   };
 
+  const hasFiles = files.length > 0;
+  const displayFile = files[0]; // For single file display
+
   return (
     <div>
       <h3 className="text-lg font-bold mb-2">{input.title}</h3>
       <div
         className={cn(
-          "border-2 border-dashed border-border rounded-xl p-8 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center relative", // Use border-border for adaptive base color (greyer in dark mode)
+          "border-2 border-dashed border-border rounded-xl p-8 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center relative",
           isDragging
-            ? "border-accent bg-accent/10" // Dragging state uses accent border
-            : "hover:border-accent hover:bg-accent/10" // Hover state also uses accent border and subtle background
+            ? "border-accent bg-accent/10"
+            : "hover:border-accent hover:bg-accent/10"
         )}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
@@ -144,7 +211,7 @@ function FileUploadInput({ input, file, onFileChange }: FileUploadInputProps) {
               e.stopPropagation();
               openPicker({
                 mode: "files",
-                selectionMode: "single",
+                selectionMode: multiple ? "multiple" : "single",
                 mimeTypes: Array.isArray(input.acceptedFileTypes)
                   ? input.acceptedFileTypes
                   : input.acceptedFileTypes
@@ -171,6 +238,7 @@ function FileUploadInput({ input, file, onFileChange }: FileUploadInputProps) {
           type="file"
           id={`file-input-${input.id}`}
           className="hidden"
+          multiple={multiple}
           accept={
             Array.isArray(input.acceptedFileTypes)
               ? input.acceptedFileTypes.join(",")
@@ -183,7 +251,7 @@ function FileUploadInput({ input, file, onFileChange }: FileUploadInputProps) {
             <div className="flex flex-col items-center justify-center space-y-2">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="text-lg font-medium text-muted-foreground">
-                Processing file...
+                Processing files...
               </p>
             </div>
           ) : (
@@ -191,45 +259,85 @@ function FileUploadInput({ input, file, onFileChange }: FileUploadInputProps) {
               <div
                 className={cn(
                   "w-16 h-16 mx-auto rounded-full flex items-center justify-center",
-                  file ? "bg-primary/10" : "bg-muted/30"
+                  hasFiles ? "bg-primary/10" : "bg-muted/30"
                 )}
               >
                 <FileIcon
                   className={cn(
                     "h-8 w-8",
-                    file ? "text-primary" : "text-muted-foreground"
+                    hasFiles ? "text-primary" : "text-muted-foreground"
                   )}
                 />
               </div>
               <div>
-                <p className="text-lg font-medium mb-1">
-                  {file ? file.name : "Drop your file here"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {file
-                    ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${
-                        file.type.includes("pdf")
-                          ? "PDF"
-                          : file.type && file.type.includes("/")
-                          ? file.type.split("/")[1].toUpperCase()
-                          : "FILE"
-                      }`
-                    : "or click to browse"}
-                </p>
-                {file && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onFileChange(null);
-                      const fileInput = document.getElementById(
-                        `file-input-${input.id}`
-                      ) as HTMLInputElement;
-                      if (fileInput) fileInput.value = "";
-                    }}
-                    className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center justify-center mx-auto"
-                  >
-                    <span className="mr-1">×</span> Remove file
-                  </button>
+                {hasFiles ? (
+                  <div className="space-y-2">
+                    {multiple ? (
+                      <>
+                        <p className="text-lg font-medium mb-1">
+                          {files.length} file{files.length > 1 ? 's' : ''} selected
+                        </p>
+                        <div className="max-h-32 overflow-y-auto space-y-1">
+                          {files.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between text-sm bg-muted/50 rounded px-2 py-1">
+                              <span className="truncate flex-1">{file.name}</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeFile(index);
+                                }}
+                                className="ml-2 text-red-500 hover:text-red-700"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeAllFiles();
+                          }}
+                          className="mt-2 text-sm text-primary hover:text-primary/80 font-medium"
+                        >
+                          Remove all files
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-lg font-medium mb-1">
+                          {displayFile.name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {`${(displayFile.size / (1024 * 1024)).toFixed(2)} MB · ${
+                            displayFile.type.includes("pdf")
+                              ? "PDF"
+                              : displayFile.type && displayFile.type.includes("/")
+                              ? displayFile.type.split("/")[1].toUpperCase()
+                              : "FILE"
+                          }`}
+                        </p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeAllFiles();
+                          }}
+                          className="mt-3 text-sm text-primary hover:text-primary/80 font-medium flex items-center justify-center mx-auto"
+                        >
+                          <span className="mr-1">×</span> Remove file
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-lg font-medium mb-1">
+                      {multiple ? "Drop your files here" : "Drop your file here"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {multiple ? "or click to browse multiple files" : "or click to browse"}
+                    </p>
+                  </>
                 )}
               </div>
             </>
@@ -241,7 +349,7 @@ function FileUploadInput({ input, file, onFileChange }: FileUploadInputProps) {
 
       {input.maxFileSize && !sizeError && (
         <p className="text-xs mt-2 text-muted-foreground">
-          Max size: {formatFileSize(input.maxFileSize)}
+          Max size per file: {formatFileSize(input.maxFileSize)}
         </p>
       )}
     </div>
