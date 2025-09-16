@@ -353,23 +353,12 @@ export const messagesOps = {
         createAndSaveThreadTitle(threadId, inferenceMsgs);
       }
 
-      let tools: Record<string, any> | undefined = undefined;
-      let artifactService: ArtifactService | undefined = undefined;
-      if (modelConfig.supportsToolUse) {
-        tools = { ...exa.tools };
-
-        // Check if user has Microsoft Graph access and add SharePoint tools
-        const microsoftGraph = new MicrosoftAPI({ userId: userId });
-        const accessToken = await microsoftGraph.getAccessToken("graph");
-        if (accessToken) {
-          const sharepointTools = createSharepointToolSet(userId, db);
-          tools = { ...tools, ...sharepointTools };
-        }
-
-        artifactService = new ArtifactService(threadId, userId);
-        const artifactTools = artifactService.getTools();
-        tools = { ...tools, ...artifactTools };
-      }
+      const artifactService = new ArtifactService(threadId, userId);
+      const artifactTools = artifactService.getTools();
+      const tools: Record<string, any> | undefined = {
+        ...artifactTools,
+        ...exa.tools,
+      };
 
       // Manual tool calling flow
       await this.manualToolCallingFlow(
@@ -466,8 +455,8 @@ export const messagesOps = {
     const maxIterations = 25; // equivalent to previous maxSteps
 
     while (iteration < maxIterations) {
-      console.log(`=== Manual Tool Calling Iteration ${iteration + 1} ===`);
-      console.log(`Current messages count: ${currentMessages.length}`);
+      //   console.log(`=== Manual Tool Calling Iteration ${iteration + 1} ===`);
+      //   console.log(`Current messages count: ${currentMessages.length}`);
 
       // Check if aborted before starting new iteration
       if (controller.signal.aborted) {
@@ -484,28 +473,6 @@ export const messagesOps = {
         model: model,
         provider: modelConfig.provider,
       };
-
-      // Create a debug-friendly version that excludes base64 content
-      //   const debugMessages = currentMessages.map((msg) => {
-      //     if (msg.content && Array.isArray(msg.content)) {
-      //       return {
-      //         ...msg,
-      //         content: msg.content.map((item: any) => {
-      //           if (item.type === "image") {
-      //             return {
-      //               ...item,
-      //               image: item.image
-      //                 ? "[BASE64_IMAGE_DATA_EXCLUDED]"
-      //                 : item.image,
-      //             };
-      //           }
-      //           return item;
-      //         }),
-      //       };
-      //     }
-      //     return msg;
-      //   });
-      //   console.log("currentMessages", debugMessages);
 
       try {
         // Call streamText without maxSteps - we control the flow manually

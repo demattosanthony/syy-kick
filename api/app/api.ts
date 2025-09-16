@@ -15,7 +15,6 @@ import paymentRoutes, { webhook } from "./features/payments";
 import organizationRoutes from "./features/organizations/organizations.routes";
 import permissionsRoutes from "./features/permissions/permissions.routes";
 import analyticsRoutes from "./features/analytics/analytics.routes";
-import toolsRoutes from "./features/tools/tools.routes";
 import integrationsRoutes from "./features/integrations/integrations.routes";
 import filesRoutes from "./features/files/files.routes";
 
@@ -87,7 +86,6 @@ export default Router()
     });
   })
   .use("/organizations", auth, organizationRoutes)
-  .use("/tools", auth, toolsRoutes)
   .use("/files", auth, filesRoutes)
   .use("/permissions", auth, permissionsRoutes)
   .use("/analytics", analyticsRoutes)

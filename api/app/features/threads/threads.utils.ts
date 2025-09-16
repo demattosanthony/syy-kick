@@ -1,9 +1,9 @@
 // External dependencies
 import { CoreMessage, generateText } from "ai";
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 // Internal configuration
-import { CONFIG, MARKITDOWN_MIME_TYPES } from "../../config/constants";
+import { CONFIG } from "../../config/constants";
 import db from "../../config/db";
 import s3 from "../../config/s3";
 import {
@@ -13,7 +13,6 @@ import {
   User,
   files,
   messagesFiles,
-  filePageImages,
 } from "../../config/schema";
 
 // Feature imports
@@ -27,85 +26,6 @@ export interface ImageData {
   mimeType: string;
   imageUrl?: string;
   base64Data?: string;
-}
-
-/**
- * Loads images for given page IDs
- * In production: returns presigned URLs
- * In development: returns base64 data
- */
-export async function loadImagesForPages(
-  pageIds: string[],
-  forceBase64: boolean = false
-): Promise<ImageData[]> {
-  const validPageIds = pageIds.filter(Boolean);
-  if (validPageIds.length === 0) return [];
-
-  console.log(
-    `🖼️ [ImageUtils] Loading images for ${validPageIds.length} pages`
-  );
-
-  const images = await db.query.filePageImages.findMany({
-    where: inArray(filePageImages.filePageId, validPageIds),
-  });
-
-  if (images.length === 0) {
-    console.log(`📷 [ImageUtils] No images found for the selected pages`);
-    return [];
-  }
-
-  const useBase64 = forceBase64 || !CONFIG.__prod__;
-  console.log(
-    `🖼️ [ImageUtils] Found ${images.length} images, using ${
-      useBase64 ? "base64" : "URLs"
-    }`
-  );
-
-  const imageResults: ImageData[] = [];
-
-  for (const image of images) {
-    try {
-      const file = s3.file(image.imagePath);
-
-      if (!(await file.exists())) {
-        console.warn(
-          `⚠️ [ImageUtils] Image not found in S3: ${image.imagePath}`
-        );
-        continue;
-      }
-
-      const imageData: ImageData = {
-        name: image.name ?? "image",
-        imagePath: image.imagePath,
-        mimeType: "image/png",
-      };
-
-      if (useBase64) {
-        // Load base64 data for development or when forced
-        const imageBuffer = await file.arrayBuffer();
-        imageData.base64Data = Buffer.from(imageBuffer).toString("base64");
-        console.log(
-          `✅ [ImageUtils] Loaded base64 for: ${image.name} (${imageBuffer.byteLength} bytes)`
-        );
-      } else {
-        // Generate presigned URL for production
-        imageData.imageUrl = file.presign({ expiresIn: 3600 });
-        console.log(`✅ [ImageUtils] Generated URL for: ${image.name}`);
-      }
-
-      imageResults.push(imageData);
-    } catch (error) {
-      console.error(
-        `❌ [ImageUtils] Error processing image ${image.name}:`,
-        error
-      );
-    }
-  }
-
-  console.log(
-    `🖼️ [ImageUtils] Successfully processed ${imageResults.length}/${images.length} images`
-  );
-  return imageResults;
 }
 
 /**
@@ -475,13 +395,13 @@ async function createAssistantMessageWithFiles(
 
   // Add text content if present
   if (msg.text) {
-    chunks.push({ type: "text", text: msg.text });
+    chunks.push({ type: "text" as const, text: msg.text });
   }
 
   // Add tool calls
   for (const call of msg.toolCalls) {
     chunks.push({
-      type: "tool-call",
+      type: "tool-call" as const,
       toolCallId: call.toolCallId,
       toolName: call.toolName,
       args: call.args,
@@ -560,11 +480,11 @@ async function createToolMessages(
 
     const userContent: any[] = [
       {
-        type: "text",
+        type: "text" as const,
         text: `Here are the images from the file content that was loaded:`,
       },
       ...allImages.map((img) => ({
-        type: "image",
+        type: "image" as const,
         image: img.base64Data || img.imageUrl, // Use base64 if available, otherwise URL
         mimeType: img.mimeType,
       })),
@@ -598,7 +518,7 @@ async function createToolMessages(
       }
 
       return {
-        type: "tool-result",
+        type: "tool-result" as const,
         toolCallId: call.toolCallId,
         toolName: call.toolName,
         result: toolResult,
@@ -629,7 +549,7 @@ async function createRegularMessageWithFiles(
 
   // Add text content
   if (msg.text) {
-    chunks.push({ type: "text", text: msg.text });
+    chunks.push({ type: "text" as const, text: msg.text });
   }
 
   // Process file attachments using experimental_attachments
@@ -648,7 +568,7 @@ async function createRegularMessageWithFiles(
           true
         );
         chunks.push({
-          type: "image",
+          type: "image" as const,
           image: data,
           mimeType: file.mimeType,
         });
@@ -665,10 +585,11 @@ async function createRegularMessageWithFiles(
           true
         );
 
-        attachments.push({
+        chunks.push({
+          type: "file" as const,
+          data: data,
+          mimeType: file.mimeType,
           name: file.name,
-          contentType: file.mimeType || "application/octet-stream",
-          url: data,
         });
       } catch (error) {
         console.error(`Error generating URL for file ${file.name}:`, error);
@@ -683,9 +604,9 @@ async function createRegularMessageWithFiles(
   };
 
   // Add experimental_attachments if there are any
-  if (attachments.length > 0) {
-    message.experimental_attachments = attachments;
-  }
+  //   if (attachments.length > 0) {
+  //     message.experimental_attachments = attachments;
+  //   }
 
   return message as CoreMessage;
 }
@@ -715,7 +636,7 @@ async function createFileAttachmentMessages(
           true
         );
         chunks.push({
-          type: "image",
+          type: "image" as const,
           image: data,
           mimeType: file.mimeType,
         });

@@ -71,12 +71,12 @@ const ModelSelector: React.FC = () => {
           className="h-8 justify-between gap-0 p-2 px-3"
         >
           <div className="flex items-center">
-            {/* {selectedModel.provider === "Auto" ? (
+            {selectedModel.provider === "Auto" ? (
               <WandSparkles className="w-3 h-3" />
             ) : (
               getModelImage(selectedModel.provider)
-            )} */}
-            <div className="hidden md:flex truncate">
+            )}
+            <div className="hidden md:flex truncate ml-2">
               {selectedModel.name || "Select model..."}
             </div>
           </div>

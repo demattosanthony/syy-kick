@@ -2,9 +2,7 @@ import { Tool, tool } from "ai";
 import { z } from "zod";
 import s3 from "../../config/s3";
 import { filesOps } from "../files/files.ops";
-import { loadImagesForPages } from "../threads/threads.utils";
 import type { File } from "../files/files.schemas";
-import { processSharePointFile } from "./tool-definitions/sharepoint";
 import { v4 as uuidv4 } from "uuid";
 import { slugify } from "../../utils";
 
