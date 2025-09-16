@@ -7,16 +7,10 @@ import {
   TransferableRolesPermissions,
   UpdateOrgMemberRoleRequest,
 } from "@/features/permissions/types";
-import {
-  CustomWorkflowRun,
-  CustomWorkflowRuns,
-  EnhancedWorkflowResponse,
-} from "@/features/workflows/workflows.types";
 import { ChatMessage, Thread, UpdateThreadMutationData } from "@/types/chat";
 import { Model } from "@/types/model";
 import { Organization, User } from "@/types/user";
 import { OrganizationAccessLogsResponse } from "@/features/organizations/types/access-logs";
-import { Comment } from "@/features/workflows/features/runs/features/comments/types";
 import { AccessToken } from "@/features/integrations/types";
 import { SyyclopsFile } from "@/features/files/types/files";
 
@@ -694,98 +688,6 @@ class PermissionsApi extends ApiRequest {
   }
 }
 
-/**
- * Workflows API Module
- */
-class WorkflowsApi extends ApiRequest {
-  async listWorkflows(
-    query?: string
-  ): Promise<Record<string, EnhancedWorkflowResponse>> {
-    return await this.request(`/workflows?${query ? `query=${query}` : ""}`);
-  }
-
-  async getWorkflow(id: string): Promise<EnhancedWorkflowResponse> {
-    return await this.request(`/workflows/${id}`);
-  }
-
-  async createRun(
-    workflowId: string,
-    input: any
-  ): Promise<{
-    runId: string;
-  }> {
-    try {
-      return await this.request(`/workflows/${workflowId}/runs`, "POST", input);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async getRuns(workflowId: string): Promise<CustomWorkflowRuns> {
-    return await this.request(`/workflows/${workflowId}/runs`);
-  }
-
-  async getRun(workflowId: string, runId: string): Promise<CustomWorkflowRun> {
-    return await this.request(`/workflows/${workflowId}/runs/${runId}`);
-  }
-
-  async triggerRun(workflowId: string, workflowRunId: string): Promise<void> {
-    return await this.request(
-      `/workflows/${workflowId}/runs/${workflowRunId}`,
-      "POST"
-    );
-  }
-
-  async getRunComments(
-    workflowId: string,
-    workflowRunId: string
-  ): Promise<Comment[]> {
-    return await this.request(
-      `/workflows/${workflowId}/runs/${workflowRunId}/comments`
-    );
-  }
-
-  async createRunComment(
-    workflowId: string,
-    workflowRunId: string,
-    comment: string
-  ): Promise<Comment> {
-    return await this.request(
-      `/workflows/${workflowId}/runs/${workflowRunId}/comments`,
-      "POST",
-      {
-        comment,
-      }
-    );
-  }
-
-  async updateRunComment(
-    workflowId: string,
-    workflowRunId: string,
-    commentId: string,
-    comment: string
-  ): Promise<Comment> {
-    return await this.request(
-      `/workflows/${workflowId}/runs/${workflowRunId}/comments/${commentId}`,
-      "PUT",
-      {
-        comment,
-      }
-    );
-  }
-
-  async deleteRunComment(
-    workflowId: string,
-    workflowRunId: string,
-    commentId: string
-  ): Promise<void> {
-    return await this.request(
-      `/workflows/${workflowId}/runs/${workflowRunId}/comments/${commentId}`,
-      "DELETE"
-    );
-  }
-}
-
 class IntegrationsApi extends ApiRequest {
   async getTokens(): Promise<AccessToken[]> {
     return await this.request<AccessToken[]>("/integrations", "GET");
@@ -937,7 +839,6 @@ class ApiClient {
   payments: PaymentApi;
   models: ModelApi;
   threads: ThreadApi;
-  workflows: WorkflowsApi;
   permissions: PermissionsApi;
   integrations: IntegrationsApi;
   files: FilesApi;
@@ -950,7 +851,6 @@ class ApiClient {
     this.payments = new PaymentApi(baseUrl);
     this.models = new ModelApi(baseUrl);
     this.threads = new ThreadApi(baseUrl);
-    this.workflows = new WorkflowsApi(baseUrl);
     this.permissions = new PermissionsApi(baseUrl);
     this.integrations = new IntegrationsApi(baseUrl);
     this.files = new FilesApi(baseUrl);

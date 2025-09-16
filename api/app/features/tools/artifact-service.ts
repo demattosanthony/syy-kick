@@ -409,8 +409,8 @@ You should use this tool differently depending on the type of file contents you 
 
   public getTools(): Record<string, Tool> {
     return {
-      load_file_content: this.createLoadFileContentTool(),
-      search_file_content: this.createSearchFileContentTool(),
+      //   load_file_content: this.createLoadFileContentTool(),
+      //   search_file_content: this.createSearchFileContentTool(),
       create_file: this.createFileTool(),
     };
   }

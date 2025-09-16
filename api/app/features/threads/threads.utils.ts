@@ -239,7 +239,7 @@ async function getModelConfig(model: string, messageContent: string) {
   const start = Date.now();
 
   const { object } = await generateObject({
-    model: MODELS["gpt-4.1-mini"].model,
+    model: MODELS["gpt-5-mini"].model,
     schema: z.object({
       type: z.enum(["simple", "hard"]),
     }),
@@ -259,7 +259,7 @@ Respond with a JSON object with the following schema:
   console.log("🤖 [ModelConfig] Type of user query:", object.type);
 
   return object.type === "simple"
-    ? MODELS["gpt-4.1"]
+    ? MODELS["gpt-5-mini"]
     : MODELS["gemini-2.5-pro"];
 }
 
@@ -898,8 +898,7 @@ async function createAndSaveThreadTitle(
 
 async function generateThreadTitle(message: string) {
   const { text } = await generateText({
-    model: MODELS["gpt-4.1-mini"].model,
-    temperature: 0.65,
+    model: MODELS["gemini-2.5-flash"].model,
     prompt: `Generate a title for the following user message. The title should describe what their message is about so they can later find it easily. The title should be 3 to 4 words give or take. Only respond with the title and nothing else.\n\nUser message:\n\n${message}`,
   });
 

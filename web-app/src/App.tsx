@@ -15,10 +15,6 @@ import {
   ThreadsPage,
   ShareThreadPage,
   ThreadPage,
-  WorkflowsPage,
-  WorkflowPage,
-  WorkflowRunPageDetails,
-  WorkflowRunsPage,
   UserSettings,
   ForbiddenPage,
   LandingPage,
@@ -36,47 +32,22 @@ import { RouteErrorElement } from "./components/route-error";
 const rootUserDataLoader = async (): Promise<User | null> => {
   const queryKey = ["me"];
   try {
-    // Check local storage for user data
-    const userData = localStorage.getItem("me");
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      // Check that the user data is not empty
-      if (parsedUser && Object.keys(parsedUser).length > 0) {
-        return parsedUser;
-      }
-      // If the data is empty, continue with the cache or the API
-    }
-
-    console.log("1. Local storage userData : ", userData);
-    // Try fetching from the cache first
-    const cachedData = queryClient.getQueryData<User>(queryKey);
-    if (cachedData) {
-      return cachedData;
-    }
-
-    console.log("2. Cache userData : ", cachedData);
-
     // If not in cache, fetch from API using fetchQuery
     const user = await queryClient.fetchQuery<User | null>({
       queryKey,
       queryFn: async () => {
-        console.log("3. Fetching from API");
         const result = await api.auth.me();
         return result;
       },
     });
 
-    console.log("3. API userData : ", user);
-
     if (user) {
-      console.log("4. API userData is not null, return user");
       return user;
     } else {
-      console.log("4. API userData is null");
       return null;
     }
   } catch (error) {
-    console.error("6. Erreur:", error);
+    console.error("Error:", error);
     return null;
   }
 };
@@ -130,13 +101,6 @@ const router = createBrowserRouter([
           { index: true, element: <HomePage /> },
           { path: "threads", element: <ThreadsPage /> },
           { path: "threads/:threadId", element: <ThreadPage /> },
-          { path: "workflows", element: <WorkflowsPage /> },
-          { path: "workflows/:workflowId", element: <WorkflowPage /> },
-          { path: "workflows/:workflowId/runs", element: <WorkflowRunsPage /> },
-          {
-            path: "workflows/:workflowId/runs/:runId",
-            element: <WorkflowRunPageDetails />,
-          },
           { path: "settings", element: <UserSettings /> },
           { path: "integrations", element: <IntegrationsPage /> },
           { path: "files", element: <FilesPage /> },

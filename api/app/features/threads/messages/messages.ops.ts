@@ -5,6 +5,10 @@ import { v4 as uuidv4 } from "uuid";
 import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
 import { OpenAIResponsesProviderOptions } from "@ai-sdk/openai";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
+import {
+  openrouter,
+  OpenRouterProviderOptions,
+} from "@openrouter/ai-sdk-provider";
 
 // Internal configuration
 import db from "../../../config/db";
@@ -39,10 +43,8 @@ import {
 
 // LLM Tools
 import { ArtifactService } from "../../tools/artifact-service";
-import {
-  createSharepointToolSet,
-  createWebSearchTool,
-} from "../../tools/tool-definitions";
+import { createSharepointToolSet } from "../../tools/tool-definitions";
+import exa from "../../../config/exa";
 
 export const messagesOps = {
   async getMessages(threadId: string) {
@@ -230,7 +232,6 @@ export const messagesOps = {
   ) {
     // 1) Store the user message
     if (message) {
-      console.log("CREATING MESSAGE", message);
       await messagesOps.createMessage(userId, threadId, "user", {
         content: message.content || "",
         experimental_attachments: message.experimental_attachments as any,
@@ -360,7 +361,7 @@ export const messagesOps = {
       let tools: Record<string, any> | undefined = undefined;
       let artifactService: ArtifactService | undefined = undefined;
       if (modelConfig.supportsToolUse) {
-        tools = { web_search: createWebSearchTool() };
+        tools = { ...exa.tools };
 
         // Check if user has Microsoft Graph access and add SharePoint tools
         const microsoftGraph = new MicrosoftAPI({ userId: userId });
@@ -514,9 +515,9 @@ export const messagesOps = {
       try {
         // Call streamText without maxSteps - we control the flow manually
         const result = streamText({
-          model: modelConfig.model,
+          model: openrouter(`anthropic/claude-sonnet-4`),
           messages: currentMessages,
-          temperature: 0.2,
+          //   temperature: 0.2,
           ...(tools && {
             tools: tools,
             toolChoice: "auto",
@@ -530,12 +531,12 @@ export const messagesOps = {
               reasoningSummary: "auto",
               parallelToolCalls: true,
             } satisfies OpenAIResponsesProviderOptions,
-            anthropic: {
-              thinking: {
-                type: iteration === 0 ? "enabled" : "disabled",
-                budgetTokens: iteration === 0 ? 12_000 : 0,
-              },
-            } satisfies AnthropicProviderOptions,
+            // anthropic: {
+            //   thinking: {
+            //     type: iteration === 0 ? "enabled" : "disabled",
+            //     budgetTokens: iteration === 0 ? 12_000 : 0,
+            //   },
+            // } satisfies AnthropicProviderOptions,
             google: {
               thinkingConfig: {
                 includeThoughts: true,

@@ -4,7 +4,6 @@ import {
   integer,
   jsonb,
   pgTable,
-  serial,
   text,
   timestamp,
   uuid,
@@ -28,7 +27,6 @@ const SUBSCRIPTION_STATUS = [
 ] as const;
 const SUBSCRIPTION_PLAN = ["free", "pro", "teams", "enterprise"] as const;
 const IDENTITY_PROVIDER = ["google", "saml", "microsoft"] as const;
-const DOCUMENT_TYPE = ["file", "folder"] as const;
 
 // Custom type for bytea columns (pgcrypto extension)
 export const bytea = customType<{
@@ -38,25 +36,6 @@ export const bytea = customType<{
     return "bytea";
   },
 });
-
-export {
-  workflows,
-  workflowOrganizations,
-  workflowUsers,
-  workflowRuns,
-  workflowRunComments,
-  workflowTags,
-  tags,
-  workflowRunCommentRelations,
-  workflowRunRelations,
-  workflowRelations,
-  workflowTagsRelations,
-  tagsRelations,
-  workflowOrganizationsRelations,
-  workflowUsersRelations,
-  workflowRunUsers,
-  workflowRunUserRelations,
-} from "../features/workflows/workflows.schema";
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),

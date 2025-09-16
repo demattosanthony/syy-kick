@@ -13,7 +13,6 @@ import modelRoutes from "./features/models";
 import threadsRouter from "./features/threads/threads.routes";
 import paymentRoutes, { webhook } from "./features/payments";
 import organizationRoutes from "./features/organizations/organizations.routes";
-import workflowRoutes from "./features/workflows/workflows.routes";
 import permissionsRoutes from "./features/permissions/permissions.routes";
 import analyticsRoutes from "./features/analytics/analytics.routes";
 import toolsRoutes from "./features/tools/tools.routes";
@@ -88,7 +87,6 @@ export default Router()
     });
   })
   .use("/organizations", auth, organizationRoutes)
-  .use("/workflows", auth, workflowRoutes)
   .use("/tools", auth, toolsRoutes)
   .use("/files", auth, filesRoutes)
   .use("/permissions", auth, permissionsRoutes)

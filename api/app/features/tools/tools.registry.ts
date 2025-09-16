@@ -3,7 +3,6 @@ import {
   createDocOcrTool,
   createPdfPageExtractionTool,
   createObjectDetectionTool,
-  createWebSearchTool,
 } from "./tool-definitions";
 
 export const createToolSet = (toolArtifactService: ArtifactService) => {
@@ -16,6 +15,5 @@ export const createToolSet = (toolArtifactService: ArtifactService) => {
     "pdf-page-extraction": createPdfPageExtractionTool(toolArtifactService),
     "object-detection": createObjectDetectionTool(toolArtifactService),
     "doc-ocr": createDocOcrTool(toolArtifactService),
-    "web-search": createWebSearchTool(),
   };
 };

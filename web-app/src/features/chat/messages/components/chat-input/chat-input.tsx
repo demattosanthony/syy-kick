@@ -8,7 +8,6 @@ import { modelAtom, uploadsAtom } from "@/atoms/chat";
 import { FileUploadSection } from "./file-upload-section";
 import { TextInputArea } from "./chat-input-text-area";
 import { ActionButtons } from "./action-buttons";
-import { ContextSelector } from "./context-selector";
 
 interface ChatInputFormProps {
   onSubmit: (e: React.FormEvent) => void;
@@ -175,10 +174,6 @@ function ChatInputForm(
           className="relative flex flex-col flex-1 w-full justify-center p-2"
           onSubmit={handleFormSubmit}
         >
-          <ContextSelector
-            showContextSelector={!!hasThread}
-            selectedModel={selectedModel}
-          />
           <div className="flex flex-col flex-1 relative">
             {/* Drag message section above the input */}
             {isDragging && (
