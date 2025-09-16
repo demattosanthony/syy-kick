@@ -22,7 +22,7 @@ import { SidebarButton } from "./sidebar-button";
 import { DropdownMenuGroup } from "../ui/dropdown-menu";
 import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "@/workspace-context";
-import { LinkIcon, FolderIcon } from "lucide-react";
+import { LinkIcon } from "lucide-react";
 import { NewThreadButton } from "./new-thread-button";
 
 export function AppSidebar({
@@ -53,15 +53,6 @@ export function AppSidebar({
 
               <SidebarMenuItem>
                 <ThreadsLink />
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarButton
-                  href="/files"
-                  label="Files"
-                  icon={FolderIcon}
-                  hoverIcon={FolderIcon}
-                />
               </SidebarMenuItem>
 
               <SidebarMenuItem>
