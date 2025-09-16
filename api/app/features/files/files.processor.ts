@@ -165,7 +165,7 @@ async function classifyPdf(
     .flat();
 
   const { object } = await generateObject({
-    model: openai("gpt-4.1-mini"),
+    model: openai("gpt-5-mini"),
     messages: [
       {
         role: "system",

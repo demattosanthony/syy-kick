@@ -54,8 +54,8 @@ export const filesHandlers = {
         return;
       }
 
-      // Create file record and start processing
-      const result = await filesOps.createFileRecordAndProcess(userId, {
+      // Create simple file record without processing
+      const result = await filesOps.createFileRecordSimple(userId, {
         fileName,
         mimeType,
         size,

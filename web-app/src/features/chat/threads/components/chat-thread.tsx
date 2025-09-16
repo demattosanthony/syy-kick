@@ -59,8 +59,7 @@ export default function ThreadPage({
 
   // Check if this is a pending thread
   const isPendingThread = threadId?.startsWith("pending-");
-  const isProcessing =
-    isPendingThread && pendingThread?.status === "processing";
+  const isUploading = isPendingThread && pendingThread?.status === "uploading";
 
   // Custom hooks
   useThreadStream({
@@ -93,8 +92,8 @@ export default function ThreadPage({
     [input, submitMessage, setInput]
   );
 
-  // Show processing indicator for pending threads
-  const showProcessingIndicator = isProcessing && convertedMessages.length > 0;
+  // Show uploading indicator for pending threads
+  const showUploadingIndicator = isUploading && convertedMessages.length > 0;
 
   const handleRetry = useCallback(
     async (messageId: string) => {
@@ -206,16 +205,16 @@ export default function ThreadPage({
         <div className="flex-1">
           <ChatMessagesList
             messages={convertedMessages}
-            status={isProcessing ? "submitted" : chatStatus}
+            status={isUploading ? "submitted" : chatStatus}
             showSkeletons={messagesAreBeingFetched && !isPendingThread}
             onRetry={handleRetry}
           />
 
-          {showProcessingIndicator && (
+          {showUploadingIndicator && (
             <div className="flex items-center justify-center p-4 text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               <span className="text-sm">
-                Creating thread and processing files...
+                Creating thread and uploading files...
               </span>
             </div>
           )}
@@ -229,7 +228,7 @@ export default function ThreadPage({
               handleInputChange={handleInputChange}
               onSubmit={handleSubmit}
               stop={stop}
-              isGenerating={isSubmitting || isProcessing}
+              isGenerating={isSubmitting || isUploading}
               hasThread={true}
             />
           </div>

@@ -169,8 +169,16 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
   const [showDebug, setShowDebug] = React.useState(false);
   const hasResults = tool.state === "result" && tool.result;
   const toolResponse = hasResults ? tool.result : undefined;
-  const sources: Array<{ url?: string; title?: string; snippet?: string }> =
-    toolResponse?.sources || [];
+  const sources: Array<{
+    id?: string;
+    url?: string;
+    text?: string;
+    image?: string;
+    title?: string;
+    author?: string;
+    favicon?: string;
+    publishedDate?: string;
+  }> = Array.isArray(toolResponse) ? toolResponse : [];
   const resultCount = sources.length;
 
   if (tool.state === "partial-call" || tool.state === "call") {
@@ -204,6 +212,11 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
   };
 
   const getFaviconUrl = (source: any) => {
+    // Use the favicon from the response if available
+    if (source?.favicon) {
+      return source.favicon;
+    }
+
     try {
       const url = getSourceUrl(source);
       if (!url) return null;
@@ -284,7 +297,7 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
             <h3 className="text-sm font-medium text-muted-foreground">
               {sources.length} {sources.length === 1 ? "Source" : "Sources"}
             </h3>
-            {toolResponse?.text && (
+            {sources.length > 0 && (
               <button
                 onClick={() => setShowDebug(!showDebug)}
                 className="text-xs px-2 py-1 bg-secondary/50 hover:bg-secondary rounded-md transition-colors"
@@ -295,13 +308,13 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2">
-            {showDebug && toolResponse?.text ? (
+            {showDebug && sources.length > 0 ? (
               <div className="mb-6 p-4 rounded-lg bg-secondary/30 border">
                 <h4 className="text-sm font-medium mb-3 text-muted-foreground">
-                  Full Text (Model Input)
+                  Debug Info
                 </h4>
                 <div className="text-xs bg-secondary/50 rounded p-3 max-h-[calc(100vh-400px)] overflow-y-auto font-mono whitespace-pre-wrap">
-                  {toolResponse.text}
+                  {JSON.stringify(tool, null, 2)}
                 </div>
               </div>
             ) : (
@@ -337,9 +350,9 @@ const WebSearchTool = ({ tool }: { tool: ToolInvocation }) => {
                         <div className="text-xs text-muted-foreground mt-1 mb-2">
                           {formatUrl(url)}
                         </div>
-                        {source.snippet && (
+                        {source.text && (
                           <div className="text-xs text-muted-foreground line-clamp-3">
-                            {source.snippet}
+                            {source.text.slice(0, 200)}...
                           </div>
                         )}
                       </div>

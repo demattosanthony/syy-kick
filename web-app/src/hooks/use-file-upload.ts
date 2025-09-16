@@ -54,14 +54,7 @@ export function useFileUpload(acceptedTypes: string[]) {
       // Step 2: Upload file to S3
       await api.files.uploadFile(file, uploadUrl);
 
-      // Update status to processing
-      setUploads((prev) =>
-        prev.map((upload, index) =>
-          index === uploadIndex ? { ...upload, status: "processing" } : upload
-        )
-      );
-
-      // Step 3: Create file record and start processing
+      // Step 3: Create simple file record
       const result = await api.files.createFileRecord(
         file.name,
         file.type,
@@ -177,10 +170,8 @@ export function useFileUpload(acceptedTypes: string[]) {
     await processFileUpload(file, uploadIndex);
   };
 
-  // Check if any files are still processing
-  const isProcessing = uploads.some(
-    (upload) => upload.status === "uploading" || upload.status === "processing"
-  );
+  // Check if any files are still uploading
+  const isProcessing = uploads.some((upload) => upload.status === "uploading");
 
   // Check if all completed uploads have no errors
   const hasErrors = uploads.some((upload) => upload.status === "error");

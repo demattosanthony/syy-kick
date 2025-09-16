@@ -1,8 +1,7 @@
 // External dependencies
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { streamText } from "ai";
 import { v4 as uuidv4 } from "uuid";
-import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
 import { OpenAIResponsesProviderOptions } from "@ai-sdk/openai";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 
@@ -39,10 +38,8 @@ import {
 
 // LLM Tools
 import { ArtifactService } from "../../tools/artifact-service";
-import {
-  createSharepointToolSet,
-  createWebSearchTool,
-} from "../../tools/tool-definitions";
+import { createSharepointToolSet } from "../../tools/tool-definitions";
+import exa from "../../../config/exa";
 
 export const messagesOps = {
   async getMessages(threadId: string) {
@@ -230,7 +227,6 @@ export const messagesOps = {
   ) {
     // 1) Store the user message
     if (message) {
-      console.log("CREATING MESSAGE", message);
       await messagesOps.createMessage(userId, threadId, "user", {
         content: message.content || "",
         experimental_attachments: message.experimental_attachments as any,
@@ -357,23 +353,12 @@ export const messagesOps = {
         createAndSaveThreadTitle(threadId, inferenceMsgs);
       }
 
-      let tools: Record<string, any> | undefined = undefined;
-      let artifactService: ArtifactService | undefined = undefined;
-      if (modelConfig.supportsToolUse) {
-        tools = { web_search: createWebSearchTool() };
-
-        // Check if user has Microsoft Graph access and add SharePoint tools
-        const microsoftGraph = new MicrosoftAPI({ userId: userId });
-        const accessToken = await microsoftGraph.getAccessToken("graph");
-        if (accessToken) {
-          const sharepointTools = createSharepointToolSet(userId, db);
-          tools = { ...tools, ...sharepointTools };
-        }
-
-        artifactService = new ArtifactService(threadId, userId);
-        const artifactTools = artifactService.getTools();
-        tools = { ...tools, ...artifactTools };
-      }
+      const artifactService = new ArtifactService(threadId, userId);
+      const artifactTools = artifactService.getTools();
+      const tools: Record<string, any> | undefined = {
+        ...artifactTools,
+        ...exa.tools,
+      };
 
       // Manual tool calling flow
       await this.manualToolCallingFlow(
@@ -470,8 +455,8 @@ export const messagesOps = {
     const maxIterations = 25; // equivalent to previous maxSteps
 
     while (iteration < maxIterations) {
-      console.log(`=== Manual Tool Calling Iteration ${iteration + 1} ===`);
-      console.log(`Current messages count: ${currentMessages.length}`);
+      //   console.log(`=== Manual Tool Calling Iteration ${iteration + 1} ===`);
+      //   console.log(`Current messages count: ${currentMessages.length}`);
 
       // Check if aborted before starting new iteration
       if (controller.signal.aborted) {
@@ -489,34 +474,12 @@ export const messagesOps = {
         provider: modelConfig.provider,
       };
 
-      // Create a debug-friendly version that excludes base64 content
-      //   const debugMessages = currentMessages.map((msg) => {
-      //     if (msg.content && Array.isArray(msg.content)) {
-      //       return {
-      //         ...msg,
-      //         content: msg.content.map((item: any) => {
-      //           if (item.type === "image") {
-      //             return {
-      //               ...item,
-      //               image: item.image
-      //                 ? "[BASE64_IMAGE_DATA_EXCLUDED]"
-      //                 : item.image,
-      //             };
-      //           }
-      //           return item;
-      //         }),
-      //       };
-      //     }
-      //     return msg;
-      //   });
-      //   console.log("currentMessages", debugMessages);
-
       try {
         // Call streamText without maxSteps - we control the flow manually
         const result = streamText({
           model: modelConfig.model,
           messages: currentMessages,
-          temperature: 0.2,
+          //   temperature: 0.2,
           ...(tools && {
             tools: tools,
             toolChoice: "auto",
@@ -530,12 +493,12 @@ export const messagesOps = {
               reasoningSummary: "auto",
               parallelToolCalls: true,
             } satisfies OpenAIResponsesProviderOptions,
-            anthropic: {
-              thinking: {
-                type: iteration === 0 ? "enabled" : "disabled",
-                budgetTokens: iteration === 0 ? 12_000 : 0,
-              },
-            } satisfies AnthropicProviderOptions,
+            // anthropic: {
+            //   thinking: {
+            //     type: iteration === 0 ? "enabled" : "disabled",
+            //     budgetTokens: iteration === 0 ? 12_000 : 0,
+            //   },
+            // } satisfies AnthropicProviderOptions,
             google: {
               thinkingConfig: {
                 includeThoughts: true,
