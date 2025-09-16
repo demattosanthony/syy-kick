@@ -37,7 +37,16 @@ export const PermissionsProvider = ({
   const { data: userRole, isLoading } = useGetOrganizationRole(orgId);
 
   const userPermissions = useMemo(() => {
-    return userRole ? UserPermissionsFactory.create(userRole) : null;
+    if (!userRole) {
+      return null;
+    }
+
+    try {
+      return UserPermissionsFactory.create(userRole);
+    } catch (error) {
+      console.error("Error creating user permissions:", error);
+      return null;
+    }
   }, [userRole]);
 
   const [

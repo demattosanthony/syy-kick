@@ -8,6 +8,7 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
+  SidebarRail,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -21,7 +22,7 @@ import { SidebarButton } from "./sidebar-button";
 import { DropdownMenuGroup } from "../ui/dropdown-menu";
 import { PricingDialog } from "../PricingDialog";
 import { useWorkspace } from "@/workspace-context";
-import { Workflow, LinkIcon, FolderIcon } from "lucide-react";
+import { LinkIcon, FolderIcon } from "lucide-react";
 import { NewThreadButton } from "./new-thread-button";
 
 export function AppSidebar({
@@ -34,7 +35,7 @@ export function AppSidebar({
   const sidebarRef = React.useRef<HTMLDivElement>(null);
 
   return (
-    <Sidebar collapsible={"icon"} variant="inset" ref={sidebarRef} {...props}>
+    <Sidebar collapsible={"icon"} ref={sidebarRef} {...props}>
       <SidebarHeader>
         <SidebarMenu className="flex flex-row items-center group-data-[collapsible=icon]:justify-center justify-between ">
           <WorkSpaceSwitcher state={state} />
@@ -52,15 +53,6 @@ export function AppSidebar({
 
               <SidebarMenuItem>
                 <ThreadsLink />
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarButton
-                  href="/workflows"
-                  icon={Workflow}
-                  hoverIcon={Workflow}
-                  label="Workflows"
-                />
               </SidebarMenuItem>
 
               <SidebarMenuItem>
@@ -105,6 +97,8 @@ export function AppSidebar({
           <NavUser user={user} />
         </SidebarMenu>
       </SidebarFooter>
+
+      <SidebarRail />
     </Sidebar>
   );
 }

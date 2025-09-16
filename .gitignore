@@ -189,3 +189,5 @@ pg-backups/
 # workflows-dataset/
 # Local Netlify folder
 .netlify
+
+.data/
