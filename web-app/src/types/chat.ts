@@ -70,7 +70,7 @@ export type FileUpload = {
   preview: string;
   type: FileUploadMimeType;
   inputId?: string;
-  status?: "uploading" | "processing" | "completed" | "error";
+  status?: "uploading" | "completed" | "error";
   fileKey?: string;
   url?: string;
   error?: string;

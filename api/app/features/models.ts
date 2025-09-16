@@ -99,6 +99,27 @@ export const openaiModels = (apiKey?: string): Record<string, ModelConfig> => {
       description:
         "GPT-5 mini is a cost optimized model that excels at reasoning/chat tasks. It offers an optimal balance between speed, cost, and capability.",
     },
+    o3: {
+      model: openai.responses("o3-2025-04-16"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      supportsSystemMessages: true,
+      provider: "openai",
+      supportedMimeTypes,
+      description:
+        "OpenAI's o3 is their most powerful reasoning model, setting new state-of-the-art benchmarks in coding, math, science, and visual perception. It excels at complex queries requiring multi-faceted analysis, with particular strength in analyzing images, charts, and graphics.",
+    },
+    "gpt-4o": {
+      model: openai.responses("gpt-4o"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "openai",
+      supportsSystemMessages: true,
+      maxImageSize: 20 * 1024 * 1024, // 20MB
+      supportedMimeTypes,
+      description:
+        "GPT 4o is OpenAI's flagship model for complex tasks. It is well suited for problem solving across domains.",
+    },
   };
 };
 
@@ -191,6 +212,18 @@ export const xAiModels = (apiKey?: string): Record<string, ModelConfig> => {
       supportedMimeTypes,
       description:
         "xAI's latest and greatest flagship model, offering unparalleled performance in natural language, math and reasoning - the perfect jack of all trades.",
+    },
+    "grok-code-fast-1": {
+      model: xai("grok-code-fast-1"),
+      supportsToolUse: true,
+      supportsStreaming: true,
+      provider: "xai",
+      supportsSystemMessages: true,
+      maxFileSize: MAX_FILE_SIZE, // 1GB
+      maxImageSize: 10 * 1024 * 1024, // 10MB
+      supportedMimeTypes,
+      description:
+        "xAI's latest coding model that offers fast agentic coding with a 256K context window.",
     },
   };
 };

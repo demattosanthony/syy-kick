@@ -96,7 +96,7 @@ export function HomePage() {
       uploads: [...uploads],
       model: selectedModel.name,
       instructions: instructions || undefined,
-      status: "processing",
+      status: "uploading",
     };
 
     // Set pending state and navigate immediately

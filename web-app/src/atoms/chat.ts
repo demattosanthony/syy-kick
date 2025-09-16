@@ -201,7 +201,7 @@ export const SONAR_PRO_CONFIG = {
 
 // Persistent atoms
 export const modelAtom = atomWithStorage<Model>(
-  "selectedAiModel-v3",
+  "selectedAiModel-v4",
   AUTO_MODEL_CONFIG
 );
 export const temperatureAtom = atomWithStorage("chatTemp", 0.5);
@@ -229,7 +229,7 @@ export interface PendingThread {
   uploads: FileUpload[];
   model: string;
   instructions?: string;
-  status: "processing" | "created" | "error";
+  status: "uploading" | "created" | "error";
   actualThreadId?: string;
   error?: string;
 }

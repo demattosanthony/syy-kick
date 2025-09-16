@@ -1,13 +1,9 @@
 // External dependencies
-import { CoreMessage, generateObject, generateText } from "ai";
+import { CoreMessage, generateText } from "ai";
 import { eq, inArray } from "drizzle-orm";
 
 // Internal configuration
-import {
-  CONFIG,
-  MARKITDOWN_MIME_TYPES,
-  PROGRAMMING_FILE_MIME_TYPES,
-} from "../../config/constants";
+import { CONFIG, MARKITDOWN_MIME_TYPES } from "../../config/constants";
 import db from "../../config/db";
 import s3 from "../../config/s3";
 import {
@@ -17,7 +13,6 @@ import {
   User,
   files,
   messagesFiles,
-  filePages,
   filePageImages,
 } from "../../config/schema";
 
@@ -25,7 +20,6 @@ import {
 import { MODELS } from "../models";
 import { MyMessage } from "./threads.types";
 import { DbUser } from "../../createAuthToken";
-import { z } from "zod";
 
 export interface ImageData {
   name: string;
@@ -235,32 +229,7 @@ async function presignToolResultImages(result: any): Promise<any> {
 async function getModelConfig(model: string, messageContent: string) {
   if (model !== "Auto") return MODELS[model];
 
-  console.log("🤖 Model routing started");
-  const start = Date.now();
-
-  const { object } = await generateObject({
-    model: MODELS["gpt-5-mini"].model,
-    schema: z.object({
-      type: z.enum(["simple", "hard"]),
-    }),
-    prompt: `Your task is to understand the user's question and determine if its a 'simple' query or if its something hard/important.
-Simple queries are ones that should be answered fast and quick.
-Hard/important queries are ones where the user cares about it more and is willing to wait longer to get the full response.
-
-The user's question is: ${messageContent}
-
-Respond with a JSON object with the following schema:
-{
-  "type": "simple" | "hard"
-}`,
-  });
-
-  console.log(`🤖 Model routing complete in ${Date.now() - start}ms`);
-  console.log("🤖 [ModelConfig] Type of user query:", object.type);
-
-  return object.type === "simple"
-    ? MODELS["gpt-5-mini"]
-    : MODELS["gemini-2.5-pro"];
+  return MODELS["claude-4-sonnet"];
 }
 
 /** If environment is production and user allows, return a presigned URL, else base64. */
@@ -382,64 +351,24 @@ You have tools at your disposal to solve the user's task. Follow these rules reg
 6. You do not need to ask the user before calling a tool, just call it.
 </tool_calling>
 
-<file_operations>
-## File Handling in the Syyclops Platform
+<file_creation>
+You can also generate files based on the user's request. These can serve as downloadable deliverables or working references.
 
-Syyclops supports two main categories of files, each with a tailored extraction and interaction workflow:
+**Examples:**
+- Technical reports, calculations, or analysis results
+- Code, scripts, or configuration files
+- Schedules, checklists, or project breakdowns
+- Comparison tables, equipment specs, selection matrices
+- Any structured output >15 lines of content
 
-### 1. **Regular Documents**
-
-Includes PDFs, Word, Excel, text files, etc.
-
-* **Extraction:**
-  Text content is extracted and divided into chunks for efficient retrieval and navigation. Specific image screenshots are also take of tables, sections of pdf documents.
-
-* **How to Use:**
-
-  * Use \`search_file_content\` to **find specific technical information**, data points, or requirements.
-  * Use \`load_file_content\` to **read sections sequentially** or understand the document structure.
-  * Combine both tools: **search first**, then load relevant chunks for detailed analysis.
-  * For large documents, use \`startChunk\` and \`endChunk\` to control which portions to load.
-
-### 2. **Engineering Drawings**
-
-Includes schematics, floor plans, technical diagrams—**always provided as PDFs**.
-
-* **Extraction:**
-  Each PDF page is converted into an image. These files contain no text to search.
-
-* **How to Use:**
-
-  * Only use \`load_file_content\` — **search does not apply** to image-based drawings.
-  * Paginate using \`startPage\` and \`endPage\` to view specific sheets.
-  * Focus on **visual details**: symbols, annotations, schedules, dimensions, etc.
-  * Reference sheet numbers when discussing or reviewing with others.
-
-### Key Takeaways
-
-* **Know your file type.** Regular documents = searchable text chunks. Engineering drawings = page images.
-* **Search only works on documents**, not drawings.
-* **Always include images** for full context and completeness.
-
-    <file_creation>
-    You can also generate files based on the user's request. These can serve as downloadable deliverables or working references.
-
-    **Examples:**
-    - Technical reports, calculations, or analysis results
-    - Code, scripts, or configuration files
-    - Schedules, checklists, or project breakdowns
-    - Comparison tables, equipment specs, selection matrices
-    - Any structured output >15 lines of content
-
-    *Best Practices:*
-    - Use the \`create_file\` tool.
-    - Choose appropriate file extensions (.html for interfaces, .md for documentation, .csv for data, .py for code)
-    - Use descriptive and context-relevant filenames.
-    - Organize content with clear headers and logical sections.
-    - Include all necessary details to make the file self-contained and immediately useful.
-    - Never reference or mention the file creation in your response - files appear automatically 
-    </file_creation>
-</file_operations>
+*Best Practices:*
+- Use the \`create_file\` tool.
+- Choose appropriate file extensions (.html for interfaces, .md for documentation, .csv for data, .py for code)
+- Use descriptive and context-relevant filenames.
+- Organize content with clear headers and logical sections.
+- Include all necessary details to make the file self-contained and immediately useful.
+- Never reference or mention the file creation in your response - files appear automatically 
+</file_creation>
 
 <session_context>
     <current_date>
@@ -696,24 +625,69 @@ async function createRegularMessageWithFiles(
   modelConfig: any
 ): Promise<CoreMessage> {
   const chunks = [];
+  const attachments = [];
 
   // Add text content
   if (msg.text) {
     chunks.push({ type: "text", text: msg.text });
   }
 
-  // Process file attachments
-  const fileChunks = await createFileAttachmentMessages(
-    messageFiles,
-    modelConfig
-  );
-  chunks.push(...fileChunks);
+  // Process file attachments using experimental_attachments
+  for (const file of messageFiles) {
+    const isImage = file.mimeType?.includes("image");
 
-  return {
+    // For images, include as image chunks if supported
+    if (
+      isImage &&
+      modelConfig.supportedMimeTypes?.includes(file.mimeType || "")
+    ) {
+      try {
+        const data = await generateAttachmentData(
+          file.syyclops_path || "",
+          file.mimeType || "",
+          true
+        );
+        chunks.push({
+          type: "image",
+          image: data,
+          mimeType: file.mimeType,
+        });
+      } catch (error) {
+        console.error(`Error loading image file ${file.name}:`, error);
+      }
+    }
+    // For all other files, include as experimental_attachments
+    else {
+      try {
+        const data = await generateAttachmentData(
+          file.syyclops_path || "",
+          file.mimeType || "",
+          true
+        );
+
+        attachments.push({
+          name: file.name,
+          contentType: file.mimeType || "application/octet-stream",
+          url: data,
+        });
+      } catch (error) {
+        console.error(`Error generating URL for file ${file.name}:`, error);
+      }
+    }
+  }
+
+  const message: any = {
     id: msg.id,
     role: msg.role,
     content: chunks,
-  } as MyMessage;
+  };
+
+  // Add experimental_attachments if there are any
+  if (attachments.length > 0) {
+    message.experimental_attachments = attachments;
+  }
+
+  return message as CoreMessage;
 }
 
 /**
@@ -725,18 +699,9 @@ async function createFileAttachmentMessages(
   modelConfig: any
 ): Promise<any[]> {
   const chunks = [];
-  const artifactFiles = [];
-  const drawingFiles = [];
 
   for (const file of messageFiles) {
     const isImage = file.mimeType?.includes("image");
-    const isPdf = file.mimeType === "application/pdf";
-    const isDocument = MARKITDOWN_MIME_TYPES.includes(file.mimeType || "");
-    const isDrawing = file.category === "drawing";
-    const isPlainText = file.mimeType === "text/plain";
-    const isProgrammingFile = PROGRAMMING_FILE_MIME_TYPES.includes(
-      file.mimeType || ""
-    );
 
     // Direct inclusion for images (if supported by model)
     if (
@@ -758,118 +723,15 @@ async function createFileAttachmentMessages(
         console.error(`Error loading image file ${file.name}:`, error);
       }
     }
-    // Drawing files (PDFs categorized as drawings)
-    else if (isDrawing && isPdf) {
-      drawingFiles.push(file);
-    }
-    // Large documents, plain text, and programming files go to artifact service
-    else if (isPdf || isDocument || isPlainText || isProgrammingFile) {
-      artifactFiles.push(file);
-    }
-    // Other files - include basic info
+    // For all other files, we can't include them directly in content
+    // They will be handled via experimental_attachments at the message level
     else {
-      try {
-        const data = await generateAttachmentData(
-          file.syyclops_path || "",
-          file.mimeType || "",
-          true
-        );
-        chunks.push({
-          type: "file",
-          data,
-          mimeType: file.mimeType,
-        });
-      } catch (error) {
-        console.error(`Error loading file ${file.name}:`, error);
-      }
+      // Skip non-image files for assistant messages
+      // They should be handled via experimental_attachments if needed
+      console.log(
+        `Skipping non-image file ${file.name} for assistant message content`
+      );
     }
-  }
-
-  // Add notice for drawing files with page count
-  if (drawingFiles.length > 0) {
-    const drawingListPromises = drawingFiles.map(async (f) => {
-      // Get page count for drawing file
-      const pageCount = await db.query.filePages
-        .findMany({
-          where: eq(filePages.fileId, f.id),
-        })
-        .then((pages) => pages.length);
-
-      const fileSlug = f.syyclops_path?.split("/").pop() || f.name;
-
-      return `- ${fileSlug} - (Engineering Drawing - ${f.mimeType}) - ${pageCount} pages`;
-    });
-
-    const drawingList = (await Promise.all(drawingListPromises)).join("\n");
-
-    chunks.push({
-      type: "text",
-      text: `<drawing_attachments_notice>
-The following engineering drawing files have been processed and are available as high-resolution images:
-
-${drawingList}
-
-These are visual/graphical documents (architectural plans, engineering drawings, schematics, etc.) that have been converted to images for analysis. To access these drawings:
-
-- Use the \`load_file_content\` tool to navigate through the drawing pages
-- Specify page ranges to view specific sheets or details
-- Each page is available as a high-resolution image for visual interpretation
-- NOTE: \`search_file_content\` will NOT work effectively for these drawings since they contain primarily visual information
-</drawing_attachments_notice>`,
-    });
-  }
-
-  // Add artifact service prompting for regular documents with page count
-  if (artifactFiles.length > 0) {
-    const fileListPromises = artifactFiles.map(async (f) => {
-      // Get page count for document file
-      const pageCount = await db.query.filePages
-        .findMany({
-          where: eq(filePages.fileId, f.id),
-        })
-        .then((pages) => pages.length);
-
-      // Get chunk count for document file
-      const chunkCount = await db.query.filePages
-        .findMany({
-          where: eq(filePages.fileId, f.id),
-          with: {
-            chunks: true,
-          },
-        })
-        .then((pages) =>
-          pages.reduce((sum, page) => sum + page.chunks.length, 0)
-        );
-
-      // Determine file type description
-      let fileTypeDesc = "Document";
-      if (f.mimeType === "text/plain") {
-        fileTypeDesc = "Plain Text";
-      } else if (PROGRAMMING_FILE_MIME_TYPES.includes(f.mimeType || "")) {
-        fileTypeDesc = "Code File";
-      }
-
-      const fileSlug = f.syyclops_path?.split("/").pop() || f.name;
-
-      return `- ${fileSlug} - (${fileTypeDesc} - ${f.mimeType}) - ${pageCount} pages, ${chunkCount} chunks`;
-    });
-
-    const fileList = (await Promise.all(fileListPromises)).join("\n");
-
-    chunks.push({
-      type: "text",
-      text: `<document_attachments_notice>
-The following document files have been processed and are available through the artifact service:
-
-${fileList}
-
-These files have been processed with text extraction and OCR. You can access their content using:
-
-- \`search_file_content\` tool to find specific information within the documents
-- \`load_file_content\` tool to read specific pages or sections (default: first 10 chunks for regular documents)
-- Content is available for analysis, reference, and text-based operations
-</document_attachments_notice>`,
-    });
   }
 
   return chunks;

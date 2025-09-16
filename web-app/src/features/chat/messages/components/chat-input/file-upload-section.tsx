@@ -33,7 +33,7 @@ export function FileUploadSection({
           customIconSrc = pdfLogo;
         }
 
-        const isProcessing = upload.status === "processing";
+        const isUploading = upload.status === "uploading";
         const hasError = upload.status === "error";
 
         return (
@@ -46,7 +46,7 @@ export function FileUploadSection({
                 src={upload.preview}
                 alt={`Upload ${index + 1}`}
                 className={`h-full w-full object-cover transition-transform group-hover:scale-105 ${
-                  isProcessing ? "opacity-50" : ""
+                  isUploading ? "opacity-50" : ""
                 }`}
               />
             )}
@@ -54,7 +54,7 @@ export function FileUploadSection({
             {upload.type !== "image" && (
               <div
                 className={`h-full w-full flex flex-col items-center justify-center bg-muted/40 p-2 text-center ${
-                  isProcessing ? "opacity-50" : ""
+                  isUploading ? "opacity-50" : ""
                 }`}
               >
                 {extension === "pdf" && upload.preview ? (
@@ -84,7 +84,7 @@ export function FileUploadSection({
             )}
 
             {/* Processing indicator */}
-            {isProcessing && (
+            {isUploading && (
               <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
@@ -99,8 +99,8 @@ export function FileUploadSection({
               </div>
             )}
 
-            {/* Remove button - only show when not processing */}
-            {!isProcessing && (
+            {/* Remove button - only show when not uploading */}
+            {!isUploading && (
               <button
                 className="absolute top-1 right-1 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
                 onClick={(e) => {

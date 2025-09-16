@@ -1,14 +1,9 @@
 // External dependencies
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { streamText } from "ai";
 import { v4 as uuidv4 } from "uuid";
-import { AnthropicProviderOptions } from "@ai-sdk/anthropic";
 import { OpenAIResponsesProviderOptions } from "@ai-sdk/openai";
 import { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
-import {
-  openrouter,
-  OpenRouterProviderOptions,
-} from "@openrouter/ai-sdk-provider";
 
 // Internal configuration
 import db from "../../../config/db";
@@ -515,7 +510,7 @@ export const messagesOps = {
       try {
         // Call streamText without maxSteps - we control the flow manually
         const result = streamText({
-          model: openrouter(`anthropic/claude-sonnet-4`),
+          model: modelConfig.model,
           messages: currentMessages,
           //   temperature: 0.2,
           ...(tools && {
