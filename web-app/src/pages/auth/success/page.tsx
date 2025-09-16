@@ -10,7 +10,7 @@ import { useNavigate, useSearchParams } from "react-router";
 const iconAnimation = {
   initial: { scale: 0 },
   animate: { scale: 1 },
-  transition: { type: "spring", duration: 0.6 },
+  transition: { type: "spring" as const, duration: 0.6 },
 };
 
 type Status = "processing" | "success" | "error";
