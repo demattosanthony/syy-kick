@@ -9,12 +9,17 @@ export const CONFIG = {
     "https://yo-syyclops.vercel.app",
     "https://timely-faun-d79ed5.netlify.app/",
     "https://syy-mastra.netlify.app",
+    "https://api-syykick.syyclops.com",
   ],
   COOKIE_OPTIONS: {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-    domain: process.env.NODE_ENV === "production" ? ".syykick.com" : "",
+    sameSite:
+      process.env.NODE_ENV === "production"
+        ? ("none" as const)
+        : ("lax" as const),
+    // Use 'none' in production for cross-origin, 'lax' in development
+    // Removed domain restriction to allow cross-domain cookies
     path: "/",
   },
   EMAIL_WHITELIST: [

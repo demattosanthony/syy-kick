@@ -114,6 +114,40 @@ const authHandlers = {
     }
   },
 
+  // Cookie migration endpoint for domain transition
+  migrateCookies: async (req: Request, res: Response) => {
+    try {
+      // This endpoint will be called from the old domain (syykick.com)
+      // with existing cookies, and will return new cookies for the new API domain
+      const { id, rid } = req.cookies;
+
+      if (!id || !rid) {
+        res
+          .status(200)
+          .json({ migrated: false, reason: "No existing cookies" });
+        return;
+      }
+
+      // Verify the existing tokens
+      const { user } = await checkTokens(id, rid);
+
+      if (user) {
+        // Send new cookies without domain restriction
+        sendAuthCookies(res, user);
+        res.status(200).json({
+          migrated: true,
+          user: await authOps.getUserWithOrgs(user.id),
+        });
+      } else {
+        res.status(200).json({ migrated: false, reason: "Invalid tokens" });
+      }
+    } catch (error) {
+      res
+        .status(200)
+        .json({ migrated: false, reason: "Token verification failed" });
+    }
+  },
+
   joinWithInvite: async (req: Request, res: Response) => {
     try {
       const invite = await authOps.checkInvite(req.params.token);

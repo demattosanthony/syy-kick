@@ -46,9 +46,12 @@ export const WorkspaceProvider = ({
   // Function to update both client state and cookie using react-cookie
   const setActiveWorkspace = React.useCallback((workspace: Workspace) => {
     // Delete potential old cookies first
-    document.cookie = "activeWorkspace=; path=/; max-age=0; samesite=lax";
-    document.cookie =
-      "activeWorkspace=; path=/; max-age=0; samesite=lax; domain=.syykick.com";
+    const sameSiteValue = import.meta.env.PROD ? "none" : "lax";
+    document.cookie = `activeWorkspace=; path=/; max-age=0; samesite=${sameSiteValue}`;
+    if (import.meta.env.PROD) {
+      document.cookie =
+        "activeWorkspace=; path=/; max-age=0; samesite=none; secure";
+    }
 
     // Set the cookie on the client side for immediate effect
     const encodedValue = JSON.stringify(workspace);
@@ -56,12 +59,12 @@ export const WorkspaceProvider = ({
       `activeWorkspace=${encodedValue}`,
       "path=/",
       "max-age=2147483647", // Approximately 68 years
-      "samesite=lax",
+      `samesite=${sameSiteValue}`, // Use 'none' in production, 'lax' in development
     ];
 
     if (import.meta.env.PROD) {
       cookieAttributes.push("secure");
-      cookieAttributes.push("domain=.syykick.com");
+      // Removed domain restriction to allow cross-domain cookies
     }
 
     document.cookie = cookieAttributes.join("; ");

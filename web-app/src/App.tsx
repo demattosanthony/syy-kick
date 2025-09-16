@@ -27,11 +27,21 @@ import { queryClient } from "./providers/tanstack-query-client-provider";
 import api from "./lib/api";
 import { User } from "./types/user";
 import { RouteErrorElement } from "./components/route-error";
+import { attemptCookieMigration } from "./lib/cookie-migration";
 
 // Define the new loader function for the root route
 const rootUserDataLoader = async (): Promise<User | null> => {
   const queryKey = ["me"];
   try {
+    // First, attempt cookie migration for seamless domain transition
+    const migrationResult = await attemptCookieMigration();
+
+    if (migrationResult.migrated && migrationResult.user) {
+      // If migration was successful and returned user data, use it
+      queryClient.setQueryData(queryKey, migrationResult.user);
+      return migrationResult.user;
+    }
+
     // If not in cache, fetch from API using fetchQuery
     const user = await queryClient.fetchQuery<User | null>({
       queryKey,

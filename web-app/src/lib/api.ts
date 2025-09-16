@@ -150,6 +150,23 @@ class AuthApi extends ApiRequest {
     }
   }
 
+  async migrateCookies(): Promise<{
+    migrated: boolean;
+    user?: User | null;
+    reason?: string;
+  }> {
+    try {
+      return await this.request<{
+        migrated: boolean;
+        user?: User | null;
+        reason?: string;
+      }>("/auth/migrate-cookies", "POST");
+    } catch (error) {
+      console.error("Failed to migrate cookies:", error);
+      return { migrated: false, reason: "Network error" };
+    }
+  }
+
   async joinWithInvite(token: string): Promise<{
     success?: boolean;
     requiresAuth?: boolean;

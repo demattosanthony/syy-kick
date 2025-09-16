@@ -42,6 +42,7 @@ const authRouter = Router({ mergeParams: true })
     authHandlers.joinWithInvite
   )
   .get("/me", authHandlers.me)
+  .post("/migrate-cookies", authHandlers.migrateCookies)
   .get("/me/upload-token", authMiddlewares.auth, authHandlers.getUploadToken);
 
 export default authRouter;

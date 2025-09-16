@@ -41,9 +41,13 @@ const createAuthTokens = (
 const cookieOpts = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
+  sameSite:
+    process.env.NODE_ENV === "production"
+      ? ("none" as const)
+      : ("lax" as const),
+  // Use 'none' in production for cross-origin, 'lax' in development
   path: "/",
-  domain: process.env.NODE_ENV === "production" ? ".syykick.com" : "",
+  // Removed domain restriction to allow cross-domain cookies
   maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 year
 } as const;
 
